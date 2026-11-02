@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin">
+<title>My Little Frequency · Two-Theme UX Study v0.9</title>
+<style>
+:root{color-scheme:dark;--bg:#171614;--surface:#211f1b;--surface2:#2b2823;--ink:#e9e2d7;--muted:#bcb4a6;--dim:#8f887b;--line:#504a41;--dot:#e1d8c8;--metal:#aaa295;font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#11110f;color:var(--ink);min-height:100vh}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid #f0e2c8;outline-offset:3px}a{color:#dfd1ba}.mono{font-family:ui-monospace,'IBM Plex Mono',Consolas,'Courier New',monospace}.hidden{display:none!important}
+.shell{max-width:1920px;margin:auto;padding:22px clamp(12px,3vw,46px) 44px}.demo-top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:13px;color:#b8afa2;font:11px ui-monospace,monospace}.demo-top strong{font-size:13px;letter-spacing:.15em;font-weight:500;color:#e7dfd3}.demo-top .tools{display:flex;gap:6px}.view-btn{border:1px solid #5b5348;background:#231f1a;color:#d4cabe;padding:7px 12px;border-radius:3px;font:11px ui-monospace,monospace}.view-btn.active{background:#d0c6b9;color:#28231f}
+.workspace{position:relative;display:grid;grid-template-columns:minmax(0,1fr);border:1px solid #38332c;background:radial-gradient(ellipse at 45% 30%,#25221e 0%,#171614 67%,#131210 100%);min-height:650px;overflow:hidden;isolation:isolate}
+.workspace.drawer-open{grid-template-columns:minmax(0,1fr) 340px}.stage{min-width:0;padding:clamp(18px,2.6vw,36px);transition:opacity .18s ease}.header{display:flex;gap:14px;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:1px solid #49433b}.brand{font:12px ui-monospace,monospace;letter-spacing:.08em;color:#dad3c7}.nav{display:flex;align-items:center;gap:9px}.quiet-btn{border:1px solid #6a6054;background:#26231e;color:#e5dbcf;padding:10px 13px;min-height:42px;border-radius:3px;font:12px ui-monospace,monospace}.quiet-btn:hover{background:#393329}.quiet-btn.primary{background:#d8cebe;border-color:#d8cebe;color:#221e1a;font-weight:700}
+.content{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(420px,.87fr);gap:clamp(20px,2.3vw,39px);align-items:start;margin:clamp(23px,2.6vw,39px) 0}.deck-wrap{min-width:0}.deck-graphic{position:relative;width:100%;filter:drop-shadow(0 12px 16px #0005)}.turntable{display:block;width:100%;height:auto;overflow:visible}.platter{transform-box:view-box;transform-origin:345px 281px;animation:disc 1.8s linear infinite paused;will-change:transform}.workspace.is-playing .platter{animation-play-state:running}.workspace[data-speed="45"] .platter{animation-duration:1.33333s}@keyframes disc{to{transform:rotate(360deg)}}.tonearm{transform-box:view-box;transform-origin:751px 121px;transform:rotate(-12deg);transition:transform .65s ease}.workspace.is-playing .tonearm,.workspace.is-paused .tonearm{transform:rotate(0deg)}.deck-control{cursor:pointer}.deck-control:focus-visible{outline:2px solid #f2eade}.deck-control:hover .key-surface{filter:brightness(1.08)}.workspace[data-speed="45"] .speed45 .key-surface,.workspace:not([data-speed="45"]) .speed33 .key-surface{fill:#ded9ce}.workspace[data-speed="45"] .speed33 .key-surface,.workspace:not([data-speed="45"]) .speed45 .key-surface{fill:#99938a}.mini-lamp{fill:#807970}.workspace.is-playing .mini-lamp{fill:#f2e6d1;filter:drop-shadow(0 0 3px #ecdfc9)}.svg-mono{font-family:ui-monospace,monospace}
+/* LP is an actual discoverable button rather than an overlay on the YouTube video */
+.disc-open{position:absolute;top:10.6%;left:13.9%;width:48.9%;height:77%;border-radius:50%;border:0;background:transparent;color:#eee6d8;display:flex;align-items:center;justify-content:center;padding:0}.disc-open:hover,.disc-open:focus-visible{background:#09080629;outline:2px solid #eee2d0;outline-offset:2px}.disc-open span{opacity:0;transform:translateY(5px);transition:.2s;background:#161513e9;border:1px solid #b4aa9a;padding:10px 12px;font:12px ui-monospace,monospace;letter-spacing:.07em}.disc-open:hover span,.disc-open:focus-visible span{opacity:1;transform:none}.deck-hint{margin:5px 0 0;color:#ada496;font:12px ui-monospace,monospace;letter-spacing:.01em;text-align:center}.deck-hint strong{color:#e7ddd0;font-weight:500}
+.info{min-width:0;border-left:1px solid #554f45;padding-left:clamp(22px,2.7vw,42px)}.clock-line{display:flex;align-items:center;justify-content:space-between;font:11px ui-monospace,monospace;color:#aba398;letter-spacing:.05em}.clock-svg{width:100%;height:auto;display:block;margin:17px 0 5px}.time-dot{fill:var(--dot)}.time-off{fill:#615d54;opacity:.18}.clock-date{font:clamp(11px,1.03vw,15px) ui-monospace,monospace;letter-spacing:.13em;padding:12px 0 20px;white-space:nowrap;color:#cbbfad}.rule{height:1px;background:#534c42}.weather{display:flex;align-items:center;gap:13px;min-height:66px;font-family:ui-monospace,monospace}.weather .wxicon{font-size:27px;font-weight:300;color:#d5ccbe}.weather .temp{font-size:24px;color:#e5ddce}.weather .desc{font-size:12px;color:#bfb5a8}.weather .highlow{font-size:11px;color:#b3aa9b;margin-left:auto;white-space:nowrap}.weather-note{font:10px ui-monospace,monospace;color:#867f73;margin-top:-4px;margin-bottom:14px}
+.music{padding-top:22px}.eyebrow{font:11px ui-monospace,monospace;color:#afa596;letter-spacing:.12em}.now-title{font-size:clamp(18px,1.6vw,23px);font-weight:500;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;margin-top:10px}.now-sub{color:#aaa092;font:12px ui-monospace,monospace;margin:7px 0 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.video-holder{width:100%;min-width:200px;min-height:200px;aspect-ratio:16/9;position:relative;background:#0f0e0d;border:1px solid #665f55}.video-placeholder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:18px;color:#bab1a4;font:12px/1.8 ui-monospace,monospace}.video-placeholder strong{font:20px ui-monospace,monospace;color:#e7dbcb;display:block;margin-bottom:9px}.yt-host{position:absolute;inset:0;width:100%;height:100%}.yt-host iframe{display:block;width:100%!important;height:100%!important;border:0}.action-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:16px}.controls-left,.controls-right{display:flex;gap:8px;align-items:center}.round{height:42px;min-width:42px;border:0;background:transparent;color:#ded4c6;display:grid;place-items:center;border-radius:50%;font-size:20px}.round:hover{background:#332e27}.round.main{border:1px solid #b3a796;min-width:51px;height:51px}.round:disabled{opacity:.3;cursor:not-allowed}.mute-note{font:10px ui-monospace,monospace;color:#91887c;padding-top:5px}.status{min-height:39px;color:#d1c4b3;font:12px/1.5 ui-monospace,monospace;padding-top:10px}.status.warning{color:#e7c5a8}.external{font:11px ui-monospace,monospace;color:#b9ae9f;text-decoration:underline;text-underline-offset:3px}.footer{margin-top:14px;border-top:1px solid #443e36;padding-top:13px;font:10px ui-monospace,monospace;letter-spacing:.05em;color:#938a80;display:flex;justify-content:space-between;gap:15px}
+/* Right Drawer is a sibling in layout, not a layer covering the YouTube video */
+.drawer{display:none;min-width:0;flex-direction:column;border-left:1px solid #686053;background:#1d1b18;max-height: min(880px,96vh);height:100%}.workspace.drawer-open .drawer{display:flex}.drawer-head{display:flex;align-items:start;justify-content:space-between;padding:21px 20px 16px;border-bottom:1px solid #544d43;gap:10px}.drawer-title{font:13px ui-monospace,monospace;letter-spacing:.1em;color:#eee4d8}.drawer-sub{font:11px ui-monospace,monospace;color:#968d7d;margin-top:8px}.close{border:0;background:transparent;color:#e4d9cc;font-size:23px;line-height:1;width:34px;height:34px}.drawer-body{padding:18px 16px;overflow-y:auto;min-height:0;flex:1}.pill{padding:7px 12px;min-height:36px;border:1px solid #635b4e;border-radius:3px;background:#28251f;color:#e9dfd0;font:11px ui-monospace,monospace}.pill:hover{background:#383228}.pill.strong{background:#d5cab9;color:#28221c;border-color:#d5cab9}.playlists{display:grid;gap:7px;margin:15px 0 18px}.playlist-row{display:flex;align-items:center;gap:6px;min-width:0}.playlist-select{flex:1;min-width:0;text-align:left;background:#25221e;border:1px solid #443e36;padding:11px 10px;border-radius:3px;color:#e3d8c9}.playlist-select.active{border-color:#c5b7a3;background:#393329}.playlist-select .pname{font-size:13px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.playlist-select .pmeta{font:10px ui-monospace,monospace;color:#aaa092;margin-top:5px}.playlist-play{height:42px;min-width:42px;border:1px solid #595044;background:#2a2621;color:#e1d6c5;border-radius:3px}.playlist-play:hover{background:#4d4335}.drawer-section-title{font:10px ui-monospace,monospace;letter-spacing:.12em;color:#9e9486;margin:14px 0 8px}.drawer-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:13px}.track-list{display:grid;gap:5px}.track{display:flex;gap:7px;align-items:center;background:#27231e;padding:8px 7px;border:1px solid transparent}.track.current{border-color:#a89b87}.track-play{width:30px;flex:none;background:transparent;border:0;color:#e0d3c1;font-size:17px}.track-name{flex:1;min-width:0;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.track-controls{display:flex;gap:3px}.track-controls button{background:transparent;border:0;color:#aaa092;min-width:28px;height:29px}.track-controls button:hover{color:#fff}.muted{color:#968c7f;font-size:11px;line-height:1.6}.drawer-foot{padding:13px 17px;border-top:1px solid #51493e;color:#9d9487;font:10px/1.6 ui-monospace,monospace}
+.add-overlay{position:fixed;inset:0;z-index:50;background:#0b0a09d9;display:none;align-items:center;justify-content:center;padding:16px}.add-overlay.open{display:flex}.add-modal{width:min(480px,100%);background:#23201b;border:1px solid #978a77;padding:24px;border-radius:4px;box-shadow:0 22px 70px #000a}.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.modal-head h2{font:16px ui-monospace,monospace;font-weight:500;letter-spacing:.03em;margin:0}.label{display:block;margin:18px 0 7px;font:11px ui-monospace,monospace;color:#c0b6a8}.field{display:block;width:100%;height:46px;padding:10px;background:#161411;border:1px solid #71685b;color:#eee4d8;border-radius:2px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}.error-msg{min-height:17px;color:#edb99b;font-size:12px;margin-top:6px}
+.toast{position:fixed;z-index:100;bottom:22px;left:50%;transform:translateX(-50%);background:#ded3c1;color:#2d261f;padding:11px 18px;box-shadow:0 10px 24px #0008;font:12px ui-monospace,monospace;display:none;max-width:min(530px,90vw)}.toast.show{display:block}
+.ux-notes{border:1px solid #3f3931;margin-top:14px;padding:11px 16px;color:#b5aa9a;font:12px/1.75 ui-monospace,monospace}.ux-notes summary{cursor:pointer;color:#d6caba}.ux-notes p{margin:10px 0 0}.ux-notes ul{margin:8px 0 0;padding-left:19px}
+/* narrow screen: let drawer take the whole available stage and pause any video before hiding it. */
+.workspace.compact .stage{padding:22px}.workspace.compact .content{grid-template-columns:1fr;gap:25px}.workspace.compact .info{border-left:0;border-top:1px solid #514a3f;padding:20px 0 0}.workspace.compact .drawer{max-height:none}.workspace.compact.drawer-open{grid-template-columns:1fr}.workspace.compact.drawer-open .stage{display:none}.workspace.compact.drawer-open .drawer{display:flex;min-height:630px;border-left:none}
+.workspace.portrait{max-width:700px;margin:auto}.workspace.portrait .content{grid-template-columns:1fr;gap:22px}.workspace.portrait .info{border-left:0;border-top:1px solid #514a3f;padding:22px 0 0}.workspace.portrait.drawer-open{grid-template-columns:1fr}.workspace.portrait.drawer-open .stage{display:none}.workspace.portrait.drawer-open .drawer{min-height:650px;border-left:0}
+@media(max-width:1100px){.workspace .content{grid-template-columns:1fr}.workspace .info{border:0;border-top:1px solid #514a3f;padding:22px 0 0}.workspace.drawer-open .stage{display:none}.workspace.drawer-open{grid-template-columns:1fr}.workspace.drawer-open .drawer{max-height:none;border:0;min-height:680px}}
+@media(max-width:650px){.shell{padding:10px 8px 35px}.workspace .stage{padding:17px}.header{align-items:start;gap:10px}.brand{font-size:10px}.nav{gap:6px}.quiet-btn{font-size:11px;padding:8px;min-height:40px}.content{margin:24px 0}.clock-date{letter-spacing:.04em}.weather{gap:8px}.weather .highlow{font-size:10px}.footer{flex-wrap:wrap}.demo-top strong{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.platter{animation:none!important}.tonearm{transition:none}.disc-open span{transition:none}}
+
+/* 02. Kawaii Synth Cassette: independent skin, SAME library/queue/player. No character IP. */
+.theme-switch{display:flex;gap:4px;border:1px solid #5a5148;padding:3px;border-radius:3px}.theme-btn{min-height:31px;border:0;padding:6px 12px;color:#bdb2a4;background:transparent;letter-spacing:.04em;font:10px ui-monospace,monospace}.theme-btn.active{color:#171614;background:#d1c6b6}.theme-btn:hover{filter:brightness(1.14)}
+.cassette-deck{display:none;position:absolute;inset:0}.cassette-art{display:block;width:100%;height:auto}.cassette-open{position:absolute;left:16%;top:25%;height:57%;width:68%;background:transparent;color:#dbfff7;border:0;display:grid;place-items:center;cursor:pointer}.cassette-open span{opacity:0;transform:translateY(5px);background:#0c3448ec;border:1px solid #b2f9e7;padding:10px 14px;font:12px ui-monospace,monospace;letter-spacing:.08em;transition:.2s}.cassette-open:hover span,.cassette-open:focus-visible span{opacity:1;transform:none}.cassette-open:focus-visible{outline:3px solid #ff8fc3;outline-offset:-4px}
+.cassette-spool{transform-box:fill-box;transform-origin:center;animation:cas-turn 1.9s linear infinite paused}.workspace.is-playing .cassette-spool{animation-play-state:running}@keyframes cas-turn{to{rotate:360deg}}
+body.theme-kawaii{--bg:#10202c;--surface:#172b3b;--surface2:#1e3e51;--ink:#e2fff6;--muted:#b2d7d5;--dim:#769dac;--line:#3f7480;--dot:#a9ffe5;--metal:#82d8ce;background:#081825;color:var(--ink)}
+.theme-kawaii .workspace{border-color:#5b9e9f;background:radial-gradient(circle at 20% 20%,#245c6e 0%,#142b3b 40%,#0d1c2d 82%),repeating-linear-gradient(0deg,transparent 0 19px,#e5ffff0b 20px)}
+.theme-kawaii .demo-top strong,.theme-kawaii .brand{color:#b5ffec}.theme-kawaii .demo-top{color:#a1d4ce}.theme-kawaii .theme-switch{border-color:#468894}.theme-kawaii .theme-btn{color:#a1d4ce}.theme-kawaii .theme-btn.active{background:#b5fbea;color:#0d4254}.theme-kawaii .view-btn{background:#204658;border-color:#528e98;color:#c4f9ec}.theme-kawaii .view-btn.active{background:#ff9ecb;color:#3b2545;border-color:#ff9ecb}
+.theme-kawaii .turntable,.theme-kawaii .disc-open{display:none!important}.theme-kawaii .cassette-deck{display:block}.theme-kawaii .deck-graphic{aspect-ratio:900/570;filter:drop-shadow(0 18px 21px #0006)}
+.theme-kawaii .header,.theme-kawaii .info,.theme-kawaii .rule,.theme-kawaii .footer{border-color:#456b78}.theme-kawaii .quiet-btn,.theme-kawaii .pill{background:#214052;color:#d3fff5;border-color:#5d9096}.theme-kawaii .quiet-btn.primary,.theme-kawaii .pill.strong{background:#ff9bc5;color:#3f2340;border-color:#ff9bc5}.theme-kawaii .quiet-btn:hover,.theme-kawaii .pill:hover{background:#366a73}.theme-kawaii .clock-line,.theme-kawaii .clock-date,.theme-kawaii .eyebrow,.theme-kawaii .drawer-section-title,.theme-kawaii .drawer-sub{color:#a9d8d3}.theme-kawaii .clock-svg{filter:drop-shadow(0 0 3px #83ffed38)}.theme-kawaii .weather .wxicon,.theme-kawaii .weather .temp{color:#d0fff1}.theme-kawaii .weather .desc,.theme-kawaii .weather .highlow,.theme-kawaii .now-sub,.theme-kawaii .status,.theme-kawaii .deck-hint{color:#b5d9d8}.theme-kawaii .now-title{color:#f7d7e9}.theme-kawaii .info{border-color:#557e89}.theme-kawaii .video-holder{border-color:#66c3bf;background:#091c2a;box-shadow:0 0 0 3px #174c5430}.theme-kawaii .video-placeholder{color:#a6d9d0}.theme-kawaii .video-placeholder strong{color:#e2fff6}.theme-kawaii .round{color:#dbfff4}.theme-kawaii .round.main{border-color:#ff9bc5;color:#ffb4d4}.theme-kawaii .drawer{background:#132b3a;border-color:#5d98a2}.theme-kawaii .drawer-head,.theme-kawaii .drawer-foot{border-color:#4e828a}.theme-kawaii .drawer-title{color:#d4ffed}.theme-kawaii .playlist-select,.theme-kawaii .track{background:#21394a;color:#d8fff6}.theme-kawaii .playlist-select.active,.theme-kawaii .track.current{background:#2c5663;border-color:#92ead9}.theme-kawaii .playlist-select .pmeta{color:#a2d3ce}.theme-kawaii .playlist-play,.theme-kawaii .track-play{color:#fbc0db;background:#224557}.theme-kawaii .drawer-actions button,.theme-kawaii .track-controls button{color:#bef2e9}.theme-kawaii .drawer-body{color:#c9f8ef}
+.theme-kawaii .add-overlay{background:#071521e6}.theme-kawaii .modal{background:#19374a;border-color:#8fd8cb;color:#d8fff2}.theme-kawaii .modal input{background:#0e2a39;border-color:#6aada8;color:#ecfff9}.theme-kawaii .toast{background:#a7ffdf;color:#17384a}.theme-kawaii .footer{color:#a1c7c5}
+@media(max-width:730px){.demo-top{flex-wrap:wrap}.demo-top .tools{flex-wrap:wrap}.theme-btn{padding:6px 8px;font-size:9px}}
+@media(prefers-reduced-motion:reduce){.cassette-spool{animation:none!important}.cassette-open span{transition:none}}
+
+/* mascot strip: neutral shared layout, theme-specific electronic display skin */
+.mascot-panel{margin-top:26px;border:1px solid #49453f;min-height:112px;max-width:100%;display:flex;align-items:center;gap:21px;padding:13px 22px;background:linear-gradient(105deg,#101111,#1e1d1a);position:relative;overflow:hidden}
+.mascot-screen{display:grid;grid-template-columns:repeat(16,5px);grid-auto-rows:5px;gap:3px;align-content:center;justify-content:center;flex:none;background:#060707;border:1px solid #373631;padding:7px 10px}
+.mascot-dot{width:5px;height:5px;border-radius:50%;background:transparent}.mascot-dot.on{background:#fff}
+.mascot-info{display:flex;flex-direction:column;gap:6px;min-width:0;font-family:ui-monospace,monospace}.mascot-label{font-size:9px;letter-spacing:.12em;color:#9c978c}.mascot-info strong{font-size:13px;letter-spacing:.14em;font-weight:500;color:#e3e0d8}.mascot-info small{font-size:10px;color:#8f897d}.mascot-corner{margin-left:auto;align-self:flex-start;color:#757269;font-size:12px}
+.theme-kawaii .mascot-panel{background:linear-gradient(110deg,#0b3041,#143e51);border-color:#78cac6;box-shadow:inset 0 0 0 2px #154658}.theme-kawaii .mascot-screen{background:#092738;border-color:#5accc4;box-shadow:inset 0 0 0 2px #092738}.theme-kawaii .mascot-dot.on{background:#a8ffe7}.theme-kawaii .mascot-label{color:#8dd4c9}.theme-kawaii .mascot-info strong{color:#ffafd2}.theme-kawaii .mascot-info small{color:#96ccc9}.theme-kawaii .mascot-corner{color:#ff91bd}
+.workspace.is-playing .mascot-dot.on{animation:mascot-breath 1s ease-in-out infinite alternate}@keyframes mascot-breath{to{opacity:.72}}
+@media(max-width:600px){.mascot-panel{padding:10px;gap:12px}.mascot-screen{gap:2px;grid-template-columns:repeat(16,4px);grid-auto-rows:4px}.mascot-dot{width:4px;height:4px}.mascot-info small{display:none}}
+@media(prefers-reduced-motion:reduce){.mascot-dot.on{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="demo-top"><strong id="prototypeTitle">MY LITTLE FREQUENCY / TWO THEMES 0.9</strong><div class="tools"><div class="theme-switch" role="group" aria-label="테마 선택"><button type="button" id="monoTheme" class="theme-btn active" aria-pressed="true">01 / MONO VINYL</button><button type="button" id="synthTheme" class="theme-btn" aria-pressed="false">02 / SYNTH CASSETTE</button></div><button type="button" id="wideView" class="view-btn active">가로 보기</button><button type="button" id="portraitView" class="view-btn">세로 보기</button></div></div>
+  <main class="workspace" id="workspace" data-speed="33">
+    <div class="stage" id="stage">
+      <header class="header"><span class="brand">MY LITTLE FREQUENCY</span><div class="nav"><button class="quiet-btn" id="openLibrary">◉ 라이브러리</button><button class="quiet-btn primary" id="headerAdd">＋ 링크 추가</button></div></header>
+      <div class="content"><section class="deck-wrap" aria-label="아날로그 LP"><div class="deck-graphic">
+      <svg class="turntable" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 570" role="img" aria-label="따뜻한 회갈색 금속 본체에 검은 음반과 은빛 톤암이 놓인 턴테이블">
+    
+<defs>
+      <linearGradient id="chassis" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" style="stop-color:#c9c1b3"/>
+        <stop offset="47%" style="stop-color:#a9a194"/>
+        <stop offset="100%" style="stop-color:#8c857b"/>
+      </linearGradient>
+      <linearGradient id="controlSilver" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f0eee8"/><stop offset=".5" stop-color="#afaca6"/><stop offset="1" stop-color="#777671"/></linearGradient>
+      <radialGradient id="discGrad" cx="31%" cy="25%"><stop stop-color="#232323"/><stop offset=".53" stop-color="#101112"/><stop offset=".84" stop-color="#111213"/><stop offset="1" stop-color="#030405"/></radialGradient>
+      <radialGradient id="platterGrad"><stop offset="89%" stop-color="#353638"/><stop offset="93%" stop-color="#c7c8c6"/><stop offset="96%" stop-color="#828482"/><stop offset="100%" stop-color="#2d2e30"/></radialGradient>
+      <linearGradient id="discGlint" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#d9d9d9" stop-opacity=".17"/><stop offset=".28" stop-color="#d9d9d9" stop-opacity="0"/><stop offset=".65" stop-color="#d9d9d9" stop-opacity="0"/><stop offset="1" stop-color="#d9d9d9" stop-opacity=".06"/></linearGradient>
+      <filter id="metalNoise" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".46" numOctaves="2" seed="7" stitchTiles="stitch" result="noise"/><feColorMatrix in="noise" type="saturate" values="0" result="gray"/><feComponentTransfer in="gray"><feFuncA type="linear" slope=".09"/></feComponentTransfer></filter>
+      <filter id="deckShadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="11" stdDeviation="10" flood-color="#000" flood-opacity=".34"/></filter>
+      <clipPath id="deckClip"><rect x="22" y="15" width="856" height="535" rx="15"/></clipPath>
+    </defs>
+    <!-- real metal material and subtle, intentionally restrained detail -->
+    <rect x="18" y="22" width="864" height="533" rx="17" fill="#3a3834" stroke="#48443e" stroke-width="3" filter="url(#deckShadow)"/>
+    <rect x="22" y="15" width="856" height="535" rx="15" fill="url(#chassis)" stroke="#d8d0c3" stroke-width="2"/>
+    <g clip-path="url(#deckClip)"><rect x="22" y="15" width="856" height="535" filter="url(#metalNoise)" opacity=".5"/><path d="M42 38 H858" stroke="#fff" stroke-opacity=".18"/><path d="M40 527 H861" stroke="#312e2a" stroke-opacity=".25"/></g>
+    <!-- precision-machined platter -->
+    <circle cx="345" cy="281" r="233" fill="#514e49" opacity=".5"/>
+    <circle cx="345" cy="281" r="225" fill="url(#platterGrad)" stroke="#5f5e5a" stroke-width="2"/>
+    <circle cx="345" cy="281" r="213" fill="#0d0e0f"/>
+    <g class="platter" id="platter">
+      <circle cx="345" cy="281" r="207" fill="url(#discGrad)" stroke="#363637" stroke-width="1"/>
+      <circle cx="345" cy="281" r="206" fill="none" stroke="#7c7c7c" stroke-opacity=".2" stroke-width="2"/>
+      <g fill="none">
+        <circle cx="345" cy="281" r="192" stroke="#575859" stroke-opacity=".18" stroke-width="1.2"/>
+        <circle cx="345" cy="281" r="186" stroke="#6e7070" stroke-opacity=".12" stroke-width="1"/>
+        <circle cx="345" cy="281" r="178" stroke="#646666" stroke-opacity=".15" stroke-width="1.4"/>
+        <circle cx="345" cy="281" r="171" stroke="#494b4b" stroke-opacity=".21" stroke-width=".9"/>
+        <circle cx="345" cy="281" r="163" stroke="#656665" stroke-opacity=".18" stroke-width="1"/>
+        <circle cx="345" cy="281" r="156" stroke="#626362" stroke-opacity=".18" stroke-width="1.1"/>
+        <circle cx="345" cy="281" r="148" stroke="#686967" stroke-opacity=".16" stroke-width="1"/>
+        <circle cx="345" cy="281" r="141" stroke="#626363" stroke-opacity=".2" stroke-width=".8"/>
+        <circle cx="345" cy="281" r="134" stroke="#676969" stroke-opacity=".17" stroke-width=".9"/>
+        <circle cx="345" cy="281" r="127" stroke="#747575" stroke-opacity=".12" stroke-width="1.2"/>
+        <circle cx="345" cy="281" r="120" stroke="#676969" stroke-opacity=".14" stroke-width=".7"/>
+        <circle cx="345" cy="281" r="113" stroke="#626363" stroke-opacity=".15" stroke-width="1"/>
+        <circle cx="345" cy="281" r="105" stroke="#747575" stroke-opacity=".14" stroke-width=".8"/>
+        <circle cx="345" cy="281" r="96" stroke="#646565" stroke-opacity=".22" stroke-width="1"/>
+        <circle cx="345" cy="281" r="89" stroke="#676868" stroke-opacity=".23" stroke-width="1"/>
+        <circle cx="345" cy="281" r="78" stroke="#555657" stroke-opacity=".22" stroke-width="1.3"/>
+      </g>
+      <path d="M165 179 A205 205 0 0 1 455 104" fill="none" stroke="#d8d7d1" stroke-opacity=".085" stroke-width="13"/>
+      <path d="M525 374 A205 205 0 0 1 247 458" fill="none" stroke="#d8d7d1" stroke-opacity=".035" stroke-width="16"/>
+      <circle cx="345" cy="281" r="64" fill="#b8b1a5" stroke="#58574f" stroke-width="3"/>
+      <circle cx="345" cy="281" r="60" fill="#e1d8c8"/>
+      <circle cx="345" cy="281" r="56" fill="none" stroke="#918b81" stroke-width=".7"/>
+      <circle cx="345" cy="281" r="43" fill="none" stroke="#a7a091" stroke-width=".6"/>
+      <text class="svg-mono" x="345" y="247" fill="#33322f" font-size="11" text-anchor="middle" letter-spacing="3">M.L.F.</text>
+      <path d="M315 270 H375" stroke="#757267" stroke-width=".8"/>
+      <text x="345" y="265" text-anchor="middle" font-size="19" font-family="Georgia,serif" letter-spacing="-1" fill="#33312d">MONO</text>
+      <text class="svg-mono" x="345" y="314" text-anchor="middle" font-size="8" letter-spacing="1.7" fill="#5b584f">33 ⅓ · SIDE A</text>
+      <circle cx="345" cy="281" r="4" fill="#6b675f"/>
+    </g>
+    <!-- visual metallic hardware, fixed at right -->
+    <circle cx="751" cy="121" r="29" fill="#6f6e68" stroke="#cfcbc2" stroke-width="1.5"/>
+    <circle cx="751" cy="121" r="23" fill="url(#controlSilver)" stroke="#77736e" stroke-width="1"/>
+    <circle cx="751" cy="121" r="8" fill="#686762" stroke="#e1dbce" stroke-width="1"/>
+    <path d="M751 102 V91" stroke="#f5eee1" stroke-width="2" stroke-opacity=".7"/>
+    <g class="tonearm">
+      <path d="M751 121 L754 310 Q754 329 738 334 L546 376" stroke="#302f2e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".42" transform="translate(2 4)"/>
+      <path d="M751 121 L754 310 Q754 329 738 334 L546 376" stroke="url(#controlSilver)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M751 121 L754 310 Q754 329 738 334 L546 376" stroke="#fff7e8" stroke-opacity=".43" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(-2 -1)"/>
+      <rect x="524" y="360" width="35" height="19" rx="3" fill="#292824" stroke="#9c958a" stroke-width="1" transform="rotate(-13 542 370)"/>
+      <path d="M528 375 l-4 10" stroke="#7c7972" stroke-width="2"/>
+    </g>
+    <!-- lower surface: hardware controls deliberately sparse -->
+    <text x="76" y="81" class="svg-mono" font-size="14" letter-spacing="2" fill="#3d3934">MONO VINYL</text>
+    <text x="77" y="99" class="svg-mono" font-size="9" letter-spacing="1.5" fill="#59554e">DIRECT DRIVE / 01</text>
+    <circle cx="76" cy="127" r="10" fill="#75716a" stroke="#d8d2c8" stroke-width="1.7"/>
+    <circle cx="76" cy="127" r="4.5" fill="#8c857b"/>
+    <circle cx="76" cy="159" r="3.7" class="mini-lamp"/>
+    <text x="89" y="162" class="svg-mono" fill="#4a463f" font-size="10" letter-spacing="1">POWER</text>
+    <g id="hardwarePlay" class="deck-control" role="button" tabindex="0" aria-label="재생 또는 일시정지">
+      <circle class="hit-outline" cx="103" cy="478" r="30" fill="url(#controlSilver)" stroke="#77746e" stroke-width="2"/>
+      <circle class="key-surface" cx="103" cy="478" r="22" fill="#aaa59b" stroke="#ebe5d9" stroke-width=".8"/>
+      <path d="M96 470 L111 478 L96 486 Z" fill="#302d28" id="deckIcon"/>
+      <circle cx="103" cy="478" r="36" fill="none"/>
+    </g>
+    <text x="69" y="526" fill="#413e37" font-size="9" class="svg-mono" letter-spacing="1">START / STOP</text>
+    <g class="deck-control speed33" data-speed-button="33" tabindex="0" role="button" aria-label="33 RPM 애니메이션 속도">
+      <rect x="628" y="462" width="45" height="31" rx="3" class="key-surface" fill="#ded9ce" stroke="#756f66" stroke-width="1.3"/>
+      <text class="svg-mono" x="650.5" y="481.5" text-anchor="middle" fill="#34312d" font-size="12" font-weight="bold">33</text>
+    </g>
+    <g class="deck-control speed45" data-speed-button="45" tabindex="0" role="button" aria-label="45 RPM 애니메이션 속도">
+      <rect x="680" y="462" width="45" height="31" rx="3" class="key-surface" fill="#99938a" stroke="#756f66" stroke-width="1.3"/>
+      <text class="svg-mono" x="702.5" y="481.5" text-anchor="middle" fill="#34312d" font-size="12" font-weight="bold">45</text>
+    </g>
+    <text class="svg-mono" x="628" y="509" font-size="8" fill="#514b44" letter-spacing="1">SPEED / RPM</text>
+    <text class="svg-mono" x="820" y="519" font-size="9" fill="#514b44" letter-spacing="1.5" text-anchor="end">ANALOG UNIT / MLF — 01</text>
+  </svg>
+      <div class="cassette-deck" id="cassetteDeck" aria-label="민트색 반투명 카세트 데크와 두 개의 테이프 릴이 있는 신스 카세트 플레이어">
+        <svg class="cassette-art" viewBox="0 0 900 570" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="민트와 분홍 포인트가 있는 오리지널 카세트 데크">
+          <defs>
+            <linearGradient id="synthBody" x1=".07" y1=".02" x2=".94" y2="1"><stop stop-color="#b7f9e9"/><stop offset=".43" stop-color="#74d9d0"/><stop offset="1" stop-color="#489cab"/></linearGradient>
+            <linearGradient id="cassetteGlass" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#233f50"/><stop offset="1" stop-color="#0d273b"/></linearGradient>
+            <linearGradient id="tapeShell" x1=".05" y1="0" x2=".95" y2="1"><stop stop-color="#f4fff8" stop-opacity=".96"/><stop offset=".52" stop-color="#d6f8f0" stop-opacity=".83"/><stop offset="1" stop-color="#9ae6df" stop-opacity=".95"/></linearGradient>
+            <filter id="synthShadow" x="-20%" y="-20%" width="150%" height="160%"><feDropShadow dx="0" dy="16" stdDeviation="13" flood-color="#000d18" flood-opacity=".5"/></filter>
+          </defs>
+          <!-- deck surface, soft plastic instead of metal -->
+          <rect x="19" y="18" width="862" height="532" rx="20" fill="#1b5368" filter="url(#synthShadow)"/>
+          <rect x="25" y="16" width="850" height="520" rx="18" fill="url(#synthBody)" stroke="#d6fff3" stroke-width="3"/>
+          <path d="M46 52 H854" stroke="#f0fff9" stroke-opacity=".62" stroke-width="2"/>
+          <path d="M45 502 H855" stroke="#145467" stroke-opacity=".34" stroke-width="2"/>
+          <g font-family="ui-monospace,monospace" fill="#154b60">
+            <text x="70" y="94" font-size="25" font-weight="bold" letter-spacing="3">SYNTH / CASSETTE</text>
+            <text x="71" y="118" font-size="12" letter-spacing="2">MLF • DIGITAL MIX TAPE  /  02</text>
+            <text x="727" y="93" font-size="15" font-weight="bold">✦  90s</text>
+          </g>
+          <!-- plastic inset -->
+          <rect x="128" y="145" width="645" height="329" rx="18" fill="#1b6876" opacity=".45"/>
+          <rect x="138" y="135" width="627" height="323" rx="19" fill="url(#tapeShell)" stroke="#edfff9" stroke-width="4"/>
+          <rect x="154" y="155" width="595" height="70" rx="7" fill="#143e52"/>
+          <text x="183" y="195" font-size="23" font-family="ui-monospace,monospace" letter-spacing="4" fill="#dcfff6" font-weight="bold">KAWAII  SYNTH  MIX</text>
+          <rect x="630" y="170" width="100" height="35" rx="4" fill="#ff91bc"/>
+          <text x="680" y="193" font-size="16" text-anchor="middle" font-family="monospace" fill="#3b2547" font-weight="bold">SIDE A</text>
+          <rect x="160" y="242" width="583" height="166" rx="12" fill="url(#cassetteGlass)" stroke="#68bfc3" stroke-width="3"/>
+          <rect x="174" y="255" width="554" height="139" rx="8" fill="none" stroke="#a8ffeb" stroke-opacity=".27"/>
+          <path d="M265 328 H638" stroke="#ffd1e6" stroke-width="4" opacity=".56"/>
+          <g class="cassette-spools">
+            <g class="cassette-spool" transform="translate(310 327)">
+              <circle r="68" fill="#0c3248" stroke="#91f4e1" stroke-width="7"/>
+              <circle r="48" fill="#2a7082" stroke="#18495c" stroke-width="12"/>
+              <circle r="28" fill="#d5fff1"/>
+              <circle r="10" fill="#377e91"/>
+              <g fill="#7acec7"><rect x="-5" y="-45" width="10" height="20" rx="2"/><rect x="-5" y="25" width="10" height="20" rx="2"/><rect x="-45" y="-5" width="20" height="10" rx="2"/><rect x="25" y="-5" width="20" height="10" rx="2"/></g>
+            </g>
+            <g class="cassette-spool" transform="translate(589 327)">
+              <circle r="68" fill="#0c3248" stroke="#91f4e1" stroke-width="7"/>
+              <circle r="48" fill="#2a7082" stroke="#18495c" stroke-width="12"/>
+              <circle r="28" fill="#d5fff1"/>
+              <circle r="10" fill="#377e91"/>
+              <g fill="#7acec7"><rect x="-5" y="-45" width="10" height="20" rx="2"/><rect x="-5" y="25" width="10" height="20" rx="2"/><rect x="-45" y="-5" width="20" height="10" rx="2"/><rect x="25" y="-5" width="20" height="10" rx="2"/></g>
+            </g>
+          </g>
+          <path d="M175 417 H728 L689 453 H213 Z" fill="#f4c3d6" opacity=".88"/>
+          <text x="450" y="440" fill="#5d466c" text-anchor="middle" font-size="12" font-family="monospace" letter-spacing="4">REWIND • PLAY • REPEAT</text>
+          <g fill="#104456" font-family="monospace" font-size="15" font-weight="bold"><text x="70" y="504">■ STOP</text><text x="274" y="504">▶ PLAY</text><text x="696" y="504">60 MIN</text></g>
+          <rect x="675" y="477" width="113" height="36" rx="5" fill="#fa9ec9" stroke="#ffe4f0" stroke-width="2"/>
+          <text x="729" y="500" font-family="monospace" fill="#5c3355" font-size="14" text-anchor="middle" font-weight="bold">◁▷ MIX</text>
+          <!-- stylized pixel hearts / stars (original shapes) -->
+          <g fill="#ff88b4"><rect x="78" y="314" width="12" height="12"/><rect x="101" y="314" width="12" height="12"/><rect x="66" y="326" width="59" height="12"/><rect x="77" y="338" width="36" height="12"/><rect x="89" y="350" width="12" height="12"/></g>
+        </svg>
+        <button id="cassetteOpen" class="cassette-open" type="button" aria-label="카세트를 클릭해 플레이리스트 열기"><span>▶ OPEN MIXTAPES</span></button>
+      </div>
+      <button type="button" class="disc-open" id="discOpen" aria-label="LP를 눌러 Record Library 열기"><span>OPEN LIBRARY ↗</span></button></div><p class="deck-hint" id="mediaHint">◉ <strong>LP를 누르면</strong> 음악 보관함이 열립니다</p>
+        <div class="mascot-panel" aria-label="마스코트 전광판 미리보기">
+          <div class="mascot-screen" id="mascotScreen" aria-hidden="true"></div>
+          <div class="mascot-info"><span class="mascot-label">COMPANION / 01</span><strong id="mascotMessage">SIGNAL READY</strong><small id="mascotSub">a little life inside your music</small></div>
+          <span class="mascot-corner">• • •</span>
+        </div>
+      </section>
+      <section class="info" aria-label="시계·날씨·음악 플레이어">
+        <div class="clock-line"><span>SEOUL, KOREA</span><span id="ampm">PM</span></div><svg class="clock-svg" id="clockSvg" viewBox="0 0 267 68" role="img" aria-label="현재 시간"></svg><div class="clock-date" id="dateLabel">MON  NOV 02  2026</div><div class="rule"></div>
+        <div class="weather"><span class="wxicon" aria-hidden="true">☁</span><span class="temp">18°</span><span class="desc">조금 흐림</span><span class="highlow">H 22° / L 12°</span></div><div class="weather-note">WEATHER / 디자인 예시 · 실제 API 연결 전</div><div class="rule"></div>
+        <div class="music"><div class="eyebrow" id="nowLabel">NOW PLAYING · YOUTUBE</div><div class="now-title" id="trackTitle">재생할 음악을 선택하세요</div><div class="now-sub" id="trackMeta">LP를 클릭하거나 링크를 추가할 수 있어요.</div>
+          <div class="video-holder" id="videoHolder"><div class="video-placeholder" id="videoPlaceholder"><div><strong>YOUTUBE / VIDEO</strong>영상은 이 위치에 16:9로 표시됩니다.<br>플레이리스트에서 곡을 선택하세요.</div></div><div class="yt-host" id="ytHost"></div></div>
+          <div class="action-row"><div class="controls-left"><button type="button" class="round" id="previousTrack" title="이전 곡" aria-label="이전 곡">⏮</button><button type="button" class="round main" id="playToggle" title="재생 또는 일시정지" aria-label="재생 또는 일시정지">▶</button><button type="button" class="round" id="nextTrack" title="다음 곡" aria-label="다음 곡">⏭</button></div><div class="controls-right"><a class="external hidden" id="openYouTube" target="_blank" rel="noopener noreferrer">YOUTUBE에서 열기 ↗</a></div></div>
+          <div id="status" class="status" role="status" aria-live="polite">재생 목록을 만들고 YouTube 링크를 추가해 보세요.</div><div class="mute-note">YouTube 공식 영상·컨트롤은 그대로 표시됩니다.</div>
+        </div>
+      </section></div><footer class="footer"><span id="footerThemeLabel">MONO VINYL · ANALOG × DIGITAL</span><span>RECORD LIBRARY / PLAYLIST FIRST</span></footer>
+    </div>
+    <aside class="drawer" id="drawer" aria-label="Record Library" aria-hidden="true"><div class="drawer-head"><div><div class="drawer-title">RECORD LIBRARY</div><div class="drawer-sub">COLLECTION / YOUTUBE ONLY</div></div><button type="button" class="close" id="closeLibrary" aria-label="라이브러리 닫기">×</button></div>
+      <div class="drawer-body"><div class="drawer-actions"><button type="button" class="pill strong" id="drawerAdd">＋ YouTube 링크 추가</button><button type="button" class="pill" id="createPlaylist">＋ 새 목록</button></div><div class="drawer-section-title">YOUR PLAYLISTS</div><div class="playlists" id="playlists"></div><div class="rule"></div><div class="drawer-section-title" id="selectedName">TRACKS</div><div class="drawer-actions"><button type="button" class="pill" id="playSelectedPlaylist">▶ 목록 전체 재생</button><button type="button" class="pill" id="renamePlaylist">이름 수정</button><button type="button" class="pill" id="deletePlaylist">삭제</button></div><div class="track-list" id="trackList"></div></div>
+      <div class="drawer-foot">음반을 눌러 열고, ESC 또는 ×로 닫으세요.<br>다음 곡은 IFrame Player API로 이어집니다.</div>
+    </aside>
+  </main>
+  <details class="ux-notes"><summary>UX 검증 포인트 · 실행 안내</summary><ul><li>LP 클릭 → Drawer 열기, Drawer에서 목록 오른쪽 ▶ 버튼으로 빠른 전환</li><li>＋ 링크 추가 → YouTube URL 붙여넣기 → 현재 목록에 추가</li><li>곡 끝 → 다음 곡 자동 재생 시도. 자동재생 차단 또는 임베드 제한 시 안내</li><li>넓은 화면에서 Drawer를 열면 영상이 보이는 동안 재생 유지. 좁은 화면에선 영상이 숨겨지므로 일시정지</li><li>YouTube iframe은 <code>file://</code>에서 오류가 날 수 있어 localhost 서버로 실행 권장: <code>python -m http.server 8000</code> 후 <code>http://localhost:8000/mono_vinyl_v08_youtube_library.html</code></li></ul></details>
+</div>
+<div class="add-overlay" id="addOverlay" role="presentation"><div class="add-modal" role="dialog" aria-modal="true" aria-labelledby="addHeading"><div class="modal-head"><h2 id="addHeading">ADD TO PLAYLIST</h2><button class="close" id="closeAdd" aria-label="닫기">×</button></div><label class="label" for="youtubeUrl">YouTube URL</label><input type="url" class="field" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off"><label class="label" for="youtubeTitle">곡 이름 (선택)</label><input type="text" class="field" id="youtubeTitle" maxlength="100" placeholder="입력하지 않으면 YouTube 영상 ID로 표시"><div id="addError" class="error-msg" role="alert"></div><div class="modal-actions"><button class="pill" id="cancelAdd">취소</button><button class="pill strong" id="submitAdd">이 목록에 추가</button></div></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);const ws=$('workspace');
+const STORAGE='mlf_mono_vinyl_v08';const uid=()=> 'id'+Math.random().toString(36).slice(2,10);
+function starter(){return{lists:[{id:'default',name:'MY RECORDS',tracks:[]}],selected:'default',current:null,loop:true}}
+function safeLoad(){try{const x=JSON.parse(localStorage.getItem(STORAGE)||'null');if(!x||!Array.isArray(x.lists)||!x.lists.length)return starter();x.lists=x.lists.filter(l=>l&&typeof l.name==='string'&&Array.isArray(l.tracks));if(!x.lists.length)return starter();x.selected=x.lists.some(l=>l.id===x.selected)?x.selected:x.lists[0].id;return x}catch{return starter()}}
+let db=safeLoad(),current=null,queue=[],queueIndex=-1,player=null,apiReady=false,playerReady=false,wantsPlay=false,played=false, queueListId=null, drawerOpen=false, lastVideoState=-1, pausedForDrawer=false;
+const curList=()=>db.lists.find(l=>l.id===db.selected)||db.lists[0];const save=()=>localStorage.setItem(STORAGE,JSON.stringify(db));
+function flash(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(flash.timer);flash.timer=setTimeout(()=>$('toast').classList.remove('show'),3400)}
+function setStatus(message,warning=false){$('status').textContent=message;$('status').classList.toggle('warning',warning)}
+function extractId(raw){try{const u=new URL(String(raw).trim());let host=u.hostname.toLowerCase().replace(/^www\./,'').replace(/^m\./,'');let id='';if(host==='youtu.be')id=u.pathname.split('/').filter(Boolean)[0]||'';if(['youtube.com','music.youtube.com','youtube-nocookie.com'].includes(host)){if(u.pathname==='/watch')id=u.searchParams.get('v')||'';else if(/^\/(shorts|embed|live)\//.test(u.pathname))id=u.pathname.split('/')[2]||'';}return /^[A-Za-z0-9_-]{11}$/.test(id)?id:null}catch{return null}}
+function videoLink(id){return'https://www.youtube.com/watch?v='+encodeURIComponent(id)}
+function trackName(t){return t.title||'YouTube · '+t.videoId}
+function renderLibrary(){const holder=$('playlists'),trackBox=$('trackList');holder.replaceChildren();for(const l of db.lists){let row=document.createElement('div');row.className='playlist-row';let choice=document.createElement('button');choice.className='playlist-select'+(l.id===db.selected?' active':'');choice.innerHTML='<div class="pname"></div><div class="pmeta"></div>';choice.querySelector('.pname').textContent=l.name;choice.querySelector('.pmeta').textContent=l.tracks.length+' TRACKS';choice.onclick=()=>{db.selected=l.id;save();renderLibrary()};let play=document.createElement('button');play.className='playlist-play';play.textContent='▶';play.title=l.name+' 재생';play.setAttribute('aria-label',l.name+' 재생');play.disabled=!l.tracks.length;play.onclick=()=>{db.selected=l.id;save();renderLibrary();playAt(0)};row.append(choice,play);holder.append(row)}const l=curList();$('selectedName').textContent=l.name+' / TRACKS';$('playSelectedPlaylist').disabled=l.tracks.length===0;if(!l.tracks.length){trackBox.innerHTML='<p class="muted">아직 등록된 영상이 없어요.<br>＋ YouTube 링크 추가를 눌러 시작하세요.</p>';return}trackBox.replaceChildren();l.tracks.forEach((t,index)=>{const row=document.createElement('div');row.className='track'+(current?.id===t.id?' current':'');const p=document.createElement('button');p.className='track-play';p.textContent='▶';p.setAttribute('aria-label',trackName(t)+' 재생');p.onclick=()=>playAt(index);const n=document.createElement('div');n.className='track-name';n.textContent=(index+1)+'. '+trackName(t);n.title=trackName(t);const actions=document.createElement('div');actions.className='track-controls';for(const [symbol,action,desc] of [['↑',-1,'위로'],['↓',1,'아래로'],['×',0,'삭제']]){const b=document.createElement('button');b.textContent=symbol;b.title=desc;b.setAttribute('aria-label',trackName(t)+' '+desc);b.disabled=action===-1&&index===0||action===1&&index===l.tracks.length-1;b.onclick=()=>{if(action===0){if(!confirm('이 곡을 목록에서 제거할까요?'))return;l.tracks.splice(index,1);if(current?.id===t.id){current=null;ws.classList.remove('is-playing','is-paused');try{player?.pauseVideo()}catch{};setStatus('선택한 곡이 목록에서 제거되었습니다.')} }else{const [song]=l.tracks.splice(index,1);l.tracks.splice(index+action,0,song);}save();renderLibrary()};actions.append(b)}row.append(p,n,actions);trackBox.append(row)})}
+function toggleDrawer(open){drawerOpen=!!open;const compact=shouldUseCompact();if(open&&compact&&current&&lastVideoState===1){try{player?.pauseVideo()}catch{};pausedForDrawer=true;setStatus('작은 화면에서는 영상이 가려져 일시정지됩니다.')}ws.classList.toggle('drawer-open',open);$('drawer').setAttribute('aria-hidden',String(!open));$('openLibrary').setAttribute('aria-expanded',String(open));$('discOpen').setAttribute('aria-expanded',String(open));if(open){renderLibrary();$('closeLibrary').focus()}else{pausedForDrawer=false;$('discOpen').focus()}requestAnimationFrame(syncVisibility)}
+function shouldUseCompact(){return matchMedia('(max-width:1100px)').matches||ws.classList.contains('portrait')||ws.classList.contains('compact')}
+function syncVisibility(){const r=$('videoHolder').getBoundingClientRect(),v=Math.max(0,Math.min(r.bottom,innerHeight)-Math.max(r.top,0))*Math.max(0,Math.min(r.right,innerWidth)-Math.max(r.left,0));const frac=r.width*r.height?v/(r.width*r.height):0;const covered=shouldUseCompact()&&drawerOpen;const eligible=!covered && r.width>=200&&r.height>=200&&frac>.5; if(!eligible&&current&&player&&playerReady&&lastVideoState===1){try{player.pauseVideo();}catch{};setStatus('영상이 화면에서 가려져 일시정지됐어요. 돌아와서 ▶를 눌러주세요.')}return eligible}
+function openAdd(){if(drawerOpen&&shouldUseCompact())toggleDrawer(false);$('addOverlay').classList.add('open');$('youtubeUrl').value='';$('youtubeTitle').value='';$('addError').textContent='';$('youtubeUrl').focus()}
+function closeAdd(){$('addOverlay').classList.remove('open')}
+function addTrack(){const id=extractId($('youtubeUrl').value);if(!id){$('addError').textContent='올바른 YouTube 영상 링크를 입력해주세요.';return}const title=$('youtubeTitle').value.trim()||'YouTube · '+id;const l=curList();l.tracks.push({id:uid(),source:'youtube',videoId:id,title});save();closeAdd();renderLibrary();flash('“'+title+'”을 '+l.name+'에 추가했어요.');if(!current){setStatus('음악을 추가했어요. LP를 눌러 곡을 재생할 수 있어요.');}toggleDrawer(true)}
+// One YouTube player, one unified list. loadVideoById + ENDED event advances the queue.
+function loadYouTubeAPI(){if(window.YT?.Player){apiReady=true;return}const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.onerror=()=>{setStatus('YouTube API 연결에 실패했어요. 네트워크를 확인해주세요.',true);$('openYouTube').classList.remove('hidden')};document.head.append(s)}
+window.onYouTubeIframeAPIReady=()=>{apiReady=true;if(current)ensurePlayer(true)};
+function ensurePlayer(playNow){if(!current)return;if(!apiReady){wantsPlay=playNow;setStatus('YouTube 플레이어를 준비하고 있어요…');loadYouTubeAPI();return}if(!syncVisibility()){wantsPlay=false;setStatus('영상 표시 영역이 가려져 있습니다. 라이브러리를 닫고 재생해주세요.',true);return}if(!player){$('videoPlaceholder').classList.add('hidden');playerReady=false;player=new YT.Player('ytHost',{width:'100%',height:'100%',videoId:current.videoId,playerVars:{controls:1,playsinline:1,rel:0,autoplay:0},events:{onReady:e=>{playerReady=true;const autoplay=wantsPlay;wantsPlay=false;if(autoplay&&syncVisibility()){e.target.playVideo();}else{setStatus('영상이 준비됐어요. ▶로 재생하세요.')}},onStateChange:evt=>{lastVideoState=evt.data;if(evt.data===YT.PlayerState.PLAYING){ws.classList.add('is-playing');ws.classList.remove('is-paused');$('playToggle').textContent='Ⅱ';setStatus('재생 중 · 곡이 끝나면 다음 영상을 재생합니다.')}else if(evt.data===YT.PlayerState.PAUSED){ws.classList.remove('is-playing');ws.classList.add('is-paused');$('playToggle').textContent='▶'}else if(evt.data===YT.PlayerState.ENDED){ws.classList.remove('is-playing');$('playToggle').textContent='▶';playNext(true)}else if(evt.data===YT.PlayerState.BUFFERING){setStatus('버퍼링 중…')}},onAutoplayBlocked:()=>{ws.classList.remove('is-playing');$('playToggle').textContent='▶';setStatus('브라우저가 자동재생을 막았어요. 영상의 ▶ 버튼을 눌러주세요.',true)},onError:e=>{ws.classList.remove('is-playing');$('playToggle').textContent='▶';setStatus('이 영상은 재생되지 않아요 (오류 '+e.data+'). YouTube에서 열어보세요.',true);$('openYouTube').classList.remove('hidden')}}});}else if(playerReady){if(playNow){player.loadVideoById(current.videoId);}else{player.cueVideoById(current.videoId)}}else{wantsPlay=playNow}}
+function playAt(index,listId=null){const l=(listId?db.lists.find(list=>list.id===listId):null)||curList();if(!l.tracks[index])return;queue=l.tracks.map(t=>({...t}));queueListId=l.id;queueIndex=index;current=queue[index];lastVideoState=-1;ws.classList.remove('is-playing','is-paused');$('trackTitle').textContent=trackName(current);$('trackMeta').textContent=l.name+' · '+(index+1)+' / '+queue.length+' · YOUTUBE';$('nowLabel').textContent='NOW PLAYING · '+l.name;$('openYouTube').href=videoLink(current.videoId);$('openYouTube').classList.remove('hidden');db.current={list:l.id,track:current.id};save();if(drawerOpen)toggleDrawer(false);renderLibrary();wantsPlay=true;ensurePlayer(true)}
+function playNext(fromEnded=false){if(!queue.length){setStatus('다음 곡이 없습니다.');return}const next=queueIndex+1;if(next>=queue.length){ws.classList.remove('is-playing','is-paused');$('playToggle').textContent='▶';setStatus('플레이리스트 재생이 완료됐어요.');return}playAt(next,queueListId);if(fromEnded)setStatus('다음 YouTube 영상을 불러오고 있어요…')}
+function playPrev(){if(!queue.length)return;const n=Math.max(0,queueIndex-1);playAt(n,queueListId)}
+function togglePlay(){if(!current){const l=curList();if(l.tracks.length)playAt(0);else toggleDrawer(true);return}if(!playerReady){wantsPlay=true;ensurePlayer(true);return}if(lastVideoState===1){player.pauseVideo()}else if(syncVisibility()){player.playVideo()}else setStatus('플레이어가 보이는 화면에서 재생할 수 있어요.',true)}
+function createList(){const name=prompt('새 플레이리스트 이름을 입력하세요.','NEW COLLECTION');if(name===null)return;const trimmed=name.trim();if(!trimmed)return flash('플레이리스트 이름을 입력해주세요.');const list={id:uid(),name:trimmed.slice(0,60),tracks:[]};db.lists.push(list);db.selected=list.id;save();renderLibrary();flash('새 플레이리스트를 만들었어요.')}
+function renameList(){const l=curList();const name=prompt('플레이리스트 이름 수정',l.name);if(name===null)return;const trimmed=name.trim();if(!trimmed)return;l.name=trimmed.slice(0,60);save();renderLibrary()}
+function deleteList(){if(db.lists.length===1)return flash('마지막 플레이리스트는 삭제할 수 없어요.');const l=curList();if(!confirm('“'+l.name+'”을 삭제할까요?'))return;db.lists=db.lists.filter(p=>p.id!==l.id);db.selected=db.lists[0].id;save();renderLibrary();flash('플레이리스트를 삭제했어요.')}
+// Dot matrix clock: only numbers are dot-based, other labels use restrained monospaced typography.
+const glyphs={'0':['01110','10001','10011','10101','11001','10001','01110'],'1':['00100','01100','00100','00100','00100','00100','01110'],'2':['01110','10001','00001','00010','00100','01000','11111'],'3':['11110','00001','00001','01110','00001','00001','11110'],'4':['00010','00110','01010','10010','11111','00010','00010'],'5':['11111','10000','10000','11110','00001','00001','11110'],'6':['01111','10000','10000','11110','10001','10001','01110'],'7':['11111','00001','00010','00100','01000','01000','01000'],'8':['01110','10001','10001','01110','10001','10001','01110'],'9':['01110','10001','10001','01111','00001','00001','11110'],':':['0','0','1','0','1','0','0']};
+function drawClock(text){const svg=$('clockSvg');svg.replaceChildren();let x=5;for(const ch of text){const glyph=glyphs[ch],columns=ch===':'?1:5;if(glyph)for(let row=0;row<7;row++)for(let col=0;col<columns;col++){const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',(x+col*9.3).toFixed(2));c.setAttribute('cy',(6+row*9.3).toFixed(2));c.setAttribute('r','3.1');c.setAttribute('class',glyph[row][col]==='1'?'time-dot':'time-off');svg.append(c)}x+=columns*9.3+13;}svg.setAttribute('viewBox',`0 0 ${x-2} 68`);svg.setAttribute('aria-label',text)}
+let lastClock='';function updateClock(){const date=new Date();const parts={};const format=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',weekday:'short',month:'short',day:'2-digit',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true});for(const p of format.formatToParts(date))if(p.type!=='literal')parts[p.type]=p.value;const t=String(parts.hour).padStart(2,'0')+':'+parts.minute;if(t!==lastClock){drawClock(t);lastClock=t}$('ampm').textContent=parts.dayPeriod.toUpperCase();$('dateLabel').textContent=[parts.weekday.toUpperCase(),parts.month.toUpperCase(),parts.day,parts.year].join('  ')}
+function setView(portrait){ws.classList.toggle('portrait',portrait);$('wideView').classList.toggle('active',!portrait);$('portraitView').classList.toggle('active',portrait);if(drawerOpen&&shouldUseCompact()&&lastVideoState===1){try{player?.pauseVideo()}catch{}}requestAnimationFrame(syncVisibility)}
+for(const id of ['discOpen','openLibrary']){$(id).addEventListener('click',()=>toggleDrawer(true))}
+$('closeLibrary').onclick=()=>toggleDrawer(false);for(const id of ['headerAdd','drawerAdd'])$(id).onclick=openAdd;for(const id of ['closeAdd','cancelAdd'])$(id).onclick=closeAdd;$('submitAdd').onclick=addTrack;$('youtubeUrl').onkeydown=e=>{if(e.key==='Enter')addTrack()};$('youtubeTitle').onkeydown=e=>{if(e.key==='Enter')addTrack()};$('createPlaylist').onclick=createList;$('renamePlaylist').onclick=renameList;$('deletePlaylist').onclick=deleteList;$('playSelectedPlaylist').onclick=()=>playAt(0);$('playToggle').onclick=togglePlay;$('nextTrack').onclick=()=>playNext(false);$('previousTrack').onclick=playPrev;$('wideView').onclick=()=>setView(false);$('portraitView').onclick=()=>setView(true);
+$('addOverlay').addEventListener('click',e=>{if(e.target===$('addOverlay'))closeAdd()});document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('addOverlay').classList.contains('open'))closeAdd();else if(drawerOpen)toggleDrawer(false)}});window.addEventListener('resize',()=>{if(drawerOpen&&shouldUseCompact()&&lastVideoState===1){try{player?.pauseVideo()}catch{}}requestAnimationFrame(syncVisibility)});
+const hw=$('hardwarePlay');if(hw){hw.onclick=togglePlay;hw.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();togglePlay()}}}document.querySelectorAll('[data-speed-button]').forEach(btn=>{const act=()=>{ws.dataset.speed=btn.getAttribute('data-speed-button');flash('LP 회전 연출: '+ws.dataset.speed+' RPM (음악 속도는 동일)')};btn.onclick=act;btn.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}}});
+renderLibrary();updateClock();setInterval(updateClock,15000);$('openLibrary').setAttribute('aria-expanded','false');$('discOpen').setAttribute('aria-expanded','false');loadYouTubeAPI();
+</script>
+<script>
+(function(){
+  const mono=document.getElementById('monoTheme');
+  const synth=document.getElementById('synthTheme');
+  const mediaHint=document.getElementById('mediaHint');
+  const cassetteOpen=document.getElementById('cassetteOpen');
+  const KEY='mlf.design.theme.preview.v1';
+  const rows=[
+    '0000000000000000',
+    '0011000000001100',
+    '0011100000011100',
+    '0010111111101100',
+    '0011111111111100',
+    '0011111111111100',
+    '0011001111001100',
+    '0011101111011100',
+    '0011111111111100',
+    '0001111001111000',
+    '0000011111100000',
+    '0000000000000000'
+  ];
+  const screen=document.getElementById('mascotScreen');
+  for(const row of rows){for(const n of row){const dot=document.createElement('span');dot.className='mascot-dot'+(n==='1'?' on':'');screen.appendChild(dot)}}
+  function apply(theme){
+    const isSynth=theme==='kawaii-synth-cassette';
+    document.body.classList.toggle('theme-kawaii',isSynth);
+    mono.classList.toggle('active',!isSynth);synth.classList.toggle('active',isSynth);
+    mono.setAttribute('aria-pressed',String(!isSynth));synth.setAttribute('aria-pressed',String(isSynth));
+    mediaHint.innerHTML=isSynth?'✧ <strong>카세트를 누르면</strong> 믹스테이프 보관함이 열립니다':'◉ <strong>LP를 누르면</strong> 음악 보관함이 열립니다';
+    document.title='My Little Frequency · '+(isSynth?'Kawaii Synth Cassette':'Mono Vinyl');
+    document.getElementById('footerThemeLabel').textContent=isSynth?'SYNTH CASSETTE · PIXEL × KAWAII':'MONO VINYL · ANALOG × DIGITAL';
+    document.getElementById('mascotMessage').textContent=isSynth?'MIXTAPE READY':'SIGNAL READY';
+    document.getElementById('mascotSub').textContent=isSynth?'a tiny melody from tomorrow':'a little life inside your music';
+    try{localStorage.setItem(KEY,theme)}catch(e){}
+  }
+  mono.addEventListener('click',()=>apply('mono-vinyl'));
+  synth.addEventListener('click',()=>apply('kawaii-synth-cassette'));
+  cassetteOpen.addEventListener('click',()=>document.getElementById('discOpen').click());
+  let saved='mono-vinyl';try{saved=localStorage.getItem(KEY)||saved}catch(e){}
+  apply(saved==='kawaii-synth-cassette'?saved:'mono-vinyl');
+})();
+</script>
+</body></html>

@@ -1,0 +1,7 @@
+# Confirmed design references are preserved verbatim (AGENTS.md rule 6).
+design/
+
+dist
+coverage
+node_modules
+*.log
