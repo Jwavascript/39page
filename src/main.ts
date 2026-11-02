@@ -9,9 +9,16 @@ import './themes/mono-vinyl/tokens.css'
 import './themes/kawaii-synth-cassette/tokens.css'
 
 import App from './app/App.vue'
+import { useThemeStore } from './stores/theme'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
+
+// 마운트 전에 저장된 테마를 동기적으로 복원한다.
+// 첫 페인트에 다른 테마가 보이는 현상(FOUC)을 줄이기 위한 것이며,
+// 검증 로직은 store와 저장 계층에만 둔다 (index.html에 중복하지 않는다).
+useThemeStore(pinia).restore()
 
 app.mount('#app')

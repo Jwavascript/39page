@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { URL, fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
@@ -18,18 +18,24 @@ import { DEFAULT_THEME_KEY, THEME_KEYS, type ThemeKey } from '@/shared/types'
  * v09는 mono-vinyl-v08.html의 상위집합이다 (design/references/README.md).
  */
 
+/**
+ * 프로젝트 루트 기준으로 파일을 읽는다.
+ *
+ * `import.meta.url`을 쓰지 않는다. Vue 모듈 그래프를 끌어들이는 spec에서는
+ * Vitest 변환 방식에 따라 file: URL이 아닐 수 있다.
+ */
 function readFile(relative: string): string {
-  return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8')
+  return readFileSync(resolve(process.cwd(), relative), 'utf8')
 }
 
-const REFERENCE_V09 = readFile('../../design/references/two-themes-v09.html')
-const REFERENCE_V08 = readFile('../../design/references/mono-vinyl-v08.html')
+const REFERENCE_V09 = readFile('design/references/two-themes-v09.html')
+const REFERENCE_V08 = readFile('design/references/mono-vinyl-v08.html')
 
-const SHARED_TOKENS_CSS = readFile('../../src/styles/tokens.css')
-const BASE_CSS = readFile('../../src/styles/base.css')
+const SHARED_TOKENS_CSS = readFile('src/styles/tokens.css')
+const BASE_CSS = readFile('src/styles/base.css')
 const THEME_CSS: Record<ThemeKey, string> = {
-  'mono-vinyl': readFile('../../src/themes/mono-vinyl/tokens.css'),
-  'kawaii-synth-cassette': readFile('../../src/themes/kawaii-synth-cassette/tokens.css'),
+  'mono-vinyl': readFile('src/themes/mono-vinyl/tokens.css'),
+  'kawaii-synth-cassette': readFile('src/themes/kawaii-synth-cassette/tokens.css'),
 }
 
 function stripComments(css: string): string {
@@ -304,7 +310,7 @@ describe('모션 · 기하 토큰', () => {
 
 describe('테마 레지스트리', () => {
   it('키 목록과 기본 테마를 중복 정의하지 않는다', () => {
-    const source = readFile('../../src/themes/index.ts')
+    const source = readFile('src/themes/index.ts')
     expect(source).toContain("from '@/shared/types'")
     // 레지스트리가 자체 키 배열이나 기본값을 만들지 않아야 한다.
     expect(source).not.toMatch(/THEME_KEYS\s*=/)

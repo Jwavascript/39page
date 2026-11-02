@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M1-2 완료, M1-3 이후 미착수).
+> 상태: 개정 (M1-3 완료, M1-4 이후 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -111,16 +111,27 @@ MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·
 - 레퍼런스와의 일치는 `tests/unit/theme-tokens.spec.ts`가 정적으로 검증하고,
   실제 적용은 Chromium으로 확인했다.
 
-### M1-3. 테마 store와 전환
+### M1-3. 테마 store와 전환 — 완료
 
-| #   | 작업                                                 | 산출물                |
-| --- | ---------------------------------------------------- | --------------------- |
-| 3.1 | `theme` store — 키 보유, 전환, 영속화                | `src/stores/theme.ts` |
-| 3.2 | 루트 `data-theme` 속성 동기화                        | `src/app/`            |
-| 3.3 | 테마 전환 UI (2버튼, `aria-pressed`, `role="group"`) | `src/components/ui/`  |
-| 3.4 | 알 수 없는 저장값 → 기본 테마 복구 테스트            | `tests/unit/`         |
+| #   | 작업                                                     | 산출물                                | 상태 |
+| --- | -------------------------------------------------------- | ------------------------------------- | ---- |
+| 3.1 | `theme` store — 키 보유, 전환, 영속화, 복원              | `src/stores/theme.ts`                 | 완료 |
+| 3.2 | 루트 `data-theme` 속성 동기화 (`watch`, `flush: 'sync'`) | `src/stores/theme.ts`                 | 완료 |
+| 3.3 | 테마 전환 UI (2버튼, `aria-pressed`, `role="group"`)     | `src/components/ui/ThemeSwitcher.vue` | 완료 |
+| 3.4 | 알 수 없는 저장값 → 기본 테마 복구 테스트                | `tests/unit/theme-store.spec.ts`      | 완료 |
+| 3.5 | 최소 제품 헤더 (M1-4에서 재사용)                         | `src/components/layout/AppHeader.vue` | 완료 |
+| 3.6 | 첫 페인트 전 테마 적용 (FOUC 제거)                       | `index.html` 인라인 스크립트          | 완료 |
 
-`theme` store는 `playback` store를 **import하지 않는다** (`SYSTEM_DESIGN.md` §6).
+- `theme` store는 `playback`·`library`·플레이어를 **import하지 않는다.**
+  정적 import 검사와 pinia 등록 store 검사로 강제한다.
+- 저장은 M1-1의 `defineStorage`를 쓴다. 키는 `39page.theme`,
+  형태는 `{ version: 1, data: <테마 키> }`다.
+- **복원은 저장소에 쓰지 않는다.** 손상·미래 버전 데이터를 보존한다.
+- 저장 실패(용량 초과, 접근 불가) 시에도 이번 세션의 전환은 적용된다.
+- FOUC: 모듈 스크립트가 `first-paint` 이후에 실행되는 것을 측정으로 확인하고,
+  `index.html`에 인라인 스크립트를 넣어 첫 페인트 전에 속성을 적용한다.
+  **검증은 중복하지 않는다** — 알 수 없는 값은 CSS가 기본 테마로 되돌리고
+  마운트 시 store가 검증된 값으로 덮어쓴다 (`THEME_SYSTEM.md` §3.3).
 
 ### M1-4. 안정 셸과 Widget Host
 

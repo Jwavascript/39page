@@ -5,6 +5,24 @@
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>39page</title>
+    <script>
+      /*
+       * 저장된 테마를 첫 페인트 전에 적용한다. 측정 결과 모듈 스크립트는
+       * first-paint 이후에 실행되어, 이 코드가 없으면 저장된 테마와 다른
+       * 배경색이 한 프레임 보인다.
+       *
+       * 여기서는 검증하지 않는다. 검증 로직을 중복하지 않기 위해서다.
+       * 알 수 없는 값이면 CSS가 기본 테마(mono-vinyl)로 되돌리고,
+       * 마운트 시 Theme Store 가 검증된 값으로 이 속성을 덮어쓴다.
+       * 테마의 단일 진실 공급원은 Theme Store 다.
+       */
+      try {
+        var saved = JSON.parse(localStorage.getItem('39page.theme')).data
+        if (typeof saved === 'string') document.documentElement.dataset.theme = saved
+      } catch (error) {
+        /* 저장값이 없거나 손상됨 — 기본 테마를 그대로 쓴다 */
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
