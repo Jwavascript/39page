@@ -306,15 +306,38 @@ TODO: 각 store의 액션 시그니처 확정
 - 키는 **용도별로 분리**한다. 프로토타입도 라이브러리와 테마를 분리해 저장한다.
   테마 전환이 라이브러리 쓰기를 유발하지 않게 한다.
 
+### 7.1 구현된 계약 (M1-1)
+
 ```
 shared/storage/
-  defineStorage<T>(key, { version, parse, fallback })
-    read(): T        // 실패·불일치 시 fallback
-    write(v: T): void  // 실패를 삼키고 보고
+  STORAGE_KEYS = { library: '39page.library', theme: '39page.theme' }
+
+  defineStorage<T>({ key, version, fallback, validate, migrate? }): TypedStorage<T>
+    read(): { value: T; outcome: ReadOutcome }
+    write(value: T): { ok: true } | { ok: false; reason: WriteFailureReason; error? }
 ```
 
-TODO: 제품 저장 키 네이밍 확정
-TODO: 스키마 버전 필드와 마이그레이션 정책 확정
+저장 객체는 `{ version, data }` 봉투 형태다.
+
+| 항목              | 결정                                                                                 | 근거                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| 저장 키           | `39page.library`, `39page.theme`                                                     | 키에 버전을 넣지 않는다. 키가 버전과 함께 바뀌면 이전 데이터를 찾을 수 없어 마이그레이션이 불가능해진다 |
+| 스키마 버전       | 봉투의 `version` 필드                                                                |                                                                                                         |
+| `fallback`        | 값이 아니라 **팩토리** `() => T`                                                     | 값으로 받으면 모든 읽기가 같은 객체를 돌려주고, 호출자가 변형하면 이후 기본값이 오염된다                |
+| `validate`        | **필수**. `(value: unknown) => T \| null`                                            | 타입 가드가 아닌 이유는 정규화가 필요해서다 (불량 항목 제거, 깨진 `selected` 보정 — `MVP_SPEC.md` F9)   |
+| 읽기 실패         | 기본값 반환. **저장소를 건드리지 않는다**                                            | 검증·마이그레이션 실패 시 데이터를 지우면 사용자의 복구 가능성을 빼앗는다                               |
+| 마이그레이션 성공 | 저장소에 **다시 쓰지 않는다**                                                        | 읽기에 쓰기 부작용을 넣지 않는다. `outcome: 'migrated'`로 알리고 호출자가 다음 저장 시점에 반영한다     |
+| 상위 버전 데이터  | 마이그레이션하지 않고 기본값                                                         | 앞으로 되돌릴 수 없다 (앱 다운그레이드 시 데이터 보존)                                                  |
+| 쓰기 실패         | 결과 객체로 보고 (`quota-exceeded` / `unavailable` / `serialize-failed` / `unknown`) | 호출자가 사용자 안내를 결정한다                                                                         |
+
+`ReadOutcome`: `stored` · `migrated` · `empty` · `unavailable` · `malformed` ·
+`invalid` · `version-mismatch` · `migration-failed`.
+`stored`와 `migrated`만 저장된 데이터를 쓴 경우다.
+
+구체 저장 인스턴스는 각 store와 함께 만든다: 테마는 M1-3, 라이브러리는 M2.
+M1-1은 `defineStorage`와 키 상수만 제공한다.
+
+TODO: 저장 실패 시 사용자 안내 방식 (`MVP_SPEC.md` F9)
 TODO: 레이아웃·스킨 저장을 스키마에 미리 비워둘지 결정
 
 ## 8. 외부 의존

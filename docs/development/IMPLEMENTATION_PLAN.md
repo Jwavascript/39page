@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M1-0 완료, M1-1 이후 미착수).
+> 상태: 개정 (M1-1 완료, M1-2 이후 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -75,19 +75,22 @@ MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·
 테마 키는 승인된 디자인 `two-themes-v09.html`의 값을 따른다.
 프로토타입은 수정하지 않았다 (`AGENTS.md` 규칙 6).
 
-### M1-1. 공유 타입과 저장 계층
+### M1-1. 공유 타입과 저장 계층 — 완료
 
-| #   | 작업                                                     | 산출물                |
-| --- | -------------------------------------------------------- | --------------------- |
-| 1.1 | `Track`, `Playlist`, `ThemeKey`, `PlayerState` 타입 정의 | `src/shared/types/`   |
-| 1.2 | YouTube URL → videoId 파서 (+ 단위 테스트)               | `src/shared/utils/`   |
-| 1.3 | `defineStorage<T>` — 방어적 읽기, 안전한 쓰기, 버전 필드 | `src/shared/storage/` |
-| 1.4 | 손상 데이터 복구 테스트                                  | `tests/unit/`         |
+| #   | 작업                                                               | 산출물                        | 상태 |
+| --- | ------------------------------------------------------------------ | ----------------------------- | ---- |
+| 1.1 | `ThemeKey`, `TrackSource`, `Track`, `Playlist`, `PlayerState` 정의 | `src/shared/types/`           | 완료 |
+| 1.2 | YouTube URL → videoId 파서 (+ 단위 테스트)                         | `src/shared/utils/youtube.ts` | 완료 |
+| 1.3 | `defineStorage<T>` — 방어적 읽기, 안전한 쓰기, 버전 봉투           | `src/shared/storage/`         | 완료 |
+| 1.4 | 손상 데이터·마이그레이션·저장소 예외 테스트                        | `tests/unit/`                 | 완료 |
 
-파서는 `MVP_SPEC.md` F4의 호스트·경로 목록을 모두 처리한다.
-저장 계층은 프로토타입 `safeLoad` 패턴을 따른다 (`MVP_SPEC.md` F9).
-
-**선행 결정**: 제품 저장 키 네이밍, 스키마 버전 정책.
+- 파서는 `MVP_SPEC.md` F4의 호스트·경로 목록을 모두 처리하고, 실패를
+  예외가 아닌 `{ ok: false, reason }`으로 돌려준다.
+- 저장 계층 계약은 `SYSTEM_DESIGN.md` §7.1에 기록했다.
+- `PlayerState`는 YouTube의 숫자 상태값을 도메인에 노출하지 않는다.
+  숫자 → 유니온 변환은 M3의 어댑터 안에서만 일어난다.
+- 구체 저장 인스턴스(`themeStorage`, `libraryStorage`)는 각 store와 함께
+  만든다 (M1-3 / M2). M1-1은 `defineStorage`와 키 상수까지다.
 
 ### M1-2. 테마 토큰 체계
 
@@ -291,7 +294,6 @@ M1의 구조 테스트(5.6–5.8)는 M1에서 작성해 유지한다. M5의 통�
 
 | 항목                                     | 필요 시점 | 문서                    |
 | ---------------------------------------- | --------- | ----------------------- |
-| 제품 저장 키 네이밍 · 스키마 버전        | M1-1      | `SYSTEM_DESIGN.md` §7   |
 | 토큰 이름 확정                           | M1-2      | `THEME_SYSTEM.md` §4.2  |
 | `GridArea` / `GridSize` 표현             | M1-4      | `SYSTEM_DESIGN.md` §5.4 |
 | `PlayerAdapter` 최소 시그니처            | M1-5      | `SYSTEM_DESIGN.md` §4.6 |
