@@ -43,13 +43,21 @@ M0에서 후보 A/B/C로 남겨둔 결정을 **프로토타입이 이미 확정�
 ```
 
 ```css
+/* mono는 bare :root를 함께 둔다 -> data-theme가 없어도 기본 테마가 적용된다 */
+:root,
 :root[data-theme='mono-vinyl'] {
   /* 토큰 값 */
 }
+
 :root[data-theme='kawaii-synth-cassette'] {
   /* 토큰 값 */
 }
 ```
+
+`:root[data-theme=…]`의 특이도가 bare `:root`보다 높으므로, 속성이 설정되면
+해당 테마가 이기고 설정되지 않거나 **알 수 없는 값이면 mono로 복귀한다.**
+브라우저에서 확인했다 (M1-2). M1-3의 Theme Store는 속성만 설정하면 되고
+CSS 수정은 필요하지 않다.
 
 ### 3.1 왜 이 방식인가
 
@@ -91,7 +99,7 @@ M0에서 후보 A/B/C로 남겨둔 결정을 **프로토타입이 이미 확정�
 
 TODO: 두 SVG를 항상 로드하는 비용이 문제가 되는지 측정 (번들 크기)
 
-## 4. 토큰 계층
+## 4. 토큰 계층 — 구현 완료 (M1-2)
 
 2단계로 나눈다.
 
@@ -101,135 +109,133 @@ TODO: 두 SVG를 항상 로드하는 비용이 문제가 되는지 측정 (번�
 컴포넌트에 테마별 색을 직접 쓰지 않는다. `.theme-kawaii .x { color: #… }` 같은
 후손 선택자 오버라이드를 만들지 않는다.
 
-> **프로토타입과의 차이**: 프로토타입은 9개 변수만 두고 나머지 색은
-> `.theme-kawaii .클래스 { … }` 후손 선택자로 하드코딩했다. 프로토타입에서는
-> 합리적이지만 제품에서는 테마를 추가할 때마다 오버라이드가 선형으로 늘어난다.
-> **M1의 작업은 이 하드코딩된 색을 의미 토큰으로 끌어올리는 것이다.**
-> 시각 결과는 동일해야 한다 (규칙 6).
+> **프로토타입과의 차이**: 프로토타입은 9개 변수만 두고 나머지 색은 후손
+> 선택자로 하드코딩했다. M1-2에서 이 값들을 모두 의미 토큰으로 끌어올렸다.
+> 시각 결과는 동일하다 (§4.6의 예외 2건 제외).
 
-### 4.1 프로토타입이 이미 정의한 토큰
+### 4.1 파일 배치
 
-`:root`와 `body.theme-kawaii`에 선언된 9개다. 그대로 승계한다.
+| 파일                                          | 내용                                                      |
+| --------------------------------------------- | --------------------------------------------------------- |
+| `src/styles/tokens.css`                       | 테마와 무관한 공통 토큰. **색은 포커스 링 기본값 하나뿐** |
+| `src/styles/base.css`                         | 리셋, body, 포커스, `prefers-reduced-motion`              |
+| `src/themes/mono-vinyl/tokens.css`            | Mono Vinyl 토큰 124개                                     |
+| `src/themes/kawaii-synth-cassette/tokens.css` | Kawaii Synth Cassette 토큰 124개                          |
 
-| 토큰         | `mono-vinyl` | `kawaii-synth-cassette` |
-| ------------ | ------------ | ----------------------- |
-| `--bg`       | `#171614`    | `#10202c`               |
-| `--surface`  | `#211f1b`    | `#172b3b`               |
-| `--surface2` | `#2b2823`    | `#1e3e51`               |
-| `--ink`      | `#e9e2d7`    | `#e2fff6`               |
-| `--muted`    | `#bcb4a6`    | `#b2d7d5`               |
-| `--dim`      | `#8f887b`    | `#769dac`               |
-| `--line`     | `#504a41`    | `#3f7480`               |
-| `--dot`      | `#e1d8c8`    | `#a9ffe5`               |
-| `--metal`    | `#aaa295`    | `#82d8ce`               |
-| 페이지 배경  | `#11110f`    | `#081825`               |
+**토큰 값의 단일 출처는 위 CSS 파일이다.** 이 문서는 규칙과 구조만 기술한다.
+값을 문서에 복제하면 어긋난다. 레퍼런스와의 일치는
+`tests/unit/theme-tokens.spec.ts`가 검증한다.
 
-### 4.2 추출해야 할 토큰 (M1 작업)
+두 테마는 **정확히 같은 토큰 이름 집합**을 정의한다. 한쪽에만 있는 토큰은
+전환 시 조용히 빈 값이 되므로 테스트로 동일성을 강제한다.
 
-프로토타입에서 하드코딩된 값을 용도별로 묶은 것이다. **이름은 제안이다.**
+### 4.2 네이밍 규칙
 
-**강조 / 주요 액션** — 두 테마의 성격 차이가 가장 큰 축이다.
+| 접미사 / 접두사                                      | 용도                                           | 예                        |
+| ---------------------------------------------------- | ---------------------------------------------- | ------------------------- |
+| `--…-color`                                          | 단일 색 값                                     | `--video-border-color`    |
+| `--…-background`                                     | `background` 단축 속성 전체 (다중 레이어 가능) | `--workspace-background`  |
+| `--…-shadow`                                         | `box-shadow` / `filter` 값 전체                | `--deck-shadow`           |
+| `--…-opacity` · `-width` · `-offset`                 | 색이 아닌 스칼라                               | `--clock-dot-off-opacity` |
+| `--duration-…` · `--easing-…`                        | 모션                                           | `--duration-spin-33`      |
+| `--font-…` · `--radius-…` · `--size-…` · `--ratio-…` | 공통 상수                                      | `--size-drawer-width`     |
 
-| 제안 이름         | `mono-vinyl`     | `kawaii-synth-cassette` |
-| ----------------- | ---------------- | ----------------------- |
-| `--accent`        | `#d8cebe` (본색) | `#ff9bc5` (분홍)        |
-| `--accent-ink`    | `#221e1a`        | `#3f2340`               |
-| `--accent-strong` | `#d5cab9`        | `#ff91bc`               |
+- 단일 색은 반드시 `-color`로 끝난다. 테스트가 강제한다.
+- 복합 값은 CSS 속성 이름을 쓴다. 색 하나로 표현할 수 없음을 이름에서 알린다.
 
-**컨트롤 (버튼 · pill)**
+### 4.3 토큰 그룹
 
-| 제안 이름            | `mono-vinyl`          | `kawaii-synth-cassette` |
-| -------------------- | --------------------- | ----------------------- |
-| `--control-bg`       | `#26231e` / `#28251f` | `#214052`               |
-| `--control-border`   | `#6a6054` / `#635b4e` | `#5d9096`               |
-| `--control-ink`      | `#e5dbcf` / `#e9dfd0` | `#d3fff5`               |
-| `--control-bg-hover` | `#393329` / `#383228` | `#366a73`               |
+기본 팔레트 · 페이지/워크스페이스 · 강조 · 헤더/브랜드/푸터/구분선 ·
+테마 전환 UI · 버튼/Pill · 데크 · 시계 · 날씨 · 플레이어 · 트랜스포트 ·
+드로어 · 행(플레이리스트/트랙) · 모달/오버레이/토스트 · 마스코트.
 
-**표면 (드로어 · 트랙 행 · 플레이리스트 행)**
+각 그룹의 토큰 목록은 CSS 파일의 구획 주석을 따른다.
 
-| 제안 이름               | `mono-vinyl`          | `kawaii-synth-cassette` |
-| ----------------------- | --------------------- | ----------------------- |
-| `--drawer-bg`           | `#1d1b18`             | `#132b3a`               |
-| `--row-bg`              | `#27231e` / `#25221e` | `#21394a`               |
-| `--row-bg-selected`     | `#393329`             | `#2c5663`               |
-| `--row-border-selected` | `#c5b7a3` / `#a89b87` | `#92ead9`               |
+### 4.4 통합하지 않은 값 — 의도적 결정
 
-**경계선** — 프로토타입은 농도가 다른 여러 값을 쓴다. 단계로 묶는다.
+승인된 디자인의 미세한 차이를 보존하기 위해 다음을 **합치지 않았다.**
 
-| 제안 이름            | `mono-vinyl`          | `kawaii-synth-cassette` |
-| -------------------- | --------------------- | ----------------------- |
-| `--line-strong`      | `#554f45` / `#49433b` | `#557e89` / `#456b78`   |
-| `--line-soft`        | `#443e36` / `#534c42` | `#4e828a`               |
-| `--workspace-border` | `#38332c`             | `#5b9e9f`               |
+| 항목                                                      | 이유                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 경계선 농도                                               | mono는 `#49433b`(header) · `#554f45`(info) · `#534c42`(rule) · `#443e36`(footer) · `#38332c`(workspace) · `#686053`(drawer) · `#544d43`(drawer-head) · `#51493e`(drawer-foot)를 모두 다르게 쓴다. `--line-strong`/`--line-soft` 2개로 묶으면 **시각 결과가 달라진다.** 컴포넌트별 토큰을 유지한다 |
+| `--button-*` vs `--pill-*`                                | mono에서 값이 다르다 (`#26231e` vs `#28251f` 등). kawaii는 같다                                                                                                                                                                                                                                   |
+| `--accent-*` vs `--accent-strong-*`                       | mono는 두 본색이 다르다 (`#d8cebe` vs `#d5cab9`). kawaii는 둘 다 `#ff9bc5`다                                                                                                                                                                                                                      |
+| 날씨 4색                                                  | mono는 icon/temp/desc/highlow가 모두 다르다. kawaii는 2색으로 묶인다                                                                                                                                                                                                                              |
+| `--playlist-play-text-color` vs `--track-play-text-color` | mono에서 `#e1d6c5` vs `#e0d3c1`로 다르다                                                                                                                                                                                                                                                          |
+| 포커스 링                                                 | §7 참조. 전역 링과 데크 열기 버튼의 링을 분리한다                                                                                                                                                                                                                                                 |
 
-**워크스페이스 배경** — 색이 아니라 **배경 전체**가 다르다.
-Kawaii는 radial 그라디언트에 스캔라인(`repeating-linear-gradient`)을 겹친다.
-단일 색 토큰으로 표현할 수 없으므로 배경 전체를 토큰으로 둔다.
+반대로 의미와 값이 모두 반복되는 경우에만 공통 토큰을 썼다. 두 테마가 같은
+값을 쓰는 서체·반경·기하·모션은 `src/styles/tokens.css`로 올렸다.
 
-| 제안 이름                 | 값                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--workspace-bg` (mono)   | `radial-gradient(ellipse at 45% 30%, #25221e 0%, #171614 67%, #131210 100%)`                                                                    |
-| `--workspace-bg` (kawaii) | `radial-gradient(circle at 20% 20%, #245c6e 0%, #142b3b 40%, #0d1c2d 82%), repeating-linear-gradient(0deg, transparent 0 19px, #e5ffff0b 20px)` |
+### 4.5 토큰으로 두지 않은 것
 
-**플레이어 영역**
+- **데크 SVG 내부 색** (턴테이블 하드웨어 키·램프, 카세트 본체 그라디언트).
+  두 테마에 대응물이 없고, SVG 내부의 수십 개 `fill`과 함께 M1-6의
+  `DeckArt.vue`가 원본 그대로 갖는 편이 정확하다.
+- **브레이크포인트**. CSS 변수는 `@media` 조건에서 쓸 수 없다.
+  승인된 값(`1100` / `730` / `650` / `600`px)은 `tokens.css` 주석에 적고
+  미디어 쿼리에 직접 쓴다.
 
-| 제안 이름        | `mono-vinyl` | `kawaii-synth-cassette` |
-| ---------------- | ------------ | ----------------------- |
-| `--video-border` | `#665f55`    | `#66c3bf`               |
-| `--video-bg`     | `#0f0e0d`    | `#091c2a`               |
-| `--video-ring`   | 없음         | `0 0 0 3px #174c5430`   |
-| `--title-ink`    | `var(--ink)` | `#f7d7e9`               |
+### 4.6 레퍼런스에서 적용되지 않는 규칙 2건
 
-**토스트 · 오버레이**
+v09에 kawaii 값이 **작성되어 있지만 선택자·속성이 맞지 않아 적용되지 않는**
+규칙이 2건 있다. 작성된 의도를 따랐다.
+근거: [`../decisions/0004-unapplied-reference-rules.md`](../decisions/0004-unapplied-reference-rules.md)
 
-| 제안 이름      | `mono-vinyl` | `kawaii-synth-cassette` |
-| -------------- | ------------ | ----------------------- |
-| `--toast-bg`   | `#ded3c1`    | `#a7ffdf`               |
-| `--toast-ink`  | `#2d261f`    | `#17384a`               |
-| `--overlay-bg` | `#0b0a09d9`  | `#071521e6`             |
+| 대상        | v09 작성 내용                                                                                      | 왜 적용되지 않는가                                                          | 채택한 값           |
+| ----------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------- |
+| 모달 · 입력 | `.theme-kawaii .modal{background:#19374a;border-color:#8fd8cb;color:#d8fff2}` 와 `.modal input{…}` | 실제 마크업은 `.add-modal` / `.field`다. `.modal` 클래스는 존재하지 않는다  | 작성된 민트 계열 값 |
+| 구분선      | `.theme-kawaii .rule{border-color:#456b78}`                                                        | `.rule`은 `height:1px; background:#534c42`로 그린다. `border`가 없어 무효다 | `#456b78`           |
 
-**마스코트** → §6
+레퍼런스 렌더 결과대로 두면 민트 테마에서 모달과 구분선만 갈색으로 남는다.
+되돌리려면 kawaii 토큰 파일의 해당 값을 mono 값으로 바꾸면 된다
+(`[의도]` 주석으로 표시해 두었다).
 
-**공유 토큰 (테마와 무관)** — 두 테마가 동일한 값을 쓴다. 테마 파일에 두지 않는다.
+### 4.7 kawaii가 재정의하지 않은 값
 
-| 항목        | 값                                                                            |
-| ----------- | ----------------------------------------------------------------------------- |
-| 포커스 링   | `2px solid #f0e2c8`, `outline-offset: 3px`                                    |
-| 본문 서체   | `system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif` |
-| 라벨 서체   | `ui-monospace, 'IBM Plex Mono', Consolas, 'Courier New', monospace`           |
-| 모서리 반경 | 컨트롤 `3px`, 모달 `4px`, 입력 `2px`                                          |
-| 경고 텍스트 | `#e7c5a8`                                                                     |
-| 오류 텍스트 | `#edb99b`                                                                     |
+v09에서 kawaii가 재정의하지 않아 mono 값이 그대로 보이는 토큰이 있다.
+**작성된 의도가 없으므로 레퍼런스 렌더 결과를 보존했다.**
+kawaii 토큰 파일에 `[미재정의]`로 표시했다.
 
-> Kawaii 테마도 **모노스페이스 라벨을 유지한다.** 서체는 테마 축이 아니다.
+`--row-border-color` · `--playlist-play-border-color` ·
+`--playlist-play-surface-hover-color` · `--transport-surface-hover-color` ·
+`--clock-dot-off-color` · `--weather-note-text-color` ·
+`--mute-note-text-color` · `--external-link-text-color` ·
+`--drawer-foot-text-color` · `--drawer-muted-text-color` ·
+`--status-warning-text-color` · `--error-text-color` ·
+`--close-button-text-color` · `--label-text-color` · `--link-text-color` ·
+`--modal-shadow` · `--toast-shadow` · `--row-action-hover-text-color` ·
+`--info-border-compact-color` · `--deck-hint-strong-text-color`
 
-TODO: 토큰 이름 최종 확정 (위 제안 검토)
-TODO: 경계선을 2단계(`strong`/`soft`)로 묶는 것이 충분한지 확인
-TODO: 경고·오류 색을 테마 축으로 올릴지 (프로토타입은 두 테마 공통)
-TODO: 포커스 링을 테마 축으로 올릴지 — Kawaii의 `.cassette-open`만
-`#ff8fc3`를 쓴다. 예외인지 의도인지 확인 필요
+TODO: 위 목록을 민트 계열로 조정할지 확인 (디자인 판단 필요)
 
-### 4.3 모션 토큰
+### 4.8 모션 토큰 — 구현 완료
 
-| 제안 이름           | 값                                    | 비고                               |
-| ------------------- | ------------------------------------- | ---------------------------------- |
-| `--spin-duration`   | `1.8s` (33 RPM) / `1.33333s` (45 RPM) | LP 회전 **연출**. 음악 속도와 무관 |
-| `--spool-duration`  | `1.9s`                                | 카세트 릴                          |
-| `--breath-duration` | `1s`                                  | 마스코트 호흡 (alternate)          |
-| 톤암 트랜지션       | `.65s ease`                           |                                    |
+| 토큰                 | 값         | 비고                                      |
+| -------------------- | ---------- | ----------------------------------------- |
+| `--duration-spin-33` | `1.8s`     | LP 회전 **연출** 33 RPM. 음악 속도와 무관 |
+| `--duration-spin-45` | `1.33333s` | LP 회전 연출 45 RPM                       |
+| `--duration-spool`   | `1.9s`     | 카세트 릴                                 |
+| `--duration-breath`  | `1s`       | 마스코트 호흡 (alternate)                 |
+| `--duration-tonearm` | `0.65s`    | 톤암                                      |
+| `--duration-stage`   | `0.18s`    | 스테이지 투명도                           |
+| `--duration-hint`    | `0.2s`     | 열기 버튼 툴팁                            |
 
 회전 애니메이션은 기본 `paused`이고 재생 중일 때만 `running`이다.
+`prefers-reduced-motion: reduce`에서 `base.css`가 위 값을 모두 `0s`로 바꾸므로
+토큰을 사용하는 애니메이션은 자동으로 멈춘다. 토큰을 거치지 않는
+애니메이션을 위한 안전망 규칙도 함께 둔다. 브라우저에서 확인했다 (M1-2).
 
-### 4.4 기하 토큰 (테마 공통)
+### 4.9 기하 토큰 — 구현 완료
 
-| 항목                    | 값                                  |
-| ----------------------- | ----------------------------------- |
-| 데크 종횡비             | `900 / 570`                         |
-| 드로어 폭               | `340px`                             |
-| 워크스페이스 최소 높이  | `650px`                             |
-| 셸 최대 폭              | `1920px`                            |
-| 영상 종횡비 / 최소 크기 | `16 / 9` / `200×200`                |
-| 브레이크포인트          | `1100px`, `730px`, `650px`, `600px` |
+| 토큰                                                                         | 값                            |
+| ---------------------------------------------------------------------------- | ----------------------------- |
+| `--ratio-deck`                                                               | `900 / 570`                   |
+| `--size-drawer-width`                                                        | `340px`                       |
+| `--size-workspace-min-height`                                                | `650px`                       |
+| `--size-shell-max-width`                                                     | `1920px`                      |
+| `--ratio-video` / `--size-video-min`                                         | `16 / 9` / `200px`            |
+| `--radius-control` / `--radius-modal` / `--radius-field` / `--radius-circle` | `3px` / `4px` / `2px` / `50%` |
 
 ## 5. 전환 시 보존 규칙
 
@@ -284,6 +290,26 @@ TODO: 테마별 도트 패턴을 다르게 할지 확정 — v09는 두 테마�
 "테마별 도트 마스코트"가 패턴 차이를 의미하는지 확인 필요
 TODO: 패턴을 테마 패키지에 둘지 `src/features/mascot/`에서 테마 키로 선택할지
 
+## 6.5 포커스 링 — 구현 완료 (M1-2)
+
+공통 기본값을 두고 테마·컴포넌트가 재정의할 수 있게 했다.
+**모든 포커스를 같은 색으로 통일하지 않는다.**
+
+| 범위                         | 토큰                                                  | mono                      | kawaii                         |
+| ---------------------------- | ----------------------------------------------------- | ------------------------- | ------------------------------ |
+| 전역 기본 (`:focus-visible`) | `--focus-ring-color` / `-width` / `-offset`           | `#f0e2c8` / `2px` / `3px` | 동일 (v09가 재정의하지 않는다) |
+| 데크 열기 버튼               | `--deck-open-focus-ring-color` / `-width` / `-offset` | `#eee2d0` / `2px` / `2px` | `#ff8fc3` / `3px` / `-4px`     |
+
+- 전역 링은 아이보리 `#f0e2c8`다. 민트 배경에서도 대비가 충분하다.
+- **분홍 포커스는 kawaii의 카세트 열기 버튼에만 있다.** v09에서 유일하게
+  `.cassette-open:focus-visible`가 `3px solid #ff8fc3`, `outline-offset:-4px`를
+  쓴다. 안쪽 오프셋은 버튼이 카세트 아트 위에 겹쳐 있어 링이 밖으로 나가지
+  않게 하려는 것이다. 이 표현을 보존했다.
+- 전역 기본값만 `src/styles/tokens.css`에 있고 나머지는 테마 파일에 있다.
+
+M0에서 "포커스 링을 테마 축으로 올릴지" 남겨둔 TODO는 이렇게 해소했다.
+전역 링은 공통 축, 데크 열기 버튼은 컴포넌트별 축으로 나눈다.
+
 ## 7. 위젯 스킨 — 테마와 독립된 축
 
 장기 목표는 "개별 위젯 스킨 조합"이다. 즉 **테마와 스킨은 별개 축**이다.
@@ -307,26 +333,37 @@ TODO: 스킨이 레이아웃 크기를 바꿀 수 있는지 (`minSize`와의 관
 
 ## 8. 디렉터리 배치
 
+M1-2에서 만든 것(`[x]`)과 이후 단계에서 추가할 것을 구분한다.
+
 ```
 src/styles/
-  tokens.css          공유 토큰 (서체, 포커스 링, 반경, 기하)
-  base.css            리셋, body, 공통 유틸
+  tokens.css          [x] 공통 토큰 (서체, 반경, 기하, 모션, 포커스 기본값)
+  base.css            [x] 리셋, body, 포커스, prefers-reduced-motion
 src/themes/
-  index.ts            테마 레지스트리 (키 → 메타데이터)
+  index.ts            [x] 테마 레지스트리 (키 -> 메타데이터)
   mono-vinyl/
-    tokens.css        [data-theme='mono-vinyl'] 토큰 값
-    DeckArt.vue       턴테이블 SVG
+    tokens.css        [x] :root, :root[data-theme='mono-vinyl'] 토큰 값
+    DeckArt.vue       [ ] 턴테이블 SVG (M1-6)
   kawaii-synth-cassette/
-    tokens.css        [data-theme='kawaii-synth-cassette'] 토큰 값
-    DeckArt.vue       카세트 SVG
+    tokens.css        [x] :root[data-theme='kawaii-synth-cassette'] 토큰 값
+    DeckArt.vue       [ ] 카세트 SVG (M1-6)
 ```
 
-- 데크 아트 SVG는 레퍼런스에서 **그대로 이식**한다. 좌표·색·`viewBox`를
-  임의로 바꾸지 않는다 (규칙 6).
+테마 CSS는 `src/main.ts`에서 **정적으로** import한다. 순서는
+공통 토큰 -> 기본 스타일 -> 테마 토큰이다. 두 테마의 토큰이 항상 함께
+로드되어야 `data-theme` 교체만으로 즉시 전환된다. 동적 CSS 로더나
+플러그인 시스템을 두지 않는다 (`../decisions/0001-theme-switching-mechanism.md`).
+
+레지스트리(`src/themes/index.ts`)는 메타데이터(`name`, `label`, `description`)만
+제공한다. 키 목록·기본 테마·검증은 `src/shared/types/theme.ts`의
+`THEME_KEYS` / `DEFAULT_THEME_KEY` / `isThemeKey`를 재사용하며 중복 정의하지
+않는다. 테스트가 중복 정의를 막는다.
+
+데크 아트에 대한 규칙 (M1-6):
+
+- 레퍼런스에서 **그대로 이식**한다. 좌표·색·`viewBox`를 바꾸지 않는다 (규칙 6).
+- SVG 내부 색은 토큰으로 올리지 않는다 (§4.5).
 - SVG `<defs>`의 `id`는 두 테마가 동시에 DOM에 존재하므로 **충돌하지 않아야 한다.**
-  프로토타입은 서로 다른 id를 쓰지만(`chassis`/`synthBody` 등), 제품에서는
-  접두사 규칙을 정한다.
 
 TODO: SVG `id` 접두사 규칙 확정 (예: `mv-chassis`, `ksc-synthBody`)
 TODO: 데크 SVG를 Vue 컴포넌트로 둘지 외부 `.svg` 에셋으로 둘지 확정
-(현재 전제: 애니메이션 클래스와 인터랙션이 필요하므로 컴포넌트)

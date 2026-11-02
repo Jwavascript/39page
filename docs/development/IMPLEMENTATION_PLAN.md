@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M1-1 완료, M1-2 이후 미착수).
+> 상태: 개정 (M1-2 완료, M1-3 이후 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -92,19 +92,24 @@ MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·
 - 구체 저장 인스턴스(`themeStorage`, `libraryStorage`)는 각 store와 함께
   만든다 (M1-3 / M2). M1-1은 `defineStorage`와 키 상수까지다.
 
-### M1-2. 테마 토큰 체계
+### M1-2. 테마 토큰 체계 — 완료
 
-| #   | 작업                                                  | 산출물                                        |
-| --- | ----------------------------------------------------- | --------------------------------------------- |
-| 2.1 | 공유 토큰 (서체·포커스 링·반경·기하)                  | `src/styles/tokens.css`                       |
-| 2.2 | 리셋 + body 기본 + `prefers-reduced-motion` 전역 처리 | `src/styles/base.css`                         |
-| 2.3 | `mono-vinyl` 토큰 값                                  | `src/themes/mono-vinyl/tokens.css`            |
-| 2.4 | `kawaii-synth-cassette` 토큰 값                       | `src/themes/kawaii-synth-cassette/tokens.css` |
-| 2.5 | 테마 레지스트리 (키 → 메타데이터)                     | `src/themes/index.ts`                         |
+| #   | 작업                                                  | 산출물                                        | 상태 |
+| --- | ----------------------------------------------------- | --------------------------------------------- | ---- |
+| 2.1 | 공통 토큰 (서체·반경·기하·모션·포커스 기본값)         | `src/styles/tokens.css`                       | 완료 |
+| 2.2 | 리셋 + body 기본 + `prefers-reduced-motion` 전역 처리 | `src/styles/base.css`                         | 완료 |
+| 2.3 | `mono-vinyl` 토큰 124개                               | `src/themes/mono-vinyl/tokens.css`            | 완료 |
+| 2.4 | `kawaii-synth-cassette` 토큰 124개                    | `src/themes/kawaii-synth-cassette/tokens.css` | 완료 |
+| 2.5 | 테마 레지스트리 (키 → 메타데이터)                     | `src/themes/index.ts`                         | 완료 |
+| 2.6 | 스타일 정적 import, 기본 `data-theme`                 | `src/main.ts`, `index.html`                   | 완료 |
 
-`THEME_SYSTEM.md` §4의 토큰 표를 그대로 옮긴다. **값을 바꾸지 않는다** (규칙 6).
-
-**선행 결정**: 토큰 이름 확정 (`THEME_SYSTEM.md` §4.2).
+- 토큰 계약과 네이밍 규칙은 `THEME_SYSTEM.md` §4에 기록했다.
+- 경계선 농도, 버튼/Pill, 날씨 4색 등 승인된 디자인의 미세한 차이를
+  **합치지 않았다** (§4.4).
+- 레퍼런스에서 적용되지 않는 kawaii 규칙 2건은 작성된 의도를 따랐다
+  (§4.6, ADR 0004).
+- 레퍼런스와의 일치는 `tests/unit/theme-tokens.spec.ts`가 정적으로 검증하고,
+  실제 적용은 Chromium으로 확인했다.
 
 ### M1-3. 테마 store와 전환
 

@@ -1,0 +1,88 @@
+/*
+ * 39page — 기본 스타일
+ *
+ * 최소한의 공통 규칙만 둔다. 컴포넌트 스타일은 각 컴포넌트가 갖는다.
+ * 색은 토큰으로만 참조한다 (`src/themes/<key>/tokens.css`).
+ */
+
+:root {
+  /* 두 테마 모두 다크 전용이다 (v09 `:root{color-scheme:dark}`). */
+  color-scheme: dark;
+  font-family: var(--font-body);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--page-background-color);
+  color: var(--text-color);
+}
+
+/* 폼 요소는 본문 서체를 물려받지 않으므로 명시한다 (v09 `button,input{font:inherit}`). */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--link-text-color);
+}
+
+/* 라벨·수치 표기에 쓰는 모노스페이스 유틸리티. 테마 축이 아니다. */
+.mono {
+  font-family: var(--font-mono);
+}
+
+/*
+ * 키보드 포커스.
+ *
+ * 공통 기본값을 두고 테마와 컴포넌트가 재정의할 수 있게 한다.
+ * 모든 포커스를 같은 색으로 통일하지 않는다. 실제로 데크의 열기 버튼은
+ * 테마별로 다른 링을 쓴다 (`--deck-open-focus-ring-*`).
+ */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * 모션 감소.
+ *
+ * 1) 모션 토큰을 0s로 바꾼다. 토큰을 사용하는 애니메이션은 자동으로
+ *    멈춘다 (데크 회전, 카세트 릴, 마스코트 호흡 — M1-6 / M4에서 추가).
+ * 2) 토큰을 거치지 않는 애니메이션까지 덮는 안전망을 둔다.
+ *
+ * 아직 존재하지 않는 애니메이션을 새로 작성하지는 않는다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-spin-33: 0s;
+    --duration-spin-45: 0s;
+    --duration-spool: 0s;
+    --duration-breath: 0s;
+    --duration-tonearm: 0s;
+    --duration-stage: 0s;
+    --duration-hint: 0s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

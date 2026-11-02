@@ -1,6 +1,6 @@
 # 로드맵
 
-> 상태: 개정 (M1-1 완료). MVP는 M5까지다.
+> 상태: 개정 (M1-2 완료). MVP는 M5까지다.
 >
 > 상세 작업 목록: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md)
 > MVP 외 확장 항목: [`BACKLOG.md`](BACKLOG.md)
@@ -39,7 +39,7 @@ M1은 `FakePlayerAdapter` 기반의 **구조 검증**에 집중하고, 실제 Yo
 
 - M1-0 선행 정리 (테마 키 통일) — 완료
 - M1-1 공유 타입과 저장 계층 — 완료
-- M1-2 테마 토큰 체계
+- M1-2 테마 토큰 체계 — 완료
 - M1-3 테마 store와 전환
 - M1-4 안정 셸과 Widget Host
 - M1-5 플레이어 영속성 구조 ★

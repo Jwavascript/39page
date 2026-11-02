@@ -1,0 +1,66 @@
+/*
+ * 39page — 공통 디자인 토큰
+ *
+ * 테마와 무관한 값만 둔다. 색은 테마 파일에 있다
+ * (`src/themes/<key>/tokens.css`). 단 하나의 예외는 기본 포커스 링이며,
+ * 테마·컴포넌트가 재정의할 수 있다.
+ *
+ * 값 출처: design/references/mono-vinyl-v08.html, two-themes-v09.html
+ * 승인된 값을 바꾸지 않는다 (AGENTS.md 규칙 6).
+ *
+ * 네이밍 규칙
+ *   --…-color       단일 색
+ *   --…-background  background 단축 속성 전체 (다중 레이어 가능)
+ *   --…-shadow      box-shadow / filter 값 전체
+ *   --…-opacity | -width | -offset | -duration | -ratio   색이 아닌 스칼라
+ *   --font-… | --radius-… | --size-…                      공통 상수
+ */
+
+:root {
+  /* ---------- 타이포그래피 (두 테마 공통) ---------- */
+  --font-body: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-mono: ui-monospace, 'IBM Plex Mono', Consolas, 'Courier New', monospace;
+
+  /* ---------- 모서리 반경 ---------- */
+  --radius-control: 3px;
+  --radius-modal: 4px;
+  --radius-field: 2px;
+  --radius-circle: 50%;
+
+  /* ---------- 기하 ---------- */
+  --size-shell-max-width: 1920px;
+  --size-workspace-min-height: 650px;
+  --size-drawer-width: 340px;
+  --size-video-min: 200px;
+  --ratio-deck: 900 / 570;
+  --ratio-video: 16 / 9;
+
+  /*
+   * 브레이크포인트는 토큰으로 두지 않는다. CSS 변수는 @media 조건에서
+   * 쓸 수 없다. 승인된 값은 다음과 같다. 미디어 쿼리에 직접 적는다.
+   *   1100px  레이아웃 1열 전환 + 드로어가 스테이지를 대체
+   *    730px  테마 전환 버튼 축소
+   *    650px  여백·폰트 축소
+   *    600px  마스코트 패널 축소
+   */
+
+  /* ---------- 모션 ----------
+   * 회전 애니메이션은 기본 paused이고 재생 중일 때만 running이다.
+   * prefers-reduced-motion 에서는 base.css가 이 값들을 0s로 바꾼다. */
+  --duration-spin-33: 1.8s; /* LP 회전 연출 33 RPM. 음악 속도와 무관 */
+  --duration-spin-45: 1.33333s; /* LP 회전 연출 45 RPM */
+  --duration-spool: 1.9s; /* 카세트 릴 */
+  --duration-breath: 1s; /* 마스코트 호흡 (alternate) */
+  --duration-tonearm: 0.65s;
+  --duration-stage: 0.18s;
+  --duration-hint: 0.2s;
+  --easing-tonearm: ease;
+  --easing-stage: ease;
+
+  /* ---------- 기본 포커스 링 ----------
+   * 두 테마가 같은 값을 쓴다 (v09). 테마 파일과 컴포넌트가 재정의할 수 있고,
+   * 실제로 데크의 열기 버튼은 테마별로 다른 링을 쓴다. */
+  --focus-ring-color: #f0e2c8;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+}

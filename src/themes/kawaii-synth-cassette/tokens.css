@@ -1,0 +1,187 @@
+/*
+ * Kawaii Synth Cassette — 테마 토큰
+ *
+ * 값 출처: design/references/two-themes-v09.html (기준)
+ * 승인된 색을 바꾸지 않는다 (AGENTS.md 규칙 6).
+ *
+ * 성격: 민트 본체 + 분홍 포인트, 90s 신스 레트로 디지털. 다크 전용.
+ * 서체는 테마 축이 아니다 — 이 테마도 모노스페이스 라벨을 유지한다.
+ *
+ * 토큰 집합은 mono-vinyl과 **정확히 동일**하다. 한쪽에만 있는 토큰은
+ * 테마 전환 시 조용히 빈 값이 되므로 테스트로 동일성을 검증한다.
+ *
+ * 주석 표기
+ *   [미재정의] v09에서 kawaii가 재정의하지 않은 값. mono 값이 그대로 보인다.
+ *   [의도]     v09에 kawaii 값이 작성되어 있지만 선택자/속성이 맞지 않아
+ *              적용되지 않는 값. 작성된 의도를 따랐다. 보고서 참조.
+ */
+
+:root[data-theme='kawaii-synth-cassette'] {
+  /* ---------- 기본 팔레트 (v09 body.theme-kawaii) ---------- */
+  --surface-base-color: #10202c; /* v09 --bg */
+  --surface-raised-color: #172b3b; /* v09 --surface */
+  --surface-overlay-color: #1e3e51; /* v09 --surface2 */
+  --text-color: #e2fff6; /* v09 --ink */
+  --text-muted-color: #b2d7d5; /* v09 --muted */
+  --text-dim-color: #769dac; /* v09 --dim */
+  --line-color: #3f7480; /* v09 --line */
+  --metal-color: #82d8ce; /* v09 --metal */
+
+  /* ---------- 페이지 · 워크스페이스 ----------
+   * 배경은 2개 레이어다. radial 그라디언트 위에 스캔라인을 겹친다.
+   * 단순화하지 않는다. */
+  --page-background-color: #081825;
+  --workspace-border-color: #5b9e9f;
+  --workspace-background:
+    radial-gradient(circle at 20% 20%, #245c6e 0%, #142b3b 40%, #0d1c2d 82%),
+    repeating-linear-gradient(0deg, transparent 0 19px, #e5ffff0b 20px);
+
+  /* ---------- 강조 / 주요 액션 ----------
+   * kawaii는 primary와 strong이 같은 분홍이다. mono는 서로 다른 본색을 쓴다. */
+  --accent-color: #ff9bc5;
+  --accent-text-color: #3f2340;
+  --accent-strong-color: #ff9bc5;
+  --accent-strong-text-color: #3f2340;
+
+  /* ---------- 헤더 · 브랜드 · 푸터 · 구분선 ---------- */
+  --brand-text-color: #b5ffec;
+  --header-border-color: #456b78;
+  --info-border-color: #557e89;
+  --info-border-compact-color: #514a3f; /* [미재정의] */
+  --rule-color: #456b78; /* [의도] v09는 .rule에 border-color를 쓰지만 .rule은 background로 그린다 */
+  --footer-border-color: #456b78;
+  --footer-text-color: #a1c7c5;
+
+  /* ---------- 테마 전환 UI ---------- */
+  --theme-switch-border-color: #468894;
+  --theme-button-text-color: #a1d4ce;
+  --theme-button-active-surface-color: #b5fbea;
+  --theme-button-active-text-color: #0d4254;
+
+  /* ---------- 버튼 (quiet-btn) ---------- */
+  --button-surface-color: #214052;
+  --button-border-color: #5d9096;
+  --button-text-color: #d3fff5;
+  --button-surface-hover-color: #366a73;
+
+  /* ---------- Pill (드로어 내 버튼) ----------
+   * kawaii는 quiet-btn과 같은 값을 쓴다. mono는 다르므로 토큰을 분리해 둔다. */
+  --pill-surface-color: #214052;
+  --pill-border-color: #5d9096;
+  --pill-text-color: #d3fff5;
+  --pill-surface-hover-color: #366a73;
+
+  /* ---------- 데크 ---------- */
+  --deck-shadow: drop-shadow(0 18px 21px #0006);
+  --deck-hint-text-color: #b5d9d8;
+  --deck-hint-strong-text-color: #b5d9d8; /* [미재정의] v09에서 .theme-kawaii .deck-hint가 strong보다 특이도가 높아 같은 색으로 렌더된다 */
+  /* 카세트를 눌러 믹스테이프 보관함을 여는 버튼과 그 툴팁 */
+  --deck-open-text-color: #dbfff7;
+  --deck-open-hint-surface-color: #0c3448ec;
+  --deck-open-hint-border-color: #b2f9e7;
+  --deck-open-hover-surface-color: transparent; /* v09의 .cassette-open은 hover 배경이 없다 */
+  --deck-open-focus-ring-color: #ff8fc3; /* 이 테마에서 유일한 분홍 포커스 링 */
+  --deck-open-focus-ring-width: 3px;
+  --deck-open-focus-ring-offset: -4px;
+
+  /* ---------- 시계 ---------- */
+  --clock-dot-color: #a9ffe5; /* v09 --dot */
+  --clock-dot-off-color: #615d54; /* [미재정의] */
+  --clock-dot-off-opacity: 0.18;
+  --clock-glow: drop-shadow(0 0 3px #83ffed38);
+  --clock-label-text-color: #a9d8d3;
+  --clock-date-text-color: #a9d8d3;
+
+  /* ---------- 날씨 ----------
+   * kawaii는 icon+temp를 한 색으로, desc+highlow를 다른 한 색으로 묶는다.
+   * mono는 4개가 모두 다르므로 토큰 4개를 유지한다. */
+  --weather-icon-text-color: #d0fff1;
+  --weather-temp-text-color: #d0fff1;
+  --weather-desc-text-color: #b5d9d8;
+  --weather-highlow-text-color: #b5d9d8;
+  --weather-note-text-color: #867f73; /* [미재정의] */
+
+  /* ---------- 지금 재생 중 · 플레이어 ---------- */
+  --eyebrow-text-color: #a9d8d3;
+  --now-title-text-color: #f7d7e9;
+  --now-sub-text-color: #b5d9d8;
+  --video-surface-color: #091c2a;
+  --video-border-color: #66c3bf;
+  --video-shadow: 0 0 0 3px #174c5430;
+  --video-placeholder-text-color: #a6d9d0;
+  --video-placeholder-strong-text-color: #e2fff6;
+  --status-text-color: #b5d9d8;
+  --status-warning-text-color: #e7c5a8; /* [미재정의] */
+  --mute-note-text-color: #91887c; /* [미재정의] */
+  --external-link-text-color: #b9ae9f; /* [미재정의] */
+
+  /* ---------- 트랜스포트 버튼 (.round) ---------- */
+  --transport-text-color: #dbfff4;
+  --transport-surface-hover-color: #332e27; /* [미재정의] */
+  --transport-main-border-color: #ff9bc5;
+  --transport-main-text-color: #ffb4d4;
+
+  /* ---------- Record Library 드로어 ---------- */
+  --drawer-surface-color: #132b3a;
+  --drawer-border-color: #5d98a2;
+  --drawer-head-border-color: #4e828a;
+  --drawer-foot-border-color: #4e828a;
+  --drawer-title-text-color: #d4ffed;
+  --drawer-sub-text-color: #a9d8d3;
+  --drawer-section-title-text-color: #a9d8d3;
+  --drawer-foot-text-color: #9d9487; /* [미재정의] */
+  --drawer-body-text-color: #c9f8ef;
+  --drawer-action-text-color: #bef2e9;
+  --drawer-muted-text-color: #968c7f; /* [미재정의] */
+
+  /* ---------- 플레이리스트 행 · 트랙 행 ---------- */
+  --row-surface-color: #21394a;
+  --row-border-color: #443e36; /* [미재정의] */
+  --row-text-color: #d8fff6;
+  --row-selected-surface-color: #2c5663;
+  --row-selected-border-color: #92ead9;
+  --row-meta-text-color: #a2d3ce;
+  --track-surface-color: #21394a;
+  --track-current-border-color: #92ead9;
+  --track-name-text-color: #d8fff6;
+  --playlist-play-surface-color: #224557;
+  --playlist-play-border-color: #595044; /* [미재정의] */
+  --playlist-play-text-color: #fbc0db;
+  --playlist-play-surface-hover-color: #4d4335; /* [미재정의] */
+  --track-play-text-color: #fbc0db;
+  --row-action-text-color: #bef2e9;
+  --row-action-hover-text-color: #ffffff; /* [미재정의] */
+
+  /* ---------- 모달 · 오버레이 · 토스트 ----------
+   * v09의 kawaii 모달 규칙은 `.modal` / `.modal input`을 겨냥하지만
+   * 실제 마크업은 `.add-modal` / `.field`다. 선택자가 맞지 않아 적용되지
+   * 않는다. 작성된 값을 따랐다. 보고서의 "디자인이 달라질 가능성" 참조. */
+  --overlay-background-color: #071521e6;
+  --modal-surface-color: #19374a; /* [의도] */
+  --modal-border-color: #8fd8cb; /* [의도] */
+  --modal-text-color: #d8fff2; /* [의도] */
+  --modal-shadow: 0 22px 70px #000a; /* [미재정의] */
+  --label-text-color: #c0b6a8; /* [미재정의] */
+  --field-surface-color: #0e2a39; /* [의도] */
+  --field-border-color: #6aada8; /* [의도] */
+  --field-text-color: #ecfff9; /* [의도] */
+  --error-text-color: #edb99b; /* [미재정의] */
+  --close-button-text-color: #e4d9cc; /* [미재정의] */
+  --toast-surface-color: #a7ffdf;
+  --toast-text-color: #17384a;
+  --toast-shadow: 0 10px 24px #0008; /* [미재정의] */
+  --link-text-color: #dfd1ba; /* [미재정의] */
+
+  /* ---------- 마스코트 ---------- */
+  --mascot-panel-background: linear-gradient(110deg, #0b3041, #143e51);
+  --mascot-panel-border-color: #78cac6;
+  --mascot-panel-shadow: inset 0 0 0 2px #154658;
+  --mascot-screen-surface-color: #092738;
+  --mascot-screen-border-color: #5accc4;
+  --mascot-screen-shadow: inset 0 0 0 2px #092738;
+  --mascot-dot-color: #a8ffe7;
+  --mascot-label-text-color: #8dd4c9;
+  --mascot-message-text-color: #ffafd2;
+  --mascot-sub-text-color: #96ccc9;
+  --mascot-corner-text-color: #ff91bd;
+}

@@ -1,0 +1,191 @@
+/*
+ * Mono Vinyl — 테마 토큰
+ *
+ * 값 출처: design/references/mono-vinyl-v08.html (기준),
+ *          design/references/two-themes-v09.html (동일, 상위집합)
+ * 승인된 색을 바꾸지 않는다 (AGENTS.md 규칙 6).
+ *
+ * 성격: 따뜻한 회갈색 금속, 검은 LP, 아이보리 도트. 다크 전용.
+ *
+ * 선택자에 bare `:root`를 함께 두어 `data-theme`가 없을 때도 기본 테마가
+ * 적용되게 한다. M1-3의 Theme Store가 속성을 설정하면 그때부터
+ * `:root[data-theme='mono-vinyl']`가 맞는다. 파일 수정은 필요하지 않다.
+ */
+
+:root,
+:root[data-theme='mono-vinyl'] {
+  /* ---------- 기본 팔레트 ----------
+   * v09가 :root에 선언한 9개 변수. 이 중 --ink와 --dot만 실제로 참조되고
+   * 나머지 7개는 선언만 되어 있다 (렌더된 참조가 없다). 테마의 팔레트
+   * 의도를 보존하기 위해 그대로 옮긴다. */
+  --surface-base-color: #171614; /* v09 --bg */
+  --surface-raised-color: #211f1b; /* v09 --surface */
+  --surface-overlay-color: #2b2823; /* v09 --surface2 */
+  --text-color: #e9e2d7; /* v09 --ink */
+  --text-muted-color: #bcb4a6; /* v09 --muted */
+  --text-dim-color: #8f887b; /* v09 --dim */
+  --line-color: #504a41; /* v09 --line */
+  --metal-color: #aaa295; /* v09 --metal */
+
+  /* ---------- 페이지 · 워크스페이스 ---------- */
+  --page-background-color: #11110f;
+  --workspace-border-color: #38332c;
+  --workspace-background: radial-gradient(
+    ellipse at 45% 30%,
+    #25221e 0%,
+    #171614 67%,
+    #131210 100%
+  );
+
+  /* ---------- 강조 / 주요 액션 ----------
+   * mono는 primary(quiet-btn.primary)와 strong(pill.strong)이 서로 다른
+   * 본색을 쓴다. kawaii는 둘이 같은 분홍이다. 구분을 유지한다. */
+  --accent-color: #d8cebe;
+  --accent-text-color: #221e1a;
+  --accent-strong-color: #d5cab9;
+  --accent-strong-text-color: #28221c;
+
+  /* ---------- 헤더 · 브랜드 · 푸터 · 구분선 ----------
+   * 농도가 다른 경계선을 하나로 합치지 않는다. 컴포넌트별로 유지한다. */
+  --brand-text-color: #dad3c7;
+  --header-border-color: #49433b;
+  --info-border-color: #554f45;
+  --info-border-compact-color: #514a3f; /* 1열 레이아웃에서 border-top */
+  --rule-color: #534c42; /* .rule 은 1px div의 background */
+  --footer-border-color: #443e36;
+  --footer-text-color: #938a80;
+
+  /* ---------- 테마 전환 UI ---------- */
+  --theme-switch-border-color: #5a5148;
+  --theme-button-text-color: #bdb2a4;
+  --theme-button-active-surface-color: #d1c6b6;
+  --theme-button-active-text-color: #171614;
+
+  /* ---------- 버튼 (quiet-btn) ---------- */
+  --button-surface-color: #26231e;
+  --button-border-color: #6a6054;
+  --button-text-color: #e5dbcf;
+  --button-surface-hover-color: #393329;
+
+  /* ---------- Pill (드로어 내 버튼) ----------
+   * mono에서 quiet-btn과 값이 다르다. 별도 토큰으로 유지한다. */
+  --pill-surface-color: #28251f;
+  --pill-border-color: #635b4e;
+  --pill-text-color: #e9dfd0;
+  --pill-surface-hover-color: #383228;
+
+  /* ---------- 데크 ---------- */
+  --deck-shadow: drop-shadow(0 12px 16px #0005);
+  --deck-hint-text-color: #ada496;
+  --deck-hint-strong-text-color: #e7ddd0;
+  /* LP / 카세트를 눌러 라이브러리를 여는 버튼과 그 툴팁 */
+  --deck-open-text-color: #eee6d8;
+  --deck-open-hint-surface-color: #161513e9;
+  --deck-open-hint-border-color: #b4aa9a;
+  --deck-open-hover-surface-color: #09080629;
+  --deck-open-focus-ring-color: #eee2d0;
+  --deck-open-focus-ring-width: 2px;
+  --deck-open-focus-ring-offset: 2px;
+  /*
+   * 턴테이블 SVG 내부 색(하드웨어 키, 램프, SVG 컨트롤 포커스 링)은
+   * 토큰으로 두지 않는다. 카세트 테마에 대응물이 없고, SVG 내부의 수십 개
+   * fill과 함께 M1-6의 DeckArt.vue가 원본 그대로 갖는 편이 정확하다.
+   */
+
+  /* ---------- 시계 ---------- */
+  --clock-dot-color: #e1d8c8; /* v09 --dot */
+  --clock-dot-off-color: #615d54;
+  --clock-dot-off-opacity: 0.18;
+  --clock-glow: none;
+  --clock-label-text-color: #aba398;
+  --clock-date-text-color: #cbbfad;
+
+  /* ---------- 날씨 ----------
+   * mono는 4개 값이 모두 다르다. kawaii는 2개로 묶인다. 구분을 유지한다. */
+  --weather-icon-text-color: #d5ccbe;
+  --weather-temp-text-color: #e5ddce;
+  --weather-desc-text-color: #bfb5a8;
+  --weather-highlow-text-color: #b3aa9b;
+  --weather-note-text-color: #867f73;
+
+  /* ---------- 지금 재생 중 · 플레이어 ---------- */
+  --eyebrow-text-color: #afa596;
+  --now-title-text-color: #e9e2d7; /* mono는 --ink를 상속한다 */
+  --now-sub-text-color: #aaa092;
+  --video-surface-color: #0f0e0d;
+  --video-border-color: #665f55;
+  --video-shadow: none;
+  --video-placeholder-text-color: #bab1a4;
+  --video-placeholder-strong-text-color: #e7dbcb;
+  --status-text-color: #d1c4b3;
+  --status-warning-text-color: #e7c5a8;
+  --mute-note-text-color: #91887c;
+  --external-link-text-color: #b9ae9f;
+
+  /* ---------- 트랜스포트 버튼 (.round) ---------- */
+  --transport-text-color: #ded4c6;
+  --transport-surface-hover-color: #332e27;
+  --transport-main-border-color: #b3a796;
+  --transport-main-text-color: #ded4c6; /* mono는 .round 색을 상속한다 */
+
+  /* ---------- Record Library 드로어 ---------- */
+  --drawer-surface-color: #1d1b18;
+  --drawer-border-color: #686053;
+  --drawer-head-border-color: #544d43;
+  --drawer-foot-border-color: #51493e;
+  --drawer-title-text-color: #eee4d8;
+  --drawer-sub-text-color: #968d7d;
+  --drawer-section-title-text-color: #9e9486;
+  --drawer-foot-text-color: #9d9487;
+  --drawer-body-text-color: #e9e2d7; /* mono는 --ink를 상속한다 */
+  --drawer-action-text-color: #e9dfd0; /* mono는 pill 색을 상속한다 */
+  --drawer-muted-text-color: #968c7f; /* .muted — 빈 목록 안내 */
+
+  /* ---------- 플레이리스트 행 · 트랙 행 ---------- */
+  --row-surface-color: #25221e; /* .playlist-select */
+  --row-border-color: #443e36;
+  --row-text-color: #e3d8c9;
+  --row-selected-surface-color: #393329;
+  --row-selected-border-color: #c5b7a3;
+  --row-meta-text-color: #aaa092;
+  --track-surface-color: #27231e;
+  --track-current-border-color: #a89b87;
+  --track-name-text-color: #e9e2d7; /* mono는 --ink를 상속한다 */
+  --playlist-play-surface-color: #2a2621;
+  --playlist-play-border-color: #595044;
+  --playlist-play-text-color: #e1d6c5;
+  --playlist-play-surface-hover-color: #4d4335;
+  --track-play-text-color: #e0d3c1;
+  --row-action-text-color: #aaa092;
+  --row-action-hover-text-color: #ffffff;
+
+  /* ---------- 모달 · 오버레이 · 토스트 ---------- */
+  --overlay-background-color: #0b0a09d9;
+  --modal-surface-color: #23201b;
+  --modal-border-color: #978a77;
+  --modal-text-color: #e9e2d7; /* mono는 --ink를 상속한다 */
+  --modal-shadow: 0 22px 70px #000a;
+  --label-text-color: #c0b6a8;
+  --field-surface-color: #161411;
+  --field-border-color: #71685b;
+  --field-text-color: #eee4d8;
+  --error-text-color: #edb99b;
+  --close-button-text-color: #e4d9cc;
+  --toast-surface-color: #ded3c1;
+  --toast-text-color: #2d261f;
+  --toast-shadow: 0 10px 24px #0008;
+  --link-text-color: #dfd1ba;
+
+  /* ---------- 마스코트 ---------- */
+  --mascot-panel-background: linear-gradient(105deg, #101111, #1e1d1a);
+  --mascot-panel-border-color: #49453f;
+  --mascot-panel-shadow: none;
+  --mascot-screen-surface-color: #060707;
+  --mascot-screen-border-color: #373631;
+  --mascot-screen-shadow: none;
+  --mascot-dot-color: #ffffff;
+  --mascot-label-text-color: #9c978c;
+  --mascot-message-text-color: #e3e0d8;
+  --mascot-sub-text-color: #8f897d;
+  --mascot-corner-text-color: #757269;
+}
