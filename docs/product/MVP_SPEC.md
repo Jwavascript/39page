@@ -56,9 +56,8 @@ TODO: 대상 사용자 확정
   | 마스코트 메시지   | `SIGNAL READY`                         | `MIXTAPE READY`                                  |
   | 마스코트 보조문구 | `a little life inside your music`      | `a tiny melody from tomorrow`                    |
 
-> ⚠️ **키 불일치**: M0에서 생성한 디렉터리는 `src/themes/kawaii-cassette/`이지만
-> 승인된 디자인의 키는 `kawaii-synth-cassette`다. 디자인을 기준으로 삼아
-> 디렉터리를 `src/themes/kawaii-synth-cassette/`로 변경한다 (M1 선행 작업).
+테마 키는 `mono-vinyl`, `kawaii-synth-cassette`로 통일되어 있다.
+소스 디렉터리(`src/themes/<key>/`)와 문서가 이 키를 따른다 (M1-0 완료).
 
 TODO: 테마 전환 애니메이션 여부 확정 (프로토타입은 즉시 전환, 트랜지션 없음)
 TODO: 추후 테마 추가 가능성 고려 여부 (레지스트리 확장성)
@@ -262,17 +261,20 @@ TODO: 위젯 레이아웃·스킨 조합의 저장 포함 시점
 - AI 에이전트
 - 소셜 기능 (공유, 팔로우, 공동 플레이리스트)
 
-### 장기 목표 (MVP 제외, 구조만 대비)
+### 확장 백로그 (MVP 이후)
 
-다음은 **MVP에서 구현하지 않는다.** 단, 나중에 추가할 때 구조를 다시 쓰지 않도록
-최소한의 확장 지점만 M1에서 마련한다 (→ `SYSTEM_DESIGN.md` §5 Widget Registry / Host).
+다음은 **MVP(M1–M5) 범위 밖**이며 [`BACKLOG.md`](BACKLOG.md)로 분리했다.
 
-- 위젯 추가 · 삭제
-- 위젯 이동 (드래그)
-- 위젯 크기 변경
-- 개별 위젯 스킨 조합 (테마와 독립적으로 위젯별 스킨 선택)
+- 위젯 자유 이동 및 크기 변경
+- 위젯 추가 · 삭제 및 개별 스킨 선택
+- 테마 · 위젯 스토어
+- Chrome 확장 프로그램
+- AI 음악 추천 및 작곡 지원
 
-MVP의 레이아웃은 **고정**이다. 위젯 레지스트리는 존재하지만 레이아웃은 상수다.
+단, 나중에 추가할 때 구조를 다시 쓰지 않도록 **최소한의 확장 지점만 M1에서
+마련한다** (→ `SYSTEM_DESIGN.md` §5 Widget Registry / Host).
+MVP의 레이아웃은 **고정**이다. 위젯 레지스트리는 존재하지만 레이아웃은 상수이며
+사용자가 편집할 수 없다.
 
 ## 4. 비기능 요구사항
 

@@ -24,9 +24,8 @@
 
 기본값은 `mono-vinyl`이다. 저장된 값이 알려진 키가 아니면 기본값으로 되돌린다.
 
-> ⚠️ M0에서 만든 디렉터리는 `src/themes/kawaii-cassette/`다. 승인된 디자인의 키는
-> `kawaii-synth-cassette`이므로 **디렉터리를 개명한다** (M1 선행 작업).
-> 빈 디렉터리이므로 코드 영향은 없다.
+소스 디렉터리는 키와 1:1로 대응한다: `src/themes/mono-vinyl/`,
+`src/themes/kawaii-synth-cassette/` (M1-0에서 통일 완료).
 
 ## 3. 전환 방식 — 확정
 

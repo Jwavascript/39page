@@ -59,7 +59,7 @@ Vitest · ESLint + Prettier · CSS Variables 기반 테마 시스템
 │   ├── app/               # 앱 루트
 │   ├── components/        # layout / ui
 │   ├── features/          # playback / library / mascot
-│   ├── themes/            # mono-vinyl / kawaii-cassette
+│   ├── themes/            # mono-vinyl / kawaii-synth-cassette
 │   ├── widgets/           # clock / weather
 │   ├── stores/            # Pinia
 │   ├── shared/            # types / utils / storage
