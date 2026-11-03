@@ -160,29 +160,101 @@ YouTube 임베드는 충분히 보여야 한다. 프로토타입 `syncVisibility
 TODO: `ResizeObserver` / `IntersectionObserver` 사용 여부 확정
 (프로토타입은 `getBoundingClientRect` + resize 이벤트)
 
-### 4.6 플레이어 어댑터
+### 4.6 플레이어 어댑터 — 구현 완료 (M1-5)
 
-```
-PlayerAdapter (인터페이스)
-  mount(container: HTMLElement): Promise<void>
-  load(videoId: string, opts: { autoplay: boolean }): void
+계약은 `src/features/playback/PlayerAdapter.ts`에 있다.
+
+```ts
+interface PlayerAdapter {
+  mount(container: HTMLElement): void // 중복 호출은 no-op
+  destroy(): void // 중복 호출은 no-op
+  load(videoId: string): void
   play(): void
   pause(): void
-  destroy(): void
-  readonly state: PlayerState
-  on(event: 'statechange' | 'error' | 'autoplayblocked' | 'ready', handler): void
+  state(): PlayerState // YouTube 숫자값을 노출하지 않는다
+}
+
+type PlayerAdapterFactory = () => PlayerAdapter
+const PLAYER_ADAPTER_FACTORY: InjectionKey<PlayerAdapterFactory>
 ```
 
-- 구현체 `YouTubeIFramePlayerAdapter`가 IFrame API를 감싼다.
-- **store는 인터페이스에만 의존한다.** 테스트는 `FakePlayerAdapter`를 주입한다.
-- API 스크립트는 **전역 싱글턴**이다. `window.onYouTubeIframeAPIReady` 콜백은
-  한 번만 등록하고, 중복 로드를 막는다.
-- API 준비 전 재생 요청은 **지연**한다 (프로토타입의 `wantsPlay` 패턴).
-- 곡 전환은 `load`(= `loadVideoById` / `cueVideoById`)로 한다.
-  **어댑터를 재생성하지 않는다.**
+초안과 달라진 점:
 
-TODO: `PlayerAdapter` 시그니처 최종 확정
-TODO: 어댑터 인스턴스 보유 위치 확정 (store 내부 / 앱 레벨 provide)
+| 초안                          | 구현                   | 이유                                                                                                                                          |
+| ----------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mount(): Promise<void>`      | `mount(): void`        | `YT.Player` 생성 자체는 동기다. 준비 완료는 `onReady` 콜백이므로 구현체가 내부에서 추적한다. Promise를 쓰면 호출부가 불필요하게 비동기가 된다 |
+| `readonly state: PlayerState` | `state(): PlayerState` | 외부 플레이어에 질의하는 동작이므로 메서드가 맞다                                                                                             |
+| `on(event, handler)`          | 없음                   | 이벤트 구독은 M3에서 필요해질 때 더한다. 지금 쓰지 않는 이벤트 시스템을 두지 않는다 (규칙 9)                                                  |
+| `load(videoId, { autoplay })` | `load(videoId)`        | 자동재생 정책은 M3 결정이다                                                                                                                   |
+
+#### 중복 호출 계약
+
+- `mount()`를 이미 마운트된 상태에서 부르면 **no-op**이다. 두 번째 인스턴스를
+  만들지 않고 기존 노드를 유지한다. 실수로 다시 불려도 재생이 끊기지 않게
+  하는 방어다.
+- `destroy()`를 마운트되지 않은 상태에서 불러도 던지지 않는다.
+- `destroy()` 이후 `mount()`를 다시 부르면 새로 만든다.
+
+#### 수명주기
+
+| 사건                          | `mount()`     | `destroy()`   |
+| ----------------------------- | ------------- | ------------- |
+| `PlayerSurface` 최초 마운트   | 1회           | —             |
+| 테마 전환                     | **호출 없음** | **호출 없음** |
+| Vue 재렌더                    | 호출 없음     | 호출 없음     |
+| 반응형 레이아웃 변경          | 호출 없음     | 호출 없음     |
+| `PlayerSurface` 실제 언마운트 | —             | 1회           |
+
+#### DOM 소유권
+
+```
+<section class="player-surface">     Vue 소유 (WidgetHost Grid 의 직계 자식)
+  <div class="player-mount" ref>     Vue 소유 — 안정적인 래퍼
+    └── <div> (어댑터가 생성)          어댑터 소유 — Vue 가 패치하지 않는다
+                                      M3 에서 YT.Player 가 iframe 으로 교체
+  <p class="player-notice">          Vue 소유 — 어댑터 영역 밖의 형제
+</section>
+```
+
+- Vue 템플릿은 `.player-mount` **안에 자식을 두지 않는다.** 같은 영역을
+  Vue와 API가 동시에 건드리면 충돌한다.
+- 개발 단계 안내 문구는 어댑터 영역 밖의 형제다.
+- `PlayerSurface`는 **단일 루트**다. `WidgetHost`가 `grid-area`를 루트에
+  적용하므로 fragment면 배치가 깨진다.
+
+#### 플레이어 영역 크기
+
+`.player-mount`는 `--ratio-video`(16/9)와 `--size-video-min`(200px)을 쓴다.
+`min-height`를 함께 둬서 부모 Grid가 높이를 눌러 찌그러지지 않게 한다.
+브라우저에서 확인한 결과(M1-5): 1440px에서 536×301, 1000px에서 871×490,
+500px에서 433×244 — 모두 비율 1.778이고 200×200 이상이다.
+실제 가시성 준수(200×200 이상 + 50% 초과 노출)는 M3의 가시성 가드에서
+다시 확인한다.
+
+#### 어댑터 보유 위치
+
+`PlayerSurface`의 **비반응형 지역 변수**다. Pinia state나 `ref`에 넣지 않는다.
+팩토리를 `provide`/`inject`로 주입한다.
+근거: [`../decisions/0006-player-adapter-ownership.md`](../decisions/0006-player-adapter-ownership.md)
+
+- 주입되지 않으면 어댑터를 만들지 않는다. **M1-5의 기본 상태가 그것이다.**
+- 테스트는 `global.provide`로 `FakePlayerAdapter`를 넣는다.
+- M3는 `main.ts`에서 한 줄로 실제 어댑터를 주입한다.
+
+#### M3에서 실제 어댑터로 교체하는 방법
+
+1. `src/features/playback/YouTubeIFramePlayerAdapter.ts`를 만들어
+   `PlayerAdapter`를 구현한다. API 스크립트 싱글턴 로드,
+   `window.onYouTubeIframeAPIReady` 단일 등록, `wantsPlay` 지연,
+   숫자 → `PlayerState` 변환을 **이 파일 안에서만** 한다.
+2. `main.ts`에 한 줄을 더한다.
+   `app.provide(PLAYER_ADAPTER_FACTORY, () => new YouTubeIFramePlayerAdapter())`
+3. `PlayerSurface`의 안내 문구를 실제 상태 표시로 교체한다.
+4. `PlayerAdapter` 인터페이스를 바꿔야 하면 M1-5의 수명주기 테스트를 함께
+   수정한다 (`AGENTS.md` 규칙 7).
+
+`FakePlayerAdapter`는 그대로 남겨 같은 계약을 계속 검증한다. 앱 코드에서
+주입하지 않으므로 프로덕션 번들에 포함되지 않는다 (M1-5에서 확인).
 
 ## 5. Widget Registry / Widget Host
 
@@ -312,13 +384,19 @@ TODO: 푸터(테마별 문구)를 셸에 추가할지 결정 — 테마별 copy�
 
 ## 6. 상태 경계
 
-| store      | 책임                                                               | 영속화              |
-| ---------- | ------------------------------------------------------------------ | ------------------- |
-| `playback` | 현재 트랙, 큐, 큐 인덱스, 큐 출처 목록, 플레이어 상태, 상태 메시지 | 현재 트랙 포인터만  |
-| `library`  | 플레이리스트 목록, 선택된 목록, 트랙 CRUD                          | 전체                |
-| `theme`    | 선택된 테마 키                                                     | 전체                |
-| `layout`   | 위젯 레이아웃, 위젯별 스킨                                         | MVP에서는 하지 않음 |
-| `ui`       | 드로어 열림 상태, 모달 열림 상태, 토스트                           | 하지 않음           |
+| store      | 책임                                                      | 영속화                  |
+| ---------- | --------------------------------------------------------- | ----------------------- |
+| `playback` | 현재 트랙, 큐, 큐 인덱스, 플레이어 상태, 상태 메시지·어조 | 현재 트랙 포인터만 (M3) |
+| `library`  | 플레이리스트 목록, 선택된 목록, 트랙 CRUD                 | 전체                    |
+| `theme`    | 선택된 테마 키                                            | 전체                    |
+| `layout`   | 위젯 레이아웃, 위젯별 스킨                                | MVP에서는 하지 않음     |
+| `ui`       | 드로어 열림 상태, 모달 열림 상태, 토스트                  | 하지 않음               |
+
+M1-5 기준 `playback` store는 **데이터 구조와 기본 불변조건만** 갖는다.
+불변조건: `queueIndex`는 큐 범위 안이거나 큐가 비면 `-1`이고, `currentTrack`은
+항상 `queue[queueIndex]`와 일치한다. 큐는 스냅샷 복사다.
+**어댑터 인스턴스나 DOM 노드를 state에 두지 않는다** (ADR 0006).
+실제 재생 명령 연결·이벤트 구독·자동 전환은 M3이다.
 
 의존 방향:
 

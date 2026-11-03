@@ -14,6 +14,7 @@
 import type { Component } from 'vue'
 
 import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/shared/types'
+import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import WidgetPlaceholder from '@/widgets/placeholders/WidgetPlaceholder.vue'
 
 export interface WidgetDefinition {
@@ -94,11 +95,12 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
   player: {
     type: 'player',
     title: 'YouTube 플레이어',
-    component: WidgetPlaceholder,
-    componentProps: { label: 'PLAYER', plannedIn: 'M1-5' },
+    // M1-5에서 플레이스홀더를 PlayerSurface 로 교체했다.
+    // 실제 YouTube 어댑터는 M3에서 주입한다.
+    component: PlayerSurface,
     defaultArea: 'player',
     ...NOT_EDITABLE,
-    // M1-5에서 PlayerSurface 로 교체한다. 재마운트가 금지된다.
+    // 재마운트가 금지된다. iframe 은 부모가 바뀌기만 해도 재로드된다.
     persistent: true,
   },
 }

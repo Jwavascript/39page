@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M1-4 완료, M1-5 이후 미착수).
+> 상태: 개정 (M1-5 완료, M1-6 이후 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -155,38 +155,44 @@ MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·
   M1-6(데크·마스코트), M4(시계·날씨)에서 들어온다. 교체는 레지스트리의
   `component` 한 줄이다.
 
-### M1-5. 플레이어 영속성 구조 ★ M1의 핵심
+### M1-5. 플레이어 영속성 구조 — 완료 ★ M1의 핵심
 
-**M1은 구조 검증만 한다.** `FakePlayerAdapter`로 "테마 전환 시 플레이어
-인스턴스와 DOM 구조가 유지되는가"를 증명한다. 실제 YouTube IFrame API 동작은
-**M3로 분리**한다 (아래 §M1-5 범위 조정 근거).
+**M1-5는 구조 검증만 했다.** `FakePlayerAdapter`로 "테마 전환 시 플레이어
+인스턴스와 DOM 구조가 유지되는가"를 증명했다. 실제 YouTube IFrame API 동작은
+M3이다.
 
-구조 유지에 필요한 **최소 인터페이스**만 M1에 남긴다.
+| #   | 작업                                                                              | 산출물                                       | 상태 |
+| --- | --------------------------------------------------------------------------------- | -------------------------------------------- | ---- |
+| 5.1 | `PlayerAdapter` 최소 인터페이스 (`mount`/`destroy`/`load`/`play`/`pause`/`state`) | `src/features/playback/PlayerAdapter.ts`     | 완료 |
+| 5.2 | `FakePlayerAdapter` — 계약을 실제로 구현하고 호출을 기록                          | `src/features/playback/FakePlayerAdapter.ts` | 완료 |
+| 5.3 | `PlayerSurface.vue` — 안정 래퍼 + 어댑터 소유 자식 노드                           | `src/features/playback/PlayerSurface.vue`    | 완료 |
+| 5.4 | `playback` store — 상태 **형태**와 기본 불변조건                                  | `src/stores/playback.ts`                     | 완료 |
+| 5.5 | 어댑터 팩토리 주입 지점 (`provide`/`inject`)                                      | `PlayerAdapter.ts`                           | 완료 |
+| 5.6 | Widget Registry 의 player 를 `PlayerSurface` 로 교체                              | `src/widgets/registry.ts`                    | 완료 |
+| 5.7 | 플레이어 영역 16:9 · 최소 200×200 공간 확보                                       | `PlayerSurface.vue`                          | 완료 |
 
-| #   | 작업                                                                                        | 산출물                   |
-| --- | ------------------------------------------------------------------------------------------- | ------------------------ |
-| 5.1 | `PlayerAdapter` 최소 인터페이스 (`mount` / `destroy` / `load` / `play` / `pause` / `state`) | `src/features/playback/` |
-| 5.2 | `FakePlayerAdapter` — 호출 기록만 하는 구현체                                               | `src/features/playback/` |
-| 5.3 | `PlayerSurface.vue` — 안정 래퍼 + 어댑터 소유 자식 노드                                     | `src/features/playback/` |
-| 5.4 | `playback` store — 상태 **형태**만 (현재 트랙, 큐, 큐 인덱스, 재생 플래그)                  | `src/stores/playback.ts` |
-| 5.5 | 어댑터 주입 지점 (테스트에서 교체 가능)                                                     | `src/app/`               |
+**통합 테스트 (완료)**
 
-`FakePlayerAdapter`는 프로덕션 코드에 두고 M3의 실제 구현과 같은 인터페이스를
-공유한다. 테스트 전용 디렉터리에 두면 M3에서 인터페이스가 갈라질 위험이 있다.
+| #    | 검증                                                         | 결과 |
+| ---- | ------------------------------------------------------------ | ---- |
+| 5.8  | 테마 전환 후 `playback` 상태 동일 (트랙·큐·인덱스·재생 상태) | 통과 |
+| 5.9  | 테마 전환 후 플레이어 호스트 DOM 노드가 **동일 인스턴스**    | 통과 |
+| 5.10 | 테마 전환 시 `PlayerAdapter.mount` **재호출 없음**           | 통과 |
 
-**통합 테스트 (M1 필수, `MVP_SPEC.md` §5)**
+- 어댑터 수명주기: 최초 마운트 `mount()` 1회, 테마 전환·재렌더·반응형 변경에서
+  **0회**, 실제 언마운트에서 `destroy()` 1회. 테마 전환으로 `destroy()`가
+  불리지 않는다.
+- 어댑터는 `PlayerSurface`의 비반응형 지역 변수다. Pinia state·`ref`에 넣지
+  않는다 (ADR 0006).
+- `WidgetHost`·`DashboardShell`·`src/app/layout.ts`를 **수정하지 않았다.**
+  주입을 쓴 덕분이다. 다섯 위젯의 `instanceId`와 `GridArea`도 그대로다.
+- 돌연변이 검증으로 테스트가 회귀를 실제로 잡는지 확인했다: player `:key`에
+  테마 포함 / 테마 전환 시 재생성 / Vue 가 어댑터 영역 안을 렌더 — 세 경우 모두
+  관련 테스트가 실패하고 원복 후 통과했다.
 
-| #   | 검증                                                           |
-| --- | -------------------------------------------------------------- |
-| 5.6 | 테마 전환 후 `playback` 상태 동일 (트랙·큐·인덱스·재생 플래그) |
-| 5.7 | 테마 전환 후 플레이어 호스트 DOM 노드가 **동일 인스턴스**      |
-| 5.8 | 테마 전환 시 `PlayerAdapter.mount` **재호출 없음**             |
-
-세 테스트 모두 실제 재생 없이 **구조만으로 검증 가능하다.**
-
-**M3로 이동한 항목**: `YouTubeIFramePlayerAdapter` 본구현, API 스크립트 싱글턴
-로드, `wantsPlay` 지연, 가시성 가드, 큐 진행과 `ENDED` 자동 전환,
-오류·자동재생 차단 처리, 트랜스포트 UI.
+**M3로 넘긴 항목**: `YouTubeIFramePlayerAdapter` 본구현, API 스크립트 싱글턴
+로드, `wantsPlay` 지연, 가시성 가드의 실제 동작, 큐 진행과 `ENDED` 자동 전환,
+오류·자동재생 차단 처리, 트랜스포트 UI, 플레이리스트와 큐 연동.
 
 ### M1-6. 데크 아트 (테마 외형)
 
@@ -208,7 +214,7 @@ MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·
 
 - [ ] 두 테마가 전환되고 토큰이 올바르게 적용된다
 - [ ] 선택한 테마가 재시작 후 복원된다
-- [ ] 통합 테스트 5.6 / 5.7 / 5.8 통과
+- [x] 통합 테스트 5.8 / 5.9 / 5.10 통과
 - [ ] 데크 아트 2종이 테마에 따라 전환된다
 - [ ] `npm run type-check` / `test` / `lint` / `build` 전부 통과
 - [ ] 승인된 디자인의 색·좌표를 변경하지 않았다 (규칙 6)
@@ -313,16 +319,15 @@ M1의 구조 테스트(5.6–5.8)는 M1에서 작성해 유지한다. M5의 통�
 
 해당 단계 전에 확정해야 한다. `docs/decisions/`에 기록한다.
 
-| 항목                                     | 필요 시점 | 문서                    |
-| ---------------------------------------- | --------- | ----------------------- |
-| 토큰 이름 확정                           | M1-2      | `THEME_SYSTEM.md` §4.2  |
-| `PlayerAdapter` 최소 시그니처            | M1-5      | `SYSTEM_DESIGN.md` §4.6 |
-| SVG `id` 접두사 규칙                     | M1-6      | `THEME_SYSTEM.md` §8    |
-| `prompt()`·`confirm()` 대체 UI           | M2        | `MVP_SPEC.md` F4        |
-| 반복(loop) 동작                          | M3        | `MVP_SPEC.md` F3        |
-| 날씨 API 제공자                          | M4        | `MVP_SPEC.md` F7        |
-| 마스코트 도트 패턴 테마별 차이           | M4        | `THEME_SYSTEM.md` §6    |
-| 드래그 라이브러리 (DOM 재배치 금지 제약) | 백로그    | `BACKLOG.md` §1         |
+| 항목                                     | 필요 시점 | 문서                   |
+| ---------------------------------------- | --------- | ---------------------- |
+| 토큰 이름 확정                           | M1-2      | `THEME_SYSTEM.md` §4.2 |
+| SVG `id` 접두사 규칙                     | M1-6      | `THEME_SYSTEM.md` §8   |
+| `prompt()`·`confirm()` 대체 UI           | M2        | `MVP_SPEC.md` F4       |
+| 반복(loop) 동작                          | M3        | `MVP_SPEC.md` F3       |
+| 날씨 API 제공자                          | M4        | `MVP_SPEC.md` F7       |
+| 마스코트 도트 패턴 테마별 차이           | M4        | `THEME_SYSTEM.md` §6   |
+| 드래그 라이브러리 (DOM 재배치 금지 제약) | 백로그    | `BACKLOG.md` §1        |
 
 ## 작업 방식
 
