@@ -13,6 +13,7 @@
  *
  * 누가 무엇을 쓰는가:
  *   `RecordLibraryDrawer` → `PlaybackRequests` (재생 요청만)
+ *   `PlayerTransport`     → `PlaybackTransport` (버튼 3개)
  *   `PlayerSurface`       → `attachAdapter` (플레이어 연결만)
  */
 import type { InjectionKey } from 'vue'
@@ -45,6 +46,32 @@ export interface PlaybackRequests {
   playTrack(playlistId: string, trackId: string): PlayRequestResult
 }
 
+/**
+ * 트랜스포트 명령 (M3-3). 컨트롤 3개가 쓰는 부분이다.
+ *
+ * UI 는 `PlayerAdapter` 도 YouTube API 도 직접 부르지 않는다. 여기를 거친다.
+ * 반복·셔플·탐색·볼륨 명령을 두지 않는다 (M3-0.1 · 0.3 · 0.4).
+ */
+export interface PlaybackTransport {
+  /**
+   * 재생 중이면 멈추고, 아니면 재생한다.
+   *
+   * 현재 트랙이 없으면 아무 일도 하지 않는다. 상태별 동작은
+   * `createPlaybackCoordinator.ts` 의 표에 있다.
+   */
+  togglePlay(): void
+
+  /**
+   * 다음 곡으로 간다.
+   *
+   * 큐 끝에서는 **움직이지 않고** `false`. 처음으로 돌아가지 않는다 (M3-0.1).
+   */
+  next(): boolean
+
+  /** 이전 곡으로 간다. 큐 처음에서는 움직이지 않고 `false`. */
+  previous(): boolean
+}
+
 /** `attachAdapter()` 가 돌려주는 연결. */
 export interface PlayerAttachment {
   /**
@@ -58,7 +85,7 @@ export interface PlayerAttachment {
   detach(): void
 }
 
-export interface PlaybackCoordinator extends PlaybackRequests {
+export interface PlaybackCoordinator extends PlaybackRequests, PlaybackTransport {
   /**
    * 플레이어 어댑터를 등록한다.
    *

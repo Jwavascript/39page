@@ -318,10 +318,39 @@ Coordinator 로 옮겨졌다 (§6.1, ADR 0009). `PlayerSurface` 는 어댑터를
 코디네이터에 등록하고, 코디네이터가 준 핸들러를 `mount()` 에 그대로 넘긴다.
 어댑터의 수명 책임은 그대로 `PlayerSurface` 에 있다.
 
-**아직 하지 않은 것**: 트랜스포트 버튼과 `role="status"` 상태 영역(M3-3),
-가시성 가드(M3-4), 오류 코드별 상세 안내·외부 링크·재시도(M3-5).
-`.player-notice` 는 아직 개발 단계 한 줄이고, 안내 메시지가 있으면 그것을
-대신 보여준다.
+**M3-3 에서 더한 것**: `NOW PLAYING` 블록 · 트랜스포트 3개 ·
+`role="status"` 상태 영역. 전부 `.player-mount` **밖의 형제**다 — 컨트롤이
+영상을 덮으면 개발자 정책 III.I.6 에 걸린다 (§8.1).
+
+```
+<section class="player-surface">          Vue 소유 (WidgetHost Grid 의 직계 자식)
+  <p class="eyebrow">  <p class="now-title">  <p class="now-sub">
+  <div class="player-mount" ref>          Vue 소유 — 안정적인 래퍼
+    └── <div data-youtube-player-host>      어댑터 소유
+          └── <iframe>                      YT.Player 가 교체해 만든 것
+  <PlayerTransport>                       Vue 소유 — 영상 밖의 형제
+  <p class="status" role="status">        Vue 소유 — 라이브 리전
+  <p class="mute-note">
+</section>
+```
+
+| 파일                           | 역할                                                       |
+| ------------------------------ | ---------------------------------------------------------- |
+| `playback/useTransport.ts`     | 뷰 모델과 명령. store 를 읽고 코디네이터를 부른다 (규칙 3) |
+| `playback/PlayerTransport.vue` | 버튼 3개. **순수 표현** — store 도 코디네이터도 모른다     |
+| `playback/PlayerSurface.vue`   | 루트 · 어댑터 수명 · 조립                                  |
+
+UI 는 `PlayerAdapter` 도 YouTube API 도 직접 부르지 않는다. 전부
+`PlaybackTransport` 를 거친다 (ADR 0009).
+
+재생 상태를 어디에 적는지와 토글 버튼 이름은 ADR 0010 에 있다.
+**라이브 리전에는 의도적으로 띄운 안내만** 담는다 — 전이 상태를 넣으면
+곡마다 서너 번씩 읽힌다.
+
+**아직 하지 않은 것**: 가시성 가드(M3-4), 오류 코드별 상세 안내 ·
+`YOUTUBE에서 열기 ↗` 외부 링크 · 재시도(M3-5), 승인된 디자인의
+`.video-placeholder`(영상 전 안내 — `.player-mount` 안에 들어가야 하는데
+그 영역은 어댑터 소유라 DOM 소유 구조를 먼저 정해야 한다).
 
 ## 5. Widget Registry / Widget Host
 

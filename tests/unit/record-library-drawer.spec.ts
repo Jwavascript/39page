@@ -474,7 +474,7 @@ describe('C. 영속화와 보호', () => {
     useLibraryStore().restore()
     await openDrawer(wrapper)
 
-    const banner = wrapper.get('[role="status"]')
+    const banner = wrapper.get('.status-region')
     expect(banner.text()).toContain('자동 저장이 중단')
     expect(banner.text()).toContain('원본 데이터는 보존')
   })
@@ -489,7 +489,7 @@ describe('C. 영속화와 보호', () => {
     useLibraryStore().restore()
     await openDrawer(wrapper)
 
-    expect(wrapper.get('[role="status"]').text()).toContain('저장소를 쓸 수 없습니다')
+    expect(wrapper.get('.status-region').text()).toContain('저장소를 쓸 수 없습니다')
   })
 
   it('22. persisted: false 를 알린다', async () => {
@@ -531,7 +531,7 @@ describe('C. 영속화와 보호', () => {
     library.createPlaylist('A')
     await openDrawer(wrapper)
 
-    expect(wrapper.get('[role="status"]').text()).toBe('')
+    expect(wrapper.get('.status-region').text()).toBe('')
     expect(wrapper.find('.unsaved').exists()).toBe(false)
   })
 

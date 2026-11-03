@@ -121,11 +121,16 @@ describe('A. 어댑터 수명주기', () => {
   })
 
   it('어댑터 팩토리가 주입되지 않으면 어댑터를 만들지 않는다', () => {
-    // M1-5 의 기본 상태. 실제 어댑터는 M3 에서 주입한다.
     const wrapper = mount(PlayerSurface, { attachTo: document.body })
 
     expect(wrapper.find('.player-mount').element.children).toHaveLength(0)
-    expect(wrapper.text()).toContain('NOT CONNECTED')
+    // 빈 영상 칸만 보여주고 아무 말도 하지 않으면 화면이 침묵한다.
+    expect(wrapper.get('.status').text()).toBe('플레이어를 연결하지 못했습니다.')
+    expect(wrapper.get('.status').classes()).toContain('is-warning')
+    // 컨트롤은 있지만 누를 수 없다.
+    expect(
+      wrapper.findAll('.round').every((button) => button.attributes('disabled') !== undefined),
+    ).toBe(true)
   })
 })
 
@@ -171,11 +176,18 @@ describe('어댑터 계약 — 중복 호출', () => {
     const fake = new FakePlayerAdapter()
 
     expect(fake.state()).toBe('idle')
+
+    // 적재는 플레이어를 세우므로 loading 이다.
     fake.load('dQw4w9WgXcQ')
     expect(fake.state()).toBe('loading')
+
+    // 명령은 상태를 바꾸지 않는다. 외부 플레이어가 알려줘야 바뀐다.
     fake.play()
+    expect(fake.state()).toBe('loading')
+
+    fake.emitStateChange('playing')
     expect(fake.state()).toBe('playing')
-    fake.pause()
+    fake.emitStateChange('paused')
     expect(fake.state()).toBe('paused')
   })
 
@@ -271,19 +283,42 @@ describe('B. DOM 인스턴스 동일성', () => {
     )
   })
 
-  it('안내 문구가 어댑터 소유 영역 밖에 있다', () => {
+  it('안내 문구와 트랜스포트가 어댑터 소유 영역 밖에 있다', () => {
     const { wrapper, fake } = mountSurfaceWithFake()
-    const notice = wrapper.get('.player-notice').element
     const host = wrapper.get('.player-mount').element
 
-    expect(host.contains(notice)).toBe(false)
-    expect(fake.hostNode?.contains(notice)).toBe(false)
+    // 컨트롤이 영상 위를 덮으면 YouTube 개발자 정책 III.I.6 에 걸린다.
+    for (const selector of ['.status', '.action-row', '.eyebrow', '.now-title', '.mute-note']) {
+      const element = wrapper.get(selector).element
+      expect(host.contains(element)).toBe(false)
+      expect(fake.hostNode?.contains(element)).toBe(false)
+    }
   })
 
-  it('동작하는 것처럼 보이는 재생 컨트롤을 만들지 않는다', () => {
+  it('컨트롤은 네이티브 button 세 개뿐이다', () => {
     const { wrapper } = mountSurfaceWithFake()
+    const buttons = wrapper.findAll('button')
 
-    expect(wrapper.findAll('button')).toHaveLength(0)
+    // 이전 · 재생/일시정지 · 다음. 탐색 바도 볼륨도 없다 (M3-0.4).
+    expect(buttons).toHaveLength(3)
+    expect(buttons.map((button) => button.attributes('type'))).toEqual([
+      'button',
+      'button',
+      'button',
+    ])
+    expect(buttons.map((button) => button.attributes('aria-label'))).toEqual([
+      '이전 곡',
+      '재생',
+      '다음 곡',
+    ])
+    // 네이티브 button 이어야 Tab · Enter · Space 가 공짜로 동작한다.
+    // role 을 덮어쓰면 보조기기가 버튼으로 보지 않는다.
+    expect(buttons.map((button) => button.element.tagName)).toEqual(['BUTTON', 'BUTTON', 'BUTTON'])
+    expect(buttons.map((button) => button.attributes('role'))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
     expect(wrapper.findAll('input')).toHaveLength(0)
     expect(wrapper.find('iframe').exists()).toBe(false)
   })
@@ -357,15 +392,23 @@ describe('C. 이벤트 전달과 store 반영 (M3-1)', () => {
     expect(playback.playerState).toBe('idle')
   })
 
-  it('어댑터가 붙어 있으면 안내 문구가 실제 상태를 적는다', async () => {
+  it('재생 상태는 부제에 적고 라이브 리전은 비워둔다', async () => {
     const { wrapper, fake } = mountSurfaceWithFake()
+    usePlaybackStore().setQueue(
+      [{ id: 't1', source: 'youtube', videoId: 'aaaaaaaaaaa', title: 'One' }],
+      0,
+    )
+    await nextTick()
 
-    // 어댑터가 붙어 있는데 NOT CONNECTED 라고 적으면 화면이 거짓을 말한다.
-    expect(wrapper.get('.player-notice').text()).toBe('YOUTUBE PLAYER / IDLE')
+    expect(wrapper.get('.now-sub').text()).toBe('1 / 1 · YOUTUBE · 대기 중')
+    // 큐가 생긴 뒤에는 라이브 리전이 비어 있다. 상태를 여기 적으면
+    // 바뀔 때마다 보조기기가 읽는다 (과도한 반복 알림).
+    expect(wrapper.get('.status').text()).toBe('')
 
     fake.emitStateChange('playing')
     await nextTick()
 
-    expect(wrapper.get('.player-notice').text()).toBe('YOUTUBE PLAYER / PLAYING')
+    expect(wrapper.get('.now-sub').text()).toBe('1 / 1 · YOUTUBE · 재생 중')
+    expect(wrapper.get('.status').text()).toBe('')
   })
 })

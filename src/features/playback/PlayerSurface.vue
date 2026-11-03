@@ -1,14 +1,17 @@
 <script setup lang="ts">
 /**
- * 플레이어를 표시할 **안정적인 DOM 영역**.
+ * 플레이어 영역 — `NOW PLAYING` · 영상 · 트랜스포트 · 상태.
+ *
+ * 승인된 디자인의 `.music` 블록 구조를 따른다.
  *
  * DOM 소유권이 둘로 나뉜다.
- *   `.player-surface` · `.player-mount` · `.player-notice` → Vue 소유
+ *   `.player-surface` 와 그 자식들 → Vue 소유
  *   `.player-mount` 의 **자식** → 어댑터 소유 (Vue가 렌더·패치하지 않는다)
  *
  * `.player-mount` 안에 Vue 템플릿이 자식을 두지 않는 것이 핵심이다.
  * `YT.Player` 가 어댑터의 자식 노드를 iframe으로 교체하는데, Vue가 같은 영역을
- * 패치하면 충돌한다.
+ * 패치하면 충돌한다. 트랜스포트 컨트롤도 **그 영역 밖의 형제**다 — 영상을
+ * 가리지 않는다 (개발자 정책 III.I.6).
  *
  * 왜 이렇게까지 하는가: 플레이어 iframe은 언마운트는 물론 **부모가 바뀌기만
  * 해도 재로드된다.** 따라서 이 컴포넌트는 테마 전환·재렌더·반응형 변경에서
@@ -22,10 +25,13 @@
  */
 import { computed, inject, onMounted, onUnmounted, useTemplateRef } from 'vue'
 
-import { usePlaybackStore } from '@/stores/playback'
-
 import { PLAYER_ADAPTER_FACTORY, type PlayerAdapter } from './PlayerAdapter'
+import PlayerTransport from './PlayerTransport.vue'
 import { PLAYBACK_COORDINATOR, type PlayerAttachment } from './playbackCoordinator'
+import { useTransport } from './useTransport'
+
+/** 어댑터 팩토리가 없을 때. 실제 실패 상태이므로 경고로 알린다. */
+const NO_ADAPTER_STATUS = '플레이어를 연결하지 못했습니다.'
 
 const mountHost = useTemplateRef<HTMLElement>('mountHost')
 
@@ -46,7 +52,8 @@ const createAdapter = inject(PLAYER_ADAPTER_FACTORY, null)
  */
 const coordinator = inject(PLAYBACK_COORDINATOR, null)
 
-const playback = usePlaybackStore()
+/** 화면에 보일 값과 버튼 명령. 로직은 composable 에 있다 (규칙 3). */
+const transport = useTransport()
 
 /**
  * 어댑터 인스턴스를 **반응형 state에 두지 않는다.**
@@ -70,7 +77,7 @@ onMounted(() => {
    * `mount()` 에 넘기므로, 첫 사건이 오기 전에 연결이 서 있어야 한다.
    *
    * 어댑터가 store 를 직접 바꾸지 않는다는 단방향은 그대로다 (ADR 0006).
-   * 사건을 store 로 옮기는 일은 이제 코디네이터가 한다 (ADR 0009).
+   * 사건을 store 로 옮기는 일은 코디네이터가 한다 (ADR 0009).
    */
   attachment = coordinator?.attachAdapter(adapter) ?? null
   adapter.mount(container, attachment?.events)
@@ -85,44 +92,87 @@ onUnmounted(() => {
 })
 
 /**
- * 개발 단계 표시.
+ * 라이브 리전에 넣을 문구.
  *
- * 어댑터가 주입됐으면 **실제 플레이어 상태**를 적고, 안내 메시지가 있으면
- * 그것을 대신 보여준다. 어댑터가 붙어 있는데도 "NOT CONNECTED" 라고 적거나,
- * 재생이 막힌 이유를 어디에도 적지 않으면 화면이 거짓을 말한다.
- *
- * 제대로 된 상태 영역(`role="status"` 라이브 리전, 경고 색, 외부 링크)과
- * 재생 컨트롤은 M3-3 · M3-5 다. 여기서는 기존 한 줄을 그대로 쓴다.
+ * 의도적으로 띄운 안내만 담는다. 재생 상태(`재생 중` 등)는 **부제**에 적는다 —
+ * 여기 넣으면 상태가 바뀔 때마다 보조기기가 읽어 시끄러워진다.
+ * 같은 문구가 유지되면 DOM 이 바뀌지 않아 다시 읽히지도 않는다.
  */
-const notice = computed<string>(() => {
-  if (createAdapter === null) return 'YOUTUBE PLAYER / NOT CONNECTED'
-  if (playback.statusMessage !== '') return playback.statusMessage
-  return `YOUTUBE PLAYER / ${playback.playerState.toUpperCase()}`
-})
+const statusText = computed<string>(() =>
+  createAdapter === null ? NO_ADAPTER_STATUS : transport.statusText.value,
+)
+
+const statusIsWarning = computed<boolean>(() => createAdapter === null || transport.isWarning.value)
 </script>
 
 <template>
   <section class="player-surface">
+    <p class="eyebrow">NOW PLAYING · YOUTUBE</p>
+    <p class="now-title" :title="transport.title.value">{{ transport.title.value }}</p>
+    <p class="now-sub">{{ transport.subtitle.value }}</p>
+
     <!--
       어댑터 소유 영역. Vue 템플릿은 이 안에 자식을 두지 않는다.
       어댑터가 자신의 자식 노드를 만들고, 그 안의 노드가 iframe 이 된다.
     -->
     <div ref="mountHost" class="player-mount" />
 
-    <!--
-      어댑터 소유 영역 **밖**의 형제로 둔다.
-      동작하지 않는 재생 컨트롤을 만들지 않는다.
-    -->
-    <p class="player-notice">{{ notice }}</p>
+    <!-- 어댑터 소유 영역 **밖**의 형제다. 영상을 덮지 않는다. -->
+    <PlayerTransport
+      :shows-pause="transport.showsPause.value"
+      :can-toggle="transport.canToggle.value"
+      :can-previous="transport.canPrevious.value"
+      :can-next="transport.canNext.value"
+      :toggle-label="transport.toggleLabel.value"
+      @previous="transport.previous"
+      @toggle="transport.toggle"
+      @next="transport.next"
+    />
+
+    <p class="status" :class="{ 'is-warning': statusIsWarning }" role="status" aria-live="polite">
+      {{ statusText }}
+    </p>
+
+    <p class="mute-note">YouTube 공식 영상·컨트롤은 그대로 표시됩니다.</p>
   </section>
 </template>
 
 <style scoped>
+/*
+ * 승인된 디자인의 `.music` 블록을 따른다. 간격은 각 요소의 margin/padding 이
+ * 정한다 (레퍼런스와 같은 방식). 컨테이너에 gap 을 두지 않는다.
+ */
 .player-surface {
-  display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 8px;
+}
+
+/* 승인된 디자인의 `.eyebrow` 값을 따른다. */
+.eyebrow {
+  margin: 0;
+  color: var(--eyebrow-text-color);
+  font: 11px var(--font-mono);
+  letter-spacing: 0.12em;
+}
+
+/* 승인된 디자인의 `.now-title` 값을 따른다. */
+.now-title {
+  overflow: hidden;
+  margin: 10px 0 0;
+  color: var(--now-title-text-color);
+  font-size: clamp(18px, 1.6vw, 23px);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 승인된 디자인의 `.now-sub` 값을 따른다. */
+.now-sub {
+  overflow: hidden;
+  margin: 7px 0 14px;
+  color: var(--now-sub-text-color);
+  font: 12px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /*
@@ -157,11 +207,30 @@ const notice = computed<string>(() => {
   border: 0;
 }
 
-.player-notice {
+/*
+ * 승인된 디자인의 `.status` 값을 따른다.
+ *
+ * `min-height` 덕에 문구가 비어도 레이아웃이 흔들리지 않는다. 그래서
+ * 재생 중에는 비워둘 수 있다.
+ */
+.status {
+  min-height: 39px;
   margin: 0;
-  color: var(--text-dim-color);
+  padding-top: 10px;
+  color: var(--status-text-color);
+  font: 12px/1.5 var(--font-mono);
+}
+
+/* 승인된 디자인의 `.status.warning` 값을 따른다. */
+.status.is-warning {
+  color: var(--status-warning-text-color);
+}
+
+/* 승인된 디자인의 `.mute-note` 값을 따른다. */
+.mute-note {
+  margin: 0;
+  padding-top: 5px;
+  color: var(--mute-note-text-color);
   font: 10px var(--font-mono);
-  letter-spacing: 0.12em;
-  text-align: center;
 }
 </style>

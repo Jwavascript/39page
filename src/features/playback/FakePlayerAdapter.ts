@@ -10,10 +10,14 @@
  * 요소를 만들지 않는다. 생성하는 노드는 보이지 않는 빈 노드다.
  * 앱 코드에서 주입하지 않으며, 테스트에서만 주입한다.
  *
- * **명령과 사건을 분리한다.** `play()` 같은 명령은 `calls` 와 `state()` 만
- * 바꾸고 이벤트를 쏘지 않는다. 실제 어댑터도 그렇다 — 사건은 외부 플레이어가
- * 알려주는 것이고 명령의 동기적 결과가 아니다. 테스트가 그 사이의 틈을
- * 재현할 수 있도록 `emit*` 함수를 따로 둔다.
+ * **명령은 상태를 바꾸지 않는다.** `play()` / `pause()` 는 호출만 기록한다.
+ * 실제 어댑터도 그렇다 — 재생 상태는 외부 플레이어가 `onStateChange` 로
+ * 알려주는 것이지 명령의 동기적 결과가 아니다. 테스트가 그 틈을 재현할 수
+ * 있도록 `emit*` 함수를 따로 둔다.
+ *
+ * 예외는 `load()` 다. 실제 어댑터는 `YT.Player` 를 만들면서 `loading` 을
+ * 알리므로, Fake 도 그 자리에서 알린다. 이 한 가지가 어긋나면 "재생을
+ * 눌렀는데 버튼이 아직 ▶ 다" 같은 차이가 테스트에만 생긴다.
  */
 import type { PlayerState } from '@/shared/types'
 
@@ -93,17 +97,16 @@ export class FakePlayerAdapter implements PlayerAdapter {
 
   load(videoId: string, options?: PlayerLoadOptions): void {
     this.calls.load.push({ videoId, autoplay: options?.autoplay === true })
-    this.currentState = 'loading'
+    // 실제 어댑터가 플레이어를 만들며 알리는 것과 같다.
+    this.emitStateChange('loading')
   }
 
   play(): void {
     this.calls.play += 1
-    this.currentState = 'playing'
   }
 
   pause(): void {
     this.calls.pause += 1
-    this.currentState = 'paused'
   }
 
   state(): PlayerState {

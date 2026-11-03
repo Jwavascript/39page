@@ -100,6 +100,9 @@ TODO: 테마 전환 시 토스트/피드백 표시 여부
   `onAutoplayBlocked`, `onError`.
 - 상태 메시지는 `role="status"` `aria-live="polite"` 영역에 출력한다.
   오류·경고는 `warning` 변형으로 표시한다.
+  → 구현(M3-3): 그 영역에는 **의도적으로 띄운 안내만** 담는다. 재생·버퍼링
+  같은 전이 상태는 `NOW PLAYING` 부제에 적는다. 라이브 리전에 넣으면 곡마다
+  서너 번씩 읽힌다 (ADR 0010).
 - 재생 실패 시 `YOUTUBE에서 열기 ↗` 외부 링크를 노출한다
   (`target="_blank"`, `rel="noopener noreferrer"`).
 

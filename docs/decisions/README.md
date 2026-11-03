@@ -36,6 +36,7 @@
 | [0007](0007-library-data-protection.md)       | 읽지 못한 라이브러리 원본은 보호 상태로 두고 덮어쓰지 않는다                         | 채택 |
 | [0008](0008-player-adapter-event-contract.md) | 플레이어 어댑터 이벤트는 mount 시 넘기는 핸들러 묶음으로 전달한다                    | 채택 |
 | [0009](0009-playback-coordinator.md)          | 라이브러리와 재생은 Playback Coordinator 가 잇고, 어댑터는 PlayerSurface 가 등록한다 | 채택 |
+| [0010](0010-transport-state-announcements.md) | 재생 상태는 라이브 리전이 아니라 부제에 적고, 토글 버튼은 상태에 맞는 이름을 쓴다    | 채택 |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

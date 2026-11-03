@@ -260,7 +260,7 @@ describe('B. 큐 진행', () => {
 
     expect(playback.queueIndex).toBe(1)
     expect(player().loadCalls).toEqual([VIDEOS[1]])
-    expect(wrapper.get('.player-notice').text()).toBe('마지막 곡까지 재생했습니다.')
+    expect(wrapper.get('.status').text()).toBe('마지막 곡까지 재생했습니다.')
   })
 })
 
@@ -285,7 +285,7 @@ describe('C. 재생 불가 영상', () => {
     player().fireError(150)
     await nextTick()
 
-    const notice = wrapper.get('.player-notice').text()
+    const notice = wrapper.get('.status').text()
     expect(notice).toContain('오류 150')
     expect(notice).toContain('다음 곡을 직접 선택')
   })
@@ -301,7 +301,7 @@ describe('C. 재생 불가 영상', () => {
 
     expect(playback.queueIndex).toBe(2)
     expect(player().loadCalls).toEqual([VIDEOS[2]])
-    expect(wrapper.get('.player-notice').text()).not.toContain('오류')
+    expect(wrapper.get('.status').text()).not.toContain('오류')
   })
 })
 

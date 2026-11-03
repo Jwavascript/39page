@@ -296,6 +296,38 @@ describe('C. 큐 진행', () => {
     expect(playback.currentTrack?.title).toBe('Track 2')
   })
 
+  it('코디네이터의 next / previous 가 큐 경계를 넘지 않는다', () => {
+    // 버튼도 비활성이지만 여기서 한 번 더 막는다. UI 가드가 사라져도
+    // 큐가 처음으로 되감기면 안 된다 (M3-0.1).
+    const { playback, coordinator, fake, playlistId } = setup()
+    coordinator.playPlaylist(playlistId)
+
+    expect(coordinator.previous()).toBe(false)
+    expect(playback.queueIndex).toBe(0)
+    expect(fake.calls.load).toHaveLength(1)
+
+    expect(coordinator.next()).toBe(true)
+    expect(coordinator.next()).toBe(true)
+    expect(playback.queueIndex).toBe(2)
+
+    expect(coordinator.next()).toBe(false)
+    expect(playback.queueIndex).toBe(2)
+    expect(playback.currentTrack?.title).toBe('Track 3')
+    expect(fake.calls.load).toHaveLength(3)
+
+    expect(coordinator.previous()).toBe(true)
+    expect(playback.queueIndex).toBe(1)
+  })
+
+  it('빈 큐에서 코디네이터의 next / previous 가 아무 일도 하지 않는다', () => {
+    const { playback, coordinator, fake } = setup()
+
+    expect(coordinator.next()).toBe(false)
+    expect(coordinator.previous()).toBe(false)
+    expect(playback.queueIndex).toBe(-1)
+    expect(fake.calls.load).toEqual([])
+  })
+
   it('빈 큐에서 advance / back 이 움직이지 않는다', () => {
     const { playback } = setup()
 

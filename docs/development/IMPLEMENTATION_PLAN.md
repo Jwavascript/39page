@@ -477,7 +477,7 @@ M3-0 의 선행 결정이다.
 
 ---
 
-### M3-3. 트랜스포트 UI와 상태 메시지
+### M3-3. 트랜스포트 UI와 상태 메시지 — 완료 (2026-11-03)
 
 **작업 범위** — 승인된 디자인의 컨트롤 3개와 상태 영역.
 
@@ -489,13 +489,43 @@ M3-0 의 선행 결정이다.
 | 3.4 | `NOW PLAYING` · 제목 · 부제 영역                                                             |
 | 3.5 | `PlayerSurface` 의 `NOT CONNECTED` 안내를 실제 상태 표시로 교체                              |
 
-**산출물**: `PlayerSurface.vue` 확장 또는 형제 컴포넌트, `playback` 메시지 연결.
+**산출물**: `src/features/playback/useTransport.ts` (뷰 모델) ·
+`PlayerTransport.vue` (버튼 3개) · `PlayerSurface.vue` (조립),
+`playbackCoordinator.ts` 에 `PlaybackTransport`
+(`togglePlay` / `next` / `previous`), **ADR 0010**.
 
-**완료 기준**: 키보드만으로 조작 가능하고 상태 변화가 보조기기에 전달된다.
-`playback.statusMessage` / `statusTone` 을 쓰고 새 상태를 만들지 않는다.
+**완료 기준** — 전부 충족 ✔
 
-**테스트**: 버튼 활성/비활성 조건, 상태 메시지 갱신, 접근성 속성,
-`PlayerSurface` DOM 동일성 유지.
+- 키보드만으로 조작 가능 — 네이티브 `<button>` 3개, 비활성은 `disabled`. ✔
+- 상태 변화가 보조기기에 전달된다 — `role="status"` `aria-live="polite"`. ✔
+- `playback.statusMessage` / `statusTone` 을 쓰고 새 상태를 만들지 않았다. ✔
+
+**버튼별 상태 전이** (ADR 0010)
+
+| 상태      | 토글 | 누르면                      | 이전             | 다음          |
+| --------- | ---- | --------------------------- | ---------------- | ------------- |
+| 큐 없음   | ▶    | 비활성                      | 비활성           | 비활성        |
+| `idle`    | ▶    | `play()`                    | 첫 곡이면 비활성 | 끝이면 비활성 |
+| `loading` | Ⅱ    | `pause()` — 시작 취소       | 〃               | 〃            |
+| `playing` | Ⅱ    | `pause()`                   | 〃               | 〃            |
+| `paused`  | ▶    | `play()`                    | 〃               | 〃            |
+| `ended`   | ▶    | `play()` — 그 자리에서 재생 | 〃               | 〃            |
+| `error`   | ▶    | **다시 적재** (재시도)      | 〃               | 〃            |
+
+마지막 곡에서 다음은 비활성이고, 코디네이터의 `next()` 도 `false` 를
+돌려준다. 처음으로 돌아가지 않는다 (M3-0.1).
+
+**테스트** — `player-transport.spec.ts` (29) + 기존 spec 보강
+
+- 버튼 활성/비활성 (큐 없음 · 첫 곡 · 가운데 · 마지막 · 1곡)
+- 토글 7개 상태, 이전/다음 이동과 경계
+- 제목 · 큐 위치 · 상태 라벨 표시
+- 라이브 리전 속성과 **재생 중 비움**(반복 알림 방지)
+- 빠른 연속 클릭, 늦게 도착한 `ENDED`
+- 테마 전환·드로어 여닫기 후 컨트롤·재생 상태·어댑터 DOM 유지
+
+**M3-3 이 하지 않은 것**: 가시성 가드(M3-4), 오류 상세·외부 링크·재시도와
+`.video-placeholder`(M3-5).
 
 ---
 

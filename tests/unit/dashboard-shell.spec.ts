@@ -76,14 +76,21 @@ describe('1. DashboardShell 렌더링', () => {
       .findAll('button')
       .map((button) => `${button.text()} ${button.attributes('aria-label') ?? ''}`)
 
-    // M3-2 가 만든 재생 버튼은 라이브러리의 '목록 전체 재생' 하나뿐이다.
+    // M3-3 의 트랜스포트 3개 + M3-2 의 라이브러리 재생 버튼. 그게 전부다.
     // 목록별 ▶ 와 트랙별 ▶ 는 항목이 있을 때만 생기고, 여기는 빈 상태다.
-    expect(labels.filter((label) => label.includes('재생'))).toEqual(['▶ 목록 전체 재생 '])
+    expect(labels.filter((label) => label.includes('재생'))).toEqual([
+      '▶ 재생',
+      '▶ 목록 전체 재생 ',
+    ])
 
-    // 이전 곡 · 다음 곡 · 재생/일시정지 트랜스포트 컨트롤은 M3-3 이다.
-    for (const text of ['이전 곡', '다음 곡', '일시정지']) {
+    // 반복·셔플·볼륨·탐색 바는 MVP 범위 밖이다 (M3-0.1 · 0.3 · 0.4).
+    for (const text of ['반복', '셔플', '볼륨']) {
       expect(wrapper.text()).not.toContain(text)
     }
+    expect(wrapper.findAll('input[type="range"]')).toEqual([])
+
+    // 재생 실패 시 외부 링크는 M3-5 다.
+    expect(wrapper.text()).not.toContain('YOUTUBE에서 열기')
   })
 })
 

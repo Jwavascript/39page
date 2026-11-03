@@ -95,11 +95,21 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     adapter?.load(track.videoId, { autoplay: true })
   }
 
-  function startQueue(tracks: readonly Track[], index: number): PlayRequestResult {
-    playback.setQueue(snapshot(tracks), index)
+  /**
+   * 현재 트랙을 처음부터 재생한다. **사용자의 명시적 요청**에서만 부른다.
+   *
+   * 앞선 안내를 지우고 "사용자 조작 대기" 를 푼다. 그래야 오류로 멈춰 있던
+   * 큐가 다시 흐른다.
+   */
+  function startCurrent(): void {
     playback.setStatus('')
     awaitingUserAction = false
     commandCurrentTrack()
+  }
+
+  function startQueue(tracks: readonly Track[], index: number): PlayRequestResult {
+    playback.setQueue(snapshot(tracks), index)
+    startCurrent()
     return { ok: true }
   }
 
@@ -122,6 +132,53 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
     // 고른 트랙 하나가 아니라 **목록 전체**가 큐가 된다. 그 트랙부터 시작할 뿐이다.
     return startQueue(playlist.tracks, index)
+  }
+
+  /**
+   * 재생 / 일시정지 토글 (M3-3).
+   *
+   * | 상태                | 버튼  | 누르면                                      |
+   * | ------------------- | ----- | ------------------------------------------- |
+   * | `playing` `loading` | Ⅱ     | `pause()` — 준비 중이면 보류한 재생도 취소   |
+   * | `paused` `idle` `ended` | ▶ | `play()` — `ended` 는 그 자리에서 다시 재생  |
+   * | `error`             | ▶     | 같은 트랙을 **다시 적재**한다                |
+   *
+   * `error` 만 `play()` 가 아닌 이유: 실패한 플레이어에 `playVideo()` 를
+   * 보내면 아무 일도 일어나지 않는다. 다시 적재해야 재시도가 된다.
+   * 오류 코드별 안내와 외부 링크는 M3-5 다.
+   */
+  function togglePlay(): void {
+    if (playback.currentTrack === null) return
+
+    const state = playback.playerState
+    if (state === 'playing' || state === 'loading') {
+      adapter?.pause()
+      return
+    }
+
+    if (state === 'error') {
+      startCurrent()
+      return
+    }
+
+    // 'paused' · 'idle' · 'ended'
+    playback.setStatus('')
+    awaitingUserAction = false
+    adapter?.play()
+  }
+
+  function next(): boolean {
+    if (!playback.advance()) return false
+
+    startCurrent()
+    return true
+  }
+
+  function previous(): boolean {
+    if (!playback.back()) return false
+
+    startCurrent()
+    return true
   }
 
   function handleEnded(): void {
@@ -184,5 +241,5 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     }
   }
 
-  return { playPlaylist, playTrack, attachAdapter }
+  return { playPlaylist, playTrack, togglePlay, next, previous, attachAdapter }
 }
