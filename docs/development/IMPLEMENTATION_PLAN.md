@@ -7,15 +7,15 @@
 
 ## 마일스톤 개요
 
-| 마일스톤 | 범위                                                                       | 상태   |
-| -------- | -------------------------------------------------------------------------- | ------ |
-| M0       | 프로젝트 초기화                                                            | 완료   |
-| M1 준비  | 디자인 레퍼런스 반영, 아키텍처 확정                                        | 완료   |
-| **M1**   | 앱 셸, 두 테마, 테마 전환, 최소 Widget Registry/Host, 플레이어 영속성 구조 | 완료   |
-| M2       | Record Library와 플레이리스트 관리                                         | 완료   |
-| M3       | YouTube 실제 재생과 연속 재생                                              | 미착수 |
-| M4       | 날씨 위젯 및 마스코트 상태별 애니메이션                                    | 미착수 |
-| M5       | UX, 반응형, 접근성, 통합 테스트 및 안정화                                  | 미착수 |
+| 마일스톤 | 범위                                                                       | 상태    |
+| -------- | -------------------------------------------------------------------------- | ------- |
+| M0       | 프로젝트 초기화                                                            | 완료    |
+| M1 준비  | 디자인 레퍼런스 반영, 아키텍처 확정                                        | 완료    |
+| **M1**   | 앱 셸, 두 테마, 테마 전환, 최소 Widget Registry/Host, 플레이어 영속성 구조 | 완료    |
+| M2       | Record Library와 플레이리스트 관리                                         | 완료    |
+| M3       | YouTube 실제 재생과 연속 재생                                              | 진행 중 |
+| M4       | 날씨 위젯 및 마스코트 상태별 애니메이션                                    | 미착수  |
+| M5       | UX, 반응형, 접근성, 통합 테스트 및 안정화                                  | 미착수  |
 
 MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·개별 스킨 선택,
 테마·위젯 스토어, Chrome 확장, AI 음악 추천·작곡 지원은 **MVP 범위 밖**이며
@@ -335,28 +335,37 @@ M3-0 의 선행 결정이다.
 
 ---
 
-### M3-0. 선행 결정과 정책 확인
+### M3-0. 선행 결정과 정책 확인 — 완료 (2026-11-03)
 
 **작업 범위** — 코드를 쓰기 전에 미확정 사항을 닫는다. 잘못 정하면 M3-1 이후를
 다시 써야 하는 것들이다.
 
-| #   | 결정할 것                              | 현재 상태                                                                  |
-| --- | -------------------------------------- | -------------------------------------------------------------------------- |
-| 0.1 | 반복(loop) 정책                        | 프로토타입은 `loop:true` 를 저장하지만 **읽지 않는다.** 큐 끝에서 정지한다 |
-| 0.2 | 라이브러리 → 큐 연결 계층의 위치       | composable / 드로어 / 제3의 store 중 택일                                  |
-| 0.3 | 셔플 지원 여부                         | 프로토타입에 없다                                                          |
-| 0.4 | 볼륨 UI 제공 여부                      | 프로토타입은 YouTube 컨트롤에 위임한다                                     |
-| 0.5 | `origin` 파라미터 사용 여부            | 공식 문서상 선택이지만 권장                                                |
-| 0.6 | 가시성 임계값과 근거                   | 200×200 은 **공식 요구**, 50% 는 **우리 휴리스틱**이다 (§8.1)              |
-| 0.7 | 재생 불가 영상에서 다음 곡으로 넘길지  | 프로토타입은 멈추고 외부 링크를 띄운다                                     |
-| 0.8 | `index.html` 에 referrer 메타를 넣을지 | 승인된 레퍼런스에는 있고 제품에는 없다 (§8.1)                              |
+| #   | 결정할 것                              | 결정                                                                                | 기록                    |
+| --- | -------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------- |
+| 0.1 | 반복(loop) 정책                        | **MVP 제외.** 큐 끝에서 정지하고 안내한다. 플래그를 저장하지도 읽지도 않는다        | `MVP_SPEC.md` F3        |
+| 0.2 | 라이브러리 → 큐 연결 계층의 위치       | `src/features/playback/` 의 composable. **애플리케이션 계층(`src/app`)이 주입**한다 | `SYSTEM_DESIGN.md` §6.1 |
+| 0.3 | 셔플 지원 여부                         | **MVP 제외.** 큐는 플레이리스트 순서를 따른다                                       | `BACKLOG.md` §5         |
+| 0.4 | 볼륨 UI 제공 여부                      | **제공하지 않는다.** YouTube 기본 컨트롤에 위임한다                                 | `BACKLOG.md` §5         |
+| 0.5 | `origin` 파라미터 사용 여부            | **사용한다.** 값은 `window.location.origin` — 런타임에 읽는다                       | `SYSTEM_DESIGN.md` §8.2 |
+| 0.6 | 가시성 임계값과 근거                   | 200×200 은 공식 요구로 **고정**, 50% 는 자체 휴리스틱으로 **조정 가능**             | `SYSTEM_DESIGN.md` §4.5 |
+| 0.7 | 재생 불가 영상에서 다음 곡으로 넘길지  | **넘기지 않는다.** 정지·안내하고 외부 링크를 띄운다. 다음 곡은 사용자가 고른다      | `MVP_SPEC.md` F3        |
+| 0.8 | `index.html` 에 referrer 메타를 넣을지 | **넣는다.** `strict-origin-when-cross-origin` — 선언은 M3-1 커밋에서 적용한다       | `SYSTEM_DESIGN.md` §8.2 |
+| 0.9 | `PlayerAdapter` 이벤트 전달 수단       | **`mount()` 의 두 번째 인자로 핸들러 묶음을 받는다.** 구독/해지 API 를 두지 않는다  | **ADR 0008**            |
 
-**산출물**: `MVP_SPEC.md` F3 의 TODO 해소, 필요 시 ADR, 이 표의 갱신.
+0.9 는 원래 M3-1 의 선행 결정이었다. 계약을 고치는 일이라 M3-0 에서 함께
+닫았다. ADR 0008 이 `load(videoId, { autoplay })` 와 `YT.Player` 생성 시점
+(첫 `load()`)까지 같이 정한다.
 
-**완료 기준**: 8개 항목에 결정과 근거가 적혀 있다. 미결정 항목이 M3-1 을
-막지 않는다.
+**산출물**: `MVP_SPEC.md` F3 (TODO 해소), `BACKLOG.md` §5,
+`SYSTEM_DESIGN.md` §4.5 · §6.1 · §8.2, ADR 0008, 이 표.
+
+**완료 기준**: 9개 항목에 결정과 근거가 적혀 있다. ✔
 
 **테스트**: 없음 (문서 단계).
+
+**남은 TODO**: 오프라인 / API 로드 실패 시 안내 문구와 복구 동작 (M3-5),
+`ResizeObserver` / `IntersectionObserver` 사용 여부 (M3-4).
+둘 다 M3-1 을 막지 않는다.
 
 ---
 
@@ -365,26 +374,33 @@ M3-0 의 선행 결정이다.
 **작업 범위** — `PlayerAdapter` 를 실제 IFrame API 로 구현한다. 비동기 준비와
 상태 매핑을 **이 파일 안에서만** 처리한다.
 
-| #   | 작업                                                                                           |
-| --- | ---------------------------------------------------------------------------------------------- |
-| 1.1 | API 스크립트 싱글턴 로드 (`https://www.youtube.com/iframe_api`)                                |
-| 1.2 | `window.onYouTubeIframeAPIReady` **단일 등록.** 어댑터가 여러 번 생겨도 한 번만                |
-| 1.3 | 준비 전 요청 보류 — `load` / `play` 를 담아뒀다가 `onReady` 후 실행 (`wantsPlay` 패턴)         |
-| 1.4 | `YT.Player` 생성. `playerVars: { controls: 1, playsinline: 1, rel: 0, autoplay: 0 }`           |
-| 1.5 | 숫자 상태 → `PlayerState` 매핑 (−1 idle · 0 ended · 1 playing · 2 paused · 3 loading · 5 idle) |
-| 1.6 | 곡 전환은 `loadVideoById`(즉시) / `cueVideoById`(대기). **어댑터를 재생성하지 않는다**         |
-| 1.7 | 이벤트 전달 — `onReady` · `onStateChange` · `onError` · `onAutoplayBlocked`                    |
-| 1.8 | `destroy()` 에서 `player.destroy()` 와 리스너 해제                                             |
-| 1.9 | `main.ts` 에서 `app.provide(PLAYER_ADAPTER_FACTORY, …)`                                        |
+| #   | 작업                                                                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1.1 | API 스크립트 싱글턴 로드 (`https://www.youtube.com/iframe_api`)                                                            |
+| 1.2 | `window.onYouTubeIframeAPIReady` **단일 등록.** 어댑터가 여러 번 생겨도 한 번만                                            |
+| 1.3 | 준비 전 요청 보류 — `load` / `play` 를 담아뒀다가 `onReady` 후 실행 (`wantsPlay` 패턴)                                     |
+| 1.4 | `YT.Player` 생성 (첫 `load()` 에서 — ADR 0008). `playerVars: { controls: 1, playsinline: 1, rel: 0, autoplay: 0, origin }` |
+| 1.5 | 숫자 상태 → `PlayerState` 매핑 (−1 idle · 0 ended · 1 playing · 2 paused · 3 loading · 5 idle)                             |
+| 1.6 | 곡 전환은 `loadVideoById`(즉시) / `cueVideoById`(대기). **어댑터를 재생성하지 않는다**                                     |
+| 1.7 | 이벤트 전달 — `onReady` · `onStateChange` · `onError` · `onAutoplayBlocked`                                                |
+| 1.8 | `destroy()` 에서 `player.destroy()` 와 리스너 해제                                                                         |
+| 1.9 | `main.ts` 에서 `app.provide(PLAYER_ADAPTER_FACTORY, …)`                                                                    |
 
-> **인터페이스 변경 주의**: 현재 계약에 이벤트 구독 수단이 없다. 콜백을
-> 받으려면 `PlayerAdapter` 에 더해야 하고, **더하는 순간 M1-5 의 수명주기
-> 테스트를 함께 고쳐야 한다** (`AGENTS.md` 규칙 7). 어댑터가 store 를 직접
-> 바꾸지 않고 `PlayerSurface` 가 콜백을 받아 store 에 반영하는 단방향을
-> 지킨다 (ADR 0006).
+> **인터페이스 변경**: M3-0.9 에서 확정했다 (ADR 0008). `mount()` 가 두 번째
+> 인자로 핸들러 묶음을 받고, `load()` 가 `{ autoplay }` 를 받는다.
+> **계약이 바뀌므로 M1-5 의 수명주기 테스트를 함께 고친다**
+> (`AGENTS.md` 규칙 7). 어댑터가 store 를 직접 바꾸지 않고 `PlayerSurface` 가
+> 콜백을 받아 store 에 반영하는 단방향을 지킨다 (ADR 0006).
+>
+> M3-1 에서 store 에 반영하는 것은 `stateChange` 뿐이다. `ready` · `error` ·
+> `autoplayBlocked` 의 **화면 처리는 M3-3 · M3-5** 다. 어댑터가 넷 모두를
+> 전달하는 것은 M3-1 의 테스트로 검증한다.
 
 **산출물**: `src/features/playback/YouTubeIFramePlayerAdapter.ts`,
-`src/main.ts`, (필요 시) `PlayerAdapter.ts`.
+`src/features/playback/PlayerAdapter.ts` (계약 개정),
+`src/features/playback/FakePlayerAdapter.ts` (같은 계약 유지),
+`src/features/playback/PlayerSurface.vue` (구독), `src/main.ts` (주입),
+`index.html` (M3-0.8 의 referrer 메타).
 
 **완료 기준**
 
@@ -566,21 +582,16 @@ M1의 구조 테스트(5.6–5.8)는 M1에서 작성해 유지한다. M5의 통�
 ## 선행 결정 사항
 
 해당 단계 전에 확정해야 한다. 중요한 결정은 `docs/decisions/`에 기록한다.
-M1-2 의 토큰 이름, M2 의 `prompt()`·`confirm()` 대체 UI 는 해당 단계에서
-확정해 목록에서 뺐다.
+M1-2 의 토큰 이름, M2 의 `prompt()`·`confirm()` 대체 UI, **M3-0 의 9개 항목**은
+해당 단계에서 확정해 목록에서 뺐다 (M3-0 표 참조).
 
-| 항목                                     | 필요 시점 | 문서                    |
-| ---------------------------------------- | --------- | ----------------------- |
-| 반복(loop) 동작                          | M3-0      | `MVP_SPEC.md` F3        |
-| 라이브러리 → 큐 연결 계층의 위치         | M3-0      | `SYSTEM_DESIGN.md` §6.1 |
-| 셔플·볼륨 UI 제공 여부                   | M3-0      | `MVP_SPEC.md` F3        |
-| `origin` 파라미터 사용 여부              | M3-0      | `SYSTEM_DESIGN.md` §8.1 |
-| 가시성 임계값과 그 근거                  | M3-0      | `SYSTEM_DESIGN.md` §8.1 |
-| 재생 불가 영상에서 다음 곡으로 넘길지    | M3-0      | `MVP_SPEC.md` F3        |
-| `PlayerAdapter` 에 이벤트 구독을 더할지  | M3-1      | `SYSTEM_DESIGN.md` §4.6 |
-| 날씨 API 제공자                          | M4        | `MVP_SPEC.md` F7        |
-| 마스코트 도트 패턴 테마별 차이           | M4        | `THEME_SYSTEM.md` §6    |
-| 드래그 라이브러리 (DOM 재배치 금지 제약) | 백로그    | `BACKLOG.md` §1         |
+| 항목                                      | 필요 시점 | 문서                    |
+| ----------------------------------------- | --------- | ----------------------- |
+| 오프라인·API 로드 실패 시 안내와 복구     | M3-5      | `MVP_SPEC.md` F3        |
+| `ResizeObserver` / `IntersectionObserver` | M3-4      | `SYSTEM_DESIGN.md` §4.5 |
+| 날씨 API 제공자                           | M4        | `MVP_SPEC.md` F7        |
+| 마스코트 도트 패턴 테마별 차이            | M4        | `THEME_SYSTEM.md` §6    |
+| 드래그 라이브러리 (DOM 재배치 금지 제약)  | 백로그    | `BACKLOG.md` §1         |
 
 ## 작업 방식
 

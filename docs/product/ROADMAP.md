@@ -1,6 +1,6 @@
 # 로드맵
 
-> 상태: 개정 (M2 완료, M3 계획 확정). MVP는 M5까지다.
+> 상태: 개정 (M3 진행 중 — M3-0 결정 확정). MVP는 M5까지다.
 >
 > 상세 작업 목록: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md)
 > MVP 외 확장 항목: [`BACKLOG.md`](BACKLOG.md)
@@ -13,7 +13,7 @@
 | M1 준비  | 디자인 레퍼런스 반영, 아키텍처 확정, Git 기준점                            | 완료      |
 | **M1**   | 앱 셸, 두 테마, 테마 전환, 최소 Widget Registry/Host, 플레이어 영속성 구조 | M1-0 완료 |
 | M2       | Record Library와 플레이리스트 관리                                         | 미착수    |
-| M3       | YouTube 실제 재생과 연속 재생                                              | 미착수    |
+| M3       | YouTube 실제 재생과 연속 재생                                              | 진행 중   |
 | M4       | 날씨 위젯 및 마스코트 상태별 애니메이션                                    | 미착수    |
 | M5       | UX, 반응형, 접근성, 통합 테스트 및 안정화                                  | 미착수    |
 
@@ -55,12 +55,14 @@ M1은 `FakePlayerAdapter` 기반의 **구조 검증**에 집중하고, 실제 Yo
 
 ### M3 — YouTube 실제 재생과 연속 재생
 
-M3-0 선행 결정과 정책 확인 · M3-1 `YouTubeIFramePlayerAdapter` ·
+M3-0 선행 결정과 정책 확인 — 완료 · M3-1 `YouTubeIFramePlayerAdapter` ·
 M3-2 큐 진행과 라이브러리 연결 · M3-3 트랜스포트 UI와 상태 메시지 ·
 M3-4 가시성 가드와 드로어 연동 · M3-5 오류·예외 처리.
 
-M1에서 고정한 `PlayerAdapter` 인터페이스를 가급적 바꾸지 않는다.
-라이브러리 → 큐 연결은 두 store 를 직접 잇지 않고 상위 계층이 조립한다.
+M3-0 결정: 반복·셔플·자체 볼륨 UI 는 **MVP 제외**, 재생 불가 영상은
+정지·안내, `origin` 은 현재 페이지 origin, referrer 메타 명시 선언,
+큐 연결은 애플리케이션 계층이 조립. `PlayerAdapter` 에는 **최소한의 이벤트
+전달 계약**만 더한다 (ADR 0008).
 공식 IFrame API 요구사항은 `SYSTEM_DESIGN.md` §8.1 에 정리했다.
 
 ### M4 — 날씨 위젯 및 마스코트 상태별 애니메이션
