@@ -370,8 +370,18 @@ grid-template-columns: minmax(0, 1.13fr) minmax(420px, 0.87fr)
 - `deck`은 M1-6에서 테마별 아트(턴테이블/카세트)를 렌더링한다.
   두 아트를 동시에 DOM에 두고 CSS로 전환하므로 위젯 컴포넌트는 하나다.
 - `player`는 `persistent: true`다. M1-5에서 `PlayerSurface`로 교체한다.
-- 드로어는 위젯이 아니다. M2에서 `DashboardShell`의 `.workspace` 안에
-  `WidgetHost`의 형제 열로 들어온다.
+- 드로어는 위젯이 아니다. **M2-2에서 `DashboardShell`의 `.workspace` 안
+  `WidgetHost`의 형제 열로 구현했다.** 열고 닫아도 `WidgetHost` 와 그 안의
+  `PlayerSurface` 는 같은 부모에 그대로 있다. `v-if` 를 쓰지 않고 `hidden`
+  속성으로 숨긴다.
+  - 넓은 화면: `grid-template-columns: 1fr 340px`. 플레이어는 좁아지되
+    가려지지 않는다 (1440px 기준 542→420px, 16:9 유지).
+  - 1100px 이하: 레퍼런스와 같이 드로어가 스테이지를 대체한다.
+    **언마운트가 아니라 `display: none`** 이므로 플레이어 DOM 은 유지된다.
+    가려졌을 때의 일시정지 정책은 M3 의 가시성 가드에서 다룬다.
+  - 열림 상태는 `DashboardShell` 의 지역 `ref` 다. 전역 store 를 만들지 않았다.
+    트리거(`DeckWidget`)는 `WidgetHost` 너머에 있어 props 로 닿지 않으므로
+    주입으로 전달한다 (`features/library/drawerController.ts`, ADR 0006 과 같은 방식).
 - 헤더는 위젯이 아니다. 셸이 `AppHeader`를 직접 소유한다.
 
 위젯 교체 현황 (레지스트리의 `component` 한 줄만 바꾸면 되고,
@@ -517,6 +527,19 @@ TODO: 레이아웃·스킨 저장을 스키마에 미리 비워둘지 결정
 
 프로토타입의 `mlf_mono_vinyl_v08` 키는 **읽지 않는다.** 이전이 필요하면
 별도 마이그레이션 작업으로 분리한다.
+
+**최초 실행 기본 플레이리스트** (`seedFirstRunPlaylist`, M2-2)
+
+`restore()` 와 **분리된 별도 액션**이다. 복원이 저장소를 건드리지 않는다는
+보장을 지키기 위해서다. 다음을 모두 만족할 때만 `MY RECORDS` 를 만든다.
+
+| 조건                         | 이유                                                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `restoreOutcome === 'empty'` | 저장값이 **아예 없었다.** `'stored'` 인데 목록이 비었으면 사용자가 전부 지운 것이므로 최초 실행이 아니다 |
+| `status === 'ready'`         | `protected` / `unavailable` 에서 기본값을 쓰면 원본을 덮어쓸 수 있다                                     |
+| 목록이 비어 있다             |                                                                                                          |
+
+`main.ts` 가 마운트 전에 `restore()` → `seedFirstRunPlaylist()` 순으로 부른다.
 
 ## 8. 외부 의존
 

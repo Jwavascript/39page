@@ -166,8 +166,14 @@ describe('A. 데크 렌더링', () => {
     const wrapper = mount(DeckWidget)
 
     expect(wrapper.findAll('svg.deck-art')).toHaveLength(2)
-    // v-if 로 교체하지 않는다. CSS 로만 표시를 전환한다.
-    expect(readCode('src/features/deck/DeckWidget.vue')).not.toContain('v-if')
+
+    // 데크 아트를 v-if 로 교체하지 않는다. CSS 로만 표시를 전환한다.
+    // (M2-2의 열기 버튼은 주입 유무로 v-if 를 쓰므로 아트 줄만 본다.)
+    const deckArtLines = readCode('src/features/deck/DeckWidget.vue')
+      .split('\n')
+      .filter((line) => line.includes('DeckArt'))
+    expect(deckArtLines.length).toBeGreaterThan(0)
+    expect(deckArtLines.filter((line) => line.includes('v-if'))).toEqual([])
   })
 
   it('4. 활성 테마의 데크만 접근성 트리에 노출된다', async () => {
@@ -200,17 +206,20 @@ describe('A. 데크 렌더링', () => {
 
   it('5. SVG id 충돌이 없다', () => {
     const { wrapper } = mountAppWithFake()
-    const ids = [...wrapper.element.querySelectorAll('[id]')].map((el) => el.id)
 
-    expect(new Set(ids).size).toBe(ids.length)
-    expect(ids.length).toBeGreaterThan(0)
+    // 문서 전체의 id 가 중복되지 않아야 한다 (드로어 등 UI id 포함).
+    const allIds = [...wrapper.element.querySelectorAll('[id]')].map((el) => el.id)
+    expect(new Set(allIds).size).toBe(allIds.length)
 
-    // 테마별 접두사가 붙어 있어야 한다.
-    const monoIds = ids.filter((id) => id.startsWith('mv-'))
-    const kawaiiIds = ids.filter((id) => id.startsWith('ksc-'))
+    // SVG 안의 id 는 전부 테마 접두사를 가져야 한다.
+    const svgIds = [...wrapper.element.querySelectorAll('svg [id]')].map((el) => el.id)
+    expect(svgIds.length).toBeGreaterThan(0)
+
+    const monoIds = svgIds.filter((id) => id.startsWith('mv-'))
+    const kawaiiIds = svgIds.filter((id) => id.startsWith('ksc-'))
     expect(monoIds.length).toBeGreaterThan(0)
     expect(kawaiiIds.length).toBeGreaterThan(0)
-    expect(monoIds.length + kawaiiIds.length).toBe(ids.length)
+    expect(monoIds.length + kawaiiIds.length).toBe(svgIds.length)
   })
 
   it('모든 url(#...) 참조가 존재하는 id 를 가리킨다', () => {

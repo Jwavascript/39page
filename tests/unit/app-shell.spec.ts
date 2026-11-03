@@ -22,7 +22,9 @@ describe('App shell', () => {
     const group = wrapper.get('[role="group"]')
 
     expect(group.attributes('aria-label')).toBe('테마 선택')
-    expect(wrapper.findAll('button')).toHaveLength(2)
+    // 헤더 안의 버튼은 테마 전환 2개뿐이다.
+    // (M2-2에서 데크·드로어 버튼이 생겼으므로 헤더로 범위를 좁힌다.)
+    expect(group.findAll('button')).toHaveLength(2)
   })
 
   it('applies the default theme to the document root', () => {

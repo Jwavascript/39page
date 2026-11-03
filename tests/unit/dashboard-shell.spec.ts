@@ -60,12 +60,25 @@ describe('1. DashboardShell 렌더링', () => {
     }
   })
 
-  it('동작하지 않는 라이브러리·링크 추가 버튼을 만들지 않는다', () => {
+  it('헤더에 동작하지 않는 버튼을 만들지 않는다', () => {
     const wrapper = mountApp()
-    // 헤더의 버튼은 테마 전환 2개뿐이어야 한다.
-    expect(wrapper.findAll('button')).toHaveLength(2)
-    expect(wrapper.text()).not.toContain('라이브러리')
-    expect(wrapper.text()).not.toContain('링크 추가')
+    const header = wrapper.findComponent(AppHeader)
+
+    // 헤더의 버튼은 테마 전환 2개뿐이다. 라이브러리 열기는 M2-2에서
+    // 데크 트리거로 구현했고, 링크 추가는 아직 없다.
+    expect(header.findAll('button')).toHaveLength(2)
+    expect(header.text()).not.toContain('링크 추가')
+  })
+
+  it('아직 없는 기능의 버튼을 만들지 않는다', () => {
+    const wrapper = mountApp()
+    const labels = wrapper
+      .findAll('button')
+      .map((button) => `${button.text()} ${button.attributes('aria-label') ?? ''}`)
+
+    // 재생·링크 추가는 M3 / M2-3 이다. 동작하지 않는 버튼을 만들지 않는다.
+    expect(labels.filter((label) => label.includes('링크 추가'))).toEqual([])
+    expect(labels.filter((label) => label.includes('전체 재생'))).toEqual([])
   })
 })
 

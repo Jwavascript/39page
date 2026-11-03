@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M2-1 완료, M2-2 이후 미착수).
+> 상태: 개정 (M2-2 완료, M2-3 이후 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -266,20 +266,30 @@ M3의 실제 구현은 `FakePlayerAdapter`를 교체하는 작업이 된다.
 - **화면 변경 없음.** 앱이 아직 이 store 를 쓰지 않으므로 번들 크기도
   M1-6과 같다.
 
-### M2-2. Record Library 드로어 (미착수)
+### M2-2. Record Library 드로어 — 완료
 
-| #     | 작업                                                      |
-| ----- | --------------------------------------------------------- |
-| 2.2.1 | 드로어 셸 (340px 그리드 형제 열, 오버레이 아님)           |
-| 2.2.2 | 데크 클릭 → 드로어 열기, `ESC`·`×` 닫기, 포커스 이동      |
-| 2.2.3 | 플레이리스트 목록·선택 UI (`library` store 연결)          |
-| 2.2.4 | 생성·이름 변경·삭제 UI (`prompt()`·`confirm()` 대체)      |
-| 2.2.5 | 첫 실행 시 기본 목록 생성, 마지막 목록 삭제 버튼 비활성화 |
-| 2.2.6 | `status === 'protected'` 안내와 명시적 초기화             |
-| 2.2.7 | `main.ts` 에서 마운트 전 `library.restore()` 호출         |
-| 2.2.8 | 토스트 알림                                               |
+| #     | 작업                                                  | 산출물                                     | 상태 |
+| ----- | ----------------------------------------------------- | ------------------------------------------ | ---- |
+| 2.2.1 | 드로어 셸 (340px 그리드 형제 열, 오버레이 아님)       | `features/library/RecordLibraryDrawer.vue` | 완료 |
+| 2.2.2 | 데크 클릭 → 열기, `ESC`·`×` 닫기, 포커스 이동·복귀    | `DeckWidget.vue`, `DashboardShell.vue`     | 완료 |
+| 2.2.3 | 플레이리스트 목록·선택 UI                             | `features/library/PlaylistList.vue`        | 완료 |
+| 2.2.4 | 생성·이름 변경·삭제 UI (인라인 폼·확인)               | `RecordLibraryDrawer.vue`                  | 완료 |
+| 2.2.5 | 최초 실행 기본 목록, 마지막 목록 삭제 비활성화        | `library.ts`, `main.ts`                    | 완료 |
+| 2.2.6 | `protected` / `unavailable` / `persisted: false` 안내 | `features/library/LibraryStatusBanner.vue` | 완료 |
+| 2.2.7 | 마운트 전 `library.restore()`                         | `src/main.ts`                              | 완료 |
+| 2.2.8 | 트랙 목록 읽기 전용 표시                              | `RecordLibraryDrawer.vue`                  | 완료 |
 
-**선행 결정**: `prompt()`·`confirm()` 대체 UI, 보호 상태 안내 문구.
+- 드로어 열림 상태는 `DashboardShell` 의 지역 `ref` 다. 전역 store 를 만들지
+  않았다. 트리거까지는 주입으로 전달한다 (ADR 0006 과 같은 방식).
+- **`WidgetHost` 를 수정하지 않았다.** 드로어는 그 형제이고 `v-if` 가 아니라
+  `hidden` 으로 숨긴다.
+- 최초 실행 기본 목록은 `seedFirstRunPlaylist()` 로 분리했다.
+  `restore()` 가 저장소를 건드리지 않는다는 보장을 지킨다.
+- 동작하지 않는 버튼을 만들지 않았다: `YouTube 링크 추가`(M2-3),
+  `목록 전체 재생`·행 `▶`(M3), 보호 데이터 `복구`·`초기화`.
+
+**M2-3 / M3 로 넘긴 항목**: YouTube 링크 추가, 트랙 삭제·순서 변경,
+플레이리스트 재생 버튼과 큐 연결.
 
 ### M2-3. 트랙 등록과 편집 (미착수)
 

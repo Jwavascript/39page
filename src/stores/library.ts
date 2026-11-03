@@ -370,6 +370,30 @@ export const useLibraryStore = defineStore('library', () => {
     return success(id)
   }
 
+  /**
+   * 최초 실행일 때만 기본 플레이리스트를 만든다.
+   *
+   * **`restore()` 와 분리된 별도 액션이다.** 복원이 저장소를 건드리지 않는다는
+   * 보장을 지키기 위해서다. 앱 시작 시 `restore()` 다음에 명시적으로 부른다.
+   *
+   * 다음을 **모두** 만족할 때만 만든다.
+   * - `restoreOutcome === 'empty'` — 저장된 값이 **아예 없었다.**
+   *   `'stored'` 인데 목록이 비어 있는 경우는 사용자가 전부 지운 것이므로
+   *   최초 실행이 아니다. 여기서 기본 목록을 만들면 사용자의 의사를 뒤집는다.
+   * - `status === 'ready'` — `protected` / `unavailable` 에서는 만들지 않는다.
+   *   원본을 읽지 못한 상태에서 기본값을 쓰면 원본을 덮어쓸 수 있다.
+   * - 목록이 비어 있다.
+   *
+   * @returns 만들었으면 생성 결과, 아니면 `null`.
+   */
+  function seedFirstRunPlaylist(name: string): LibraryMutationResult | null {
+    if (restoreOutcome.value !== 'empty') return null
+    if (status.value !== 'ready') return null
+    if (items.value.length > 0) return null
+
+    return createPlaylist(name)
+  }
+
   /** 존재하는 플레이리스트만 선택한다. 트랙과 재생 상태는 건드리지 않는다. */
   function selectPlaylist(id: string): LibraryMutationResult {
     if (getPlaylist(id) === undefined) return failure('not-found')
@@ -396,6 +420,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     // 액션
     restore,
+    seedFirstRunPlaylist,
     createPlaylist,
     renamePlaylist,
     deletePlaylist,
