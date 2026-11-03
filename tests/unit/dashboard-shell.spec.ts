@@ -76,9 +76,10 @@ describe('1. DashboardShell 렌더링', () => {
       .findAll('button')
       .map((button) => `${button.text()} ${button.attributes('aria-label') ?? ''}`)
 
-    // 재생·링크 추가는 M3 / M2-3 이다. 동작하지 않는 버튼을 만들지 않는다.
-    expect(labels.filter((label) => label.includes('링크 추가'))).toEqual([])
+    // 재생 관련 버튼은 M3 이다. 동작하지 않는 버튼을 만들지 않는다.
+    // (링크 추가는 M2-3 에서 실제로 동작하므로 더 이상 제외 대상이 아니다.)
     expect(labels.filter((label) => label.includes('전체 재생'))).toEqual([])
+    expect(labels.filter((label) => label.includes('재생'))).toEqual([])
   })
 })
 

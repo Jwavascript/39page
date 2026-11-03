@@ -528,6 +528,40 @@ TODO: 레이아웃·스킨 저장을 스키마에 미리 비워둘지 결정
 프로토타입의 `mlf_mono_vinyl_v08` 키는 **읽지 않는다.** 이전이 필요하면
 별도 마이그레이션 작업으로 분리한다.
 
+**트랙 CRUD 액션** (M2-3)
+
+```ts
+addTrack(playlistId, { videoId, title? }): LibraryMutationResult
+removeTrack(playlistId, trackId): LibraryMutationResult
+moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
+```
+
+성공 결과에 `trackId` 가 실린다. 실패 사유는
+`not-found` · `invalid-video-id` · `out-of-range` 다.
+
+| 규칙           | 내용                                                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `videoId` 검증 | `isYouTubeVideoId` — 복원 때 쓰는 `normalizeTrack` 과 **같은 기준**이다. 추가한 트랙이 다음 복원에서 버려지지 않는다                           |
+| 저장 내용      | URL 문자열을 저장하지 않는다. `videoId` 만 남긴다                                                                                              |
+| 트랙 id        | `createId()`. 같은 영상을 여러 번 넣어도 `track.id` 는 서로 다르다. **영상 중복은 막지 않는다** — 사용자가 같은 곡을 의도적으로 배치할 수 있다 |
+| 제목           | 앞뒤 공백 제거 후 100자로 자른다. 비면 `YouTube · <videoId>`                                                                                   |
+| 추가 위치      | 목록의 **끝**                                                                                                                                  |
+| 순서 변경      | 인접 교환. 경계를 넘으면 `out-of-range` 로 거절하고 **상태를 바꾸지 않는다**                                                                   |
+| 다른 목록      | 편집하지 않은 플레이리스트는 **같은 객체 참조**로 남는다 (`replaceTracks`)                                                                     |
+| 실패           | 저장소에 쓰지 않는다                                                                                                                           |
+| 보호 상태      | ADR 0007 을 그대로 따른다. `protected` / `unavailable` 에서는 메모리만 바뀌고 `persisted: false` 로 알린다                                     |
+
+**트랙 id 와 videoId 의 구분**
+
+- `track.id` — 앱 내부 식별자. 수정·삭제·순서 변경의 대상이다
+- `track.videoId` — YouTube 영상 ID. 재생 대상이다
+
+같은 `videoId` 를 가진 트랙이 여러 개일 수 있으므로 **조회·편집은 항상
+`track.id` 로** 한다. Vue 목록의 `:key` 도 `track.id` 다.
+
+유효한 `videoId` 라는 사실이 그 영상의 존재·공개·임베드 허용을 보장하지는
+않는다. 실제 재생 가능 여부는 M3 에서 판단한다.
+
 **최초 실행 기본 플레이리스트** (`seedFirstRunPlaylist`, M2-2)
 
 `restore()` 와 **분리된 별도 액션**이다. 복원이 저장소를 건드리지 않는다는

@@ -1,6 +1,6 @@
 # 로드맵
 
-> 상태: 개정 (M2-2 완료). MVP는 M5까지다.
+> 상태: 개정 (M2 완료). MVP는 M5까지다.
 >
 > 상세 작업 목록: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md)
 > MVP 외 확장 항목: [`BACKLOG.md`](BACKLOG.md)
@@ -49,7 +49,7 @@ M1은 `FakePlayerAdapter` 기반의 **구조 검증**에 집중하고, 실제 Yo
 
 - M2-1 Library Store와 영속화 — 완료 (데이터 계층만, 화면 변경 없음)
 - M2-2 Record Library 드로어 — 완료
-- M2-3 트랙 등록과 편집
+- M2-3 트랙 등록과 편집 — 완료
 
 플레이리스트 CRUD, 트랙 추가·순서 변경·삭제, 340px 드로어, 추가 모달, 토스트.
 

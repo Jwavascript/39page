@@ -33,6 +33,14 @@ export const LIBRARY_STORAGE_VERSION = 1
 /** 플레이리스트 이름 최대 길이 (`MVP_SPEC.md` F4). */
 export const MAX_PLAYLIST_NAME_LENGTH = 60
 
+/** 트랙 제목 최대 길이 (`MVP_SPEC.md` F4). */
+export const MAX_TRACK_TITLE_LENGTH = 100
+
+/** 제목을 비웠을 때 쓰는 기본 표기 (`MVP_SPEC.md` F4). */
+export function defaultTrackTitle(videoId: string): string {
+  return `YouTube · ${videoId}`
+}
+
 /* ------------------------------------------------------------------ *
  * 검증과 정규화
  * ------------------------------------------------------------------ */
@@ -211,14 +219,20 @@ export type LibraryProtectedReason =
 export type LibraryMutationFailure =
   /** 공백만 있는 이름이다. */
   | 'empty-name'
-  /** 해당 id 의 플레이리스트가 없다. */
+  /** 해당 id 의 플레이리스트나 트랙이 없다. */
   | 'not-found'
+  /** 11자 YouTube 영상 ID 형식이 아니다. */
+  | 'invalid-video-id'
+  /** 목록 경계라 더 옮길 수 없다. */
+  | 'out-of-range'
 
 export type LibraryMutationResult =
   | {
       readonly ok: true
       /** 변경 대상 플레이리스트의 id. 생성 시에는 새로 발급한 id. */
       readonly playlistId: string
+      /** 트랙을 다룬 동작에서 그 트랙의 id. 추가 시에는 새로 발급한 id. */
+      readonly trackId?: string
       /** 저장소에 반영됐는지. `false` 면 메모리에만 반영됐다. */
       readonly persisted: boolean
     }
@@ -232,6 +246,17 @@ function failure(reason: LibraryMutationFailure): LibraryMutationResult {
 function normalizeName(name: string): string | null {
   const trimmed = name.trim()
   return trimmed === '' ? null : trimmed.slice(0, MAX_PLAYLIST_NAME_LENGTH)
+}
+
+/**
+ * 트랙 제목을 다듬는다.
+ *
+ * 이름과 달리 **빈 값을 거부하지 않는다.** 비우면 `YouTube · <videoId>` 를
+ * 쓰는 것이 승인된 동작이다 (`MVP_SPEC.md` F4).
+ */
+function normalizeTitle(title: string | undefined, videoId: string): string {
+  const trimmed = (title ?? '').trim()
+  return trimmed === '' ? defaultTrackTitle(videoId) : trimmed.slice(0, MAX_TRACK_TITLE_LENGTH)
 }
 
 export const useLibraryStore = defineStore('library', () => {
@@ -272,8 +297,20 @@ export const useLibraryStore = defineStore('library', () => {
     return result.ok
   }
 
-  function success(playlistId: string): LibraryMutationResult {
-    return { ok: true, playlistId, persisted: persist() }
+  function success(playlistId: string, trackId?: string): LibraryMutationResult {
+    return { ok: true, playlistId, trackId, persisted: persist() }
+  }
+
+  /**
+   * 한 플레이리스트의 트랙 배열만 바꾼다.
+   *
+   * 다른 플레이리스트는 **같은 객체 참조**로 남는다. 편집하지 않은 목록이
+   * 바뀌지 않는다는 것을 구조로 보장한다.
+   */
+  function replaceTracks(index: number, playlist: Playlist, tracks: Track[]): void {
+    const next = [...items.value]
+    next[index] = { ...playlist, tracks }
+    items.value = next
   }
 
   /**
@@ -371,6 +408,91 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /**
+   * 트랙을 플레이리스트 **끝에** 추가한다.
+   *
+   * `videoId` 는 11자 YouTube 영상 ID 여야 한다. 복원 때 쓰는
+   * `normalizeTrack` 과 **같은 기준**(`isYouTubeVideoId`)으로 검증하므로,
+   * 추가한 트랙이 다음 복원에서 버려지는 일이 없다.
+   *
+   * URL 문자열을 저장하지 않는다. 데이터 모델의 `videoId` 만 남긴다.
+   * 같은 영상을 여러 번 넣을 수 있고, 그때도 `track.id` 는 서로 다르다.
+   */
+  function addTrack(
+    playlistId: string,
+    input: { videoId: string; title?: string },
+  ): LibraryMutationResult {
+    const index = items.value.findIndex((playlist) => playlist.id === playlistId)
+    if (index === -1) return failure('not-found')
+
+    if (!isYouTubeVideoId(input.videoId)) return failure('invalid-video-id')
+
+    const playlist = items.value[index]
+    if (playlist === undefined) return failure('not-found')
+
+    const track: Track = {
+      id: createId(),
+      source: 'youtube',
+      videoId: input.videoId,
+      title: normalizeTitle(input.title, input.videoId),
+    }
+
+    replaceTracks(index, playlist, [...playlist.tracks, track])
+    return success(playlistId, track.id)
+  }
+
+  /** 트랙 하나를 뺀다. 나머지 트랙의 id 와 순서는 그대로다. */
+  function removeTrack(playlistId: string, trackId: string): LibraryMutationResult {
+    const index = items.value.findIndex((playlist) => playlist.id === playlistId)
+    if (index === -1) return failure('not-found')
+
+    const playlist = items.value[index]
+    if (playlist === undefined) return failure('not-found')
+    if (!playlist.tracks.some((track) => track.id === trackId)) return failure('not-found')
+
+    replaceTracks(
+      index,
+      playlist,
+      playlist.tracks.filter((track) => track.id !== trackId),
+    )
+    return success(playlistId, trackId)
+  }
+
+  /**
+   * 트랙을 한 칸 올리거나 내린다.
+   *
+   * 경계를 넘는 요청은 `out-of-range` 로 거절하고 **상태를 바꾸지 않는다.**
+   * 교환만 하므로 트랙의 id 와 내용은 그대로다.
+   */
+  function moveTrack(
+    playlistId: string,
+    trackId: string,
+    direction: 'up' | 'down',
+  ): LibraryMutationResult {
+    const index = items.value.findIndex((playlist) => playlist.id === playlistId)
+    if (index === -1) return failure('not-found')
+
+    const playlist = items.value[index]
+    if (playlist === undefined) return failure('not-found')
+
+    const from = playlist.tracks.findIndex((track) => track.id === trackId)
+    if (from === -1) return failure('not-found')
+
+    const to = direction === 'up' ? from - 1 : from + 1
+    if (to < 0 || to >= playlist.tracks.length) return failure('out-of-range')
+
+    const tracks = [...playlist.tracks]
+    const moved = tracks[from]
+    const swapped = tracks[to]
+    if (moved === undefined || swapped === undefined) return failure('out-of-range')
+
+    tracks[to] = moved
+    tracks[from] = swapped
+
+    replaceTracks(index, playlist, tracks)
+    return success(playlistId, trackId)
+  }
+
+  /**
    * 최초 실행일 때만 기본 플레이리스트를 만든다.
    *
    * **`restore()` 와 분리된 별도 액션이다.** 복원이 저장소를 건드리지 않는다는
@@ -425,5 +547,8 @@ export const useLibraryStore = defineStore('library', () => {
     renamePlaylist,
     deletePlaylist,
     selectPlaylist,
+    addTrack,
+    removeTrack,
+    moveTrack,
   }
 })

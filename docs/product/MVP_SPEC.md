@@ -139,6 +139,19 @@ Track    { id: string, source: 'youtube', videoId: string, title: string }
   큐는 `queue`, `queueListId`, `queueIndex`로 추적한다.
   → 재생 중 라이브러리를 편집해도 큐가 즉시 흔들리지 않는다.
 
+**트랙 등록·편집 구현 완료 (M2-3)**
+
+- `＋ YouTube 링크 추가` → 드로어 안 인라인 폼 (URL 필수 + 곡 이름 선택).
+  `parseYouTubeVideoId()`(M1-1)로 검증한다. 파서를 새로 만들지 않았다.
+- 실패 시 `올바른 YouTube 영상 링크를 입력해주세요.` 를 표시하고 **입력값을
+  유지한다.**
+- 폼은 열릴 때 정한 플레이리스트에만 등록한다. 선택이 바뀌면 폼을 닫고,
+  폼에 대상 이름을 명시한다.
+- 트랙 행에 순서·제목·영상 ID 와 `↑` `↓` `×` 를 둔다. 경계에서 이동 버튼이
+  비활성화된다. 삭제는 인라인 확인을 거친다.
+- 긴 제목은 말줄임하되 `title` 속성으로 전체를 확인할 수 있다.
+- 상세: `docs/architecture/SYSTEM_DESIGN.md` §7.2
+
 **데이터 계층 구현 완료 (M2-1)**
 
 `src/stores/library.ts` 가 생성·이름 변경·삭제·선택과 영속화를 담당한다.

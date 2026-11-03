@@ -16,7 +16,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import PlaylistList from '@/features/library/PlaylistList.vue'
-import { useLibraryStore } from '@/stores/library'
+import { parseYouTubeVideoId } from '@/shared/utils/youtube'
+import { MAX_TRACK_TITLE_LENGTH, useLibraryStore } from '@/stores/library'
 
 const props = defineProps<{ open: boolean; drawerId: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -36,24 +37,122 @@ const unsavedNotice = ref('')
 
 const canDelete = computed<boolean>(() => library.playlists.length > 1)
 
+/* ---------- YouTube 링크 등록 ---------- */
+
+/**
+ * 링크 폼이 겨냥한 플레이리스트.
+ *
+ * 선택이 바뀌면 폼을 닫지만, 그래도 **열릴 때 정한 대상에만** 등록한다.
+ * 잘못된 목록에 트랙이 들어가는 일을 구조로 막는다.
+ */
+const linkTargetId = ref<string | null>(null)
+const draftUrl = ref('')
+const draftTitle = ref('')
+const linkError = ref('')
+/** 방금 등록한 트랙 제목. 성공을 사용자가 확인할 수 있게 한다. */
+const addedNotice = ref('')
+
+const linkTarget = computed(() =>
+  linkTargetId.value === null ? null : (library.getPlaylist(linkTargetId.value) ?? null),
+)
+
+function closeLinkForm(): void {
+  linkTargetId.value = null
+  draftUrl.value = ''
+  draftTitle.value = ''
+  linkError.value = ''
+}
+
+function startAddLink(): void {
+  const current = library.selectedPlaylist
+  if (current === null) return
+
+  resetForm()
+  linkTargetId.value = current.id
+  draftUrl.value = ''
+  draftTitle.value = ''
+  linkError.value = ''
+  addedNotice.value = ''
+}
+
+function submitLink(): void {
+  const targetId = linkTargetId.value
+  if (targetId === null) return
+
+  const parsed = parseYouTubeVideoId(draftUrl.value)
+  if (!parsed.ok) {
+    // 실패해도 입력값을 지우지 않는다. 사용자가 고쳐 쓸 수 있어야 한다.
+    linkError.value = '올바른 YouTube 영상 링크를 입력해주세요.'
+    return
+  }
+
+  const result = library.addTrack(targetId, {
+    videoId: parsed.videoId,
+    title: draftTitle.value,
+  })
+
+  if (!result.ok) {
+    linkError.value =
+      result.reason === 'invalid-video-id'
+        ? '올바른 YouTube 영상 링크를 입력해주세요.'
+        : '해당 플레이리스트를 찾을 수 없습니다.'
+    return
+  }
+
+  const added = library.getPlaylist(targetId)?.tracks.find((track) => track.id === result.trackId)
+  addedNotice.value = `“${added?.title ?? ''}”을 추가했습니다.`
+  reportPersisted(result)
+  closeLinkForm()
+}
+
+/* ---------- 트랙 편집 ---------- */
+
+/** 삭제 확인 중인 트랙. 플레이리스트 삭제와 같은 인라인 확인 패턴이다. */
+const pendingTrackId = ref<string | null>(null)
+
+function moveTrack(trackId: string, direction: 'up' | 'down'): void {
+  const target = library.selectedPlaylist
+  if (target === null) return
+
+  reportResult(library.moveTrack(target.id, trackId, direction))
+}
+
+function confirmRemoveTrack(): void {
+  const target = library.selectedPlaylist
+  const trackId = pendingTrackId.value
+  if (target === null || trackId === null) return
+
+  reportResult(library.removeTrack(target.id, trackId))
+  pendingTrackId.value = null
+}
+
 function resetForm(): void {
   edit.value = { kind: 'none' }
   draftName.value = ''
   formError.value = ''
 }
 
-/** 액션 결과를 화면 안내로 옮긴다. 저장 여부를 성공과 뭉뚱그리지 않는다. */
+/** 저장 여부를 성공과 뭉뚱그리지 않고 따로 알린다. */
+function reportPersisted(result: { persisted?: boolean }): void {
+  unsavedNotice.value =
+    result.persisted === false ? '이 변경은 저장되지 않았습니다. 현재 세션에서만 유지됩니다.' : ''
+}
+
+const FAILURE_MESSAGE: Record<string, string> = {
+  'empty-name': '이름을 입력해주세요.',
+  'not-found': '대상을 찾을 수 없습니다.',
+  'invalid-video-id': '올바른 YouTube 영상 링크를 입력해주세요.',
+  'out-of-range': '더 이상 옮길 수 없습니다.',
+}
+
+/** 액션 결과를 화면 안내로 옮긴다. */
 function reportResult(result: { ok: boolean; persisted?: boolean; reason?: string }): boolean {
   if (!result.ok) {
-    formError.value =
-      result.reason === 'empty-name'
-        ? '이름을 입력해주세요.'
-        : '해당 플레이리스트를 찾을 수 없습니다.'
+    formError.value = FAILURE_MESSAGE[result.reason ?? ''] ?? '요청을 처리하지 못했습니다.'
     return false
   }
 
-  unsavedNotice.value =
-    result.persisted === false ? '이 변경은 저장되지 않았습니다. 현재 세션에서만 유지됩니다.' : ''
+  reportPersisted(result)
   return true
 }
 
@@ -105,7 +204,11 @@ function selectPlaylist(id: string): void {
   // 선택만 바꾼다. 재생 큐는 건드리지 않는다.
   reportResult(library.selectPlaylist(id))
   pendingDeleteId.value = null
+  pendingTrackId.value = null
+  addedNotice.value = ''
   resetForm()
+  // 선택이 바뀌면 링크 폼을 닫는다. 등록 대상이 모호해지지 않게 한다.
+  closeLinkForm()
 }
 
 /** 열릴 때 닫기 버튼으로 포커스를 옮긴다. 닫힐 때는 셸이 트리거로 되돌린다. */
@@ -114,8 +217,11 @@ watch(
   async (isOpen) => {
     if (!isOpen) {
       resetForm()
+      closeLinkForm()
       pendingDeleteId.value = null
+      pendingTrackId.value = null
       unsavedNotice.value = ''
+      addedNotice.value = ''
       return
     }
     await nextTick()
@@ -151,10 +257,62 @@ watch(
       <LibraryStatusBanner />
 
       <p v-if="unsavedNotice !== ''" class="unsaved" role="status">{{ unsavedNotice }}</p>
+      <p v-if="addedNotice !== ''" class="added" role="status">{{ addedNotice }}</p>
 
       <div class="drawer-actions">
         <button type="button" class="pill pill--strong" @click="startCreate">＋ 새 목록</button>
+        <button
+          type="button"
+          class="pill"
+          :disabled="library.selectedPlaylist === null"
+          @click="startAddLink"
+        >
+          ＋ YouTube 링크 추가
+        </button>
       </div>
+
+      <p v-if="library.selectedPlaylist === null" class="muted">
+        플레이리스트를 먼저 만들거나 선택하면 링크를 추가할 수 있어요.
+      </p>
+
+      <!-- YouTube 링크 등록 폼. 대상 플레이리스트를 라벨에 명시한다. -->
+      <form v-if="linkTarget !== null" class="link-form" @submit.prevent="submitLink">
+        <p class="form-target">
+          <strong>{{ linkTarget.name }}</strong
+          >에 추가
+        </p>
+
+        <label class="label" for="track-url">YouTube URL</label>
+        <input
+          id="track-url"
+          v-model="draftUrl"
+          class="field"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          placeholder="https://www.youtube.com/watch?v=..."
+          :aria-invalid="linkError !== '' || undefined"
+          aria-describedby="track-url-error"
+        />
+
+        <label class="label" for="track-title">곡 이름 (선택)</label>
+        <input
+          id="track-title"
+          v-model="draftTitle"
+          class="field"
+          type="text"
+          :maxlength="MAX_TRACK_TITLE_LENGTH"
+          autocomplete="off"
+          placeholder="입력하지 않으면 YouTube 영상 ID로 표시"
+        />
+
+        <p id="track-url-error" class="error-msg">{{ linkError }}</p>
+
+        <div class="drawer-actions">
+          <button type="submit" class="pill pill--strong">이 목록에 추가</button>
+          <button type="button" class="pill" @click="closeLinkForm">취소</button>
+        </div>
+      </form>
 
       <form v-if="edit.kind !== 'none'" class="name-form" @submit.prevent="submitForm">
         <label class="label" for="playlist-name">
@@ -220,21 +378,65 @@ watch(
         </div>
       </div>
 
-      <!-- 트랙은 읽기 전용이다. 추가·삭제·순서 변경은 M2-3 이다. -->
       <div class="track-list">
         <p v-if="library.selectedPlaylist === null" class="muted">
           플레이리스트를 선택하면 트랙이 보입니다.
         </p>
         <p v-else-if="library.selectedPlaylist.tracks.length === 0" class="muted">
-          아직 등록된 영상이 없어요.
+          아직 등록된 영상이 없어요.<br />＋ YouTube 링크 추가를 눌러 시작하세요.
         </p>
+
+        <!-- :key 는 배열 인덱스가 아니라 트랙 id 를 쓴다. -->
         <div
           v-for="(track, index) in library.selectedPlaylist?.tracks ?? []"
           :key="track.id"
           class="track"
         >
-          <span class="track-name">{{ index + 1 }}. {{ track.title }}</span>
+          <span class="track-order">{{ index + 1 }}</span>
+          <!-- 잘려도 전체 제목을 title 로 확인할 수 있다. -->
+          <span class="track-name" :title="track.title">{{ track.title }}</span>
           <span class="track-id">{{ track.videoId }}</span>
+
+          <span class="track-controls">
+            <button
+              type="button"
+              :aria-label="`${track.title} 위로`"
+              :disabled="index === 0"
+              @click="moveTrack(track.id, 'up')"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              :aria-label="`${track.title} 아래로`"
+              :disabled="index === (library.selectedPlaylist?.tracks.length ?? 0) - 1"
+              @click="moveTrack(track.id, 'down')"
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              :aria-label="`${track.title} 삭제`"
+              @click="pendingTrackId = track.id"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+
+        <div
+          v-if="pendingTrackId !== null"
+          class="confirm"
+          role="alertdialog"
+          aria-label="트랙 삭제 확인"
+        >
+          <p class="confirm-text">이 곡을 목록에서 제거할까요?</p>
+          <div class="drawer-actions">
+            <button type="button" class="pill pill--strong" @click="confirmRemoveTrack">
+              삭제
+            </button>
+            <button type="button" class="pill" @click="pendingTrackId = null">취소</button>
+          </div>
         </div>
       </div>
     </div>
@@ -407,6 +609,14 @@ watch(
   gap: 7px;
 }
 
+.track-order {
+  flex: none;
+  width: 18px;
+  color: var(--row-meta-text-color);
+  font: 10px var(--font-mono);
+  text-align: right;
+}
+
 .track-name {
   overflow: hidden;
   min-width: 0;
@@ -416,6 +626,54 @@ watch(
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 승인된 디자인의 `.track-controls` 값을 따른다. */
+.track-controls {
+  display: flex;
+  flex: none;
+  gap: 3px;
+}
+
+.track-controls button {
+  min-width: 28px;
+  height: 29px;
+  border: 0;
+  background: transparent;
+  color: var(--row-action-text-color);
+}
+
+.track-controls button:hover:not(:disabled) {
+  color: var(--row-action-hover-text-color);
+}
+
+.track-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.form-target {
+  margin: 0 0 10px;
+  color: var(--drawer-sub-text-color);
+  font: 11px var(--font-mono);
+}
+
+.form-target strong {
+  color: var(--row-text-color);
+  font-weight: 500;
+}
+
+.added {
+  margin: 0 0 12px;
+  color: var(--row-meta-text-color);
+  font: 10px/1.6 var(--font-mono);
+}
+
+/* 좁은 화면에서 영상 ID 를 접어 제목과 버튼을 확보한다. */
+@media (max-width: 420px) {
+  .track-id {
+    display: none;
+  }
 }
 
 .track-id {

@@ -339,7 +339,7 @@ describe('B. 플레이리스트 UI', () => {
     expect(wrapper.get('.track-list').text()).toContain('플레이리스트를 선택하면')
   })
 
-  it('16. 트랙 목록을 읽기 전용으로 표시한다', async () => {
+  it('16. 트랙 목록을 순서·제목·영상 ID 와 함께 표시한다', async () => {
     const { wrapper } = mountApp()
     const library = useLibraryStore()
     seedRaw(
@@ -351,10 +351,17 @@ describe('B. 플레이리스트 UI', () => {
     library.restore()
     await openDrawer(wrapper)
 
-    const names = wrapper.findAll('.track .track-name').map((node) => node.text())
-    expect(names).toEqual(['1. Track t1', '2. Track t2'])
-    // 트랙 행에는 조작 버튼이 없다 (추가·삭제·이동은 M2-3).
-    expect(wrapper.findAll('.track button')).toHaveLength(0)
+    expect(wrapper.findAll('.track .track-order').map((n) => n.text())).toEqual(['1', '2'])
+    expect(wrapper.findAll('.track .track-name').map((n) => n.text())).toEqual([
+      'Track t1',
+      'Track t2',
+    ])
+    expect(wrapper.findAll('.track .track-id').map((n) => n.text())).toEqual([
+      'dQw4w9WgXcQ',
+      'dQw4w9WgXcQ',
+    ])
+    // M2-3 부터 각 행에 ↑ ↓ × 가 있다. 재생 버튼은 없다 (M3).
+    expect(wrapper.findAll('.track .track-controls button')).toHaveLength(6)
   })
 
   it('빈 플레이리스트를 안내한다', async () => {

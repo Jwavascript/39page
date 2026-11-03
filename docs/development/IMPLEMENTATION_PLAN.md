@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M2-2 완료, M2-3 이후 미착수).
+> 상태: 개정 (M2 완료 — M3 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -291,16 +291,28 @@ M3의 실제 구현은 `FakePlayerAdapter`를 교체하는 작업이 된다.
 **M2-3 / M3 로 넘긴 항목**: YouTube 링크 추가, 트랙 삭제·순서 변경,
 플레이리스트 재생 버튼과 큐 연결.
 
-### M2-3. 트랙 등록과 편집 (미착수)
+### M2-3. 트랙 등록과 편집 — 완료
 
-| #     | 작업                                                             |
-| ----- | ---------------------------------------------------------------- |
-| 2.3.1 | `library` store 에 `addTrack` · `removeTrack` · `moveTrack` 추가 |
-| 2.3.2 | 트랙 추가 모달 (YouTube URL + 이름 선택)                         |
-| 2.3.3 | `parseYouTubeVideoId` 연결, 실패 시 인라인 오류                  |
-| 2.3.4 | 트랙 순서 변경(위/아래)·삭제 UI                                  |
+| #     | 작업                                            | 산출물                    | 상태 |
+| ----- | ----------------------------------------------- | ------------------------- | ---- |
+| 2.3.1 | `addTrack` · `removeTrack` · `moveTrack`        | `src/stores/library.ts`   | 완료 |
+| 2.3.2 | 트랙 추가 폼 (YouTube URL + 이름 선택)          | `RecordLibraryDrawer.vue` | 완료 |
+| 2.3.3 | `parseYouTubeVideoId` 연결, 실패 시 인라인 오류 | `RecordLibraryDrawer.vue` | 완료 |
+| 2.3.4 | 트랙 순서 변경(↑/↓)·삭제 UI                     | `RecordLibraryDrawer.vue` | 완료 |
 
-기준: `MVP_SPEC.md` F4, F5.
+- 액션 계약과 트랙 id / videoId 구분은 `SYSTEM_DESIGN.md` §7.2 에 기록했다.
+- `videoId` 검증을 복원의 `normalizeTrack` 과 **같은 기준**으로 맞췄다.
+  추가한 트랙이 다음 복원에서 버려지지 않는다.
+- 영상 중복 등록을 막지 않는다. `track.id` 만 서로 다르면 된다.
+- 링크 폼은 **열릴 때 정한 대상**에만 등록한다. 선택이 다른 경로로 바뀌어도
+  엉뚱한 목록에 들어가지 않는다.
+- 보호 정책(ADR 0007)과 `reportResult()` 를 그대로 재사용했다.
+  `protected` / `unavailable` 에서는 메모리만 바뀌고 저장되지 않는다.
+- Playback store 를 import 하지 않는다. 트랙을 추가·삭제·정렬해도
+  재생 큐·인덱스·현재 트랙이 바뀌지 않는다.
+
+**M3 로 넘긴 항목**: 개별 트랙 재생, 목록 전체 재생, 재생 큐 연결,
+실제 YouTube 재생과 연속 재생.
 
 ## M3 — YouTube 실제 재생과 연속 재생
 
