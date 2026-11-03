@@ -313,9 +313,15 @@ YouTube 의 비동기 준비와 숫자 상태값은 **두 파일 밖으로 나�
 `FakePlayerAdapter`는 그대로 남겨 같은 계약을 계속 검증한다. 앱 코드에서
 주입하지 않으므로 프로덕션 번들에 포함되지 않는다 (M1-5에서 확인).
 
-**M3-1 이 아직 하지 않은 것**: 큐 진행과 라이브러리 연결(M3-2), 트랜스포트
-버튼과 사용자용 상태 메시지(M3-3), 가시성 가드(M3-4), 오류 UX·외부 링크(M3-5).
-`PlayerSurface` 가 store 에 반영하는 것은 `stateChange` 뿐이다.
+**M3-2 에서 바뀐 것**: 어댑터 사건을 받는 쪽이 `PlayerSurface` 에서 Playback
+Coordinator 로 옮겨졌다 (§6.1, ADR 0009). `PlayerSurface` 는 어댑터를 만들어
+코디네이터에 등록하고, 코디네이터가 준 핸들러를 `mount()` 에 그대로 넘긴다.
+어댑터의 수명 책임은 그대로 `PlayerSurface` 에 있다.
+
+**아직 하지 않은 것**: 트랜스포트 버튼과 `role="status"` 상태 영역(M3-3),
+가시성 가드(M3-4), 오류 코드별 상세 안내·외부 링크·재시도(M3-5).
+`.player-notice` 는 아직 개발 단계 한 줄이고, 안내 메시지가 있으면 그것을
+대신 보여준다.
 
 ## 5. Widget Registry / Widget Host
 
@@ -493,31 +499,51 @@ Playlist A 재생 중  →  Library 에서 B 선택  →  B 이름 변경 · 삭
 누르는 흐름은 **상위 UI 계층**이 두 store 를 조립해 만든다
 (`library` 에서 트랙을 읽어 `playback.setQueue()` 에 넘긴다).
 
-#### 연결 계층의 위치 — M3-0 결정 (2026-11-03)
+#### Playback Coordinator — 구현 완료 (M3-2)
 
 **애플리케이션 계층이 조립하고, 소비자는 `provide`/`inject` 로 받는다.**
-구현은 M3-2 다.
+근거: [ADR 0009](../decisions/0009-playback-coordinator.md).
 
 ```
-src/features/playback/  큐 연결 composable — library 를 읽고 playback 에 쓴다
-          ▲ 애플리케이션 계층(src/app)이 호출해 inject 키로 내려보낸다
-          │
-src/features/library/   드로어 재생 버튼 — 주입된 함수만 부른다
+ 라이브러리 UI          Coordinator              플레이어
+┌──────────────┐   ┌───────────────────┐   ┌──────────────────┐
+│ 드로어 ▶ 버튼 │──▶│ library 읽기       │   │ PlayerSurface    │
+│ (id 만 넘김)  │   │ playback 에 큐 쓰기 │──▶│  └ PlayerAdapter  │
+└──────────────┘   │ 어댑터에 명령       │◀──│    (등록 / 해제)   │
+                   └───────────────────┘   └──────────────────┘
+                             ▲
+                    src/app/App.vue 가 만들어 provide
 ```
 
-- composable 은 `src/features/playback/` 에 둔다. `@/stores/library`(읽기)와
-  `@/stores/playback`(쓰기)만 import 한다. **기능 → store 방향이므로 §3 의
-  레이어 규칙을 지킨다.**
-- 드로어는 `src/features/playback/` 을 **직접 import 하지 않는다.** 그러면
-  기능 간 직접 import 가 된다 (`AGENTS.md` 규칙 2). `LIBRARY_DRAWER` 와 같은
-  주입 키를 하나 더 써서 재생 요청 함수를 받는다.
-- 주입 지점은 `src/app/` 이다. 두 기능을 아는 유일한 계층이다.
+| 파일                                             | 역할                                                    |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `features/playback/playbackCoordinator.ts`       | **계약만.** 타입 + 주입 키. store 를 import 하지 않는다 |
+| `features/playback/createPlaybackCoordinator.ts` | 구현. `library` 읽기 · `playback` 쓰기 · 어댑터 명령    |
+| `app/App.vue`                                    | 하나 만들어 `provide`. 두 기능을 아는 유일한 계층이다   |
+
+- 두 store 는 **여전히 서로를 모른다.** 조립은 전부 코디네이터 안에 있다.
+- 드로어는 **계약 파일만** 가져온다. 구현도, `playback` store 도, 어댑터도
+  보지 않는다. `features/library/drawerController.ts` 와 같은 구조다.
+- 어댑터를 만들고 없애는 책임은 `PlayerSurface` 에 그대로 있다 (ADR 0006).
+  코디네이터는 `attachAdapter()` 로 빌려 쓰고 `detach()` 로 돌려준다.
+- 어댑터 참조와 내부 플래그는 **반응형이 아니다.** Pinia state 에 넣으면
+  외부 플레이어가 반응형 그래프에 끌려들어간다.
 
 | 탈락한 대안                             | 이유                                                                                                        |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | 드로어가 두 store 를 직접 조립          | 재생 진입점이 드로어에 묶인다. M3-3 의 트랜스포트 버튼도 같은 조립이 필요한데 드로어 안에 있으면 쓸 수 없다 |
-| 제3의 store (`queueLink` 등)            | 상태가 없는 조립 코드다. store 로 만들면 영속화·devtools 대상이 되고 경계만 늘어난다                        |
-| `playback` store 가 `library` 를 import | 두 store 의 독립을 깨뜨린다. 큐 스냅샷의 의미(§6.1)가 사라진다                                              |
+| 제3의 store (`queueLink` 등)            | 상태가 없는 조립 코드다. store 로 만들면 어댑터 참조가 반응형 프록시에 들어간다                             |
+| `playback` store 가 `library` 를 import | 두 store 의 독립을 깨뜨린다. 큐 스냅샷의 의미가 사라진다                                                    |
+| `PlayerSurface` 가 store 를 watch       | 재생은 상태가 아니라 명령이다. 같은 곡 다시 재생에 nonce 가 필요해진다 (ADR 0009)                           |
+
+#### 큐 진행 규칙 (M3-2)
+
+- `ENDED` 는 **그 트랙이 한 번이라도 재생됐고**, **사용자 조작을 기다리는
+  중이 아닐 때만** 다음 곡으로 넘긴다. 앞 조건은 곡을 빠르게 연달아 고를 때
+  직전 트랙의 늦은 `ENDED` 가 고른 곡을 건너뛰는 것을 막는다.
+- 큐 끝에서는 멈추고 알린다. 처음으로 돌아가지 않는다 (M3-0.1).
+- 재생 불가 영상에서 **자동으로 다음 곡으로 넘기지 않는다** (M3-0.7).
+  오류를 안내하고 사용자의 다음 선택을 기다린다.
 
 의존 방향:
 

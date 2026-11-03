@@ -432,7 +432,7 @@ M3-0 의 선행 결정이다.
 
 ---
 
-### M3-2. 재생 큐 진행과 라이브러리 연결
+### M3-2. 재생 큐 진행과 라이브러리 연결 — 완료 (2026-11-03)
 
 **작업 범위** — 라이브러리에서 큐를 만들고 큐를 따라 진행한다.
 **두 store 를 직접 잇지 않는다.**
@@ -445,21 +445,35 @@ M3-0 의 선행 결정이다.
 | 2.4 | 큐 끝 처리 — 반복 정책(M3-0.1)에 따라 정지하거나 처음으로                              |
 | 2.5 | 드로어 재생 버튼: 목록 전체 재생(`.playlist-play`), 트랙 개별 재생(`.track-play`)      |
 
-**산출물**: 상위 계층 모듈, `src/stores/playback.ts` 액션,
-`RecordLibraryDrawer.vue` · `PlaylistList.vue` 재생 버튼.
+**산출물**: `src/features/playback/playbackCoordinator.ts` (계약) ·
+`createPlaybackCoordinator.ts` (구현), `src/app/App.vue` (주입),
+`src/features/playback/PlayerSurface.vue` (어댑터 등록),
+`src/stores/playback.ts` (`advance` / `back`),
+`RecordLibraryDrawer.vue` · `PlaylistList.vue` 재생 버튼, **ADR 0009**.
 
-**완료 기준**
+**완료 기준** — 전부 충족 ✔
 
-- `library` 와 `playback` 이 서로를 import 하지 않는다 (기존 테스트 유지).
-- 재생 시작 후 라이브러리를 편집해도 큐가 흔들리지 않는다 (스냅샷).
-- 큐 끝에서 정한 정책대로 동작한다.
+- `library` 와 `playback` 이 서로를 import 하지 않는다 (기존 테스트 유지). ✔
+- 재생 시작 후 라이브러리를 편집해도 큐가 흔들리지 않는다 (스냅샷). ✔
+- 큐 끝에서 정한 정책대로 동작한다 — 멈추고 알린다. ✔
 
-**테스트**
+**테스트** — `playback-coordinator.spec.ts` (34) ·
+`playback-queue-flow.spec.ts` (14) · `playback-api-readiness.spec.ts` (1)
 
-- 목록 전체 재생 → 큐가 그 목록의 스냅샷인지
-- 재생 중 라이브러리 편집 → 큐 불변 (M2-3 테스트 유지)
-- `ENDED` → 인덱스 +1, 마지막에서 정책대로
+- 목록 전체 재생 / 선택 트랙부터 재생 → 큐가 **목록 전체**의 스냅샷인지
+- 큐의 트랙이 라이브러리와 **다른 객체**인지 (얕은 복사면 보장이 깨진다)
+- 재생 중 라이브러리 편집·이름 변경·삭제·선택 변경 → 큐 불변
+- `ENDED` → 인덱스 +1, 마지막에서 정지하고 안내
+- 재생된 적 없는 트랙의 늦은 `ENDED` 를 무시 (빠른 연속 선택)
+- 오류·자동재생 차단에서 **자동 건너뛰기 없음**, 새 요청으로 복귀
+- API 준비 전 재생 요청이 유실되지 않고 준비 후 **한 번** 실행
+- 테마 전환·드로어 여닫기에서 `YT.Player` 1개, `destroy()` 0회, iframe 동일
+- 어댑터와 DOM 노드가 Pinia state 에 없음
 - 두 store 간 직접 import 없음 (정적 검사 유지)
+
+**M3-2 가 하지 않은 것**: 트랜스포트 버튼(M3-3), 지금 재생 중인 트랙 강조
+(M3-3), 가시성 가드(M3-4), 오류 코드별 상세 안내·외부 링크(M3-5),
+재생 중 트랙 삭제 정책(M3-5). `playback.back()` 은 M3-3 에서 쓴다.
 
 ---
 

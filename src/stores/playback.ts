@@ -1,9 +1,12 @@
 /**
  * 재생 상태.
  *
- * M1-5에서는 **데이터 구조와 기본 불변조건만** 둔다. 실제 재생 명령 연결,
- * YouTube 이벤트 구독, 다음 곡 자동 전환, 반복 정책, 자동재생 차단 대응,
- * 임베드 오류 처리, 플레이리스트 연동은 M3에서 한다.
+ * M1-5에서 데이터 구조와 기본 불변조건을 두었고, M3-2에서 큐 진행 액션
+ * (`advance` / `back`)을 더했다.
+ *
+ * **이 store 는 어댑터를 부르지 않는다.** 재생 명령과 이벤트 반영은
+ * `features/playback` 의 Playback Coordinator 가 한다 (ADR 0009).
+ * 여기는 "무엇이 큐에 있고 지금 몇 번째인가" 만 안다.
  *
  * 경계 규칙:
  * - `theme` store를 import하지 않는다. `theme`도 이 store를 import하지 않는다.
@@ -78,6 +81,21 @@ export const usePlaybackStore = defineStore('playback', () => {
     return true
   }
 
+  /**
+   * 큐에서 한 칸 앞으로 간다.
+   *
+   * 큐 끝에서는 **움직이지 않고** `false` 를 돌려준다. 처음으로 돌아가지
+   * 않는다 — 반복은 MVP 범위 밖이다 (M3-0.1, `BACKLOG.md` §5).
+   */
+  function advance(): boolean {
+    return setQueueIndex(queueIndex.value + 1)
+  }
+
+  /** 큐에서 한 칸 뒤로 간다. 큐 처음에서는 움직이지 않는다. */
+  function back(): boolean {
+    return setQueueIndex(queueIndex.value - 1)
+  }
+
   function setPlayerState(next: PlayerState): void {
     playerState.value = next
   }
@@ -107,6 +125,8 @@ export const usePlaybackStore = defineStore('playback', () => {
     isEmpty,
     setQueue,
     setQueueIndex,
+    advance,
+    back,
     setPlayerState,
     setStatus,
     reset,

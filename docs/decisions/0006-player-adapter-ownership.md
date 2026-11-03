@@ -84,6 +84,11 @@ onUnmounted(() => {
   `PlayerSurface`가 store에 반영한다.
 
 M3-1 에서 이 방향으로 구현했다. 어댑터는 `mount()` 로 받은 핸들러에 사건을
-올리고, `PlayerSurface` 가 그것을 `playback.setPlayerState()` 로 반영한다.
-어댑터는 store 를 import 하지 않는다. 계약은
-[ADR 0008](0008-player-adapter-event-contract.md) 에 적었다.
+올리고, 그 핸들러가 `playback` store 에 반영한다. 어댑터는 store 를 import
+하지 않는다. 계약은 [ADR 0008](0008-player-adapter-event-contract.md) 에 적었다.
+
+**명령 방향은 M3-2 에서 바뀌었다.** 위에 적은 "`PlayerSurface` 가 store 를
+watch 해 어댑터를 호출한다"는 스케치는 [ADR 0009](0009-playback-coordinator.md)
+로 대체됐다. 재생은 상태가 아니라 명령이라 watch 로 표현하면 nonce 가 필요해진다.
+어댑터를 만들고 없애는 **소유권은 이 결정 그대로** `PlayerSurface` 에 있고,
+코디네이터는 등록받아 빌려 쓴다.

@@ -12,6 +12,14 @@ function readSource(relative: string): string {
   return readFileSync(resolve(process.cwd(), relative), 'utf8')
 }
 
+/** 주석에 적힌 이름이 정적 검사에 걸리지 않도록 지운다. HTML 주석도 포함한다. */
+function stripComments(code: string): string {
+  return code
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '')
+}
+
 function track(id: string, videoId = 'dQw4w9WgXcQ'): Track {
   return { id, source: 'youtube', videoId, title: `Track ${id}` }
 }
@@ -157,6 +165,33 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(libraryCode).not.toContain('playback')
     expect(playbackCode).not.toContain('useLibraryStore')
     expect(playbackCode).not.toContain('library')
+  })
+
+  it('드로어가 재생 구현이나 playback store 를 보지 않는다', () => {
+    // M3-2 에서 드로어에 재생 버튼이 생겼다. 그래도 드로어가 아는 것은
+    // 코디네이터 **계약**뿐이다 (`AGENTS.md` 규칙 2, ADR 0009).
+    const code = stripComments(readSource('src/features/library/RecordLibraryDrawer.vue'))
+
+    expect(code).not.toContain('usePlaybackStore')
+    expect(code).not.toContain('@/stores/playback')
+    expect(code).not.toContain('createPlaybackCoordinator')
+    expect(code).not.toContain('PlayerAdapter')
+    // 계약 파일 하나만 가져온다.
+    expect(code).toContain('@/features/playback/playbackCoordinator')
+  })
+
+  it('코디네이터 계약 파일이 store 를 끌어오지 않는다', () => {
+    const code = stripComments(readSource('src/features/playback/playbackCoordinator.ts'))
+
+    expect(code).not.toContain('@/stores/')
+    expect(code).not.toContain('defineStore')
+  })
+
+  it('코디네이터만 두 store 를 함께 본다', () => {
+    const code = readSource('src/features/playback/createPlaybackCoordinator.ts')
+
+    expect(code).toContain('@/stores/library')
+    expect(code).toContain('@/stores/playback')
   })
 
   it('Library 가 테마 store 도 참조하지 않는다', () => {

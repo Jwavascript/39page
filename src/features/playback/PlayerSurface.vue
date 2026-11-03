@@ -25,6 +25,7 @@ import { computed, inject, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { usePlaybackStore } from '@/stores/playback'
 
 import { PLAYER_ADAPTER_FACTORY, type PlayerAdapter } from './PlayerAdapter'
+import { PLAYBACK_COORDINATOR, type PlayerAttachment } from './playbackCoordinator'
 
 const mountHost = useTemplateRef<HTMLElement>('mountHost')
 
@@ -36,6 +37,15 @@ const mountHost = useTemplateRef<HTMLElement>('mountHost')
  */
 const createAdapter = inject(PLAYER_ADAPTER_FACTORY, null)
 
+/**
+ * 재생 조립을 맡는 코디네이터 (M3-2).
+ *
+ * 이 컴포넌트는 **어댑터의 수명만** 책임진다. 큐·라이브러리·오류 정책은
+ * 모르고, 어댑터를 등록해 코디네이터가 명령을 보낼 수 있게 할 뿐이다.
+ * 주입되지 않으면 등록하지 않는다 — 단독 마운트 테스트를 위한 기본값이다.
+ */
+const coordinator = inject(PLAYBACK_COORDINATOR, null)
+
 const playback = usePlaybackStore()
 
 /**
@@ -45,6 +55,7 @@ const playback = usePlaybackStore()
  * 외부 플레이어와 DOM 노드가 반응형 그래프에 끌려들어간다.
  */
 let adapter: PlayerAdapter | null = null
+let attachment: PlayerAttachment | null = null
 
 onMounted(() => {
   if (createAdapter === null) return
@@ -55,22 +66,20 @@ onMounted(() => {
   adapter = createAdapter()
 
   /*
-   * 어댑터가 store 를 직접 바꾸지 않는다. 사건을 여기서 받아 store 에
-   * 반영하는 단방향을 지킨다 (ADR 0006, ADR 0008).
+   * 등록을 마운트보다 먼저 한다. 코디네이터가 준 핸들러를 그대로
+   * `mount()` 에 넘기므로, 첫 사건이 오기 전에 연결이 서 있어야 한다.
    *
-   * M3-1 에서 반영하는 것은 상태뿐이다. `ready` · `error` ·
-   * `autoplayBlocked` 의 화면 처리(상태 메시지, 외부 링크, 자동재생 안내)는
-   * M3-3 · M3-5 다. 아직 동작하지 않는 UI 를 미리 만들지 않는다.
+   * 어댑터가 store 를 직접 바꾸지 않는다는 단방향은 그대로다 (ADR 0006).
+   * 사건을 store 로 옮기는 일은 이제 코디네이터가 한다 (ADR 0009).
    */
-  adapter.mount(container, {
-    stateChange: (state) => {
-      playback.setPlayerState(state)
-    },
-  })
+  attachment = coordinator?.attachAdapter(adapter) ?? null
+  adapter.mount(container, attachment?.events)
 })
 
 onUnmounted(() => {
   // 실제 언마운트에서만 불린다. 테마 전환은 여기에 닿지 않는다.
+  attachment?.detach()
+  attachment = null
   adapter?.destroy()
   adapter = null
 })
@@ -78,15 +87,18 @@ onUnmounted(() => {
 /**
  * 개발 단계 표시.
  *
- * 어댑터가 주입됐으면 **실제 플레이어 상태**를 적는다. 어댑터가 붙어 있는데도
- * "NOT CONNECTED" 라고 적으면 화면이 거짓을 말한다. 재생 컨트롤과 사용자용
- * 상태 메시지는 M3-3 이다.
+ * 어댑터가 주입됐으면 **실제 플레이어 상태**를 적고, 안내 메시지가 있으면
+ * 그것을 대신 보여준다. 어댑터가 붙어 있는데도 "NOT CONNECTED" 라고 적거나,
+ * 재생이 막힌 이유를 어디에도 적지 않으면 화면이 거짓을 말한다.
+ *
+ * 제대로 된 상태 영역(`role="status"` 라이브 리전, 경고 색, 외부 링크)과
+ * 재생 컨트롤은 M3-3 · M3-5 다. 여기서는 기존 한 줄을 그대로 쓴다.
  */
-const notice = computed<string>(() =>
-  createAdapter === null
-    ? 'YOUTUBE PLAYER / NOT CONNECTED'
-    : `YOUTUBE PLAYER / ${playback.playerState.toUpperCase()}`,
-)
+const notice = computed<string>(() => {
+  if (createAdapter === null) return 'YOUTUBE PLAYER / NOT CONNECTED'
+  if (playback.statusMessage !== '') return playback.statusMessage
+  return `YOUTUBE PLAYER / ${playback.playerState.toUpperCase()}`
+})
 </script>
 
 <template>

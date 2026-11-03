@@ -9,13 +9,19 @@
  *
  * 두 테마가 **같은 컴포넌트**를 쓴다. 색은 M1-2 토큰이 결정한다.
  *
- * 여기서 하지 않는 것: YouTube 링크 추가, 트랙 추가·삭제·순서 변경,
- * 목록 전체 재생. 동작하지 않는 버튼을 만들지 않는다 (M2-3 / M3).
+ * 재생은 **요청만** 한다 (M3-2). 큐를 만들거나 플레이어를 부르지 않고,
+ * 주입받은 Playback Coordinator 에 플레이리스트·트랙 id 를 넘긴다.
+ * 이 컴포넌트는 `playback` store 도 `PlayerAdapter` 도 모른다
+ * (`AGENTS.md` 규칙 2, 4).
+ *
+ * 여기서 하지 않는 것: 이전/다음·재생/일시정지 트랜스포트 컨트롤(M3-3),
+ * 지금 재생 중인 트랙 강조(M3-3), 오류 상세 안내와 외부 링크(M3-5).
  */
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import PlaylistList from '@/features/library/PlaylistList.vue'
+import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import { parseYouTubeVideoId } from '@/shared/utils/youtube'
 import { MAX_TRACK_TITLE_LENGTH, useLibraryStore } from '@/stores/library'
 
@@ -23,6 +29,15 @@ const props = defineProps<{ open: boolean; drawerId: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 const library = useLibraryStore()
+
+/**
+ * 재생 요청 입구 (M3-2).
+ *
+ * `features/playback` 의 **계약 파일만** 가져온다. 구현
+ * (`createPlaybackCoordinator`)은 보지 않는다. 주입되지 않으면 요청하지
+ * 않는다 — 드로어를 단독으로 마운트하는 테스트를 위한 기본값이다.
+ */
+const playback = inject(PLAYBACK_COORDINATOR, null)
 
 const closeButton = ref<HTMLButtonElement | null>(null)
 
@@ -200,6 +215,43 @@ function confirmDelete(): void {
   pendingDeleteId.value = null
 }
 
+/* ---------- 재생 요청 ---------- */
+
+/**
+ * 목록 전체 재생.
+ *
+ * 레퍼런스와 같이 **재생하는 목록을 선택 상태로 맞춘다.** 그래야 아래
+ * 트랙 목록이 지금 울리는 곡들을 보여준다. 이미 선택돼 있으면 건드리지
+ * 않는다 — 작성 중인 폼을 괜히 닫지 않기 위해서다.
+ */
+function requestPlayPlaylist(id: string): void {
+  if (id !== library.selectedPlaylistId) selectPlaylist(id)
+  playback?.playPlaylist(id)
+}
+
+/** 지금 선택된 목록을 처음부터 재생한다. */
+function requestPlaySelected(): void {
+  const current = library.selectedPlaylist
+  if (current === null) return
+
+  playback?.playPlaylist(current.id)
+}
+
+/**
+ * 고른 트랙부터 재생한다.
+ *
+ * 큐는 **그 트랙 하나가 아니라 목록 전체**다. 코디네이터가 그렇게 만든다.
+ */
+function requestPlayTrack(trackId: string): void {
+  const current = library.selectedPlaylist
+  if (current === null) return
+
+  playback?.playTrack(current.id, trackId)
+}
+
+/** 선택된 목록을 재생할 수 있는지. 빈 목록은 재생할 수 없다. */
+const canPlaySelected = computed<boolean>(() => (library.selectedPlaylist?.tracks.length ?? 0) > 0)
+
 function selectPlaylist(id: string): void {
   // 선택만 바꾼다. 재생 큐는 건드리지 않는다.
   reportResult(library.selectPlaylist(id))
@@ -338,6 +390,7 @@ watch(
         :playlists="library.playlists"
         :selected-id="library.selectedPlaylistId"
         @select="selectPlaylist"
+        @play="requestPlayPlaylist"
       />
 
       <div class="rule" />
@@ -347,6 +400,14 @@ watch(
       </h3>
 
       <div class="drawer-actions">
+        <button
+          type="button"
+          class="pill"
+          :disabled="!canPlaySelected"
+          @click="requestPlaySelected"
+        >
+          ▶ 목록 전체 재생
+        </button>
         <button
           type="button"
           class="pill"
@@ -392,6 +453,15 @@ watch(
           :key="track.id"
           class="track"
         >
+          <button
+            type="button"
+            class="track-play"
+            :aria-label="`${track.title} 재생`"
+            :title="`${track.title} 재생`"
+            @click="requestPlayTrack(track.id)"
+          >
+            ▶
+          </button>
           <span class="track-order">{{ index + 1 }}</span>
           <!-- 잘려도 전체 제목을 title 로 확인할 수 있다. -->
           <span class="track-name" :title="track.title">{{ track.title }}</span>
@@ -443,7 +513,7 @@ watch(
 
     <p class="drawer-foot">
       데크를 눌러 열고, ESC 또는 ×로 닫으세요.<br />
-      YouTube 링크 추가는 다음 단계에서 연결됩니다.
+      ▶를 누르면 그 곡부터 목록을 이어서 재생합니다.
     </p>
   </aside>
 </template>
@@ -626,6 +696,16 @@ watch(
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 승인된 디자인의 `.track-play` 값을 따른다. */
+.track-play {
+  width: 30px;
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--track-play-text-color);
+  font-size: 17px;
 }
 
 /* 승인된 디자인의 `.track-controls` 값을 따른다. */

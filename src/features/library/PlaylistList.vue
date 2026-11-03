@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * 플레이리스트 목록과 선택.
+ * 플레이리스트 목록, 선택, 목록 전체 재생.
  *
- * 승인된 디자인의 `.playlists` / `.playlist-select` 구조를 따른다.
- * 레퍼런스의 행 오른쪽 `▶` 재생 버튼은 만들지 않는다. 재생 기능이 아직
- * 없으므로 동작하지 않는 버튼이 된다 (M3 에서 추가한다).
+ * 승인된 디자인의 `.playlist-row` / `.playlist-select` / `.playlist-play`
+ * 구조를 따른다. 행은 **선택 버튼 + ▶ 재생 버튼** 두 개다.
  *
- * 선택만 바꾼다. 재생 큐를 건드리지 않는다.
+ * 여기서 재생을 **하지 않는다.** `play` 를 올릴 뿐이고, 큐를 만드는 일은
+ * 상위 계층(Playback Coordinator)이 한다. 이 컴포넌트는 재생 상태를 모른다.
  */
 import type { DeepReadonly } from 'vue'
 
@@ -21,7 +21,7 @@ defineProps<{
   selectedId: string | null
 }>()
 
-const emit = defineEmits<{ select: [id: string] }>()
+const emit = defineEmits<{ select: [id: string]; play: [id: string] }>()
 </script>
 
 <template>
@@ -30,18 +30,30 @@ const emit = defineEmits<{ select: [id: string] }>()
       아직 플레이리스트가 없습니다.<br />＋ 새 목록으로 시작하세요.
     </p>
 
-    <button
-      v-for="playlist in playlists"
-      :key="playlist.id"
-      type="button"
-      class="playlist-select"
-      :class="{ 'is-active': playlist.id === selectedId }"
-      :aria-current="playlist.id === selectedId ? 'true' : undefined"
-      @click="emit('select', playlist.id)"
-    >
-      <span class="pname">{{ playlist.name }}</span>
-      <span class="pmeta">{{ playlist.tracks.length }} TRACKS</span>
-    </button>
+    <div v-for="playlist in playlists" :key="playlist.id" class="playlist-row">
+      <button
+        type="button"
+        class="playlist-select"
+        :class="{ 'is-active': playlist.id === selectedId }"
+        :aria-current="playlist.id === selectedId ? 'true' : undefined"
+        @click="emit('select', playlist.id)"
+      >
+        <span class="pname">{{ playlist.name }}</span>
+        <span class="pmeta">{{ playlist.tracks.length }} TRACKS</span>
+      </button>
+
+      <!-- 빈 목록은 재생할 수 없다. 레퍼런스와 같이 버튼을 비활성화한다. -->
+      <button
+        type="button"
+        class="playlist-play"
+        :aria-label="`${playlist.name} 재생`"
+        :title="`${playlist.name} 재생`"
+        :disabled="playlist.tracks.length === 0"
+        @click="emit('play', playlist.id)"
+      >
+        ▶
+      </button>
+    </div>
   </div>
 </template>
 
@@ -60,11 +72,18 @@ const emit = defineEmits<{ select: [id: string] }>()
   line-height: 1.6;
 }
 
+/* 승인된 디자인의 `.playlist-row` 값을 따른다. */
+.playlist-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
 /* 승인된 디자인의 `.playlist-select` 값을 따른다. */
 .playlist-select {
-  display: block;
-  width: 100%;
   min-width: 0;
+  flex: 1;
   padding: 11px 10px;
   border: 1px solid var(--row-border-color);
   border-radius: var(--radius-control);
@@ -96,5 +115,25 @@ const emit = defineEmits<{ select: [id: string] }>()
   margin-top: 5px;
   color: var(--row-meta-text-color);
   font: 10px var(--font-mono);
+}
+
+/* 승인된 디자인의 `.playlist-play` 값을 따른다. */
+.playlist-play {
+  min-width: 42px;
+  height: 42px;
+  flex: none;
+  border: 1px solid var(--playlist-play-border-color);
+  border-radius: var(--radius-control);
+  background: var(--playlist-play-surface-color);
+  color: var(--playlist-play-text-color);
+}
+
+.playlist-play:hover:not(:disabled) {
+  background: var(--playlist-play-surface-hover-color);
+}
+
+.playlist-play:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 </style>

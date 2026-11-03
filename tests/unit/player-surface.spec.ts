@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import App from '@/app/App.vue'
 import { MVP_DASHBOARD_LAYOUT } from '@/app/layout'
+import { createPlaybackCoordinator } from '@/features/playback/createPlaybackCoordinator'
 import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
+import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import { PLAYER_ADAPTER_FACTORY } from '@/features/playback/PlayerAdapter'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import { usePlaybackStore } from '@/stores/playback'
@@ -24,12 +26,22 @@ function mountAppWithFake() {
   return { wrapper, fake }
 }
 
-/** PlayerSurface 만 단독으로 마운트한다. */
+/**
+ * PlayerSurface 만 단독으로 마운트한다.
+ *
+ * 앱에서는 `App.vue` 가 코디네이터를 내려보내므로 여기서도 넣는다.
+ * 코디네이터가 **없을 때**의 동작은 따로 검증한다.
+ */
 function mountSurfaceWithFake() {
   const fake = new FakePlayerAdapter()
   const wrapper = mount(PlayerSurface, {
     attachTo: document.body,
-    global: { provide: { [PLAYER_ADAPTER_FACTORY as symbol]: () => fake } },
+    global: {
+      provide: {
+        [PLAYER_ADAPTER_FACTORY as symbol]: () => fake,
+        [PLAYBACK_COORDINATOR as symbol]: createPlaybackCoordinator(),
+      },
+    },
   })
   return { wrapper, fake }
 }
@@ -284,14 +296,32 @@ describe('C. 이벤트 전달과 store 반영 (M3-1)', () => {
     expect(typeof fake.events?.stateChange).toBe('function')
   })
 
-  it('M3-1 에서는 ready · error · autoplayBlocked 를 구독하지 않는다', () => {
+  it('코디네이터가 상태·오류·자동재생차단을 구독한다', () => {
     const { fake } = mountSurfaceWithFake()
 
-    // 상태 메시지·외부 링크·자동재생 안내는 M3-3 · M3-5 다.
-    // 동작하지 않는 UI 를 미리 만들지 않는다 (`AGENTS.md` 규칙 9).
+    // M3-2 에서 코디네이터가 오류와 자동재생 차단까지 받는다. 그래야
+    // 재생 불가 영상에서 자동으로 다음 곡으로 넘어가지 않는다 (M3-0.7).
+    expect(typeof fake.events?.error).toBe('function')
+    expect(typeof fake.events?.autoplayBlocked).toBe('function')
+
+    // `ready` 는 아직 아무도 쓰지 않는다. 어댑터가 보류한 요청을 ready
+    // **전에** 이미 흘려보내므로 할 일이 없다 (ADR 0008).
     expect(fake.events?.ready).toBeUndefined()
-    expect(fake.events?.error).toBeUndefined()
-    expect(fake.events?.autoplayBlocked).toBeUndefined()
+  })
+
+  it('코디네이터가 없으면 어댑터에 핸들러를 넘기지 않는다', () => {
+    // 컴포넌트를 단독으로 마운트하는 테스트를 위한 기본값이다.
+    const fake = new FakePlayerAdapter()
+    const wrapper = mount(PlayerSurface, {
+      attachTo: document.body,
+      global: { provide: { [PLAYER_ADAPTER_FACTORY as symbol]: () => fake } },
+    })
+
+    expect(fake.calls.mount).toBe(1)
+    expect(fake.events).toBeNull()
+    expect(() => {
+      wrapper.unmount()
+    }).not.toThrow()
   })
 
   it('어댑터의 상태 변경을 playback store 에 반영한다', () => {

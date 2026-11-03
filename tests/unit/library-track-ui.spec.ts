@@ -298,12 +298,12 @@ describe('B. 트랙 목록 UI', () => {
     const { wrapper } = await withThreeTracks()
 
     // 두 번째 행의 ↑
-    await wrapper.findAll('.track')[1]?.findAll('button')[0]?.trigger('click')
+    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
     await nextTick()
     expect(titles(wrapper)).toEqual(['Two', 'One', 'Three'])
 
     // 첫 번째 행의 ↓
-    await wrapper.findAll('.track')[0]?.findAll('button')[1]?.trigger('click')
+    await wrapper.findAll('.track')[0]?.findAll('.track-controls button')[1]?.trigger('click')
     await nextTick()
     expect(titles(wrapper)).toEqual(['One', 'Two', 'Three'])
   })
@@ -312,10 +312,10 @@ describe('B. 트랙 목록 UI', () => {
     const { wrapper } = await withThreeTracks()
     const rows = wrapper.findAll('.track')
 
-    expect(rows[0]?.findAll('button')[0]?.attributes('disabled')).toBeDefined()
-    expect(rows[0]?.findAll('button')[1]?.attributes('disabled')).toBeUndefined()
-    expect(rows[2]?.findAll('button')[0]?.attributes('disabled')).toBeUndefined()
-    expect(rows[2]?.findAll('button')[1]?.attributes('disabled')).toBeDefined()
+    expect(rows[0]?.findAll('.track-controls button')[0]?.attributes('disabled')).toBeDefined()
+    expect(rows[0]?.findAll('.track-controls button')[1]?.attributes('disabled')).toBeUndefined()
+    expect(rows[2]?.findAll('.track-controls button')[0]?.attributes('disabled')).toBeUndefined()
+    expect(rows[2]?.findAll('.track-controls button')[1]?.attributes('disabled')).toBeDefined()
   })
 
   it('25. 트랙 버튼에 접근성 이름이 있다', async () => {
@@ -402,7 +402,7 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     await nextTick()
     const before = snapshot(playback)
 
-    await wrapper.findAll('.track')[1]?.findAll('button')[0]?.trigger('click')
+    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
     await nextTick()
 
     expect(snapshot(playback)).toEqual(before)
@@ -418,7 +418,7 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     await submitLink(wrapper, URL_A, 'One')
     library.addTrack(id, { videoId: VIDEO_A, title: 'Two' })
     await nextTick()
-    await wrapper.findAll('.track')[1]?.findAll('button')[0]?.trigger('click')
+    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
     await nextTick()
     await wrapper.findAll('.track-controls button')[2]?.trigger('click')
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
