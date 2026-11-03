@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      YouTube 임베드가 Referer 헤더를 요구한다. 헤더가 없으면 오류 153 으로
+      재생이 거부된다 (SYSTEM_DESIGN.md §8.1). 현대 브라우저의 기본값이 이
+      값과 같지만, 기본값에 의존하면 기본값이 바뀌거나 더 엄격한 정책이 섞일 때
+      원인을 찾기 어려운 재생 실패가 된다. 승인된 레퍼런스와 같은 값이다.
+      no-referrer 로 바꾸면 재생이 깨진다 (M3-0.8).
+    -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>39page</title>
     <script>
       /*

@@ -1,6 +1,6 @@
 # 로드맵
 
-> 상태: 개정 (M3 진행 중 — M3-0 결정 확정). MVP는 M5까지다.
+> 상태: 개정 (M3 진행 중 — M3-1 완료). MVP는 M5까지다.
 >
 > 상세 작업 목록: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md)
 > MVP 외 확장 항목: [`BACKLOG.md`](BACKLOG.md)
@@ -55,7 +55,7 @@ M1은 `FakePlayerAdapter` 기반의 **구조 검증**에 집중하고, 실제 Yo
 
 ### M3 — YouTube 실제 재생과 연속 재생
 
-M3-0 선행 결정과 정책 확인 — 완료 · M3-1 `YouTubeIFramePlayerAdapter` ·
+M3-0 선행 결정과 정책 확인 — 완료 · M3-1 `YouTubeIFramePlayerAdapter` — 완료 ·
 M3-2 큐 진행과 라이브러리 연결 · M3-3 트랜스포트 UI와 상태 메시지 ·
 M3-4 가시성 가드와 드로어 연동 · M3-5 오류·예외 처리.
 

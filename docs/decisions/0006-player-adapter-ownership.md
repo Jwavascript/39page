@@ -83,4 +83,7 @@ onUnmounted(() => {
   store를 직접 변경)은 두지 않고, 이벤트는 M3에서 콜백으로 받아
   `PlayerSurface`가 store에 반영한다.
 
-TODO: M3에서 store ↔ 어댑터 연결 방향을 이 결정에 맞게 구현하고 검증
+M3-1 에서 이 방향으로 구현했다. 어댑터는 `mount()` 로 받은 핸들러에 사건을
+올리고, `PlayerSurface` 가 그것을 `playback.setPlayerState()` 로 반영한다.
+어댑터는 store 를 import 하지 않는다. 계약은
+[ADR 0008](0008-player-adapter-event-contract.md) 에 적었다.

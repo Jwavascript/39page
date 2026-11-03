@@ -9,6 +9,7 @@ import { MVP_DASHBOARD_LAYOUT } from '@/app/layout'
 import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import { PLAYER_ADAPTER_FACTORY } from '@/features/playback/PlayerAdapter'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
+import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 const PLAYER_INSTANCE_ID = 'player-main'
@@ -164,7 +165,21 @@ describe('어댑터 계약 — 중복 호출', () => {
     expect(fake.state()).toBe('playing')
     fake.pause()
     expect(fake.state()).toBe('paused')
-    expect(fake.calls.load).toEqual(['dQw4w9WgXcQ'])
+  })
+
+  it('load() 가 받은 자동재생 의도를 기록한다', () => {
+    // 즉시 재생(loadVideoById)과 대기(cueVideoById)를 호출부가 고른다 (ADR 0008).
+    const fake = new FakePlayerAdapter()
+
+    fake.load('dQw4w9WgXcQ')
+    fake.load('aaaaaaaaaaa', { autoplay: true })
+    fake.load('bbbbbbbbbbb', { autoplay: false })
+
+    expect(fake.calls.load).toEqual([
+      { videoId: 'dQw4w9WgXcQ', autoplay: false },
+      { videoId: 'aaaaaaaaaaa', autoplay: true },
+      { videoId: 'bbbbbbbbbbb', autoplay: false },
+    ])
   })
 })
 
@@ -259,5 +274,68 @@ describe('B. DOM 인스턴스 동일성', () => {
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.findAll('input')).toHaveLength(0)
     expect(wrapper.find('iframe').exists()).toBe(false)
+  })
+})
+
+describe('C. 이벤트 전달과 store 반영 (M3-1)', () => {
+  it('mount() 에 상태 변경 핸들러를 넘긴다', () => {
+    const { fake } = mountSurfaceWithFake()
+
+    expect(typeof fake.events?.stateChange).toBe('function')
+  })
+
+  it('M3-1 에서는 ready · error · autoplayBlocked 를 구독하지 않는다', () => {
+    const { fake } = mountSurfaceWithFake()
+
+    // 상태 메시지·외부 링크·자동재생 안내는 M3-3 · M3-5 다.
+    // 동작하지 않는 UI 를 미리 만들지 않는다 (`AGENTS.md` 규칙 9).
+    expect(fake.events?.ready).toBeUndefined()
+    expect(fake.events?.error).toBeUndefined()
+    expect(fake.events?.autoplayBlocked).toBeUndefined()
+  })
+
+  it('어댑터의 상태 변경을 playback store 에 반영한다', () => {
+    const { fake } = mountSurfaceWithFake()
+    const playback = usePlaybackStore()
+    expect(playback.playerState).toBe('idle')
+
+    fake.emitStateChange('playing')
+
+    // 어댑터가 store 를 직접 바꾸지 않는다. PlayerSurface 가 받아서 올린다
+    // (ADR 0006 의 단방향).
+    expect(playback.playerState).toBe('playing')
+  })
+
+  it('테마를 바꿔도 구독이 유지된다', async () => {
+    const { fake } = mountAppWithFake()
+    const playback = usePlaybackStore()
+
+    await switchTheme('kawaii-synth-cassette')
+    fake.emitStateChange('paused')
+
+    expect(playback.playerState).toBe('paused')
+    expect(fake.calls.mount).toBe(1)
+  })
+
+  it('언마운트 후에는 어댑터 사건이 store 에 닿지 않는다', () => {
+    const { wrapper, fake } = mountSurfaceWithFake()
+    const playback = usePlaybackStore()
+
+    wrapper.unmount()
+    fake.emitStateChange('playing')
+
+    expect(playback.playerState).toBe('idle')
+  })
+
+  it('어댑터가 붙어 있으면 안내 문구가 실제 상태를 적는다', async () => {
+    const { wrapper, fake } = mountSurfaceWithFake()
+
+    // 어댑터가 붙어 있는데 NOT CONNECTED 라고 적으면 화면이 거짓을 말한다.
+    expect(wrapper.get('.player-notice').text()).toBe('YOUTUBE PLAYER / IDLE')
+
+    fake.emitStateChange('playing')
+    await nextTick()
+
+    expect(wrapper.get('.player-notice').text()).toBe('YOUTUBE PLAYER / PLAYING')
   })
 })

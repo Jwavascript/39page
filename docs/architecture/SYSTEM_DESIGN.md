@@ -168,32 +168,51 @@ M3-0 에서 위 조건을 그대로 확정했다. **200×200 은 공식 요구�
 TODO: `ResizeObserver` / `IntersectionObserver` 사용 여부 확정
 (프로토타입은 `getBoundingClientRect` + resize 이벤트)
 
-### 4.6 플레이어 어댑터 — 구현 완료 (M1-5)
+### 4.6 플레이어 어댑터 — 구현 완료 (M1-5 계약 · M3-1 YouTube 구현)
 
 계약은 `src/features/playback/PlayerAdapter.ts`에 있다.
 
 ```ts
 interface PlayerAdapter {
-  mount(container: HTMLElement): void // 중복 호출은 no-op
+  mount(container: HTMLElement, events?: PlayerAdapterEvents): void // 중복 호출은 no-op
   destroy(): void // 중복 호출은 no-op
-  load(videoId: string): void
+  load(videoId: string, options?: PlayerLoadOptions): void
   play(): void
   pause(): void
   state(): PlayerState // YouTube 숫자값을 노출하지 않는다
+}
+
+interface PlayerAdapterEvents {
+  ready?(): void
+  stateChange?(state: PlayerState): void // 바뀔 때만. 같은 상태를 두 번 알리지 않는다
+  error?(info: PlayerErrorInfo): void // stateChange('error') 다음에 온다
+  autoplayBlocked?(): void
+}
+
+interface PlayerLoadOptions {
+  autoplay?: boolean // true → loadVideoById, 생략 → cueVideoById
+}
+
+interface PlayerErrorInfo {
+  kind: PlayerErrorKind // 'api-unavailable' | 'embed-not-allowed' | … (숫자 해석은 어댑터 안에서)
+  code: number | null // 승인된 디자인이 사용자에게 번호를 보여준다
 }
 
 type PlayerAdapterFactory = () => PlayerAdapter
 const PLAYER_ADAPTER_FACTORY: InjectionKey<PlayerAdapterFactory>
 ```
 
+두 번째 인자 둘은 **M3-1 에서 더했다** (ADR 0008). 모두 선택이라 이벤트를 쓰지
+않는 호출부는 그대로다.
+
 초안과 달라진 점:
 
-| 초안                          | 구현                   | 이유                                                                                                                                          |
-| ----------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mount(): Promise<void>`      | `mount(): void`        | `YT.Player` 생성 자체는 동기다. 준비 완료는 `onReady` 콜백이므로 구현체가 내부에서 추적한다. Promise를 쓰면 호출부가 불필요하게 비동기가 된다 |
-| `readonly state: PlayerState` | `state(): PlayerState` | 외부 플레이어에 질의하는 동작이므로 메서드가 맞다                                                                                             |
-| `on(event, handler)`          | 없음                   | 이벤트 구독은 M3에서 필요해질 때 더한다. 지금 쓰지 않는 이벤트 시스템을 두지 않는다 (규칙 9)                                                  |
-| `load(videoId, { autoplay })` | `load(videoId)`        | 자동재생 정책은 M3 결정이다                                                                                                                   |
+| 초안                          | 구현                        | 이유                                                                                                                                          |
+| ----------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mount(): Promise<void>`      | `mount(): void`             | `YT.Player` 생성 자체는 동기다. 준비 완료는 `onReady` 콜백이므로 구현체가 내부에서 추적한다. Promise를 쓰면 호출부가 불필요하게 비동기가 된다 |
+| `readonly state: PlayerState` | `state(): PlayerState`      | 외부 플레이어에 질의하는 동작이므로 메서드가 맞다                                                                                             |
+| `on(event, handler)`          | `mount(container, events?)` | **M3-1 에서 더했다.** 구독/해지 API 는 두지 않았다 — 핸들러 수명이 마운트 수명과 같아 `destroy()` 가 버리면 끝이다 (ADR 0008)                 |
+| `load(videoId, { autoplay })` | `load(videoId, options?)`   | **M3-1 에서 더했다.** `MVP_SPEC.md` F3 가 `loadVideoById` 와 `cueVideoById` 를 둘 다 쓴다. 어느 쪽인지는 호출부만 안다                        |
 
 #### 중복 호출 계약
 
@@ -249,20 +268,54 @@ const PLAYER_ADAPTER_FACTORY: InjectionKey<PlayerAdapterFactory>
 - 테스트는 `global.provide`로 `FakePlayerAdapter`를 넣는다.
 - M3는 `main.ts`에서 한 줄로 실제 어댑터를 주입한다.
 
-#### M3에서 실제 어댑터로 교체하는 방법
+#### 실제 어댑터 — `YouTubeIFramePlayerAdapter` (M3-1 구현 완료)
 
-1. `src/features/playback/YouTubeIFramePlayerAdapter.ts`를 만들어
-   `PlayerAdapter`를 구현한다. API 스크립트 싱글턴 로드,
-   `window.onYouTubeIframeAPIReady` 단일 등록, `wantsPlay` 지연,
-   숫자 → `PlayerState` 변환을 **이 파일 안에서만** 한다.
-2. `main.ts`에 한 줄을 더한다.
-   `app.provide(PLAYER_ADAPTER_FACTORY, () => new YouTubeIFramePlayerAdapter())`
-3. `PlayerSurface`의 안내 문구를 실제 상태 표시로 교체한다.
-4. `PlayerAdapter` 인터페이스를 바꿔야 하면 M1-5의 수명주기 테스트를 함께
-   수정한다 (`AGENTS.md` 규칙 7).
+YouTube 의 비동기 준비와 숫자 상태값은 **두 파일 밖으로 나가지 않는다.**
+
+| 파일                            | 책임                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| `youtubeIframeApi.ts`           | 스크립트 로드 싱글턴, `onYouTubeIframeAPIReady` 단일 등록, `YT` 타입 선언 |
+| `YouTubeIFramePlayerAdapter.ts` | `PlayerAdapter` 구현, 요청 보류, 숫자 → 도메인 변환, 콜백 무효화          |
+
+로더를 나눈 이유: 그 상태가 **모듈 수준 싱글턴**이라 수명이 어댑터 인스턴스보다
+길다. 어댑터가 여러 번 생겼다 사라져도 스크립트는 한 번만 받는다.
+
+**네 가지 비동기 사정을 어댑터가 혼자 감당한다.**
+
+| 사정                                 | 처리                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| API 스크립트가 늦게 온다             | `load()` 가 먼저 와도 보류한다. 여러 번 오면 마지막 것만 남는다             |
+| 플레이어가 늦게 준비된다             | 생성과 `onReady` 사이의 요청을 보류하고 `onReady` 에서 **한 번** 흘려보낸다 |
+| 언마운트 뒤에도 콜백이 온다          | `generation` 을 `destroy()` 마다 올려 이전 세대의 콜백을 전부 무효화한다    |
+| 같은 스크립트를 두 번 받으면 안 된다 | 로더가 Promise 를 담아두고, DOM 의 같은 `<script>` 도 확인한다              |
+
+**`YT.Player` 생성 시점은 첫 `load()` 다** (ADR 0008). `mount()` 는 자기 소유
+노드만 만들고 네트워크를 건드리지 않는다. 승인된 프로토타입의 동작이고,
+음악을 틀지 않는 방문에 youtube.com 요청을 만들지 않는다.
+
+**어댑터 소유 영역이 두 겹이다.** `YT.Player` 는 넘겨받은 요소를 **iframe 으로
+교체**하므로, 안정적인 노드를 직접 넘기지 않고 그 안에 교체당할 자식을 하나 더
+만들어 넘긴다. 덕분에 어댑터의 노드는 플레이어가 생기든 사라지든 같은 노드로
+남고, 정리는 그 노드 하나를 지우면 끝난다.
+
+```
+<div class="player-mount">              Vue 소유 — 안정적인 래퍼
+  └── <div data-youtube-player-host>    어댑터 소유 — 안정적인 노드
+        └── <iframe>                    YT.Player 가 교체해 만든 것
+```
+
+`playerVars` 는 `MVP_SPEC.md` F3 그대로이고, `origin` 에 `window.location.origin`
+을 런타임에 읽어 넣는다 (M3-0.5). http(s) 가 아니면 넣지 않는다.
+
+`main.ts` 가 한 줄로 주입한다.
+`app.provide(PLAYER_ADAPTER_FACTORY, () => new YouTubeIFramePlayerAdapter())`
 
 `FakePlayerAdapter`는 그대로 남겨 같은 계약을 계속 검증한다. 앱 코드에서
 주입하지 않으므로 프로덕션 번들에 포함되지 않는다 (M1-5에서 확인).
+
+**M3-1 이 아직 하지 않은 것**: 큐 진행과 라이브러리 연결(M3-2), 트랜스포트
+버튼과 사용자용 상태 메시지(M3-3), 가시성 가드(M3-4), 오류 UX·외부 링크(M3-5).
+`PlayerSurface` 가 store 에 반영하는 것은 `stateChange` 뿐이다.
 
 ## 5. Widget Registry / Widget Host
 
