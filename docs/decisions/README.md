@@ -33,6 +33,7 @@
 | [0004](0004-unapplied-reference-rules.md) | 승인된 레퍼런스에서 적용되지 않는 규칙은 작성된 의도를 따른다             | 채택 |
 | [0005](0005-grid-area-layout-model.md)    | 레이아웃은 이름 있는 Grid 영역으로 표현하고 좌표를 저장하지 않는다        | 채택 |
 | [0006](0006-player-adapter-ownership.md)  | 플레이어 어댑터는 PlayerSurface가 비반응형으로 보유하고 팩토리로 주입한다 | 채택 |
+| [0007](0007-library-data-protection.md)   | 읽지 못한 라이브러리 원본은 보호 상태로 두고 덮어쓰지 않는다              | 채택 |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

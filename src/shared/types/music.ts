@@ -24,3 +24,15 @@ export interface Playlist {
   name: string
   tracks: Track[]
 }
+
+/**
+ * 라이브러리의 저장 상태.
+ *
+ * `selectedPlaylistId`는 **존재하는 플레이리스트를 가리키거나 `null`** 이다.
+ * 재생 중인 대기열과는 다른 상태다. 라이브러리에서 다른 목록을 선택해도
+ * 재생 큐는 바뀌지 않는다 (`docs/architecture/SYSTEM_DESIGN.md` §6.1).
+ */
+export interface LibraryData {
+  playlists: Playlist[]
+  selectedPlaylistId: string | null
+}
