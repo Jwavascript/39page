@@ -14,12 +14,16 @@
  * 이 컴포넌트는 `playback` store 도 `PlayerAdapter` 도 모른다
  * (`AGENTS.md` 규칙 2, 4).
  *
+ * 트랙을 지운 뒤에는 **사실만** 알린다 (M3-5). 재생 중이던 곡이면 멈추는
+ * 판단은 코디네이터가 한다.
+ *
  * 재생 요청이 거절되면 **여기서** 안내한다 (M3-4). 플레이어의 `.status`
  * 영역은 좁은 화면에서 드로어와 함께 숨으므로, 사용자가 누른 자리에
  * 보여야 한다.
  *
  * 여기서 하지 않는 것: 이전/다음·재생/일시정지 트랜스포트 컨트롤(M3-3),
- * 지금 재생 중인 트랙 강조(M3-3), 오류 상세 안내와 외부 링크(M3-5).
+ * 지금 재생 중인 트랙 강조(M3-3), 오류 상세 안내와 외부 링크 — 그쪽은
+ * 플레이어 영역의 책임이다(M3-5).
  */
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
@@ -167,7 +171,16 @@ function confirmRemoveTrack(): void {
   const trackId = pendingTrackId.value
   if (target === null || trackId === null) return
 
-  reportResult(library.removeTrack(target.id, trackId))
+  if (reportResult(library.removeTrack(target.id, trackId))) {
+    /*
+     * 재생 중이던 곡이면 멈추고 안내해야 한다 (`MVP_SPEC.md` F4, M3-5).
+     *
+     * 큐는 스냅샷이라 라이브러리에서 지워도 자동으로 끊기지 않는다. 그래서
+     * **사실만** 알리고, 멈출지 말지는 코디네이터가 정한다. 이 컴포넌트는
+     * 여전히 `playback` store 도 `PlayerAdapter` 도 모른다.
+     */
+    playback?.trackRemoved(trackId)
+  }
   pendingTrackId.value = null
 }
 

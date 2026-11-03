@@ -11,6 +11,8 @@
  * 2. **플레이어가 늦게 준비된다.** 생성과 `onReady` 사이가 비어 있다 → 보류한다.
  * 3. **언마운트 뒤에도 콜백이 온다.** `generation` 으로 전부 무효화한다.
  * 4. **같은 스크립트를 두 번 받으면 안 된다.** 로더가 싱글턴으로 막는다.
+ * 5. **스크립트 로드가 실패할 수 있다.** 실패를 전달하고 **재시도를 열어둔다**
+ *    (M3-5). 로더가 실패한 시도를 버리므로 다음 `load()` 가 새 요청이 된다.
  *
  * store 를 import 하지 않는다. 사건은 `mount()` 에서 받은 핸들러로 올려보내고,
  * store 반영은 `PlayerSurface` 가 한다 (ADR 0006 의 단방향).
@@ -215,6 +217,11 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
       },
       () => {
         if (!this.isCurrent(generation)) return
+        /*
+         * 다시 시도할 수 있게 표시를 지운다 (M3-5). 로더도 실패한 시도를
+         * 버리므로, 사용자가 ▶ 를 다시 누르면 새 요청이 나간다.
+         */
+        this.apiRequested = false
         this.fail({ kind: 'api-unavailable', code: null })
       },
     )
@@ -314,8 +321,17 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
   }
 
   private handleAutoplayBlocked(): void {
-    // 오류가 아니다. 상태는 YouTube 가 보내는 `onStateChange` 에 맡긴다.
+    // 오류가 아니다. YouTube 가 이미 알려준 상태는 그대로 둔다.
     this.wantsPlay = false
+
+    /*
+     * 다만 우리가 플레이어를 만들며 낙관적으로 세운 `loading` 은 거짓이 됐다
+     * (M3-5). 그대로 두면 토글이 ⏸ 를 보여주고 누르면 "멈춤" 이 되어,
+     * 사용자가 재생을 **다시 요청할 수 없다.** CUED(5) 와 같은 `idle` 로
+     * 되돌린다. YouTube 가 보낸 상태(`paused` 등)는 건드리지 않는다.
+     */
+    if (this.currentState === 'loading') this.setState('idle')
+
     this.events?.autoplayBlocked?.()
   }
 

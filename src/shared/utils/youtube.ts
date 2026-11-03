@@ -133,3 +133,24 @@ export function parseYouTubeVideoId(input: string): YouTubeUrlParseResult {
 
   return { ok: true, videoId: candidate }
 }
+
+/**
+ * 영상 ID 를 YouTube 시청 페이지 주소로 바꾼다 (M3-5).
+ *
+ * 재생할 수 없는 영상에 `YOUTUBE에서 열기 ↗` 링크를 띄울 때 쓴다
+ * (`MVP_SPEC.md` F3). 승인된 레퍼런스의 `videoLink()` 와 같은 형식이다.
+ *
+ * **ID 를 검증하고 인코딩한다.** 저장된 라이브러리가 손상됐거나 미래 버전에서
+ * 온 값일 수 있으므로, 주소를 만드는 자리에서 다시 확인한다. 형식이 아니면
+ * `null` 이고 링크를 띄우지 않는다. 임의의 문자열이 주소로 들어가지 않는다.
+ *
+ * 인코딩은 **두 번째 방어선**이다. 검증을 통과한 11자는 전부
+ * `[A-Za-z0-9_-]` 라서 `encodeURIComponent` 가 바꾸는 글자가 없다 — 그래서
+ * 인코딩을 지워도 어떤 테스트도 깨지지 않는다(의도된 중복). 나중에 ID 형식이
+ * 느슨해지면 이 줄이 먼저 막는다. 지우지 않는다.
+ */
+export function youtubeWatchUrl(videoId: string): string | null {
+  if (!isYouTubeVideoId(videoId)) return null
+
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+}

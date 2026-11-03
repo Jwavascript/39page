@@ -249,26 +249,90 @@ describe('A. API 스크립트 싱글턴 로드', () => {
     expect(FakeYtPlayer.instances).toHaveLength(1)
   })
 
-  it('로드가 한 번 실패하면 다음 요청도 즉시 실패로 끝난다', async () => {
+  it('로드가 실패하면 매달리지 않고 실패한 스크립트를 치운다 (M3-5)', async () => {
     const first = recorder()
     const adapter = new AdapterClass()
     adapter.mount(makeContainer(), first.events)
     adapter.load('aaaaaaaaaaa')
+    expect(apiScripts()).toHaveLength(1)
 
     await failApi()
-    expect(first.log.errors).toHaveLength(1)
 
-    // 두 번째 요청. 실패한 <script> 는 error 를 다시 쏘지 않는다. 로더가
-    // 결과(실패까지)를 담아두지 않으면 이 요청은 조용히 영원히 매달린다 —
-    // 사용자에게는 "준비 중" 이 끝나지 않는 화면으로 보인다.
+    expect(first.log.errors).toEqual([{ kind: 'api-unavailable', code: null }])
+    /*
+     * 실패한 <script> 는 다시 `error` 를 쏘지 않는다. 그대로 두면 다음 요청이
+     * 그 죽은 요소를 보고 조용히 영원히 매달린다 — 사용자에게는 끝나지 않는
+     * "준비 중" 화면이다. 치워야 재시도가 **새 요청**이 된다.
+     */
+    expect(apiScripts()).toHaveLength(0)
+  })
+
+  it('실패 뒤 같은 어댑터가 다시 요청하면 스크립트를 새로 붙인다 (M3-5)', async () => {
+    const { log, events } = recorder()
+    const adapter = new AdapterClass()
+    adapter.mount(makeContainer(), events)
+    adapter.load('aaaaaaaaaaa', { autoplay: true })
+    await failApi()
+
+    // 사용자가 ▶ 를 다시 누른 것과 같은 경로다.
+    adapter.load('aaaaaaaaaaa', { autoplay: true })
+
+    // 한 번에 하나다. 두 개가 되면 같은 스크립트를 두 번 받는다.
+    expect(apiScripts()).toHaveLength(1)
+    expect(log.errors).toHaveLength(1)
+  })
+
+  it('재시도가 성공하면 플레이어가 만들어진다 (M3-5)', async () => {
+    const { log, events } = recorder()
+    const adapter = new AdapterClass()
+    adapter.mount(makeContainer(), events)
+    adapter.load('aaaaaaaaaaa', { autoplay: true })
+    await failApi()
+
+    adapter.load('aaaaaaaaaaa', { autoplay: true })
+    await arriveApi()
+
+    expect(FakeYtPlayer.instances).toHaveLength(1)
+    expect(lastPlayer().options.videoId).toBe('aaaaaaaaaaa')
+    expect(log.errors).toHaveLength(1)
+  })
+
+  it('재시도도 실패하면 다시 알린다 (M3-5)', async () => {
+    const { log, events } = recorder()
+    const adapter = new AdapterClass()
+    adapter.mount(makeContainer(), events)
+    adapter.load('aaaaaaaaaaa')
+    await failApi()
+
+    adapter.load('aaaaaaaaaaa')
+    await failApi()
+
+    expect(log.errors).toEqual([
+      { kind: 'api-unavailable', code: null },
+      { kind: 'api-unavailable', code: null },
+    ])
+    expect(apiScripts()).toHaveLength(0)
+  })
+
+  it('실패 뒤 다른 어댑터가 요청해도 스크립트는 하나다 (M3-5)', async () => {
+    const first = recorder()
+    const adapter = new AdapterClass()
+    adapter.mount(makeContainer(), first.events)
+    adapter.load('aaaaaaaaaaa')
+    await failApi()
+
     const second = recorder()
     const later = new AdapterClass()
     later.mount(makeContainer(), second.events)
     later.load('bbbbbbbbbbb')
     await flush()
 
-    expect(second.log.errors).toEqual([{ kind: 'api-unavailable', code: null }])
     expect(apiScripts()).toHaveLength(1)
+    // 아직 실패하지도 성공하지도 않았다. 매달린 것이 아니라 **진행 중**이다.
+    expect(second.log.errors).toEqual([])
+
+    await arriveApi()
+    expect(FakeYtPlayer.instances.map((player) => player.options.videoId)).toEqual(['bbbbbbbbbbb'])
   })
 
   it('두 어댑터 모두 같은 API 도착 신호로 플레이어를 만든다', async () => {
@@ -589,6 +653,36 @@ describe('D. 이벤트 전달', () => {
     expect(log.autoplayBlocked).toBe(1)
     expect(log.errors).toEqual([])
     expect(adapter.state()).toBe('paused')
+  })
+
+  it('자동재생이 차단되면 낙관적 loading 을 idle 로 되돌린다 (M3-5)', async () => {
+    const { log, events } = recorder()
+    const adapter = new AdapterClass()
+    adapter.mount(makeContainer(), events)
+    adapter.load('aaaaaaaaaaa', { autoplay: true })
+    await arriveApi()
+    // 플레이어를 만들며 우리가 세운 상태다. 아직 YouTube 는 아무 말도 안 했다.
+    expect(adapter.state()).toBe('loading')
+
+    lastPlayer().fireAutoplayBlocked()
+
+    /*
+     * 그대로 두면 토글이 ⏸ 를 보여주고 누르면 "멈춤" 이 되어, 사용자가
+     * 재생을 다시 요청할 수 없다. CUED(5) 와 같은 idle 로 되돌린다.
+     */
+    expect(adapter.state()).toBe('idle')
+    expect(log.states).toEqual(['loading', 'idle'])
+    expect(log.errors).toEqual([])
+  })
+
+  it('YouTube 가 이미 알려준 상태는 자동재생 차단이 건드리지 않는다 (M3-5)', async () => {
+    const { adapter, player } = await subscribedAdapter()
+    player.fireReady()
+    player.fireStateChange(1)
+
+    player.fireAutoplayBlocked()
+
+    expect(adapter.state()).toBe('playing')
   })
 
   it('자동재생이 차단되면 보류한 재생 의도를 버린다', async () => {

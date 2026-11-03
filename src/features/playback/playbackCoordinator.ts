@@ -12,7 +12,7 @@
  * `playback` 에는 큐 스냅샷을 쓴다. 두 store 는 여전히 서로를 모른다.
  *
  * 누가 무엇을 쓰는가:
- *   `RecordLibraryDrawer` → `PlaybackRequests` (재생 요청만)
+ *   `RecordLibraryDrawer` → `PlaybackRequests` · `PlaybackLibraryNotices`
  *   `PlayerTransport`     → `PlaybackTransport` (버튼 3개)
  *   `PlayerSurface`       → `attachAdapter` (플레이어·가시성 연결만)
  *   `DashboardShell`      → `PlaybackVisibility` (가리기 전 통지)
@@ -82,6 +82,23 @@ export interface PlaybackTransport {
 }
 
 /**
+ * 라이브러리 변경 통지 (M3-5). Record Library UI 가 쓴다.
+ *
+ * 큐는 스냅샷이므로 라이브러리를 고쳐도 자동으로 끊기지 않는다. 재생 중인
+ * 곡이 지워진 경우만 예외다 — 멈추고 알려야 한다 (`MVP_SPEC.md` F4).
+ * 그 판단을 코디네이터가 하도록 **사실만** 알린다.
+ */
+export interface PlaybackLibraryNotices {
+  /**
+   * 트랙이 라이브러리에서 지워졌다.
+   *
+   * 지금 재생 중인 트랙이면 멈추고 안내한다. 아니면 아무 일도 없다.
+   * 큐는 어느 경우에도 바뀌지 않는다.
+   */
+  trackRemoved(trackId: string): void
+}
+
+/**
  * 가시성 통지 (M3-4). 플레이어를 가리는 쪽이 쓴다.
  *
  * 왜 통지를 받는가: 재생 쪽은 드로어도 브레이크포인트도 모른다. 가리는 것을
@@ -120,7 +137,7 @@ export interface PlayerAttachment {
 }
 
 export interface PlaybackCoordinator
-  extends PlaybackRequests, PlaybackTransport, PlaybackVisibility {
+  extends PlaybackRequests, PlaybackTransport, PlaybackLibraryNotices, PlaybackVisibility {
   /**
    * 플레이어 어댑터를 등록한다.
    *

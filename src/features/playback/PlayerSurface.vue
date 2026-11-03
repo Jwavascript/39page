@@ -13,6 +13,11 @@
  * 패치하면 충돌한다. 트랜스포트 컨트롤도 **그 영역 밖의 형제**다 — 영상을
  * 가리지 않는다 (개발자 정책 III.I.6).
  *
+ * 그래서 영상 로딩 전 안내(`.video-placeholder`, M3-5)도 `.player-mount` 안이
+ * 아니라 **그 형제**다. 둘을 Vue 소유의 `.video-holder` 가 감싸고, 안내는 그
+ * 안에서 절대 위치로 겹친다. 승인된 레퍼런스도 `.video-holder` 안에
+ * `.video-placeholder` 와 `.yt-host` 를 형제로 둔다.
+ *
  * 왜 이렇게까지 하는가: 플레이어 iframe은 언마운트는 물론 **부모가 바뀌기만
  * 해도 재로드된다.** 따라서 이 컴포넌트는 테마 전환·재렌더·반응형 변경에서
  * 절대 재마운트되지 않아야 한다
@@ -131,10 +136,31 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
     <p class="now-sub">{{ transport.subtitle.value }}</p>
 
     <!--
-      어댑터 소유 영역. Vue 템플릿은 이 안에 자식을 두지 않는다.
-      어댑터가 자신의 자식 노드를 만들고, 그 안의 노드가 iframe 이 된다.
+      승인된 디자인의 `.video-holder`. Vue 가 소유한다. 테두리·비율·최소
+      크기를 여기서 잡는다.
     -->
-    <div ref="mountHost" class="player-mount" />
+    <div class="video-holder">
+      <!--
+        영상이 들어서기 전 안내. 어댑터 소유 영역 **밖**의 형제다.
+
+        `v-if` 가 아니라 클래스로 숨긴다. 승인된 레퍼런스도 `.hidden` 토글을
+        쓴다. 이 컴포넌트에서는 조건부 렌더를 아예 쓰지 않는 쪽이 안전하다 —
+        `v-if` 하나가 영상 영역 쪽으로 옮겨 붙기만 해도 iframe 이 재로드된다
+        (ADR 0002). 정적 검사도 그 금지를 그대로 지킬 수 있다.
+      -->
+      <div class="video-placeholder" :class="{ 'is-hidden': !transport.showsPlaceholder.value }">
+        <div>
+          <strong>YOUTUBE / VIDEO</strong>영상은 이 위치에 16:9로 표시됩니다.<br />플레이리스트에서
+          곡을 선택하세요.
+        </div>
+      </div>
+
+      <!--
+        어댑터 소유 영역. Vue 템플릿은 이 안에 자식을 두지 않는다.
+        어댑터가 자신의 자식 노드를 만들고, 그 안의 노드가 iframe 이 된다.
+      -->
+      <div ref="mountHost" class="player-mount" />
+    </div>
 
     <!-- 어댑터 소유 영역 **밖**의 형제다. 영상을 덮지 않는다. -->
     <PlayerTransport
@@ -143,6 +169,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
       :can-previous="transport.canPrevious.value"
       :can-next="transport.canNext.value"
       :toggle-label="transport.toggleLabel.value"
+      :youtube-url="transport.youtubeUrl.value"
       @previous="transport.previous"
       @toggle="transport.toggle"
       @next="transport.next"
@@ -202,7 +229,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
  * min-height 가 공식 요구사항(200×200)을 CSS 로 보장하는 1차 방어선이고**,
  * 실제 측정은 `playerVisibility.ts` 가 한다 (M3-4).
  */
-.player-mount {
+.video-holder {
   position: relative;
   width: 100%;
   min-width: var(--size-video-min);
@@ -211,6 +238,42 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   border: 1px solid var(--video-border-color);
   background: var(--video-surface-color);
   box-shadow: var(--video-shadow);
+}
+
+/*
+ * 어댑터 소유 영역. 홀더를 꽉 채운다.
+ *
+ * 가시성 측정 대상이 이 요소다 (M3-4). 홀더와 같은 사각형이 되도록
+ * `inset: 0` 으로 붙인다.
+ */
+.player-mount {
+  position: absolute;
+  inset: 0;
+}
+
+/* 승인된 디자인의 `.video-placeholder` 값을 따른다. */
+.video-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  padding: 18px;
+  color: var(--video-placeholder-text-color);
+  font: 12px/1.8 var(--font-mono);
+  place-items: center;
+  text-align: center;
+}
+
+/* 승인된 디자인의 `.hidden` 과 같은 역할이다. */
+.video-placeholder.is-hidden {
+  display: none;
+}
+
+/* 승인된 디자인의 `.video-placeholder strong` 값을 따른다. */
+.video-placeholder strong {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--video-placeholder-strong-text-color);
+  font: 20px var(--font-mono);
 }
 
 /*

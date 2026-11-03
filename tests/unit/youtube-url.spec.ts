@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isYouTubeVideoId, parseYouTubeVideoId } from '@/shared/utils/youtube'
+import { isYouTubeVideoId, parseYouTubeVideoId, youtubeWatchUrl } from '@/shared/utils/youtube'
 
 /** 유효한 11자 영상 ID. `_`와 `-`를 포함해 허용 문자 전체를 덮는다. */
 const ID = 'dQw4w9WgXcQ'
@@ -107,5 +107,42 @@ describe('parseYouTubeVideoId — 거부하는 입력', () => {
       expect(() => parseYouTubeVideoId(input)).not.toThrow()
       expect(parseYouTubeVideoId(input).ok).toBe(false)
     }
+  })
+})
+
+describe('youtubeWatchUrl (M3-5)', () => {
+  it('영상 ID 를 시청 페이지 주소로 바꾼다', () => {
+    expect(youtubeWatchUrl(ID)).toBe(`https://www.youtube.com/watch?v=${ID}`)
+    expect(youtubeWatchUrl(ID_WITH_SYMBOLS)).toBe(
+      `https://www.youtube.com/watch?v=${ID_WITH_SYMBOLS}`,
+    )
+  })
+
+  it('영상 ID 형식이 아니면 null 이다 — 링크를 띄우지 않는다', () => {
+    // 손상된 저장 데이터나 미래 버전에서 온 값이 주소로 들어가지 않는다.
+    const invalid = ['', 'dQw4w9WgXc', 'dQw4w9WgXcQQ', 'a b c d e f g', '../../etc', '%%%']
+    for (const value of invalid) {
+      expect(youtubeWatchUrl(value)).toBeNull()
+    }
+  })
+
+  it('외부 스킴이나 태그를 주소에 실어보낼 수 없다', () => {
+    const hostile = [
+      'javascript:x',
+      '"><script>',
+      'https://evil.example/x',
+      '\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000',
+    ]
+    for (const value of hostile) {
+      expect(youtubeWatchUrl(value)).toBeNull()
+    }
+  })
+
+  it('파싱 결과를 그대로 넣으면 항상 주소가 나온다', () => {
+    const parsed = parseYouTubeVideoId('https://youtu.be/dQw4w9WgXcQ?t=30')
+    const videoId = parsed.ok ? parsed.videoId : ''
+
+    expect(videoId).toBe(ID)
+    expect(youtubeWatchUrl(videoId)).toBe(`https://www.youtube.com/watch?v=${ID}`)
   })
 })

@@ -291,8 +291,9 @@ describe('C. 재생 불가 영상', () => {
     await nextTick()
 
     const notice = wrapper.get('.status').text()
+    // 코드별 안내 (M3-5). 150 은 "임베드 불허" 라서 YouTube 로 보낸다.
     expect(notice).toContain('오류 150')
-    expect(notice).toContain('다음 곡을 직접 선택')
+    expect(notice).toContain('다른 사이트에서 재생할 수 없도록')
   })
 
   it('오류 뒤 사용자가 다른 곡을 고르면 다시 재생한다', async () => {

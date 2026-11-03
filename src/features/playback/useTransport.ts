@@ -10,6 +10,7 @@
 import { computed, inject, type ComputedRef } from 'vue'
 
 import type { PlayerState } from '@/shared/types'
+import { youtubeWatchUrl } from '@/shared/utils/youtube'
 import { usePlaybackStore } from '@/stores/playback'
 
 import { PLAYBACK_COORDINATOR } from './playbackCoordinator'
@@ -59,6 +60,18 @@ export interface TransportModel {
   canPrevious: ComputedRef<boolean>
   canNext: ComputedRef<boolean>
 
+  /**
+   * `YOUTUBE에서 열기 ↗` 주소 (M3-5). 현재 트랙이 없으면 `null` 이다.
+   *
+   * 승인된 디자인처럼 **오류일 때만 띄우지 않는다.** 곡을 고른 뒤에는 항상
+   * 보인다 — 재생이 되는 영상도 YouTube 에서 열어볼 이유가 있고, 재생이
+   * 깨진 순간에 링크가 "새로 나타나는" 것보다 이미 있는 편이 낫다.
+   */
+  youtubeUrl: ComputedRef<string | null>
+
+  /** 영상이 아직 없어 안내를 띄울지. 어댑터 소유 영역 **밖**에 그린다. */
+  showsPlaceholder: ComputedRef<boolean>
+
   toggle(): void
   previous(): void
   next(): void
@@ -105,6 +118,18 @@ export function useTransport(): TransportModel {
 
   const toggleLabel = computed<string>(() => (showsPause.value ? '일시정지' : '재생'))
 
+  const youtubeUrl = computed<string | null>(() => {
+    const videoId = playback.currentTrack?.videoId
+    return videoId === undefined ? null : youtubeWatchUrl(videoId)
+  })
+
+  /*
+   * 트랙을 고르는 순간 iframe 이 들어선다. 그 전까지만 안내를 보여준다.
+   * 재생이 실패해도 영상 영역에는 YouTube 의 오류 화면이 남으므로 안내를
+   * 다시 덮지 않는다 — 승인된 프로토타입도 한 번 숨기면 다시 띄우지 않는다.
+   */
+  const showsPlaceholder = computed<boolean>(() => playback.currentTrack === null)
+
   const canToggle = computed<boolean>(() => playback.currentTrack !== null)
   const canPrevious = computed<boolean>(() => playback.queueIndex > 0)
   const canNext = computed<boolean>(
@@ -140,6 +165,8 @@ export function useTransport(): TransportModel {
     canToggle,
     canPrevious,
     canNext,
+    youtubeUrl,
+    showsPlaceholder,
     toggle,
     previous,
     next,

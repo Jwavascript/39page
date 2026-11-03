@@ -18,12 +18,36 @@
  * - 어댑터와 내부 플래그를 **반응형으로 감싸지 않는다.** 평범한 지역 변수다.
  *   Pinia state 에 넣으면 외부 플레이어가 반응형 그래프에 끌려들어간다.
  * - store 는 `playback` 에만 쓴다. `library` 는 읽기만 한다.
+ *
+ * 늦게 도착한 비동기 사건을 버리는 규칙 (M3-5):
+ *
+ * | 사건                        | 버리는 조건                                  |
+ * | --------------------------- | -------------------------------------------- |
+ * | 모든 사건                   | 그 어댑터의 연결이 이미 끊겼다 (`detach()`)  |
+ * | `ENDED`                     | 그 트랙이 재생된 적이 없다 (M3-2)            |
+ * | `error` · `autoplayBlocked` | 큐가 비어 있다 — 붙일 트랙이 없다            |
+ *
+ * **오류는 버리지 않는다.** "이미 재생된 트랙의 오류는 이전 적재의 늦은
+ * 신호" 라는 규칙을 한 번 넣어봤지만 되돌렸다. 그 규칙은 재생 중에 생긴
+ * 진짜 오류를 **조용히 삼킨다** — 화면은 `재생 중` 인데 소리는 나지 않는
+ * 상태가 되고, 이것이 M3-5 가 없애려는 바로 그 "조용한 실패" 다.
+ * 틀린 안내는 사용자가 보고 판단할 수 있지만, 없는 안내는 그럴 수 없다.
+ *
+ * **IFrame API 는 사건에 적재 식별자를 주지 않는다.** 그래서 `load(B)` 직후
+ * `B` 의 첫 상태가 오기 전에 도착한 `A` 의 오류는 `B` 의 것으로 보인다.
+ * 이 창은 수 밀리초이고, `B` 가 실제로 재생되면 `stateChange('playing')` 이
+ * 안내를 지워 저절로 바로잡힌다. 더 좁히려면 API 쪽 지원이 필요하다.
  */
 import type { Track } from '@/shared/types'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 
-import type { PlayerAdapter, PlayerAdapterEvents, PlayerErrorInfo } from './PlayerAdapter'
+import type {
+  PlayerAdapter,
+  PlayerAdapterEvents,
+  PlayerErrorInfo,
+  PlayerErrorKind,
+} from './PlayerAdapter'
 import type {
   PlaybackCoordinator,
   PlayerAttachment,
@@ -53,17 +77,40 @@ const WILL_HIDE_PAUSE_MESSAGE = '작은 화면에서는 영상이 가려져 일�
 const COVERED_PAUSE_MESSAGE = '영상이 화면에서 가려져 일시정지됐어요. 돌아와서 ▶ 를 눌러주세요.'
 
 /**
+ * 오류 종류별 안내 (M3-5).
+ *
+ * 숫자 코드가 아니라 **도메인 종류**로 가른다. 코드 → 종류 변환은 어댑터가
+ * 하고 (`SYSTEM_DESIGN.md` §8.1), 여기는 사용자가 다음에 무엇을 할 수
+ * 있는지만 말한다. 101 과 150 이 같은 문구인 것은 같은 사정이기 때문이다.
+ *
+ * 자동으로 다음 곡으로 넘기지 않으므로 (M3-0.7) 어느 문구든 **사용자가 할
+ * 일**로 끝난다.
+ */
+const ERROR_MESSAGE: Readonly<Record<PlayerErrorKind, string>> = {
+  'api-unavailable':
+    'YouTube 플레이어를 불러오지 못했어요. 네트워크를 확인하고 ▶ 를 다시 눌러주세요.',
+  'invalid-parameter': '영상 주소가 올바르지 않아 재생할 수 없어요. 링크를 다시 등록해주세요.',
+  'not-playable': '이 브라우저의 플레이어에서 재생할 수 없는 영상이에요. YouTube 에서 열어보세요.',
+  'not-found': '영상을 찾을 수 없어요. 삭제되었거나 비공개로 바뀐 것 같아요.',
+  'embed-not-allowed':
+    '이 영상은 다른 사이트에서 재생할 수 없도록 설정돼 있어요. YouTube 에서 열어보세요.',
+  'referrer-missing': '브라우저가 참조 정보를 보내지 않아 YouTube 가 재생을 거부했어요.',
+  unknown: '이 영상은 재생되지 않아요. 다음 곡을 직접 선택해주세요.',
+}
+
+/**
  * 사용자에게 보일 오류 안내.
  *
- * 코드별로 문구를 가르지 않는다. 승인된 프로토타입도 한 문장에 번호만
- * 붙인다. **코드별 상세 안내와 `YOUTUBE에서 열기 ↗` 링크는 M3-5** 다.
+ * 승인된 프로토타입처럼 **번호를 함께 보여준다.** 사용자가 검색하거나
+ * 알려줄 수 있는 유일한 단서다. 스크립트 로드 실패에는 번호가 없다.
  */
 function errorMessage(info: PlayerErrorInfo): string {
-  if (info.kind === 'api-unavailable') {
-    return 'YouTube 플레이어를 불러오지 못했어요. 네트워크를 확인해주세요.'
-  }
-  return `이 영상은 재생되지 않아요 (오류 ${String(info.code)}). 다음 곡을 직접 선택해주세요.`
+  const base = ERROR_MESSAGE[info.kind]
+  return info.code === null ? base : `${base} (오류 ${String(info.code)})`
 }
+
+/** 재생 중인 트랙이 라이브러리에서 지워졌을 때 (`MVP_SPEC.md` F4). */
+const TRACK_REMOVED_MESSAGE = '재생 중이던 곡이 목록에서 삭제돼 재생을 멈췄습니다.'
 
 export function createPlaybackCoordinator(): PlaybackCoordinator {
   const library = useLibraryStore()
@@ -317,17 +364,51 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     },
 
     error: (info) => {
+      // 붙일 곳이 없는 사건이다. 큐를 비운 뒤 도착한 늦은 신호일 수 있다.
+      if (playback.currentTrack === null) return
+
       // 자동으로 다음 곡으로 넘기지 않는다 (M3-0.7).
       awaitingUserAction = true
       playback.setStatus(errorMessage(info), 'warning')
     },
 
     autoplayBlocked: () => {
-      // 오류가 아니다. 사용자가 플레이어의 ▶ 를 누르면 재생된다.
-      // 상세 안내와 재시도 UX 는 M3-5 다.
+      if (playback.currentTrack === null) return
+
+      /*
+       * 오류가 아니다. 영상은 적재돼 있고 시작만 막혔다.
+       *
+       * 어댑터가 낙관적으로 세웠던 `loading` 을 `idle` 로 되돌려주므로
+       * 토글이 ▶ 를 보여준다 (M3-5). 사용자는 그 ▶ 로도, 영상 안의 ▶ 로도
+       * 다시 요청할 수 있다.
+       */
       awaitingUserAction = true
-      playback.setStatus('브라우저가 자동재생을 막았어요. 영상의 ▶ 를 눌러주세요.', 'warning')
+      playback.setStatus(
+        '브라우저가 자동재생을 막았어요. ▶ 를 다시 누르거나 영상의 ▶ 를 눌러주세요.',
+        'warning',
+      )
     },
+  }
+
+  /**
+   * 라이브러리에서 트랙이 지워졌다 (M3-5, `MVP_SPEC.md` F4).
+   *
+   * 큐는 스냅샷이라 **자동으로 끊기지 않는다.** 지금 그 곡을 틀고 있었다면
+   * 멈추고 알린다. 큐는 그대로 둔다 — 스냅샷이라는 보장을 여기서 깨면
+   * "재생 중 목록을 편집해도 큐가 흔들리지 않는다" 가 무너진다.
+   *
+   * 자동으로 다음 곡으로 넘기지도 않는다. 사용자가 방금 뭔가를 지웠고,
+   * 그 결과로 다른 곡이 울리기 시작하면 놀란다 (M3-0.7 과 같은 이유).
+   *
+   * 트랙 id 는 `createId()` 가 만든 UUID 라서 플레이리스트가 달라도 겹치지
+   * 않는다. 같은 영상을 두 목록에 넣어도 id 는 서로 다르다.
+   */
+  function trackRemoved(trackId: string): void {
+    if (playback.currentTrack?.id !== trackId) return
+
+    adapter?.pause()
+    awaitingUserAction = true
+    playback.setStatus(TRACK_REMOVED_MESSAGE, 'warning')
   }
 
   /** 플레이어가 곧 가려진다 (M3-4). 가려지기 **전에** 멈춘다. */
@@ -361,9 +442,32 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     adapter = instance
     presence = area ?? null
 
+    /*
+     * 이 연결에만 해당하는 핸들러다 (M3-5).
+     *
+     * 연결이 끊긴 뒤 도착한 사건을 버린다. 실제 어댑터는 세대 번호로 자기
+     * 콜백을 무효화하지만(M3-1), 그것은 **어댑터의** 약속이다. 코디네이터가
+     * 어댑터의 성실함에 기대지 않고 제 쪽에서도 막는다.
+     */
+    let attached = true
+
+    const scoped: PlayerAdapterEvents = {
+      stateChange: (state) => {
+        if (attached) events.stateChange?.(state)
+      },
+      error: (info) => {
+        if (attached) events.error?.(info)
+      },
+      autoplayBlocked: () => {
+        if (attached) events.autoplayBlocked?.()
+      },
+    }
+
     return {
-      events,
+      events: scoped,
       detach: () => {
+        attached = false
+
         // 다른 어댑터가 이미 자리를 차지했으면 건드리지 않는다.
         if (adapter !== instance) return
 
@@ -379,6 +483,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     togglePlay,
     next,
     previous,
+    trackRemoved,
     playerWillHide,
     revalidatePlayerVisibility,
     attachAdapter,

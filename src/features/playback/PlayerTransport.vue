@@ -8,8 +8,7 @@
  * **순수 표현 컴포넌트다.** store 도 코디네이터도 어댑터도 모른다. 상태는
  * props 로 받고 의도는 emit 으로 올린다 (`AGENTS.md` 규칙 3).
  *
- * 여기서 만들지 않는 것: 반복·셔플·볼륨·탐색 바 (M3-0 에서 MVP 제외),
- * `YOUTUBE에서 열기 ↗` 외부 링크 (M3-5).
+ * 여기서 만들지 않는 것: 반복·셔플·볼륨·탐색 바 (M3-0 에서 MVP 제외).
  */
 defineProps<{
   /** `true` 면 ⏸, `false` 면 ▶. */
@@ -19,6 +18,13 @@ defineProps<{
   canNext: boolean
   /** 토글 버튼의 접근성 이름. 보이는 기호와 뜻이 같다. */
   toggleLabel: string
+  /**
+   * `YOUTUBE에서 열기 ↗` 가 가리킬 주소 (M3-5). 없으면 링크를 띄우지 않는다.
+   *
+   * 주소를 **여기서 만들지 않는다.** 받은 값을 그대로 쓴다. 영상 ID 검증과
+   * 인코딩은 `shared/utils/youtube.ts` 가 한다.
+   */
+  youtubeUrl: string | null
 }>()
 
 const emit = defineEmits<{ previous: []; toggle: []; next: [] }>()
@@ -62,6 +68,22 @@ const emit = defineEmits<{ previous: []; toggle: []; next: [] }>()
         ⏭
       </button>
     </div>
+
+    <!--
+      승인된 디자인의 `#openYouTube` 다. 재생할 수 없는 영상에서 사용자가
+      갈 곳을 남긴다 (`MVP_SPEC.md` F3). 새 창이므로 `noopener noreferrer`
+      를 함께 붙인다 — 열린 쪽이 `window.opener` 로 이 페이지를 건드리지
+      못하게 한다.
+    -->
+    <a
+      v-if="youtubeUrl !== null"
+      class="pill external"
+      :href="youtubeUrl"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      YOUTUBE에서 열기 ↗
+    </a>
   </div>
 </template>
 
@@ -110,5 +132,28 @@ const emit = defineEmits<{ previous: []; toggle: []; next: [] }>()
   height: 51px;
   border: 1px solid var(--transport-main-border-color);
   color: var(--transport-main-text-color);
+}
+
+/* 승인된 디자인의 `.pill` 값을 따른다. 드로어의 `.pill` 과 같은 값이다. */
+.pill {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: var(--pill-surface-color);
+  color: var(--pill-text-color);
+  font: 11px var(--font-mono);
+}
+
+.pill:hover {
+  background: var(--pill-surface-hover-color);
+}
+
+/* 링크이므로 기본 밑줄을 걷어낸다. 레퍼런스의 `.pill` 과 같은 모양이 된다. */
+.external {
+  display: grid;
+  flex: none;
+  text-decoration: none;
+  place-items: center;
 }
 </style>
