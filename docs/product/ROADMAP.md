@@ -1,6 +1,6 @@
 # 로드맵
 
-> 상태: 개정 (M2 완료). MVP는 M5까지다.
+> 상태: 개정 (M2 완료, M3 계획 확정). MVP는 M5까지다.
 >
 > 상세 작업 목록: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md)
 > MVP 외 확장 항목: [`BACKLOG.md`](BACKLOG.md)
@@ -55,10 +55,13 @@ M1은 `FakePlayerAdapter` 기반의 **구조 검증**에 집중하고, 실제 Yo
 
 ### M3 — YouTube 실제 재생과 연속 재생
 
-`YouTubeIFramePlayerAdapter` 본구현, API 싱글턴 로드, 큐 진행과 `ENDED` 자동 전환,
-가시성 가드, 오류·자동재생 차단 처리, 트랜스포트 UI.
+M3-0 선행 결정과 정책 확인 · M3-1 `YouTubeIFramePlayerAdapter` ·
+M3-2 큐 진행과 라이브러리 연결 · M3-3 트랜스포트 UI와 상태 메시지 ·
+M3-4 가시성 가드와 드로어 연동 · M3-5 오류·예외 처리.
 
-M1에서 고정한 `PlayerAdapter` 인터페이스를 구현한다. 인터페이스를 바꾸지 않는다.
+M1에서 고정한 `PlayerAdapter` 인터페이스를 가급적 바꾸지 않는다.
+라이브러리 → 큐 연결은 두 store 를 직접 잇지 않고 상위 계층이 조립한다.
+공식 IFrame API 요구사항은 `SYSTEM_DESIGN.md` §8.1 에 정리했다.
 
 ### M4 — 날씨 위젯 및 마스코트 상태별 애니메이션
 
