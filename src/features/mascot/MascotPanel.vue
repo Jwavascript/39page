@@ -5,8 +5,11 @@
  * 승인된 디자인의 `.mascot-panel` 구조를 따른다: 도트 스크린 · 정보 영역 ·
  * 코너 장식.
  *
- * **정적이다.** 눈 깜빡임, 호흡, 재생 중 반응, 상태별 문구 전환은 M4 다.
- * 아직 이벤트에 연결되지 않은 동적 상태를 연출하지 않는다.
+ * M4 에서 **재생 상태에 반응**하게 됐다. `playback` store 만 읽는다 —
+ * 플레이어도 어댑터도 코디네이터도 모른다 (`AGENTS.md` 규칙 4).
+ *   표정  → `moods.ts` 가 상태를 기분으로 옮기고 패턴을 고른다
+ *   문구  → 기분별 문구, 없으면 테마 메타데이터의 승인된 문구
+ *   호흡  → 재생 중일 때만. `prefers-reduced-motion` 에서 멈춘다
  *
  * 패턴과 문구는 테마 메타데이터·패턴 데이터에서 가져온다. 컴포넌트 구조는
  * 두 테마가 공통이며, 색과 디스플레이 스타일만 테마 토큰이 바꾼다.
@@ -16,22 +19,26 @@
 import { computed } from 'vue'
 
 import DotMatrix from '@/features/mascot/DotMatrix.vue'
-import { MASCOT_PATTERNS } from '@/features/mascot/patterns'
+import { mascotMessage, mascotPattern, moodFromPlayerState } from '@/features/mascot/moods'
+import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
+const playback = usePlaybackStore()
 
-const pattern = computed(() => MASCOT_PATTERNS[theme.current])
+const mood = computed(() => moodFromPlayerState(playback.playerState))
+const pattern = computed(() => mascotPattern(theme.current, mood.value))
 const mascot = computed(() => theme.metadata.mascot)
+const message = computed(() => mascotMessage(theme.current, mood.value, mascot.value.message))
 </script>
 
 <template>
-  <section class="mascot-panel">
+  <section class="mascot-panel" :class="{ 'is-playing': playback.isPlaying }" :data-mood="mood">
     <DotMatrix :pattern="pattern" />
 
     <div class="mascot-info">
       <span class="mascot-label">COMPANION / 01</span>
-      <strong class="mascot-message">{{ mascot.message }}</strong>
+      <strong class="mascot-message">{{ message }}</strong>
       <small class="mascot-sub">{{ mascot.sub }}</small>
     </div>
 
@@ -90,6 +97,28 @@ const mascot = computed(() => theme.metadata.mascot)
   align-self: flex-start;
   color: var(--mascot-corner-text-color);
   font-size: 12px;
+}
+
+/*
+ * 승인된 디자인의 호흡 애니메이션.
+ *
+ * `.workspace.is-playing .mascot-dot.on` 과 같은 뜻이다. 레퍼런스는
+ * 워크스페이스에 클래스를 걸지만, 우리 구조에서는 이 패널이 store 를 직접
+ * 읽으므로 자기 루트에 건다 — `DashboardShell` 과 `WidgetHost` 를 건드리지
+ * 않는다.
+ *
+ * 도트는 자식 컴포넌트가 소유하므로 `:deep()` 로 닿는다.
+ * `prefers-reduced-motion` 에서는 `--duration-breath` 가 0s 가 되고,
+ * `base.css` 의 안전망이 한 번 더 막는다.
+ */
+.mascot-panel.is-playing :deep(.dot.is-on) {
+  animation: mascot-breath var(--duration-breath) ease-in-out infinite alternate;
+}
+
+@keyframes mascot-breath {
+  to {
+    opacity: 0.72;
+  }
 }
 
 /* 승인된 디자인의 600px 규칙. */

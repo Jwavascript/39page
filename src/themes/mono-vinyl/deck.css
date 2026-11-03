@@ -29,26 +29,62 @@
   font-family: var(--font-mono);
 }
 
+/* 전원 램프의 꺼진 상태. */
 .deck-art--mono-vinyl .mini-lamp {
-  /* 전원 램프의 꺼진 상태. 켜진 연출은 M4 다. */
   fill: #807970;
 }
 
+/* 재생 중에만 켜진다 (레퍼런스 `.workspace.is-playing .mini-lamp`). */
+.deck-widget.is-playing .deck-art--mono-vinyl .mini-lamp {
+  fill: #f2e6d1;
+  filter: drop-shadow(0 0 3px #ecdfc9);
+}
+
 /*
- * 회전 중심만 둔다. 회전 애니메이션은 M4 다.
- * 정지한 데크를 재생 중인 것처럼 표현하지 않는다.
+ * LP 회전 (M4-3).
+ *
+ * 기본은 **paused** 다. 재생 중일 때만 돌린다 — 정지한 데크를 재생 중인
+ * 것처럼 표현하지 않는다. `animation-play-state` 만 바꾸므로 멈춘 자리에서
+ * 다시 이어진다.
+ *
+ * 속도는 연출이고 음악의 템포와 무관하다. 레퍼런스의 33 RPM 값을 쓴다.
+ * 45 RPM(`--duration-spin-45`)은 승인된 디자인의 속도 키가 동작하는 컨트롤이
+ * 아니라서(M1-6) 아직 쓰이지 않는다.
+ *
+ * `prefers-reduced-motion` 에서는 `base.css` 가 `--duration-spin-33` 을 0s 로
+ * 바꾸고 안전망이 한 번 더 막는다.
  */
 .deck-art--mono-vinyl .platter {
   transform-box: view-box;
   transform-origin: 345px 281px;
+  animation: mv-disc var(--duration-spin-33) linear infinite paused;
+  will-change: transform;
+}
+
+.deck-widget.is-playing .deck-art--mono-vinyl .platter {
+  animation-play-state: running;
+}
+
+@keyframes mv-disc {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /*
- * 톤암의 정지 위치. 레퍼런스는 재생·일시정지 상태에서 rotate(0) 으로
- * 내려오고, 그 전환(transition: transform 0.65s ease)은 M4 다.
+ * 톤암. 기본은 올라가 있고, 재생·일시정지에서 내려온다.
+ *
+ * 멈춰 있어도 바늘은 판 위에 있다 — 레퍼런스의
+ * `.workspace.is-playing .tonearm, .workspace.is-paused .tonearm` 과 같다.
  */
 .deck-art--mono-vinyl .tonearm {
   transform-box: view-box;
   transform-origin: 751px 121px;
   transform: rotate(-12deg);
+  transition: transform var(--duration-tonearm) var(--easing-tonearm);
+}
+
+.deck-widget.is-playing .deck-art--mono-vinyl .tonearm,
+.deck-widget.is-paused .deck-art--mono-vinyl .tonearm {
+  transform: rotate(0deg);
 }

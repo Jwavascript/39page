@@ -854,7 +854,33 @@ M3-0.8 에서 명시 선언 여부를 정한다.
 
 `no-referrer` 는 쓰지 않는다. 그 값을 쓰면 YouTube 가 153 으로 거부한다.
 
-TODO: 날씨 제공자 선정 — `AGENTS.md` 규칙 8에 따라 필요성·대안 검토 후 ADR 기록
+### 8.3 날씨 — Open-Meteo (M4-2 구현 완료, ADR 0013)
+
+```
+GET https://api.open-meteo.com/v1/forecast
+    ?latitude=37.5665&longitude=126.978
+    &current=temperature_2m,weather_code
+    &daily=temperature_2m_max,temperature_2m_min
+    &timezone=Asia/Seoul&forecast_days=1
+```
+
+| 항목       | 값                                                 |
+| ---------- | -------------------------------------------------- |
+| API 키     | **필요 없다.** 클라이언트 전용 구조(§1)를 유지한다 |
+| CORS       | `access-control-allow-origin: *` (확인함)          |
+| npm 패키지 | **추가하지 않았다.** `fetch` + `URLSearchParams`   |
+| 위치       | 서울 고정. `navigator.geolocation` 을 쓰지 않는다  |
+| 갱신       | 성공 뒤 15분 · 실패 뒤 2분 · 모듈 캐시 5분         |
+| 실패 처리  | `network` · `http` · `malformed` 로 갈라 다른 문구 |
+
+**응답을 믿지 않는다.** 기온·코드·최고·최저 중 하나라도 유한한 숫자가 아니면
+`malformed` 다. 부분적으로 채우지 않고 이전 값을 남기지도 않는다.
+
+날씨는 재생·라이브러리·테마와 **어떤 상태도 공유하지 않는다.** 제공처가
+사라지면 위젯만 오류 상태가 되고 나머지 기능은 영향받지 않는다.
+
+Pinia store 를 만들지 않았다. 위젯 하나만 쓰는 상태이므로 기능 간 공용 상태
+경계가 아니다 (§6).
 
 ## 9. 테스트 전략
 

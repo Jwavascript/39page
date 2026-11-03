@@ -1,6 +1,6 @@
 # 로드맵
 
-> 상태: 개정 (M3 완료 — M4 진행 중). MVP는 M5까지다.
+> 상태: 개정 (M4 완료 — M5 진행 중). MVP는 M5까지다.
 >
 > 상세 작업 목록: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md)
 > MVP 외 확장 항목: [`BACKLOG.md`](BACKLOG.md)
@@ -14,8 +14,8 @@
 | **M1**   | 앱 셸, 두 테마, 테마 전환, 최소 Widget Registry/Host, 플레이어 영속성 구조 | M1-0 완료 |
 | M2       | Record Library와 플레이리스트 관리                                         | 미착수    |
 | M3       | YouTube 실제 재생과 연속 재생                                              | 완료      |
-| M4       | 날씨 위젯 및 마스코트 상태별 애니메이션                                    | 미착수    |
-| M5       | UX, 반응형, 접근성, 통합 테스트 및 안정화                                  | 미착수    |
+| M4       | 시계·날씨 위젯과 상태별 애니메이션                                         | 완료      |
+| M5       | UX, 반응형, 접근성, 통합 테스트 및 안정화                                  | 진행 중   |
 
 ### M0 — 프로젝트 초기화 (완료)
 

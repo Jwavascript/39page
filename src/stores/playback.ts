@@ -53,6 +53,15 @@ export const usePlaybackStore = defineStore('playback', () => {
   const isEmpty = computed<boolean>(() => queue.value.length === 0)
 
   /**
+   * 지금 소리가 나고 있는가 (M4).
+   *
+   * 데크 회전과 마스코트 호흡이 이 값을 본다. 정의를 한 곳에 두어 두 위젯이
+   * 서로 다르게 판단하지 않게 한다. 테마 UI 는 플레이어를 직접 부르지 않고
+   * 이 store 만 읽는다 (`AGENTS.md` 규칙 4).
+   */
+  const isPlaying = computed<boolean>(() => playerState.value === 'playing')
+
+  /**
    * 큐와 현재 위치를 함께 설정한다.
    *
    * 불변조건: `queueIndex`는 큐 범위 안이거나, 큐가 비면 `NO_QUEUE_INDEX`다.
@@ -123,6 +132,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     statusMessage,
     statusTone,
     isEmpty,
+    isPlaying,
     setQueue,
     setQueueIndex,
     advance,

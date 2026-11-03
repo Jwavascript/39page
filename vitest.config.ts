@@ -7,6 +7,8 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      // 테스트는 네트워크에 나가지 않는다 (M4 날씨 위젯).
+      setupFiles: ['tests/setup/noNetwork.ts'],
       // Tests live in `tests/`; co-located `__tests__` folders are also picked up.
       include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/__tests__/*.{test,spec}.{ts,tsx}'],
       exclude: [...configDefaults.exclude],

@@ -345,14 +345,32 @@ const MASCOT_PATTERNS: Record<ThemeKey, DotPattern>
 M0 에서 남긴 "테마별 도트 패턴을 다르게 할지" TODO 는 **MVP 에서는 공유**로
 확정했다. 테마별 캐릭터는 M4 이후 결정한다.
 
-### 6.2 애니메이션 (M4)
+### 6.2 애니메이션 — 구현 완료 (M4-4 · M4-5)
 
-M1-6 은 **정적 표시까지만** 구현했다. 눈 깜빡임, 호흡, 재생 중 반응,
-라이브러리 열림 반응, 로딩·오류 상태 연출, 상태 문구의 동적 전환은 M4 다.
-아직 이벤트에 연결되지 않은 동적 상태를 연출하지 않는다.
+`PlayerState` → **기분**(mood) → 표정·문구으로 한 겹 접는다
+(`features/mascot/moods.ts`). 상태는 여섯인데 표정은 그만큼 필요하지 않다.
+
+| 기분      | `PlayerState`                | 패턴                   | 호흡 |
+| --------- | ---------------------------- | ---------------------- | ---- |
+| `idle`    | `idle` · `loading` · `ended` | 승인된 `COMPANION_01`  | —    |
+| `playing` | `playing`                    | 승인된 `COMPANION_01`  | ✔    |
+| `paused`  | `paused`                     | `…_RESTING` (2행 차이) | —    |
+| `error`   | `error`                      | `…_ALERT` (1행 차이)   | —    |
+
+- `playing` 에 별도 패턴을 두지 않는다. 승인된 디자인이 **같은 패턴에 호흡
+  애니메이션을 얹는** 방식이고 그대로 쓴다.
+- `loading` 은 `playing` 이 아니다. 소리가 나지 않는데 호흡하면 재생 중으로
+  보인다.
+- 표정 변형은 승인된 패턴에서 **한두 행만** 바꿨다. 테스트가 그 행 수를
+  검사해 파생 관계를 고정한다.
+- 호흡은 `.mascot-panel.is-playing :deep(.dot.is-on)` 에 걸린다. 레퍼런스는
+  `.workspace` 에 클래스를 걸지만, 우리는 패널이 `playback` store 를 직접
+  읽고 **자기 루트**에 건다 — `DashboardShell` · `WidgetHost` 를 건드리지
+  않는다.
 
 테마별 문구(`SIGNAL READY` / `MIXTAPE READY`)는 테마 메타데이터
-(`ThemeMetadata.mascot`)에 있다. 재생 상태에 따른 문구 전환과는 별개다.
+(`ThemeMetadata.mascot`)에 그대로 있다. 기분별 문구는 `moods.ts` 가 얹고,
+`idle` 은 메타데이터의 승인된 값으로 떨어진다.
 
 ## 6.5 포커스 링 — 구현 완료 (M1-2)
 
@@ -452,11 +470,29 @@ M0 에서 남긴 "SVG id 접두사 규칙" TODO 는 `mv-` / `ksc-` 로 확정했
 CSS 로드 실패 시에도 두 데크가 동시에 읽히지 않게 하고 jsdom 에서도
 활성 테마를 DOM 으로 검증할 수 있게 했다.
 
-### 8.3 회전 애니메이션 (M4)
+### 8.3 회전 애니메이션 — 구현 완료 (M4-3)
 
-M1-6 은 **정적 데크까지만** 구현했다. 정지한 데크를 재생 중인 것처럼
-표현하지 않는다. `deck.css` 에 회전 중심(`transform-origin`)만 확장 지점으로
-남겼다. LP 회전·테이프 릴 회전·톤암 하강은 M4 에서 재생 상태에 연결한다.
+`DeckWidget` 이 `playback` store 를 읽어 자기 루트에 `is-playing` /
+`is-paused` 를 건다. 테마별 `deck.css` 가 그 클래스를 본다.
+
+| 연출           | 테마   | 기본 상태        | 달리는 조건                   |
+| -------------- | ------ | ---------------- | ----------------------------- |
+| LP 회전        | mono   | `paused`         | `is-playing`                  |
+| 톤암 하강      | mono   | `rotate(-12deg)` | `is-playing` 또는 `is-paused` |
+| 전원 램프      | mono   | 꺼짐             | `is-playing`                  |
+| 테이프 릴 회전 | kawaii | `paused`         | `is-playing`                  |
+
+- 기본이 `animation-play-state: paused` 다. **정지한 데크를 재생 중인 것처럼
+  표현하지 않는다.** 달릴 때도 `play-state` 만 바꾸므로 멈춘 자리에서 이어진다.
+- 톤암은 `is-paused` 에서도 내려와 있다 — 멈춰 있어도 바늘은 판 위에 있다
+  (레퍼런스와 같다).
+- 애니메이션 길이는 **모션 토큰**으로만 받는다. `prefers-reduced-motion` 이
+  토큰을 0s 로 바꿔 자동으로 멈추고, `base.css` 의 안전망이 한 번 더 막는다.
+  테스트가 하드코딩된 초 단위 값을 금지한다.
+- 키프레임 이름에 테마 접두사를 붙인다 (`mv-disc` · `ksc-turn`). SVG `<defs>`
+  id 규칙(§8.1)과 같은 이유다.
+- 45 RPM(`--duration-spin-45`)은 아직 쓰이지 않는다. 승인된 디자인의 속도 키를
+  M1-6 에서 **동작하지 않는 컨트롤**로 정리했고, 연결할 컨트롤이 없다.
 
 ### 8.4 Record Library 연결 (M2)
 

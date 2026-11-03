@@ -21,11 +21,31 @@
 /* ---------- SVG 내부 ---------- */
 
 /*
- * 테이프 릴의 회전 중심만 둔다. 릴 회전 애니메이션은 M4 다.
- * `fill-box` 를 쓰는 이유: 릴은 translate 로 배치된 그룹이라
- * 자기 바운딩 박스의 중심을 축으로 삼아야 한다.
+ * 테이프 릴 회전 (M4-3).
+ *
+ * `fill-box` 를 쓰는 이유: 릴은 translate 로 배치된 그룹이라 자기 바운딩
+ * 박스의 중심을 축으로 삼아야 한다.
+ *
+ * 기본은 **paused** 다. 재생 중일 때만 돌린다. 레퍼런스가 `transform` 이
+ * 아니라 `rotate` 속성을 쓰는 것까지 그대로 따른다 — 릴은 translate 로
+ * 배치되어 있어 `transform` 을 덮으면 위치가 날아간다.
+ *
+ * `prefers-reduced-motion` 에서는 `base.css` 가 `--duration-spool` 을 0s 로
+ * 바꾸고 안전망이 한 번 더 막는다.
  */
 .deck-art--kawaii-synth-cassette .cassette-spool {
   transform-box: fill-box;
   transform-origin: center;
+  animation: ksc-turn var(--duration-spool) linear infinite paused;
+  will-change: rotate;
+}
+
+.deck-widget.is-playing .deck-art--kawaii-synth-cassette .cassette-spool {
+  animation-play-state: running;
+}
+
+@keyframes ksc-turn {
+  to {
+    rotate: 360deg;
+  }
 }

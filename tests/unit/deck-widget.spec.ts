@@ -293,18 +293,40 @@ describe('A. 데크 렌더링', () => {
     expect(wrapper.text()).not.toContain('누르면')
   })
 
-  it('회전 애니메이션을 구현하지 않았다 (M4)', () => {
+  it('회전 중심을 승인된 값으로 유지한다', () => {
     const mono = readSource('src/themes/mono-vinyl/deck.css')
     const kawaii = readSource('src/themes/kawaii-synth-cassette/deck.css')
 
-    // 정지한 데크를 재생 중인 것처럼 보이게 하지 않는다.
-    for (const css of [mono, kawaii]) {
-      expect(css).not.toContain('@keyframes')
-      expect(css).not.toMatch(/^\s*animation:/m)
-    }
-    // 회전 중심은 확장 지점으로 남긴다.
     expect(mono).toContain('transform-origin: 345px 281px')
     expect(kawaii).toContain('transform-origin: center')
+  })
+
+  it('애니메이션은 기본이 정지다 (M4-3)', () => {
+    // 멈춘 데크를 재생 중인 것처럼 보이게 하지 않는다.
+    for (const file of [
+      'src/themes/mono-vinyl/deck.css',
+      'src/themes/kawaii-synth-cassette/deck.css',
+    ]) {
+      const css = readSource(file)
+      expect(css).toMatch(/animation:[^;]*infinite paused/)
+      expect(css).toContain('animation-play-state: running')
+      // 달리게 하는 선택자는 재생 중일 때만이다.
+      expect(css).toMatch(/\.deck-widget\.is-playing[^{]*\{\s*animation-play-state: running/)
+    }
+  })
+
+  it('애니메이션 길이를 모션 토큰으로 받는다', () => {
+    // `prefers-reduced-motion` 이 토큰을 0s 로 바꿔 자동으로 멈춘다.
+    const mono = readSource('src/themes/mono-vinyl/deck.css')
+    const kawaii = readSource('src/themes/kawaii-synth-cassette/deck.css')
+
+    expect(mono).toContain('var(--duration-spin-33)')
+    expect(mono).toContain('var(--duration-tonearm)')
+    expect(kawaii).toContain('var(--duration-spool)')
+    // 하드코딩된 초 단위 값을 쓰지 않는다.
+    for (const css of [mono, kawaii]) {
+      expect(css).not.toMatch(/animation:[^;]*\d+(?:\.\d+)?s/)
+    }
   })
 })
 

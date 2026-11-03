@@ -163,16 +163,23 @@ describe('C. 마스코트 렌더링', () => {
     expect(style).toContain('var(--mascot-panel-border-color)')
   })
 
-  it('정적 표시다 — 애니메이션을 구현하지 않았다 (M4)', () => {
-    for (const file of [
-      'src/features/mascot/MascotPanel.vue',
-      'src/features/mascot/DotMatrix.vue',
-    ]) {
-      const style = readSource(file)
-      expect(style).not.toContain('@keyframes')
-      expect(style).not.toMatch(/^\s*animation:/m)
-      expect(style).not.toContain('transition:')
-    }
+  it('도트 렌더러는 여전히 정적이다 — 애니메이션을 모른다', () => {
+    // 데이터·렌더링·연출의 분리를 지킨다. 호흡은 패널이 얹는다.
+    const style = readSource('src/features/mascot/DotMatrix.vue')
+
+    expect(style).not.toContain('@keyframes')
+    expect(style).not.toMatch(/^\s*animation:/m)
+    expect(style).not.toContain('usePlaybackStore')
+  })
+
+  it('호흡 애니메이션은 재생 중에만 걸리고 모션 토큰을 쓴다 (M4-4)', () => {
+    const style = readSource('src/features/mascot/MascotPanel.vue')
+
+    expect(style).toContain('@keyframes mascot-breath')
+    // 재생 중이 아닐 때 돌아가는 선택자를 두지 않는다.
+    expect(style).toMatch(/\.mascot-panel\.is-playing[^{]*\{\s*animation:/)
+    expect(style).toContain('var(--duration-breath)')
+    expect(style).not.toMatch(/animation:[^;]*\d+(?:\.\d+)?s/)
   })
 })
 

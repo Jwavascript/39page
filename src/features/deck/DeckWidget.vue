@@ -16,6 +16,13 @@
  *
  * 비활성 테마의 버튼은 `display: none` 이므로 Tab 순서에서도 빠진다.
  *
+ * M4: 재생 상태에 따라 루트에 `is-playing` / `is-paused` 를 건다. LP 회전 ·
+ * 테이프 릴 회전 · 톤암 하강 · 전원 램프가 그 클래스를 본다 (테마별
+ * `deck.css`). **`playback` store 만 읽는다** — 플레이어를 직접 부르지
+ * 않는다 (`AGENTS.md` 규칙 4). 승인된 디자인은 같은 클래스를
+ * `.workspace` 에 걸지만, 우리는 이 위젯 루트에 걸어
+ * `DashboardShell` / `WidgetHost` 를 건드리지 않는다.
+ *
  * 단일 루트를 유지한다. `WidgetHost` 가 `grid-area` 를 루트에 적용한다.
  */
 import { computed, inject } from 'vue'
@@ -24,9 +31,11 @@ import { LIBRARY_DRAWER } from '@/features/library/drawerController'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
 import { THEMES } from '@/themes'
+import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
+const playback = usePlaybackStore()
 const drawer = inject(LIBRARY_DRAWER, null)
 
 /** 각 트리거는 **자기 테마의** 문구를 쓴다. 숨겨진 쪽도 올바른 이름을 갖는다. */
@@ -37,13 +46,21 @@ const kawaiiCopy = THEMES['kawaii-synth-cassette'].deck
 const copy = computed(() => theme.metadata.deck)
 const isOpen = computed<boolean>(() => drawer?.isOpen.value ?? false)
 
+/**
+ * 톤암이 내려와 있는 상태.
+ *
+ * 승인된 디자인은 `is-playing` 과 `is-paused` 둘 다에서 톤암을 내린다 —
+ * 멈춰 있어도 바늘은 판 위에 있다.
+ */
+const isPaused = computed<boolean>(() => playback.playerState === 'paused')
+
 function openLibrary(): void {
   drawer?.open()
 }
 </script>
 
 <template>
-  <div class="deck-widget">
+  <div class="deck-widget" :class="{ 'is-playing': playback.isPlaying, 'is-paused': isPaused }">
     <div class="deck-graphic">
       <!--
         두 아트가 항상 함께 존재한다. v-if 로 교체하지 않는다.

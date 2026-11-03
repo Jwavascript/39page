@@ -17,7 +17,8 @@ import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/sh
 import DeckWidget from '@/features/deck/DeckWidget.vue'
 import MascotPanel from '@/features/mascot/MascotPanel.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
-import WidgetPlaceholder from '@/widgets/placeholders/WidgetPlaceholder.vue'
+import ClockWidget from '@/widgets/clock/ClockWidget.vue'
+import WeatherWidget from '@/widgets/weather/WeatherWidget.vue'
 
 export interface WidgetDefinition {
   /** 위젯 종류를 식별한다. */
@@ -27,8 +28,8 @@ export interface WidgetDefinition {
   /**
    * 렌더링할 컴포넌트.
    *
-   * 현재는 모두 개발용 플레이스홀더다. 실제 컴포넌트가 준비되면 이 값만
-   * 바꾼다. `DashboardShell` / `WidgetHost`는 수정하지 않는다.
+   * M4 로 플레이스홀더가 모두 실제 컴포넌트로 교체됐다. 교체는 이 값 한 줄만
+   * 바꾸는 일이었고 `DashboardShell` / `WidgetHost` 는 수정하지 않았다.
    */
   component: Component
   /** 컴포넌트에 넘길 props. 플레이스홀더에 영역 이름을 알려주는 데 쓴다. */
@@ -82,16 +83,16 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
   clock: {
     type: 'clock',
     title: '시계',
-    component: WidgetPlaceholder,
-    componentProps: { label: 'CLOCK', plannedIn: 'M4' },
+    // M4-1에서 플레이스홀더를 도트 매트릭스 시계로 교체했다.
+    component: ClockWidget,
     defaultArea: 'clock',
     ...NOT_EDITABLE,
   },
   weather: {
     type: 'weather',
     title: '날씨',
-    component: WidgetPlaceholder,
-    componentProps: { label: 'WEATHER', plannedIn: 'M4' },
+    // M4-2에서 플레이스홀더를 실제 날씨 위젯으로 교체했다 (ADR 0013).
+    component: WeatherWidget,
     defaultArea: 'weather',
     ...NOT_EDITABLE,
   },

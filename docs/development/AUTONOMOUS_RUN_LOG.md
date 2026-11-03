@@ -110,6 +110,61 @@
   코드별 분기는 **단위 테스트로만** 덮여 있다
 - `PLAYING` · `PAUSED` · `ENDED` 실제 사건 (M3-3 · M3-4 와 같은 제약)
 
-### M4 — 시계·날씨·데크·마스코트 애니메이션 (진행 중)
+### M4 — 시계·날씨·데크·마스코트 애니메이션 (완료)
+
+**설계**: ADR 0013 (날씨 제공자). 그 밖은 승인된 디자인을 그대로 따랐다.
+
+**추가 파일**
+
+- `src/widgets/clock/` — `dotGlyphs.ts` · `clockFormat.ts` · `DotClock.vue` ·
+  `ClockWidget.vue`
+- `src/widgets/weather/` — `weatherCodes.ts` · `weatherApi.ts` ·
+  `useWeather.ts` · `WeatherWidget.vue`
+- `src/features/mascot/moods.ts`
+- `docs/decisions/0013-weather-provider.md`
+- `tests/setup/noNetwork.ts` (전역 `fetch` 차단)
+- `tests/unit/clock-widget.spec.ts` (28) · `weather-widget.spec.ts` (50) ·
+  `playback-presentation.spec.ts` (36)
+
+**수정 파일**: `widgets/registry.ts`(시계·날씨 교체) ·
+`stores/playback.ts`(`isPlaying`) · `features/deck/DeckWidget.vue` ·
+`features/mascot/MascotPanel.vue` · `features/mascot/patterns.ts`(표정 2종) ·
+`themes/*/deck.css`(회전·톤암·램프) · `vitest.config.ts`(setupFiles) ·
+기존 spec 2개 · 문서 6종.
+
+**삭제**: `src/widgets/placeholders/WidgetPlaceholder.vue` — 마지막 두
+플레이스홀더(시계·날씨)를 교체하면서 참조가 하나도 남지 않았다.
+
+**새 의존성 없음.** 날씨는 `fetch` + `URLSearchParams` 로 끝난다.
+`package.json` 은 그대로다 (ADR 0013).
+
+**검증**: type-check / test / lint / format:check / build 전부 통과.
+테스트 840개 (M3-5 종료 시 723 → +117). 돌연변이 23종 전부 검출.
+번들 136.0 kB JS (gzip 49.7) · 28.0 kB CSS (gzip 6.4).
+
+**브라우저 검증** (headless Chromium 1440×900)
+
+- 시계: `SEOUL, KOREA` / `AM` / `WED NOV 04 2026`,
+  `aria-label="현재 시각 AM 08:38"`, `role=img`, 원 147개
+  (`08:38` = 21열 × 7행), 켜짐 70 / 꺼짐 77 — 꺼진 도트도 그린다
+- 날씨: **실제 Open-Meteo 응답** — `☁ 8° 조금 흐림 H 17° / L 7°`,
+  `WEATHER / SEOUL · OPEN-METEO`. 같은 시각 `curl` 결과(8.3℃ · 코드 2 ·
+  최고 17.2 · 최저 7.5)와 일치
+- 데크: `platter` 기본 `paused`/`mv-disc`/`1.8s` → `is-playing` 에서
+  `running`. 램프 `rgb(128,121,112)` → `rgb(242,230,209)`.
+  톤암 기본 `rotate(-12deg)` → `is-playing`·`is-paused` 에서 `rotate(0)`
+  (전환을 끄고 목표값을 읽었다 — 가상 시간에서는 전환이 진행되지 않는다)
+- 카세트: `ksc-turn` 기본 `paused` → `is-playing` 에서 `running`,
+  마스코트 문구가 `MIXTAPE READY` 로 전환
+- 마스코트: 도트 192개(켜짐 88), 기본 애니메이션 `none` →
+  `is-playing` 에서 `mascot-breath-…` `1s` `alternate`
+- **모션 감소** (`--force-prefers-reduced-motion`): 모든
+  `animation-duration` 1e-05s · `iteration-count` 1 · 전환 1e-05s
+
+확인하지 못한 것: 실제 `PLAYING` 이벤트가 헤드리스에서 오지 않아, 데크·마스코트
+연출을 **실제 재생으로** 트리거하지는 못했다. 클래스 배선은 단위 테스트로,
+CSS 가 그 클래스에 반응하는 것은 위처럼 **수동 토글로** 확인했다.
+
+### M5 — 반응형·접근성·통합 검증·안정화 (진행 중)
 
 TODO: 구현 후 결과 기록
