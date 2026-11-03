@@ -314,29 +314,45 @@ CSS 표시 전환으로 처리하므로(§3.2) 위젯 정의의 `component`는 �
 - 전환 전후 플레이어 호스트 DOM 노드가 **동일 인스턴스**
 - 전환 시 `PlayerAdapter.mount`가 **재호출되지 않음**
 
-## 6. 마스코트
+## 6. 마스코트 — 구현 완료 (M1-6, 정적)
 
 - 레이아웃(패널·도트 그리드 구조)은 **두 테마가 공유**한다.
-- 테마별로 바뀌는 것은 스킨 토큰과 문구다.
+- 테마별로 바뀌는 것은 스킨 토큰과 문구다. 토큰 값은
+  `src/themes/<key>/tokens.css` 의 `--mascot-*` 가 단일 출처다.
 
-| 제안 이름                | `mono-vinyl`                                | `kawaii-synth-cassette`                     |
-| ------------------------ | ------------------------------------------- | ------------------------------------------- |
-| `--mascot-panel-bg`      | `linear-gradient(105deg, #101111, #1e1d1a)` | `linear-gradient(110deg, #0b3041, #143e51)` |
-| `--mascot-panel-border`  | `#49453f`                                   | `#78cac6`                                   |
-| `--mascot-screen-bg`     | `#060707`                                   | `#092738`                                   |
-| `--mascot-screen-border` | `#373631`                                   | `#5accc4`                                   |
-| `--mascot-dot-on`        | `#fff`                                      | `#a8ffe7`                                   |
-| `--mascot-label`         | `#9c978c`                                   | `#8dd4c9`                                   |
-| `--mascot-message`       | `#e3e0d8`                                   | `#ffafd2`                                   |
+### 6.1 패턴 데이터와 렌더러의 분리
 
-문구는 `MVP_SPEC.md` F8 참조.
+| 파일                                  | 책임                                                               |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| `src/features/mascot/patterns.ts`     | 도트 패턴 **데이터**. 어떤 캐릭터인지 안다                         |
+| `src/features/mascot/DotMatrix.vue`   | **렌더러**. 패턴을 받아 CSS Grid 로 그린다. 어떤 캐릭터인지 모른다 |
+| `src/features/mascot/MascotPanel.vue` | 패널 조립. 테마에 맞는 패턴과 문구를 고른다                        |
 
-- 도트 패턴은 **16열 × 12행** 비트맵이다.
-- **캐릭터 IP를 사용하지 않는다** (원본 주석 `No character IP.`).
+```ts
+type DotPattern = readonly string[] // '1' 켜짐, '0' 꺼짐
+const MASCOT_PATTERNS: Record<ThemeKey, DotPattern>
+```
 
-TODO: 테마별 도트 패턴을 다르게 할지 확정 — v09는 두 테마가 **같은 패턴**을 쓴다.
-"테마별 도트 마스코트"가 패턴 차이를 의미하는지 확인 필요
-TODO: 패턴을 테마 패키지에 둘지 `src/features/mascot/`에서 테마 키로 선택할지
+- 패턴은 **16×12** 비트맵이다. `two-themes-v09.html` 의 배열을 그대로 이식했다.
+- **MVP 에서는 두 테마가 같은 패턴을 공유한다.** v09 도 그렇게 하며 색과
+  디스플레이 스타일만 다르다. 테마별 캐릭터를 따로 정의할 수 있도록
+  맵으로 두었다.
+- **캐릭터 IP 를 쓰지 않는다** (원본 주석 `No character IP.`).
+  외부 이미지·이모지·생성 이미지를 쓰지 않는다.
+- 렌더러는 어떤 크기의 패턴도 그린다. M4 에서 애니메이션 프레임을 추가할 때
+  `patterns.ts` 만 늘리면 된다.
+
+M0 에서 남긴 "테마별 도트 패턴을 다르게 할지" TODO 는 **MVP 에서는 공유**로
+확정했다. 테마별 캐릭터는 M4 이후 결정한다.
+
+### 6.2 애니메이션 (M4)
+
+M1-6 은 **정적 표시까지만** 구현했다. 눈 깜빡임, 호흡, 재생 중 반응,
+라이브러리 열림 반응, 로딩·오류 상태 연출, 상태 문구의 동적 전환은 M4 다.
+아직 이벤트에 연결되지 않은 동적 상태를 연출하지 않는다.
+
+테마별 문구(`SIGNAL READY` / `MIXTAPE READY`)는 테마 메타데이터
+(`ThemeMetadata.mascot`)에 있다. 재생 상태에 따른 문구 전환과는 별개다.
 
 ## 6.5 포커스 링 — 구현 완료 (M1-2)
 
@@ -379,39 +395,71 @@ kawaii-synth-cassette weather: default | compact
 TODO: 스킨 키 네이밍 규칙 확정
 TODO: 스킨이 레이아웃 크기를 바꿀 수 있는지 (`minSize`와의 관계) 확정
 
-## 8. 디렉터리 배치
-
-M1-2에서 만든 것(`[x]`)과 이후 단계에서 추가할 것을 구분한다.
+## 8. 디렉터리 배치 — 구현 완료 (M1-6)
 
 ```
 src/styles/
-  tokens.css          [x] 공통 토큰 (서체, 반경, 기하, 모션, 포커스 기본값)
+  tokens.css          [x] 공통 토큰
   base.css            [x] 리셋, body, 포커스, prefers-reduced-motion
 src/themes/
-  index.ts            [x] 테마 레지스트리 (키 -> 메타데이터)
+  index.ts            [x] 테마 레지스트리 (메타데이터 + 마스코트 문구)
   mono-vinyl/
-    tokens.css        [x] :root, :root[data-theme='mono-vinyl'] 토큰 값
-    DeckArt.vue       [ ] 턴테이블 SVG (M1-6)
+    tokens.css        [x] 토큰 값
+    deck.css          [x] 데크 표시 전환 + 턴테이블 SVG 내부 스타일
+    DeckArt.vue       [x] 턴테이블 SVG (레퍼런스 그대로 이식)
   kawaii-synth-cassette/
-    tokens.css        [x] :root[data-theme='kawaii-synth-cassette'] 토큰 값
-    DeckArt.vue       [ ] 카세트 SVG (M1-6)
+    tokens.css        [x] 토큰 값
+    deck.css          [x] 데크 표시 전환 + 카세트 SVG 내부 스타일
+    DeckArt.vue       [x] 카세트 SVG (레퍼런스 그대로 이식)
+src/features/deck/
+  DeckWidget.vue      [x] 두 데크 아트를 함께 품는 단일 위젯
+src/features/mascot/
+  patterns.ts         [x] 도트 패턴 데이터
+  DotMatrix.vue       [x] 도트 렌더러
+  MascotPanel.vue     [x] 패널 조립
 ```
 
-테마 CSS는 `src/main.ts`에서 **정적으로** import한다. 순서는
-공통 토큰 -> 기본 스타일 -> 테마 토큰이다. 두 테마의 토큰이 항상 함께
-로드되어야 `data-theme` 교체만으로 즉시 전환된다. 동적 CSS 로더나
-플러그인 시스템을 두지 않는다 (`../decisions/0001-theme-switching-mechanism.md`).
+CSS 는 `src/main.ts` 에서 **정적으로** import 한다. 순서는 공통 토큰 →
+기본 스타일 → 테마 토큰 → 테마 데크 CSS 다.
 
-레지스트리(`src/themes/index.ts`)는 메타데이터(`name`, `label`, `description`)만
-제공한다. 키 목록·기본 테마·검증은 `src/shared/types/theme.ts`의
-`THEME_KEYS` / `DEFAULT_THEME_KEY` / `isThemeKey`를 재사용하며 중복 정의하지
-않는다. 테스트가 중복 정의를 막는다.
+### 8.1 데크 아트 이식 규칙 — 확정
 
-데크 아트에 대한 규칙 (M1-6):
+레퍼런스에서 **그대로 이식**한다. 좌표·색·`viewBox` 를 바꾸지 않는다 (규칙 6).
+`tests/unit/deck-widget.spec.ts` 가 이식 결과를 레퍼런스와 **문자 단위로**
+비교하므로 좌표 한 자리나 색 한 글자만 달라져도 실패한다.
 
-- 레퍼런스에서 **그대로 이식**한다. 좌표·색·`viewBox`를 바꾸지 않는다 (규칙 6).
-- SVG 내부 색은 토큰으로 올리지 않는다 (§4.5).
-- SVG `<defs>`의 `id`는 두 테마가 동시에 DOM에 존재하므로 **충돌하지 않아야 한다.**
+원본과 의도적으로 다른 점은 세 가지뿐이다.
 
-TODO: SVG `id` 접두사 규칙 확정 (예: `mv-chassis`, `ksc-synthBody`)
-TODO: 데크 SVG를 Vue 컴포넌트로 둘지 외부 `.svg` 에셋으로 둘지 확정
+| 변경                                                                     | 이유                                                                                                               |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `<defs>` id 에 테마 접두사 (`mv-`, `ksc-`)                               | 두 SVG 가 동시에 DOM 에 있으므로 id 가 충돌하면 그라디언트·필터·클립이 서로 덮인다. `url(#...)` 참조도 함께 바꾼다 |
+| 프로토타입 스크립트 전용 id 제거 (`platter`, `hardwarePlay`, `deckIcon`) | 참조하는 코드가 없다. 애니메이션에 필요한 class 는 유지한다                                                        |
+| 내부 컨트롤의 `role="button"` · `tabindex` · `data-speed-button` 제거    | 동작하지 않는 버튼을 만들지 않는다. 금속 하드웨어는 데크 본체 디자인의 일부이므로 외형만 남긴다                    |
+
+M0 에서 남긴 "SVG id 접두사 규칙" TODO 는 `mv-` / `ksc-` 로 확정했다.
+"데크 SVG 를 Vue 컴포넌트로 둘지" TODO 는 **컴포넌트**로 확정했다.
+클래스 훅과 테마별 표시 전환이 필요하기 때문이다.
+
+### 8.2 테마 전환 방식
+
+두 데크 아트를 **동시에 DOM 에 두고 CSS 로만 표시를 전환한다** (ADR 0001).
+컴포넌트를 교체하지 않으므로 테마 전환이 DOM 재생성을 유발하지 않는다.
+
+- 시각적 표시: 각 테마의 `deck.css` 가 `:root[data-theme]` 로 `display` 전환
+- 접근성 트리: `DeckWidget` 이 비활성 아트에 `aria-hidden="true"`
+
+`display: none` 만으로도 접근성 트리에서 빠지지만 `aria-hidden` 을 함께 두어,
+CSS 로드 실패 시에도 두 데크가 동시에 읽히지 않게 하고 jsdom 에서도
+활성 테마를 DOM 으로 검증할 수 있게 했다.
+
+### 8.3 회전 애니메이션 (M4)
+
+M1-6 은 **정적 데크까지만** 구현했다. 정지한 데크를 재생 중인 것처럼
+표현하지 않는다. `deck.css` 에 회전 중심(`transform-origin`)만 확장 지점으로
+남겼다. LP 회전·테이프 릴 회전·톤암 하강은 M4 에서 재생 상태에 연결한다.
+
+### 8.4 Record Library 연결 (M2)
+
+데크를 눌러 Record Library 를 여는 동작은 M2 다. 지금은 동작하지 않는
+버튼이나 "LP 를 누르면 …" 안내 문구를 만들지 않는다. M2 는 `DeckWidget` 에
+접근 가능한 트리거를 더하면 되고, `DeckArt` 컴포넌트는 건드리지 않는다.

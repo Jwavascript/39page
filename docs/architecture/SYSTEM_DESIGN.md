@@ -374,10 +374,18 @@ grid-template-columns: minmax(0, 1.13fr) minmax(420px, 0.87fr)
   `WidgetHost`의 형제 열로 들어온다.
 - 헤더는 위젯이 아니다. 셸이 `AppHeader`를 직접 소유한다.
 
-M1-4 기준으로 5개 위젯 모두 **개발용 플레이스홀더**다
-(`src/widgets/placeholders/WidgetPlaceholder.vue`). 최종 디자인이 아니다.
-실제 컴포넌트로 교체할 때 레지스트리의 `component` 한 줄만 바꾸며
-`DashboardShell`·`WidgetHost`는 수정하지 않는다.
+위젯 교체 현황 (레지스트리의 `component` 한 줄만 바꾸면 되고,
+`DashboardShell`·`WidgetHost`·`src/app/layout.ts`는 수정하지 않는다):
+
+| 위젯      | 컴포넌트                                     | 교체 시점        |
+| --------- | -------------------------------------------- | ---------------- |
+| `deck`    | `features/deck/DeckWidget.vue`               | M1-6 완료        |
+| `mascot`  | `features/mascot/MascotPanel.vue`            | M1-6 완료 (정적) |
+| `player`  | `features/playback/PlayerSurface.vue`        | M1-5 완료        |
+| `clock`   | `widgets/placeholders/WidgetPlaceholder.vue` | M4               |
+| `weather` | `widgets/placeholders/WidgetPlaceholder.vue` | M4               |
+
+플레이스홀더는 개발용 임시 표시이며 최종 디자인이 아니다.
 
 TODO: 드로어를 위젯으로 볼지 셸 소유로 볼지 최종 확정 (현재 셸 소유 전제)
 TODO: 푸터(테마별 문구)를 셸에 추가할지 결정 — 테마별 copy가 레지스트리에 없다

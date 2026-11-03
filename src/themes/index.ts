@@ -11,6 +11,14 @@
  */
 import { THEME_KEYS, type ThemeKey } from '@/shared/types'
 
+/** 테마별 마스코트 문구. 승인된 디자인의 문구를 따른다. */
+export interface MascotCopy {
+  /** 전광판 옆의 상태 문구. */
+  message: string
+  /** 그 아래의 보조 문구. */
+  sub: string
+}
+
 export interface ThemeMetadata {
   key: ThemeKey
   /** 사람이 읽는 테마 이름. */
@@ -19,6 +27,13 @@ export interface ThemeMetadata {
   label: string
   /** 테마의 성격을 한 줄로 설명한다. */
   description: string
+  /**
+   * 마스코트 문구.
+   *
+   * 테마별로 다른 **외형 문구**이므로 메타데이터에 둔다. 재생 상태에 따른
+   * 문구 전환은 M4 이며 이 값과 별개다.
+   */
+  mascot: MascotCopy
 }
 
 export const THEMES: Record<ThemeKey, ThemeMetadata> = {
@@ -27,12 +42,14 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     name: 'Mono Vinyl',
     label: '01 / MONO VINYL',
     description: '따뜻한 회갈색 금속 턴테이블. 검은 LP와 아이보리 도트.',
+    mascot: { message: 'SIGNAL READY', sub: 'a little life inside your music' },
   },
   'kawaii-synth-cassette': {
     key: 'kawaii-synth-cassette',
     name: 'Kawaii Synth Cassette',
     label: '02 / SYNTH CASSETTE',
     description: '민트 카세트 데크에 분홍 포인트. 90s 신스 레트로 디지털.',
+    mascot: { message: 'MIXTAPE READY', sub: 'a tiny melody from tomorrow' },
   },
 }
 

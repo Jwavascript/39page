@@ -1,0 +1,54 @@
+/*
+ * Mono Vinyl 데크 — 표시 전환과 SVG 내부 스타일.
+ *
+ * 값 출처: design/references/mono-vinyl-v08.html, two-themes-v09.html
+ * 승인된 값을 바꾸지 않는다 (AGENTS.md 규칙 6).
+ *
+ * 두 데크 아트는 **동시에 DOM 에 존재**하고 CSS 로만 표시를 전환한다.
+ * 컴포넌트를 교체하지 않는다 (docs/decisions/0001-theme-switching-mechanism.md).
+ * 레퍼런스의 `.turntable` 과 같은 방식이다: 기본 표시, kawaii 에서 숨김.
+ */
+
+/* data-theme 가 없을 때도 기본 테마이므로 보인다. */
+.deck-art--mono-vinyl {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 톤암 끝과 그림자가 viewBox 밖으로 조금 나간다. */
+  overflow: visible;
+}
+
+:root[data-theme='kawaii-synth-cassette'] .deck-art--mono-vinyl {
+  display: none;
+}
+
+/* ---------- SVG 내부 ----------
+ * SVG 안의 고유한 색은 레퍼런스 값을 그대로 둔다 (THEME_SYSTEM.md §4.5). */
+
+.deck-art--mono-vinyl .svg-mono {
+  font-family: var(--font-mono);
+}
+
+.deck-art--mono-vinyl .mini-lamp {
+  /* 전원 램프의 꺼진 상태. 켜진 연출은 M4 다. */
+  fill: #807970;
+}
+
+/*
+ * 회전 중심만 둔다. 회전 애니메이션은 M4 다.
+ * 정지한 데크를 재생 중인 것처럼 표현하지 않는다.
+ */
+.deck-art--mono-vinyl .platter {
+  transform-box: view-box;
+  transform-origin: 345px 281px;
+}
+
+/*
+ * 톤암의 정지 위치. 레퍼런스는 재생·일시정지 상태에서 rotate(0) 으로
+ * 내려오고, 그 전환(transition: transform 0.65s ease)은 M4 다.
+ */
+.deck-art--mono-vinyl .tonearm {
+  transform-box: view-box;
+  transform-origin: 751px 121px;
+  transform: rotate(-12deg);
+}

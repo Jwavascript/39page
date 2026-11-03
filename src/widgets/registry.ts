@@ -14,6 +14,8 @@
 import type { Component } from 'vue'
 
 import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/shared/types'
+import DeckWidget from '@/features/deck/DeckWidget.vue'
+import MascotPanel from '@/features/mascot/MascotPanel.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import WidgetPlaceholder from '@/widgets/placeholders/WidgetPlaceholder.vue'
 
@@ -63,16 +65,17 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
   deck: {
     type: 'deck',
     title: 'LP · 카세트 데크',
-    component: WidgetPlaceholder,
-    componentProps: { label: 'DECK', plannedIn: 'M1-6' },
+    // M1-6에서 플레이스홀더를 실제 데크 아트로 교체했다.
+    // 두 테마의 아트를 모두 품은 단일 컴포넌트다 (ADR 0001).
+    component: DeckWidget,
     defaultArea: 'deck',
     ...NOT_EDITABLE,
   },
   mascot: {
     type: 'mascot',
     title: '마스코트',
-    component: WidgetPlaceholder,
-    componentProps: { label: 'MASCOT', plannedIn: 'M1-6 / M4' },
+    // M1-6에서 정적 도트 마스코트로 교체했다. 애니메이션은 M4 다.
+    component: MascotPanel,
     defaultArea: 'mascot',
     ...NOT_EDITABLE,
   },

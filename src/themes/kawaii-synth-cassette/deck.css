@@ -1,0 +1,31 @@
+/*
+ * Kawaii Synth Cassette 데크 — 표시 전환과 SVG 내부 스타일.
+ *
+ * 값 출처: design/references/two-themes-v09.html (최우선 기준)
+ * 승인된 값을 바꾸지 않는다 (AGENTS.md 규칙 6).
+ *
+ * 레퍼런스의 `.cassette-deck` 과 같은 방식이다: 기본 숨김,
+ * kawaii 테마에서만 표시.
+ */
+
+.deck-art--kawaii-synth-cassette {
+  display: none;
+  width: 100%;
+  height: auto;
+}
+
+:root[data-theme='kawaii-synth-cassette'] .deck-art--kawaii-synth-cassette {
+  display: block;
+}
+
+/* ---------- SVG 내부 ---------- */
+
+/*
+ * 테이프 릴의 회전 중심만 둔다. 릴 회전 애니메이션은 M4 다.
+ * `fill-box` 를 쓰는 이유: 릴은 translate 로 배치된 그룹이라
+ * 자기 바운딩 박스의 중심을 축으로 삼아야 한다.
+ */
+.deck-art--kawaii-synth-cassette .cassette-spool {
+  transform-box: fill-box;
+  transform-origin: center;
+}

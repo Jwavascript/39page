@@ -7,6 +7,9 @@ import './styles/tokens.css'
 import './styles/base.css'
 import './themes/mono-vinyl/tokens.css'
 import './themes/kawaii-synth-cassette/tokens.css'
+// 테마별 데크 CSS. 두 테마를 함께 로드해 CSS 로만 표시를 전환한다.
+import './themes/mono-vinyl/deck.css'
+import './themes/kawaii-synth-cassette/deck.css'
 
 import App from './app/App.vue'
 import { useThemeStore } from './stores/theme'
