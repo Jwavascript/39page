@@ -11,13 +11,20 @@
  *
  * M2에서 Record Library 드로어가 `.workspace`의 형제 열로 들어온다.
  * 지금은 동작하지 않는 버튼을 만들지 않으므로 헤더에 액션이 없다.
+ *
+ * M3-4 에서 재생 쪽에 **통지 하나**를 보내게 됐다. 좁은 화면에서 드로어를
+ * 열면 이 컴포넌트의 CSS 가 스테이지를 `display: none` 으로 만든다. 그
+ * 사실을 아는 곳은 여기뿐이므로, 가려지기 **전에** 알려줄 책임도 여기다
+ * (`features/playback/playbackCoordinator.ts` 의 `PlaybackVisibility`).
+ * 재생 상태를 읽거나 플레이어를 직접 부르지는 않는다.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
 
 import AppHeader from '@/components/layout/AppHeader.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
 import RecordLibraryDrawer from '@/features/library/RecordLibraryDrawer.vue'
 import { LIBRARY_DRAWER, type LibraryDrawerController } from '@/features/library/drawerController'
+import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
 
 defineProps<{
@@ -35,10 +42,45 @@ defineProps<{
 const DRAWER_ID = 'record-library-drawer'
 const isDrawerOpen = ref(false)
 
+/**
+ * 스테이지가 드로어로 **대체되는** 화면 폭.
+ *
+ * 아래 `@media (max-width: 1100px)` 규칙과 같은 값이어야 한다. CSS 변수는
+ * 미디어 쿼리 조건에 쓸 수 없어 중복이 불가피하다 (`src/styles/tokens.css`
+ * 주석). 승인된 프로토타입도 같은 값을 `matchMedia` 로 중복한다
+ * (`shouldUseCompact()`). 같은 파일 안에 두어 어긋날 여지를 줄였다.
+ */
+const STAGE_REPLACED_QUERY = '(max-width: 1100px)'
+
+/**
+ * 가시성 통지 대상 (M3-4).
+ *
+ * 계약 파일만 가져온다. 주입되지 않으면 통지하지 않는다 — 셸을 단독으로
+ * 마운트하는 테스트를 위한 기본값이다.
+ */
+const playbackVisibility = inject(PLAYBACK_COORDINATOR, null)
+
+/**
+ * 드로어를 열면 스테이지가 가려지는지.
+ *
+ * `matchMedia` 가 없는 환경에서는 **가려지지 않는다고 본다.** 없다는 이유로
+ * 멈추면 실제로 보이는 플레이어를 멈추게 된다. 실제로 가려지는 경우는
+ * `PlayerSurface` 의 가시성 감시가 한 틱 뒤에 잡는다.
+ */
+function stageWillBeHidden(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia(STAGE_REPLACED_QUERY).matches
+}
+
 /** 닫을 때 포커스를 되돌릴 트리거. */
 let lastTrigger: HTMLElement | null = null
 
 function openDrawer(): void {
+  /*
+   * 가려지기 **전에** 멈춘다. 열고 나서 멈추면 그 사이 가려진 채로 소리가
+   * 난다 — 개발자 정책 III.I.9 가 금지하는 상태다.
+   */
+  if (stageWillBeHidden()) playbackVisibility?.playerWillHide()
+
   const active = document.activeElement
   lastTrigger = active instanceof HTMLElement ? active : null
   isDrawerOpen.value = true
@@ -126,7 +168,8 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
  * 스테이지를 대체한다. **언마운트가 아니라 `display: none`** 이므로
  * PlayerSurface 의 DOM 노드와 부모는 그대로 유지된다.
  *
- * 영상이 가려졌을 때의 일시정지 정책은 M3 의 가시성 가드에서 다룬다.
+ * 이 값은 위의 `STAGE_REPLACED_QUERY` 와 같아야 한다. 가려지기 전에
+ * 일시정지하는 통지가 그 상수를 쓴다 (M3-4).
  */
 @media (max-width: 1100px) {
   .workspace.is-drawer-open {

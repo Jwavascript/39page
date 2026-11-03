@@ -22,6 +22,8 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
+import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
 /** 가짜 `YT.Player`. 실제 API 처럼 넘겨받은 요소를 iframe 으로 교체한다. */
@@ -97,9 +99,12 @@ beforeEach(() => {
   // API 가 이미 와 있는 상태에서 시작한다. 준비 전 요청은 별도 spec 에서 본다.
   window.YT = { Player: FakeYtPlayer }
   setActivePinia(createPinia())
+  // jsdom 은 레이아웃이 없다. 가시성 가드가 막지 않도록 영역을 세운다 (M3-4).
+  installPlayerRect()
 })
 
 afterEach(() => {
+  uninstallPlayerRect()
   globalThis.localStorage.clear()
   delete document.documentElement.dataset.theme
   document.body.innerHTML = ''

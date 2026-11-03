@@ -14,11 +14,13 @@
  * 누가 무엇을 쓰는가:
  *   `RecordLibraryDrawer` → `PlaybackRequests` (재생 요청만)
  *   `PlayerTransport`     → `PlaybackTransport` (버튼 3개)
- *   `PlayerSurface`       → `attachAdapter` (플레이어 연결만)
+ *   `PlayerSurface`       → `attachAdapter` (플레이어·가시성 연결만)
+ *   `DashboardShell`      → `PlaybackVisibility` (가리기 전 통지)
  */
 import type { InjectionKey } from 'vue'
 
 import type { PlayerAdapter, PlayerAdapterEvents } from './PlayerAdapter'
+import type { PlayerPresence } from './playerVisibility'
 
 /** 재생 요청이 거절된 이유. */
 export type PlayRequestFailure =
@@ -28,6 +30,13 @@ export type PlayRequestFailure =
   | 'empty-playlist'
   /** 그 플레이리스트에 그런 트랙이 없다 */
   | 'track-not-found'
+  /**
+   * 플레이어가 가려져 있거나 너무 작다 (M3-4).
+   *
+   * 큐를 **바꾸지 않는다.** 아무 일도 일어나지 않은 상태로 거절한다.
+   * 가려진 플레이어로 소리만 내지 않기 위해서다 (개발자 정책 III.I.9).
+   */
+  | 'player-hidden'
 
 export type PlayRequestResult = { ok: true } | { ok: false; reason: PlayRequestFailure }
 
@@ -72,6 +81,31 @@ export interface PlaybackTransport {
   previous(): boolean
 }
 
+/**
+ * 가시성 통지 (M3-4). 플레이어를 가리는 쪽이 쓴다.
+ *
+ * 왜 통지를 받는가: 재생 쪽은 드로어도 브레이크포인트도 모른다. 가리는 것을
+ * **아는 쪽**(`DashboardShell`)이 가리기 **전에** 알려줘야 그 사이 가려진 채로
+ * 소리가 나지 않는다.
+ */
+export interface PlaybackVisibility {
+  /**
+   * 플레이어가 곧 가려진다고 알린다. 재생 중이면 즉시 멈춘다.
+   *
+   * 가려진 **뒤**에 알리면 늦다. 관찰자는 비동기라 그 사이 한 프레임 이상
+   * 가려진 채로 재생된다 (개발자 정책 III.I.9).
+   */
+  playerWillHide(): void
+
+  /**
+   * 가시성이 바뀌었을 수 있다고 알린다. 다시 재서 필요하면 멈춘다.
+   *
+   * 멈췄다가 다시 보이게 되어도 **자동으로 재생하지 않는다.** 사용자가
+   * 다시 눌러야 한다.
+   */
+  revalidatePlayerVisibility(): void
+}
+
 /** `attachAdapter()` 가 돌려주는 연결. */
 export interface PlayerAttachment {
   /**
@@ -85,7 +119,8 @@ export interface PlayerAttachment {
   detach(): void
 }
 
-export interface PlaybackCoordinator extends PlaybackRequests, PlaybackTransport {
+export interface PlaybackCoordinator
+  extends PlaybackRequests, PlaybackTransport, PlaybackVisibility {
   /**
    * 플레이어 어댑터를 등록한다.
    *
@@ -94,8 +129,13 @@ export interface PlaybackCoordinator extends PlaybackRequests, PlaybackTransport
    * 넣지 않는다.
    *
    * MVP 에는 플레이어가 하나뿐이다. 두 번째가 등록되면 마지막 것이 이긴다.
+   *
+   * `presence` 는 **그 플레이어 영역을 재고 끌어오는 쪽**이다 (M3-4).
+   * 영역을 소유한 쪽만 할 수 있으므로 어댑터와 함께 등록한다. 넘기지 않으면
+   * 가시성 판정을 하지 않는다 — 플레이어 영역 없이 코디네이터만 세우는
+   * 테스트를 위한 기본값이다.
    */
-  attachAdapter(adapter: PlayerAdapter): PlayerAttachment
+  attachAdapter(adapter: PlayerAdapter, presence?: PlayerPresence): PlayerAttachment
 }
 
 /**

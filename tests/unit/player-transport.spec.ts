@@ -21,15 +21,20 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
+import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
 beforeEach(() => {
   globalThis.localStorage.clear()
   delete document.documentElement.dataset.theme
   setActivePinia(createPinia())
+  // jsdom 은 레이아웃이 없다. 가시성 가드가 막지 않도록 영역을 세운다 (M3-4).
+  installPlayerRect()
 })
 
 afterEach(() => {
+  uninstallPlayerRect()
   globalThis.localStorage.clear()
   delete document.documentElement.dataset.theme
   document.body.innerHTML = ''

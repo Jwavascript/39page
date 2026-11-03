@@ -165,8 +165,47 @@ M3-0 에서 위 조건을 그대로 확정했다. **200×200 은 공식 요구�
 
 이 로직은 `src/features/playback`의 composable로 둔다. 테마는 관여하지 않는다.
 
-TODO: `ResizeObserver` / `IntersectionObserver` 사용 여부 확정
-(프로토타입은 `getBoundingClientRect` + resize 이벤트)
+#### 구현 완료 (M3-4, 2026-11-03) — ADR 0011
+
+판정과 통지를 나눴다.
+
+| 조각                                 | 파일                                             | 책임                                  |
+| ------------------------------------ | ------------------------------------------------ | ------------------------------------- |
+| `measurePlayerVisibility()`          | `features/playback/playerVisibility.ts`          | **순수 함수.** 사각형 + 뷰포트 → 판정 |
+| `watchPlayerVisibility()`            | 같음                                             | 관찰자·리스너 배선, `measure()` 제공  |
+| `attachAdapter(adapter, visibility)` | `createPlaybackCoordinator.ts`                   | 측정 함수를 어댑터와 함께 등록        |
+| `playerWillHide()`                   | `components/layout/DashboardShell.vue` 가 부른다 | 가리기 **직전** 통지                  |
+| `revalidatePlayerVisibility()`       | `PlayerSurface` 의 관찰자가 부른다               | 가시성이 바뀌었을 수 있다는 통지      |
+
+**관찰 수단은 `IntersectionObserver` 로 정했다** (위 TODO 해소). 스크롤·뷰포트
+변화·`display: none` 을 폴링 없이 알려준다. `ResizeObserver` 는 쓰지 않는다 —
+크기만 보면 "화면 밖으로 밀려남" 을 못 본다. `resize` 이벤트는 관찰자가 없는
+환경의 최소 보장으로 함께 듣고, 관찰자가 없을 때만 `scroll` 까지 듣는다.
+
+관찰자의 `intersectionRatio` 는 **쓰지 않는다.** "바뀌었다" 는 신호로만 쓰고
+비율은 `measure()` 가 다시 읽는다. 판정 경로를 하나로 유지해야 단위 테스트가
+전수 검증한 것과 실제 동작이 같다.
+
+판정 순서 (문구가 갈리므로 순서가 의미를 갖는다):
+
+```
+면적 0           → covered    (display: none — "작다" 가 아니다)
+200×200 미만     → too-small  (공식 요구 위반)
+노출 비율 ≤ 0.5  → covered    (우리 휴리스틱)
+```
+
+재생을 **시작하는 모든 경로**가 시작 직전에 측정한다 (`playPlaylist` ·
+`playTrack` · `togglePlay` 의 재생 방향 · `next` · `previous` · `ENDED` 자동
+전환). 거절하면 **큐를 바꾸지 않고** `{ ok: false, reason: 'player-hidden' }`
+을 돌려준다.
+
+측정이 `covered` 면 **한 번 끌어와 본 뒤 다시 잰다** (`reveal()`).
+1100px 이하의 단일 열 배치에서 플레이어는 화면 한참 아래에 있다 — 1000×713
+실측으로 top 이 1247px 다. 끌어오지 않으면 좁은 화면에서 아무것도 재생할 수
+없다. 보이면 끌어오지 않고, `too-small` 에도 끌어오지 않으며, 끌어와도
+안 보이면(`display: none`) 거절한다 (ADR 0011 §5).
+
+복귀는 **수동**이다. 다시 보이게 되어도 자동으로 재생하지 않는다.
 
 ### 4.6 플레이어 어댑터 — 구현 완료 (M1-5 계약 · M3-1 YouTube 구현)
 

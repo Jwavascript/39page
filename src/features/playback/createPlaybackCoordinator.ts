@@ -29,9 +29,28 @@ import type {
   PlayerAttachment,
   PlayRequestResult,
 } from './playbackCoordinator'
+import type { PlayerHiddenReason, PlayerPresence } from './playerVisibility'
 
 /** 큐 끝에서 멈췄을 때. 반복하지 않는다 (M3-0.1). */
 const QUEUE_FINISHED_MESSAGE = '마지막 곡까지 재생했습니다.'
+
+/**
+ * 가시성 때문에 재생을 시작하지 못했을 때 (M3-4).
+ *
+ * 드로어가 가린 경우의 "닫고 누르세요" 안내는 **드로어가** 한다. 가린 것을
+ * 아는 쪽이 거기이고, 이 문구가 나가는 `.status` 영역은 좁은 화면에서
+ * 드로어와 함께 숨기 때문이다.
+ */
+const START_BLOCKED_MESSAGE: Record<PlayerHiddenReason, string> = {
+  covered: '영상이 화면에 보이지 않아 재생할 수 없어요. 플레이어가 보이는 곳에서 ▶ 를 눌러주세요.',
+  'too-small': `영상 영역이 너무 작아 재생할 수 없어요 (최소 200×200). 창을 키워주세요.`,
+}
+
+/** 가리기 직전에 멈출 때. 승인된 프로토타입의 문구를 그대로 쓴다. */
+const WILL_HIDE_PAUSE_MESSAGE = '작은 화면에서는 영상이 가려져 일시정지됩니다.'
+
+/** 이미 가려진 것을 뒤늦게 발견해 멈출 때. 프로토타입의 문구다. */
+const COVERED_PAUSE_MESSAGE = '영상이 화면에서 가려져 일시정지됐어요. 돌아와서 ▶ 를 눌러주세요.'
 
 /**
  * 사용자에게 보일 오류 안내.
@@ -52,6 +71,14 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
   /** 등록된 어댑터. 반응형이 아니다 (ADR 0006). */
   let adapter: PlayerAdapter | null = null
+
+  /**
+   * 등록된 플레이어 영역 (M3-4).
+   *
+   * 영역을 소유한 쪽(`PlayerSurface`)이 어댑터와 함께 넘긴다.
+   * **없으면 판정하지 않는다** — 영역이 없으면 가려질 것도 없다.
+   */
+  let presence: PlayerPresence | null = null
 
   /**
    * 지금 트랙이 **한 번이라도 재생됐는지.**
@@ -84,6 +111,46 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     return tracks.map((track) => ({ ...track }))
   }
 
+  /**
+   * 지금 재생을 시작할 수 없는 이유. 잴 수 없으면 `null`(허용)이다.
+   *
+   * 재생을 **시작하는 모든 경로**가 이것을 먼저 본다 (M3-4).
+   *
+   * 화면 밖이면 **한 번 끌어와 본 뒤** 다시 잰다. 좁은 화면의 단일 열
+   * 배치에서는 플레이어가 화면 한참 아래에 있어, 끌어오지 않으면 사용자가
+   * 수동으로 스크롤하기 전까지 아무것도 재생할 수 없다. 드로어가 덮은
+   * `display: none` 은 끌어와도 보이지 않으므로 재측정이 다시 거절한다.
+   */
+  function startBlock(): PlayerHiddenReason | null {
+    if (presence === null) return null
+
+    const first = presence.measure()
+    if (first.ok) return null
+    if (first.reason !== 'covered') return first.reason
+
+    presence.reveal()
+    const second = presence.measure()
+    return second.ok ? null : second.reason
+  }
+
+  /** 가시성 때문에 시작을 거절한다. 큐는 건드리지 않는다. */
+  function refuseStart(reason: PlayerHiddenReason): void {
+    awaitingUserAction = true
+    playback.setStatus(START_BLOCKED_MESSAGE[reason], 'warning')
+  }
+
+  /**
+   * 가시성 때문에 멈춘다.
+   *
+   * 다시 보이게 되어도 **자동으로 재생하지 않는다.** 사용자가 ▶ 를 눌러야
+   * 한다 — 보이게 됐다는 것만으로 소리를 내면 사용자가 의도하지 않은 재생이다.
+   */
+  function pauseForVisibility(message: string): void {
+    adapter?.pause()
+    awaitingUserAction = true
+    playback.setStatus(message)
+  }
+
   /** 현재 트랙을 어댑터에 보낸다. 사용자 요청이므로 즉시 재생이다. */
   function commandCurrentTrack(): void {
     const track = playback.currentTrack
@@ -108,6 +175,13 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   }
 
   function startQueue(tracks: readonly Track[], index: number): PlayRequestResult {
+    // 가려져 있으면 **큐도 바꾸지 않는다.** 아무 일도 없던 것처럼 거절한다.
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return { ok: false, reason: 'player-hidden' }
+    }
+
     playback.setQueue(snapshot(tracks), index)
     startCurrent()
     return { ok: true }
@@ -156,6 +230,13 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       return
     }
 
+    // 여기서부터는 재생을 **시작**한다. 가려져 있으면 하지 않는다 (M3-4).
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return
+    }
+
     if (state === 'error') {
       startCurrent()
       return
@@ -168,6 +249,13 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   }
 
   function next(): boolean {
+    // 가시성을 큐 이동보다 먼저 본다. 거절했는데 위치만 움직이면 안 된다.
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return false
+    }
+
     if (!playback.advance()) return false
 
     startCurrent()
@@ -175,6 +263,12 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   }
 
   function previous(): boolean {
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return false
+    }
+
     if (!playback.back()) return false
 
     startCurrent()
@@ -186,6 +280,13 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     if (!hasStartedPlaying) return
     // 오류 뒤에는 사용자의 다음 동작을 기다린다.
     if (awaitingUserAction) return
+
+    // 가려진 곳에서 다음 곡을 시작하지 않는다. 위치도 움직이지 않는다.
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return
+    }
 
     if (!playback.advance()) {
       // 큐 끝. 반복하지 않고 멈춘다 (M3-0.1).
@@ -229,17 +330,57 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     },
   }
 
-  function attachAdapter(next: PlayerAdapter): PlayerAttachment {
-    adapter = next
+  /** 플레이어가 곧 가려진다 (M3-4). 가려지기 **전에** 멈춘다. */
+  function playerWillHide(): void {
+    if (!isSounding()) return
+
+    pauseForVisibility(WILL_HIDE_PAUSE_MESSAGE)
+  }
+
+  /** 가시성이 바뀌었을 수 있다. 다시 재서 필요하면 멈춘다 (M3-4). */
+  function revalidatePlayerVisibility(): void {
+    if (!isSounding()) return
+
+    const verdict = presence?.measure()
+    if (verdict === undefined || verdict.ok) return
+
+    pauseForVisibility(COVERED_PAUSE_MESSAGE)
+  }
+
+  /**
+   * 지금 소리가 나거나 곧 날 상태인지.
+   *
+   * `loading` 도 포함한다. 버퍼링 중에 가려지면 그대로 두면 **가려진 채로
+   * 재생이 시작된다.** 어댑터의 `pause()` 는 보류한 재생도 취소한다 (M3-1).
+   */
+  function isSounding(): boolean {
+    return playback.playerState === 'playing' || playback.playerState === 'loading'
+  }
+
+  function attachAdapter(instance: PlayerAdapter, area?: PlayerPresence): PlayerAttachment {
+    adapter = instance
+    presence = area ?? null
 
     return {
       events,
       detach: () => {
         // 다른 어댑터가 이미 자리를 차지했으면 건드리지 않는다.
-        if (adapter === next) adapter = null
+        if (adapter !== instance) return
+
+        adapter = null
+        presence = null
       },
     }
   }
 
-  return { playPlaylist, playTrack, togglePlay, next, previous, attachAdapter }
+  return {
+    playPlaylist,
+    playTrack,
+    togglePlay,
+    next,
+    previous,
+    playerWillHide,
+    revalidatePlayerVisibility,
+    attachAdapter,
+  }
 }

@@ -24,6 +24,8 @@ import type { YouTubePlayer, YouTubePlayerOptions } from '@/features/playback/yo
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 
+import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+
 const API_SRC = 'https://www.youtube.com/iframe_api'
 const VIDEO_A = 'aaaaaaaaaaa'
 const VIDEO_B = 'bbbbbbbbbbb'
@@ -82,9 +84,12 @@ beforeEach(() => {
   delete window.YT
   delete window.onYouTubeIframeAPIReady
   setActivePinia(createPinia())
+  // jsdom 은 레이아웃이 없다. 가시성 가드가 막지 않도록 영역을 세운다 (M3-4).
+  installPlayerRect()
 })
 
 afterEach(() => {
+  uninstallPlayerRect()
   globalThis.localStorage.clear()
   document.body.innerHTML = ''
   document.head.innerHTML = ''

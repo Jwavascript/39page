@@ -28,6 +28,7 @@ import { computed, inject, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { PLAYER_ADAPTER_FACTORY, type PlayerAdapter } from './PlayerAdapter'
 import PlayerTransport from './PlayerTransport.vue'
 import { PLAYBACK_COORDINATOR, type PlayerAttachment } from './playbackCoordinator'
+import { watchPlayerVisibility, type PlayerVisibilityWatcher } from './playerVisibility'
 import { useTransport } from './useTransport'
 
 /** 어댑터 팩토리가 없을 때. 실제 실패 상태이므로 경고로 알린다. */
@@ -64,6 +65,14 @@ const transport = useTransport()
 let adapter: PlayerAdapter | null = null
 let attachment: PlayerAttachment | null = null
 
+/**
+ * 가시성 감시 (M3-4). 어댑터와 같은 수명이고 같은 이유로 비반응형이다.
+ *
+ * 영상 영역을 **소유한 쪽**이 재는 것이 맞다. 코디네이터는 DOM 을 모르고,
+ * store 에는 노드를 넣지 않는다.
+ */
+let visibilityWatcher: PlayerVisibilityWatcher | null = null
+
 onMounted(() => {
   if (createAdapter === null) return
 
@@ -73,18 +82,28 @@ onMounted(() => {
   adapter = createAdapter()
 
   /*
+   * 영역이 보이지 않게 되면 코디네이터에 알린다. 멈출지 말지는 코디네이터가
+   * 정한다 — 여기는 "얼마나 보이는가" 만 안다.
+   */
+  visibilityWatcher = watchPlayerVisibility(container, () =>
+    coordinator?.revalidatePlayerVisibility(),
+  )
+
+  /*
    * 등록을 마운트보다 먼저 한다. 코디네이터가 준 핸들러를 그대로
    * `mount()` 에 넘기므로, 첫 사건이 오기 전에 연결이 서 있어야 한다.
    *
    * 어댑터가 store 를 직접 바꾸지 않는다는 단방향은 그대로다 (ADR 0006).
    * 사건을 store 로 옮기는 일은 코디네이터가 한다 (ADR 0009).
    */
-  attachment = coordinator?.attachAdapter(adapter) ?? null
+  attachment = coordinator?.attachAdapter(adapter, visibilityWatcher) ?? null
   adapter.mount(container, attachment?.events)
 })
 
 onUnmounted(() => {
   // 실제 언마운트에서만 불린다. 테마 전환은 여기에 닿지 않는다.
+  visibilityWatcher?.stop()
+  visibilityWatcher = null
   attachment?.detach()
   attachment = null
   adapter?.destroy()
@@ -179,8 +198,9 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
  * 승인된 디자인의 .video-holder 값을 따른다.
  *
  * 16:9 를 유지하고 최소 200x200 을 확보한다. 부모 Grid 가 높이를 눌러
- * 이 영역이 찌그러지지 않도록 min-height 를 함께 둔다. 실제 가시성 준수는
- * M3-4 의 가시성 가드에서 다시 확인한다.
+ * 이 영역이 찌그러지지 않도록 min-height 를 함께 둔다. **이 min-width /
+ * min-height 가 공식 요구사항(200×200)을 CSS 로 보장하는 1차 방어선이고**,
+ * 실제 측정은 `playerVisibility.ts` 가 한다 (M3-4).
  */
 .player-mount {
   position: relative;

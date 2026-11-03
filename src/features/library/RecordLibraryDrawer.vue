@@ -14,6 +14,10 @@
  * 이 컴포넌트는 `playback` store 도 `PlayerAdapter` 도 모른다
  * (`AGENTS.md` 규칙 2, 4).
  *
+ * 재생 요청이 거절되면 **여기서** 안내한다 (M3-4). 플레이어의 `.status`
+ * 영역은 좁은 화면에서 드로어와 함께 숨으므로, 사용자가 누른 자리에
+ * 보여야 한다.
+ *
  * 여기서 하지 않는 것: 이전/다음·재생/일시정지 트랜스포트 컨트롤(M3-3),
  * 지금 재생 중인 트랙 강조(M3-3), 오류 상세 안내와 외부 링크(M3-5).
  */
@@ -21,7 +25,11 @@ import { computed, inject, nextTick, ref, watch } from 'vue'
 
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import PlaylistList from '@/features/library/PlaylistList.vue'
-import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
+import {
+  PLAYBACK_COORDINATOR,
+  type PlayRequestFailure,
+  type PlayRequestResult,
+} from '@/features/playback/playbackCoordinator'
 import { parseYouTubeVideoId } from '@/shared/utils/youtube'
 import { MAX_TRACK_TITLE_LENGTH, useLibraryStore } from '@/stores/library'
 
@@ -66,6 +74,28 @@ const draftTitle = ref('')
 const linkError = ref('')
 /** 방금 등록한 트랙 제목. 성공을 사용자가 확인할 수 있게 한다. */
 const addedNotice = ref('')
+
+/**
+ * 재생 요청이 거절된 이유 (M3-4).
+ *
+ * 가장 흔한 경우는 좁은 화면에서 드로어가 스테이지를 **대체**한 상태다.
+ * 그때 재생을 시작하면 보이지 않는 플레이어로 소리만 나게 되므로
+ * 코디네이터가 거절한다 (개발자 정책 III.I.9).
+ */
+const playbackNotice = ref('')
+
+const PLAY_REFUSED_MESSAGE: Record<PlayRequestFailure, string> = {
+  'player-hidden': '좁은 화면에서는 라이브러리가 영상 자리를 차지합니다. 닫고 ▶ 를 눌러주세요.',
+  'empty-playlist': '재생할 트랙이 없습니다.',
+  'playlist-not-found': '대상을 찾을 수 없습니다.',
+  'track-not-found': '대상을 찾을 수 없습니다.',
+}
+
+/** 재생 요청 결과를 안내로 옮긴다. 성공이면 지운다. */
+function reportPlayRequest(result: PlayRequestResult | undefined): void {
+  playbackNotice.value =
+    result === undefined || result.ok ? '' : PLAY_REFUSED_MESSAGE[result.reason]
+}
 
 const linkTarget = computed(() =>
   linkTargetId.value === null ? null : (library.getPlaylist(linkTargetId.value) ?? null),
@@ -226,7 +256,7 @@ function confirmDelete(): void {
  */
 function requestPlayPlaylist(id: string): void {
   if (id !== library.selectedPlaylistId) selectPlaylist(id)
-  playback?.playPlaylist(id)
+  reportPlayRequest(playback?.playPlaylist(id))
 }
 
 /** 지금 선택된 목록을 처음부터 재생한다. */
@@ -234,7 +264,7 @@ function requestPlaySelected(): void {
   const current = library.selectedPlaylist
   if (current === null) return
 
-  playback?.playPlaylist(current.id)
+  reportPlayRequest(playback?.playPlaylist(current.id))
 }
 
 /**
@@ -246,7 +276,7 @@ function requestPlayTrack(trackId: string): void {
   const current = library.selectedPlaylist
   if (current === null) return
 
-  playback?.playTrack(current.id, trackId)
+  reportPlayRequest(playback?.playTrack(current.id, trackId))
 }
 
 /** 선택된 목록을 재생할 수 있는지. 빈 목록은 재생할 수 없다. */
@@ -258,6 +288,7 @@ function selectPlaylist(id: string): void {
   pendingDeleteId.value = null
   pendingTrackId.value = null
   addedNotice.value = ''
+  playbackNotice.value = ''
   resetForm()
   // 선택이 바뀌면 링크 폼을 닫는다. 등록 대상이 모호해지지 않게 한다.
   closeLinkForm()
@@ -274,6 +305,7 @@ watch(
       pendingTrackId.value = null
       unsavedNotice.value = ''
       addedNotice.value = ''
+      playbackNotice.value = ''
       return
     }
     await nextTick()
@@ -310,6 +342,9 @@ watch(
 
       <p v-if="unsavedNotice !== ''" class="unsaved" role="status">{{ unsavedNotice }}</p>
       <p v-if="addedNotice !== ''" class="added" role="status">{{ addedNotice }}</p>
+      <p v-if="playbackNotice !== ''" class="play-notice" role="status" aria-live="polite">
+        {{ playbackNotice }}
+      </p>
 
       <div class="drawer-actions">
         <button type="button" class="pill pill--strong" @click="startCreate">＋ 새 목록</button>
@@ -747,6 +782,13 @@ watch(
   margin: 0 0 12px;
   color: var(--row-meta-text-color);
   font: 10px/1.6 var(--font-mono);
+}
+
+/* 재생 거절 안내 (M3-4). 사용자가 뭔가 해야 하므로 경고 색을 쓴다. */
+.play-notice {
+  margin: 0 0 12px;
+  color: var(--status-warning-text-color);
+  font: 11px/1.6 var(--font-mono);
 }
 
 /* 좁은 화면에서 영상 ID 를 접어 제목과 버튼을 확보한다. */
