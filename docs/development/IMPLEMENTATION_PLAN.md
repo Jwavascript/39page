@@ -1,6 +1,6 @@
 # 구현 계획
 
-> 상태: 개정 (M1-3 완료, M1-4 이후 미착수).
+> 상태: 개정 (M1-4 완료, M1-5 이후 미착수).
 >
 > 기준 문서: [`design/references/README.md`](../../design/references/README.md)
 > MVP 외 확장 항목: [`../product/BACKLOG.md`](../product/BACKLOG.md)
@@ -133,22 +133,27 @@ MVP는 M5까지다. 위젯 자유 이동·크기 변경, 위젯 추가·삭제·
   **검증은 중복하지 않는다** — 알 수 없는 값은 CSS가 기본 테마로 되돌리고
   마운트 시 store가 검증된 값으로 덮어쓴다 (`THEME_SYSTEM.md` §3.3).
 
-### M1-4. 안정 셸과 Widget Host
+### M1-4. 안정 셸과 Widget Host — 완료
 
-| #   | 작업                                                          | 산출물                            |
-| --- | ------------------------------------------------------------- | --------------------------------- |
-| 4.1 | `DashboardShell` — 헤더·그리드·푸터, 테마 무관 골격           | `src/components/layout/`          |
-| 4.2 | `WidgetHost` — 레이아웃 순회, `instanceId` 키, CSS 배치       | `src/components/layout/`          |
-| 4.3 | Widget Registry (`WidgetDefinition` 등록·조회)                | `src/widgets/` 또는 `src/shared/` |
-| 4.4 | MVP 고정 레이아웃 상수                                        | `src/app/`                        |
-| 4.5 | 단일 열 전환 브레이크포인트(1100px) — 셸이 깨지지 않을 최소치 | `src/styles/`                     |
+| #   | 작업                                                          | 산출물                                     | 상태 |
+| --- | ------------------------------------------------------------- | ------------------------------------------ | ---- |
+| 4.1 | `DashboardShell` — 셸 여백·헤더 통합·워크스페이스             | `src/components/layout/DashboardShell.vue` | 완료 |
+| 4.2 | `WidgetHost` — 레이아웃 순회, `instanceId` 키, CSS 배치       | `src/components/layout/WidgetHost.vue`     | 완료 |
+| 4.3 | Widget Registry (`WidgetDefinition` 등록·조회)                | `src/widgets/registry.ts`                  | 완료 |
+| 4.4 | MVP 고정 레이아웃 상수                                        | `src/app/layout.ts`                        | 완료 |
+| 4.5 | 단일 열 전환 브레이크포인트(1100px)                           | `WidgetHost.vue`                           | 완료 |
+| 4.6 | 위젯 데이터 모델 (`WidgetType`, `GridArea`, `WidgetInstance`) | `src/shared/types/widget.ts`               | 완료 |
+| 4.7 | 개발용 플레이스홀더 5종                                       | `src/widgets/placeholders/`                | 완료 |
 
-`SYSTEM_DESIGN.md` §5.3의 4개 규칙을 지킨다. 특히 **`:key`는 `instanceId`만** 쓴다.
-
-4.5는 셸이 좁은 화면에서 깨지지 않게 하는 **최소 대응**이다.
-나머지 브레이크포인트(730 / 650 / 600)와 반응형 정교화는 M5다.
-
-**선행 결정**: `GridArea` / `GridSize` 표현, 레지스트리 배치 위치.
+- `GridArea`는 **이름 있는 영역**이다. 고정 좌표를 저장하지 않고, 별도 영속
+  `GridSize` 모델을 만들지 않았다 (ADR 0005).
+- 위젯 루트 DOM 노드가 그리드 컨테이너의 **직계 자식**이다. 래퍼가 없다.
+- `:key`는 `instanceId`만 쓴다. 테마 전환 후 DOM 노드 동일성을 테스트와
+  브라우저에서 모두 확인했다.
+- `WidgetHost`·`DashboardShell`·레이아웃은 Theme Store를 참조하지 않는다.
+- 위젯 5종은 모두 **플레이스홀더**다. 실제 컴포넌트는 M1-5(플레이어),
+  M1-6(데크·마스코트), M4(시계·날씨)에서 들어온다. 교체는 레지스트리의
+  `component` 한 줄이다.
 
 ### M1-5. 플레이어 영속성 구조 ★ M1의 핵심
 
@@ -311,7 +316,6 @@ M1의 구조 테스트(5.6–5.8)는 M1에서 작성해 유지한다. M5의 통�
 | 항목                                     | 필요 시점 | 문서                    |
 | ---------------------------------------- | --------- | ----------------------- |
 | 토큰 이름 확정                           | M1-2      | `THEME_SYSTEM.md` §4.2  |
-| `GridArea` / `GridSize` 표현             | M1-4      | `SYSTEM_DESIGN.md` §5.4 |
 | `PlayerAdapter` 최소 시그니처            | M1-5      | `SYSTEM_DESIGN.md` §4.6 |
 | SVG `id` 접두사 규칙                     | M1-6      | `THEME_SYSTEM.md` §8    |
 | `prompt()`·`confirm()` 대체 UI           | M2        | `MVP_SPEC.md` F4        |

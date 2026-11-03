@@ -205,75 +205,110 @@ TODO: 어댑터 인스턴스 보유 위치 확정 (store 내부 / 앱 레벨 pro
 | **Widget Host**       | 레이아웃을 받아 인스턴스를 렌더링하는 컴포넌트   |
 | **Skin**              | 위젯 단위 외형 변형. 테마와 **독립적인 축**      |
 
-### 5.2 타입 초안
+### 5.2 타입 — 구현 완료 (M1-4)
 
-```
-type WidgetKind = 'deck' | 'player' | 'clock' | 'weather' | 'mascot'
+데이터 모델은 `src/shared/types/widget.ts`, 컴포넌트를 들고 있는 정의는
+`src/widgets/registry.ts`에 있다.
 
-interface WidgetDefinition {
-  kind: WidgetKind
-  title: string
-  // 테마와 스킨에 따라 컴포넌트를 해석한다.
-  resolve(ctx: { theme: ThemeKey; skin?: SkinKey }): Component
-  defaultArea: GridArea
-  minSize?: GridSize
-  movable: boolean
-  resizable: boolean
-  removable: boolean
-  // true면 재마운트가 금지된다 (플레이어). §4 참조
-  persistent?: boolean
-  skins?: SkinKey[]
-}
+```ts
+// src/shared/types/widget.ts — 순수 데이터
+type WidgetType = 'deck' | 'clock' | 'weather' | 'player' | 'mascot'
+type GridArea = 'deck' | 'mascot' | 'clock' | 'weather' | 'player'
 
 interface WidgetInstance {
-  instanceId: string      // 안정적. :key로 사용한다
-  kind: WidgetKind
+  instanceId: string // 안정적. :key 로 쓰는 유일한 값
+  widgetType: WidgetType
   area: GridArea
-  skin?: SkinKey          // 미지정이면 테마 기본 스킨
 }
 
 interface DashboardLayout {
   version: number
-  items: WidgetInstance[]
+  items: readonly WidgetInstance[]
+}
+
+// src/widgets/registry.ts — Vue 컴포넌트를 들고 있는 정의
+interface WidgetDefinition {
+  type: WidgetType
+  title: string
+  component: Component // 정적. resolve(theme) 함수가 아니다
+  componentProps?: Readonly<Record<string, unknown>>
+  defaultArea: GridArea
+  movable: boolean // MVP 전부 false
+  resizable: boolean // MVP 전부 false
+  removable: boolean // MVP 전부 false
+  persistent?: boolean // player 만 true
+  skins?: readonly string[] // 확장 지점. 현재 전부 미지정
 }
 ```
 
-### 5.3 Widget Host 규칙
+초안과 달라진 점:
+
+| 초안                            | 구현               | 이유                                                                                                                                                   |
+| ------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kind`                          | `widgetType`       | 인스턴스의 `widgetType`과 이름을 맞췄다                                                                                                                |
+| `resolve(ctx: { theme, skin })` | `component` (정적) | 테마별 외형은 컴포넌트 교체가 아니라 **CSS 표시 전환**으로 처리한다 (ADR 0001). 테마를 받는 해석 함수가 필요 없고, 레지스트리가 테마에 종속되지 않는다 |
+| `minSize?: GridSize`            | 없음               | 사용자가 크기를 바꿀 수 없어 저장할 크기가 없다. 제약은 CSS로 표현한다 (ADR 0005)                                                                      |
+
+`GridArea`와 `GridSize`의 표현은 ADR 0005에서 확정했다. 인스턴스는 **이름 있는
+영역만** 갖고 고정 좌표를 저장하지 않는다. 실제 위치는 `WidgetHost`의
+`grid-template-areas`가 정의한다.
+
+### 5.3 Widget Host 규칙 — 구현 완료
 
 1. **`:key`는 `instanceId`만 사용한다.**
    인덱스·테마·스킨을 키에 넣지 않는다. 키가 바뀌면 재마운트되고,
    플레이어 위젯은 그 순간 재생 상태를 잃는다 (§4.2).
 2. **모든 인스턴스는 그리드 컨테이너의 직계 자식이다.**
-   배치는 CSS로만 지정한다 (§4.4).
+   래퍼 `<div>`를 끼우지 않는다. 위젯 컴포넌트의 루트 엘리먼트가 곧 그리드
+   아이템이며, 배치는 `grid-area` 인라인 스타일로만 지정한다.
+   → 위젯 컴포넌트는 **단일 루트 엘리먼트**여야 한다 (fragment 금지).
 3. **`persistent: true` 위젯은 테마에 따라 컴포넌트를 교체하지 않는다.**
-   `resolve()`가 테마와 무관하게 동일 컴포넌트를 반환한다. 외형은 토큰으로 바꾼다.
-4. 알 수 없는 `kind`는 **조용히 건너뛴다.** 저장된 레이아웃이 구버전일 수 있다.
+   `component`가 정적이므로 구조적으로 보장된다.
+4. 알 수 없는 `widgetType`은 **조용히 건너뛴다.** 저장된 레이아웃이 구버전일
+   수 있다. 조회는 `findWidgetDefinition`을 쓰며, 프로토타입 체인을 타지
+   않도록 `isWidgetType`으로 확인한다 (`'toString'` 같은 값 차단).
+5. **반응형은 `grid-template-areas`만 바꾼다.** DOM 부모·순서·컴포넌트
+   인스턴스는 유지된다. 1100px 이하에서 단일 열로 전환한다.
 
-### 5.4 MVP 레이아웃
+테마는 참조하지 않는다. `WidgetHost`·`DashboardShell`·레이아웃 상수 모두
+`useThemeStore`를 import하지 않으며, 테스트가 이를 강제한다.
 
-프로토타입 구조를 그대로 고정한다.
+### 5.4 MVP 레이아웃 — 구현 완료
+
+`src/app/layout.ts`의 모듈 상수 `MVP_DASHBOARD_LAYOUT`이다.
+사용자가 편집할 수 없고 저장하지 않는다.
 
 ```
-┌──────────────────────────────────────────────┬──────────────┐
-│ header (brand · 라이브러리 · 링크 추가)         │              │
-├──────────────────────────┬───────────────────┤   drawer     │
-│ deck        (deck)       │ clock   (clock)   │  (340px,     │
-│ ─────────────────────────│ ──────────────────│   drawer-open│
-│ mascot      (mascot)     │ weather (weather) │   일 때만)     │
-│                          │ ──────────────────│              │
-│                          │ player  (player)  │              │
-├──────────────────────────┴───────────────────┤              │
-│ footer                                       │              │
-└──────────────────────────────────────────────┴──────────────┘
+┌──────────────────────────────────────────────┐
+│ header (brand=39page · ThemeSwitcher)        │
+├──────────────────────────┬───────────────────┤
+│                          │ clock             │
+│  deck                    ├───────────────────┤
+│  (deck 영역, 3행 span)    │ weather           │
+│                          ├───────────────────┤
+├──────────────────────────┤ player            │
+│  mascot                  │ (player 영역,      │
+│                          │  2행 span)        │
+└──────────────────────────┴───────────────────┘
+grid-template-columns: minmax(0, 1.13fr) minmax(420px, 0.87fr)
 ```
 
-- `deck`은 테마별 아트(턴테이블/카세트)를 렌더링하고, 클릭 시 드로어를 연다.
-- `player`는 `persistent: true`다.
-- 드로어는 위젯이 아니다. 셸이 직접 소유한다 (레이아웃 그리드의 형제 열).
+1100px 이하에서는 단일 열로 `deck → mascot → clock → weather → player` 순서다.
+
+- `deck`은 M1-6에서 테마별 아트(턴테이블/카세트)를 렌더링한다.
+  두 아트를 동시에 DOM에 두고 CSS로 전환하므로 위젯 컴포넌트는 하나다.
+- `player`는 `persistent: true`다. M1-5에서 `PlayerSurface`로 교체한다.
+- 드로어는 위젯이 아니다. M2에서 `DashboardShell`의 `.workspace` 안에
+  `WidgetHost`의 형제 열로 들어온다.
+- 헤더는 위젯이 아니다. 셸이 `AppHeader`를 직접 소유한다.
+
+M1-4 기준으로 5개 위젯 모두 **개발용 플레이스홀더**다
+(`src/widgets/placeholders/WidgetPlaceholder.vue`). 최종 디자인이 아니다.
+실제 컴포넌트로 교체할 때 레지스트리의 `component` 한 줄만 바꾸며
+`DashboardShell`·`WidgetHost`는 수정하지 않는다.
 
 TODO: 드로어를 위젯으로 볼지 셸 소유로 볼지 최종 확정 (현재 셸 소유 전제)
-TODO: `GridArea` / `GridSize` 표현 확정 (명시적 그리드 라인 / 12열 등)
-TODO: 헤더·푸터를 위젯으로 승격할지 여부
+TODO: 푸터(테마별 문구)를 셸에 추가할지 결정 — 테마별 copy가 레지스트리에 없다
 
 ## 6. 상태 경계
 
