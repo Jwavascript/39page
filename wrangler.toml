@@ -1,0 +1,38 @@
+# Cloudflare Workers Static Assets 배포 설정.
+#
+# 39page 는 Worker 코드가 없는 **순수 정적 SPA** 다. `main` 을 두지 않으므로
+# Worker 가 호출되지 않고, 모든 요청이 static asset 요청이 된다. 공식 가격
+# 문서가 Free·Paid 양쪽에 대해 "Requests to static assets are free and
+# unlimited" 라고 적는다 → 호스팅 비용이 $0 이다.
+#
+# 결정 근거: docs/decisions/0015-deployment-target.md
+# 배포 절차: docs/development/DEPLOYMENT.md
+
+name = "39page"
+compatibility_date = "2026-11-04"
+
+# workers.dev 하위 도메인을 열지 않는다.
+#
+# 열어두면 같은 앱이 `<name>.<subdomain>.workers.dev` 라는 **다른 origin** 에서
+# 서비스된다. `localStorage` 는 origin 단위이므로 사용자가 그쪽으로 들어가면
+# 라이브러리가 갈린다. 표준 origin 은 apex 하나다 (ADR 0015).
+workers_dev = false
+
+[assets]
+directory = "./dist"
+
+# 알 수 없는 경로도 앱 셸로 넘긴다.
+#
+# 라우터를 쓰지 않으므로(POST_MVP_PLAN.md B.3) 반드시 필요한 것은 아니지만,
+# OAuth 콜백이 쿼리·해시를 달고 돌아오고 사용자가 주소를 잘못 입력할 수 있다.
+# 404 페이지보다 앱으로 보내는 쪽이 안전하다.
+not_found_handling = "single-page-application"
+
+# 표준 origin. apex 하나만 둔다.
+#
+# www 와 http 는 Cloudflare 리다이렉트 규칙이 여기로 보낸다
+# (DEPLOYMENT.md 5단계). 이 설정이 Cloudflare DNS 에 프록시된 레코드를
+# 자동으로 만든다.
+[[routes]]
+pattern = "39page.com"
+custom_domain = true

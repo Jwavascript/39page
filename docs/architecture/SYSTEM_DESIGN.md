@@ -15,8 +15,17 @@
 - 날씨 API는 제공자에 따라 키가 필요할 수 있다. 키를 클라이언트에 노출할 수 없는
   제공자를 선택하면 **프록시 서버가 필요해진다.**
 
-TODO: 날씨 제공자 확정 후 서버 컴포넌트 필요 여부 재결정 (`MVP_SPEC.md` F7)
-TODO: 배포 대상 확정 (정적 호스팅 전제)
+**날씨 제공자는 키를 요구하지 않는다** (Open-Meteo, ADR 0013). 따라서
+프록시 서버가 필요하지 않고, MVP 범위에서 클라이언트 전용 전제가 유지된다.
+
+**배포 대상은 Cloudflare Workers Static Assets 로 확정했다** (ADR 0015).
+표준 origin 은 `https://39page.com` 하나다. `localStorage` 가 origin 단위이므로
+origin 을 둘 이상 열지 않는다. **아직 배포하지 않았다** — 절차와 환경 제약은
+[`../development/DEPLOYMENT.md`](../development/DEPLOYMENT.md).
+
+TODO: 실제 배포 수행 (`../development/DEPLOYMENT.md`)
+TODO: 계정·동기화를 도입하면 이 절의 "백엔드 없음" 전제를 개정한다
+(`../development/POST_MVP_PLAN.md` 트랙 B)
 
 ## 2. 기술 스택
 

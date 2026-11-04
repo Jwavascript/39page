@@ -1,0 +1,164 @@
+# 배포 — Cloudflare Workers Static Assets
+
+> 상태: 설정 완료 · **아직 배포하지 않았다.**
+> 결정 근거: [`../decisions/0015-deployment-target.md`](../decisions/0015-deployment-target.md)
+> 비용 분석: [`POST_MVP_PLAN.md`](POST_MVP_PLAN.md) §F.1
+
+| 항목        | 값                                           |
+| ----------- | -------------------------------------------- |
+| 호스팅      | Cloudflare Workers Static Assets             |
+| 표준 origin | **`https://39page.com`** (apex 하나)         |
+| 설정 파일   | [`../../wrangler.toml`](../../wrangler.toml) |
+| 비용        | $0 — 정적 자산 요청은 무료·무제한            |
+| 빌드 산출물 | `dist/` — 11초, 187 KB, 4개 파일             |
+
+---
+
+## ⚠ 0. 이 기기(Termux/Android)에서는 wrangler 를 쓸 수 없다
+
+실측 확인 (2026-11-04):
+
+```
+$ npm install wrangler@4
+npm error Error: Unsupported platform: android arm64 LE
+npm error path .../node_modules/workerd
+```
+
+`workerd` 는 wrangler 의 **필수 의존성**이고 Android 빌드가 없다. 이 기기의
+`process.platform` 은 `linux` 가 아니라 **`android`** 다. 선택적 의존성 누락이
+아니라 설치 스크립트가 예외를 던지므로 **우회할 수 없다.**
+
+→ **`npx wrangler deploy` 를 이 기기에서 실행할 수 없다.**
+
+### 대안 세 가지
+
+| 안                                          | 평가                                                                                  |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Cloudflare Workers Builds (Git 연동)**    | **추천.** 빌드와 배포가 Cloudflare 의 Linux 환경에서 돈다. 로컬 wrangler 가 필요 없다 |
+| 다른 기기(PC/Mac)에서 `npx wrangler deploy` | 된다. 그 기기에 저장소를 받아야 한다                                                  |
+| Cloudflare API 를 `curl` 로 직접 호출       | 이론상 가능하지만 번거롭고 실수 여지가 크다. 권하지 않는다                            |
+
+**이 때문에 Git 원격(C11)이 선호 사항이 아니라 사실상 필수 조건이 된다.**
+코드가 현재 이 기기에만 있다는 점(백업 부재)과 함께 보면 어차피 해야 할 일이다.
+
+### 의존성 검토 (`AGENTS.md` 규칙 8)
+
+- **(a) 왜 필요한가** — 배포에 wrangler 가 필요하다.
+- **(b) 기존 의존성으로 가능한가** — 아니다. 그러나 **로컬에 추가할 필요가
+  없다.** Workers Builds 가 CI 환경에서 제공한다.
+- **(c) 대안** — 위 표.
+
+→ **`package.json` 을 바꾸지 않았다. 새 의존성 0개.**
+`wrangler.toml` 설정 파일만 저장소에 들어간다.
+
+---
+
+## 1. Git 원격 만들기 (선행)
+
+현재 원격이 없다 (`git remote -v` 가 비어 있다). `main` 에 로컬 커밋만 있다.
+
+```sh
+# GitHub 에 저장소를 만든 뒤
+git remote add origin git@github.com:<사용자>/39page.git
+git push -u origin main
+```
+
+**공개/비공개를 정해야 한다.** publishable key 는 공개용 설계이므로 노출되어도
+되지만, **secret / service_role key 는 어느 쪽이든 저장소에 넣지 않는다.**
+`.gitignore` 가 `.env*` 와 `*.key` 를 이미 막는다.
+
+> 무인 실행 지시에 따라 `git push` 는 자동 수행하지 않는다. 위 명령은 사용자가
+> 직접 실행한다.
+
+## 2. Workers Builds 연결
+
+Cloudflare 대시보드 → **Workers & Pages** → **Create** → 저장소 가져오기.
+
+| 설정           | 값                    |
+| -------------- | --------------------- |
+| Build command  | `npm run build`       |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/`                   |
+
+`wrangler.toml` 이 나머지를 결정한다 — 자산 디렉터리, SPA 폴백,
+`workers_dev = false`, 커스텀 도메인.
+
+TODO: 대시보드 화면 구성은 변할 수 있다. 위 세 값이 들어갈 자리를 찾는다.
+
+## 3. 커스텀 도메인
+
+`wrangler.toml` 의 아래 설정이 배포 시 apex 커스텀 도메인과 프록시된 DNS
+레코드를 만든다.
+
+```toml
+[[routes]]
+pattern = "39page.com"
+custom_domain = true
+```
+
+도메인이 **Workers 를 쓰는 것과 같은 Cloudflare 계정**에 있어야 한다.
+DNS 는 이미 Cloudflare 네임서버에 있다 (ADR 0015).
+
+## 4. ⚠ www → apex 리다이렉트 — DNS 레코드가 먼저다
+
+**함정**: `www` 에 DNS 레코드가 없으면 리다이렉트 규칙이 **발동하지 않는다.**
+브라우저는 리다이렉트가 아니라 `DNS_PROBE_FINISHED_NXDOMAIN` 을 받는다.
+
+순서를 지킨다.
+
+1. **DNS 레코드 추가** — `www` 에 자리표시자를 두고 **프록시를 켠다**
+   (오렌지 구름). Cloudflare 가 origin 에 닿기 전에 가로챈다.
+
+   | Type | Name  | Content | Proxy |
+   | ---- | ----- | ------- | ----- |
+   | AAAA | `www` | `100::` | 켜짐  |
+
+   (IPv4 자리표시자 `192.0.2.1` 을 A 레코드로 써도 된다. 둘 다 예약 주소다.)
+
+2. **Rules → Redirect Rules** 에서 Single Redirect 생성.
+   **"WWW to Root"** 템플릿이 있으면 그대로 저장한다.
+   수동 설정이라면: `www.39page.com/*` → `https://39page.com/${1}`, **301**.
+
+3. **SSL/TLS → Edge Certificates → Always Use HTTPS** 를 켠다.
+   `http://` 와 `https://` 는 **다른 origin** 이다.
+
+TODO: Single Redirect 의 무료 플랜 규칙 수 한도는 확인하지 못했다.
+
+## 5. 검증 체크리스트
+
+배포 후 확인한다. **처음 네 줄이 데이터 무결성에 직결된다.**
+
+```sh
+# 표준 origin 이 200 을 준다
+curl -s -o /dev/null -w "%{http_code}\n" https://39page.com
+
+# www 가 apex 로 301 한다 (NXDOMAIN 이 아니라)
+curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" https://www.39page.com
+
+# http 가 https 로 301 한다
+curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" http://39page.com
+
+# workers.dev 주소가 열려 있지 않다 (열려 있으면 origin 이 하나 더 있는 것이다)
+```
+
+브라우저에서:
+
+- [ ] 두 테마가 모두 뜨고 전환된다
+- [ ] 라이브러리 드로어가 열리고 플레이리스트를 만들 수 있다
+- [ ] 새로고침해도 플레이리스트가 남는다
+- [ ] **실제 YouTube 재생** — 이 환경에서 검증하지 못한 유일한 항목이다
+      (`POST_MVP_PLAN.md` 작성 시점 기준). 일반 브라우저에서 확인한다
+- [ ] 알 수 없는 경로(`/anything`)가 404 가 아니라 앱으로 간다
+
+## 6. 다음에 할 일
+
+| 순서 | 할 일                                               | 막는 것           |
+| ---- | --------------------------------------------------- | ----------------- |
+| 1    | `/privacy` · `/terms` 작성 (`public/` 에 정적 HTML) | Google OAuth 등록 |
+| 2    | Supabase 프로젝트 생성 (POST_MVP_PLAN.md §D.1)      | 동기화 구현       |
+| 3    | Google OAuth 클라이언트 + brand verification        | 로그인 기능       |
+
+**개인정보처리방침은 현재 앱 기준으로 먼저 쓴다.** 지금 39page 는 계정도
+분석도 없고, 외부로 나가는 것은 YouTube 임베드와 Open-Meteo 요청뿐이다.
+계정을 도입할 때 개정한다 — 아직 수집하지 않는 것을 수집한다고 적으면
+그 자체가 부정확한 고지가 된다.
