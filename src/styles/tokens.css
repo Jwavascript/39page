@@ -32,6 +32,16 @@
   --size-workspace-min-height: 650px;
   --size-drawer-width: 340px;
   --size-video-min: 200px;
+
+  /*
+   * 좁은 화면에서 플레이어가 커지는 것을 막는 상한 (M6-1).
+   *
+   * 2열 배치에서 플레이어는 두 열을 가로지른다. 폰에서는 그래야 200×200 공식
+   * 요구를 지킬 수 있지만(반 칸은 ~150px 로 미달한다), 1000px 쯤에서는 폭이
+   * 950px 이 되어 16:9 높이가 530px 까지 커진다. 그러면 "스크롤 없이 한 화면"
+   * 이 깨진다. 상한을 두고 가운데 정렬한다.
+   */
+  --size-player-max-compact: 640px;
   --ratio-deck: 900 / 570;
   --ratio-video: 16 / 9;
 

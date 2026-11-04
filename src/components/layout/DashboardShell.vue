@@ -12,20 +12,26 @@
  * M2에서 Record Library 드로어가 `.workspace`의 형제 열로 들어온다.
  * 지금은 동작하지 않는 버튼을 만들지 않으므로 헤더에 액션이 없다.
  *
- * M3-4 에서 재생 쪽에 **통지 하나**를 보내게 됐다. 좁은 화면에서 드로어를
- * 열면 이 컴포넌트의 CSS 가 스테이지를 `display: none` 으로 만든다. 그
- * 사실을 아는 곳은 여기뿐이므로, 가려지기 **전에** 알려줄 책임도 여기다
- * (`features/playback/playbackCoordinator.ts` 의 `PlaybackVisibility`).
- * 재생 상태를 읽거나 플레이어를 직접 부르지는 않는다.
+ * M6-2 에서 드로어를 **오버레이**로 바꿨고, 그 결과 이 컴포넌트는 재생 계약을
+ * 다시 모르게 됐다.
+ *
+ * M3-4 에서는 좁은 화면에서 드로어가 스테이지를 `display: none` 으로 대체했기
+ * 때문에, 가려지기 전에 멈추라고 재생 쪽에 통지해야 했다
+ * (`playerWillHide()`). 지금은 **플레이어를 숨기지 않는다** — 좁은 화면에서도
+ * 플레이어만 남기고 드로어는 아래 행을 쓴다. 가려질 일이 없으므로 통지하지
+ * 않는다. 그래서 세로 화면에서도 재생이 끊기지 않는다.
+ *
+ * 겹침이 **구조적으로 불가능**하다는 점이 근거다. 아래 CSS 주석 참조.
+ * 혹시 레이아웃이 깨져 플레이어가 화면 밖으로 밀리면
+ * `PlayerSurface` 의 `IntersectionObserver` 가 안전망으로 잡는다.
  */
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
 
 import AppFooter from '@/components/layout/AppFooter.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
 import RecordLibraryDrawer from '@/features/library/RecordLibraryDrawer.vue'
 import { LIBRARY_DRAWER, type LibraryDrawerController } from '@/features/library/drawerController'
-import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
 
 defineProps<{
@@ -43,45 +49,17 @@ defineProps<{
 const DRAWER_ID = 'record-library-drawer'
 const isDrawerOpen = ref(false)
 
-/**
- * 스테이지가 드로어로 **대체되는** 화면 폭.
- *
- * 아래 `@media (max-width: 1100px)` 규칙과 같은 값이어야 한다. CSS 변수는
- * 미디어 쿼리 조건에 쓸 수 없어 중복이 불가피하다 (`src/styles/tokens.css`
- * 주석). 승인된 프로토타입도 같은 값을 `matchMedia` 로 중복한다
- * (`shouldUseCompact()`). 같은 파일 안에 두어 어긋날 여지를 줄였다.
- */
-const STAGE_REPLACED_QUERY = '(max-width: 1100px)'
-
-/**
- * 가시성 통지 대상 (M3-4).
- *
- * 계약 파일만 가져온다. 주입되지 않으면 통지하지 않는다 — 셸을 단독으로
- * 마운트하는 테스트를 위한 기본값이다.
- */
-const playbackVisibility = inject(PLAYBACK_COORDINATOR, null)
-
-/**
- * 드로어를 열면 스테이지가 가려지는지.
- *
- * `matchMedia` 가 없는 환경에서는 **가려지지 않는다고 본다.** 없다는 이유로
- * 멈추면 실제로 보이는 플레이어를 멈추게 된다. 실제로 가려지는 경우는
- * `PlayerSurface` 의 가시성 감시가 한 틱 뒤에 잡는다.
- */
-function stageWillBeHidden(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia(STAGE_REPLACED_QUERY).matches
-}
-
 /** 닫을 때 포커스를 되돌릴 트리거. */
 let lastTrigger: HTMLElement | null = null
 
 function openDrawer(): void {
   /*
-   * 가려지기 **전에** 멈춘다. 열고 나서 멈추면 그 사이 가려진 채로 소리가
-   * 난다 — 개발자 정책 III.I.9 가 금지하는 상태다.
+   * 재생을 멈추지 않는다 (M6-2).
+   *
+   * 드로어는 플레이어를 가리지 않는다. 넓은 화면에서는 정보 열 안에서 끝나고,
+   * 좁은 화면에서는 아래 행을 쓴다. 가려지지 않으므로 III.I.9 가 금지하는
+   * 상태가 되지 않는다.
    */
-  if (stageWillBeHidden()) playbackVisibility?.playerWillHide()
-
   const active = document.activeElement
   lastTrigger = active instanceof HTMLElement ? active : null
   isDrawerOpen.value = true
@@ -165,26 +143,69 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
   isolation: isolate;
 }
 
-.workspace.is-drawer-open {
-  grid-template-columns: minmax(0, 1fr) var(--size-drawer-width);
-  gap: clamp(20px, 2.3vw, 39px);
+/*
+ * 드로어는 **오버레이**다 (M6-2).
+ *
+ * 이전에는 340px 열을 만들어 스테이지를 좁혔다. 실기기 검증에서 "나머지
+ * 요소가 조절되지 않고 위에 덮이면 좋겠다" 는 요청이 왔다.
+ *
+ * 구현은 **같은 그리드 셀에 겹쳐 놓는 것**이다. 절대 위치를 쓰지 않는다 —
+ * 스테이지와 드로어가 같은 셀(1/1)에 들어가면 스테이지의 트랙 크기가 바뀌지
+ * 않으므로 위젯이 재배치되지 않는다. DOM 부모·순서도 그대로다 (ADR 0002).
+ *
+ * ⚠ **드로어가 플레이어를 가리지 않는다는 보장은 레이아웃이 진다.**
+ * 가시성 측정은 다른 요소에 덮인 것을 감지하지 못한다
+ * (`features/playback/playerVisibility.ts`). 그래서 `WidgetHost` 의 정보 열
+ * 최소 폭을 `--size-drawer-width` 자체로 묶어 두었다. 우측 드로어가 그 열
+ * 안에서 끝나므로 플레이어(2열)에 닿지 않는다.
+ */
+.workspace.is-drawer-open > :last-child {
+  grid-area: 1 / 1;
+  justify-self: end;
+  width: var(--size-drawer-width);
+  /* `.workspace` 에 `isolation: isolate` 가 있어 쌓임 맥락이 갇힌다. */
+  z-index: 1;
 }
 
 /*
- * 1100px 이하에서는 나란히 둘 공간이 없다. 레퍼런스와 같이 드로어가
- * 스테이지를 대체한다. **언마운트가 아니라 `display: none`** 이므로
- * PlayerSurface 의 DOM 노드와 부모는 그대로 유지된다.
+ * 1100px 이하: 나란히 둘 공간이 없다. 드로어를 **아래 행**에 둔다.
  *
- * 이 값은 위의 `STAGE_REPLACED_QUERY` 와 같아야 한다. 가려지기 전에
- * 일시정지하는 통지가 그 상수를 쓴다 (M3-4).
+ * 이전에는 스테이지를 `display: none` 으로 대체했다. 그래서 세로 화면에서
+ * 플레이어가 0×0 이 되고 가드가 재생을 거절했다 — 실기기에서 "세로에서는
+ * 음악 재생이 불가능하다" 로 보고된 문제다.
+ *
+ * 지금은 **플레이어만 남기고** 나머지 위젯을 숨긴다. 플레이어가 계속 보이므로
+ * 재생이 끊기지 않고, 드로어가 아래 행을 쓰므로 겹칠 수 없다. 겹침이 구조적으로
+ * 불가능하다는 점이 중요하다 — 픽셀 비율로 맞추면 화면 크기마다 깨진다.
+ *
+ * 숨기는 것은 위젯의 `display` 뿐이고 언마운트가 아니다. 플레이어는 숨기지
+ * 않으므로 iframe 과 그 부모는 그대로다 (ADR 0002).
  */
 @media (max-width: 1100px) {
   .workspace.is-drawer-open {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: clamp(14px, 2vw, 24px);
   }
 
-  .workspace.is-drawer-open > :first-child {
+  .workspace.is-drawer-open > :last-child {
+    grid-area: 2 / 1;
+    justify-self: stretch;
+    width: auto;
+  }
+
+  /* 플레이어만 남긴다. 플레이어는 계속 보여야 한다 (III.I.9). */
+  .workspace.is-drawer-open :deep(.widget-host) {
+    grid-template-areas: 'player';
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace.is-drawer-open :deep(.widget-host > *:not([data-widget='player'])) {
+    display: none;
+  }
+
+  /* 의사 요소 구분선도 숨긴다. 열이 하나뿐이라 그을 자리가 없다. */
+  .workspace.is-drawer-open :deep(.widget-host::before) {
     display: none;
   }
 }

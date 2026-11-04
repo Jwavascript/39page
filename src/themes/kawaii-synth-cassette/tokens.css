@@ -47,7 +47,6 @@
   --brand-text-color: #b5ffec;
   --header-border-color: #456b78;
   --info-border-color: #557e89;
-  --info-border-compact-color: #514a3f; /* [미재정의] */
   --rule-color: #456b78; /* [의도] v09는 .rule에 border-color를 쓰지만 .rule은 background로 그린다 */
   --footer-border-color: #456b78;
   --footer-text-color: #a1c7c5;

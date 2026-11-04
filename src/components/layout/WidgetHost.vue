@@ -63,19 +63,26 @@ const placed = computed<PlacedWidget[]>(() =>
 
 <style scoped>
 /*
- * 넓은 화면: 왼쪽에 데크·마스코트, 오른쪽에 시계·날씨·플레이어.
- * 비율과 간격은 승인된 디자인의 .content 값을 따른다.
+ * 넓은 화면: 데크 | 플레이어 | 정보(시계·날씨) 3열. 마스코트는 데크 아래.
  *
- * 행은 셋이다. 데크가 위 두 행을 가로지르고 마스코트가 셋째 행에 선다.
- * 승인된 디자인은 두 열이 각자 흐르는 구조(`.deck-wrap` / `.info`)지만,
- * 위젯 루트가 그리드의 직계 자식이어야 하므로 래퍼를 쓸 수 없다 (ADR 0002).
- * 행을 이렇게 나누면 래퍼 없이도 마스코트가 데크 바로 아래에 붙는다.
+ * ⚠ **M6-1 에서 승인된 레퍼런스의 2열 배치에서 의도적으로 벗어났다.**
+ * 실기기 검증에서 보고된 세 가지를 풀기 위해서다 (AGENTS.md 규칙 6 — 사용자
+ * 확인을 받았다. 상세: `docs/development/M6_PLAN.md`).
  *
- * 남는 차이 하나: 데크가 위 두 행보다 크면 그 차이가 두 행에 나뉘어, 시계와
- * 날씨 사이가 레퍼런스보다 약 35px 넓어진다 (1440px 실측). 행을
- * `max-content` 로 묶어봐도 막히지 않는다 — 두 트랙 모두 내재 크기라서
- * 분배 대상이다. 래퍼 없이 두 열을 **각자 흐르게** 할 방법이 없으므로
- * 여기까지가 한계다. 레퍼런스와의 차이를 M5 보고에 적었다.
+ * - 데크(LP·카세트)가 너무 컸다. 3열로 나누면 열 폭이 줄어 데크도 줄어든다
+ * - 영상이 아래쪽에 있어 스크롤해야 보였다. 플레이어를 **2열 1행**으로 올린다
+ * - 플레이어가 항상 화면 안에 있어야 드로어를 오버레이로 바꿀 수 있다.
+ *   가시성 측정은 다른 요소에 덮인 것을 감지하지 못하므로, 오버레이가
+ *   플레이어를 비켜가는 배치가 전제다 (ADR 0011 개정 절)
+ *
+ * 행은 셋이다. 데크와 플레이어가 위 두 행을 가로지르고 마스코트가 셋째 행에
+ * 선다. 위젯 루트가 그리드의 직계 자식이어야 하므로 래퍼를 쓸 수 없다
+ * (ADR 0002). 행을 이렇게 나누면 래퍼 없이도 마스코트가 데크 바로 아래에 붙는다.
+ *
+ * 2열의 최소값 360px 은 임의의 값이 아니다. `.video-holder` 가
+ * `min-height: 202px` 과 `aspect-ratio: 16/9` 를 함께 가지므로, 폭이
+ * 202 × 16/9 ≈ 359px 미만이면 16:9 를 지킬 수 없다. 그 아래에서는 상자가
+ * 세로로 눌려 레터박스가 생긴다.
  */
 .widget-host {
   /* 간격을 변수로 둔다. 구분선이 이 값의 절반만큼 왼쪽으로 나가야 한다. */
@@ -83,10 +90,24 @@ const placed = computed<PlacedWidget[]>(() =>
 
   display: grid;
   grid-template-areas:
-    'deck clock'
-    'deck weather'
-    'mascot player';
-  grid-template-columns: minmax(0, 1.13fr) minmax(420px, 0.87fr);
+    'deck player clock'
+    'deck player weather'
+    'mascot . .';
+  /*
+   * 3열의 최소값이 둘 다 근거가 있는 값이다.
+   *
+   * - 2열(플레이어) 360px: `.video-holder` 가 min-height 202px 과
+   *   aspect-ratio 16/9 를 함께 가지므로 202 × 16/9 ≈ 359px 미만에서는
+   *   16:9 를 지킬 수 없다
+   * - 3열(정보) **드로어 폭 자체**: 우측 오버레이 드로어가 이 열 안에서
+   *   끝나야 플레이어를 가리지 않는다. 가시성 측정은 다른 요소에 덮인 것을
+   *   감지하지 못하므로(`playerVisibility.ts`), 이 보장은 레이아웃이 져야
+   *   한다. 두 값을 묶어 두면 드로어 폭을 바꿔도 보장이 따라간다
+   */
+  grid-template-columns:
+    minmax(0, 0.9fr)
+    minmax(360px, 0.95fr)
+    minmax(var(--size-drawer-width), 0.55fr);
   gap: var(--host-gap);
   align-content: start;
   /*
@@ -126,36 +147,51 @@ const placed = computed<PlacedWidget[]>(() =>
 }
 
 /*
- * 1100px 이하: 단일 열로 재배치한다.
+ * 1100px 이하: **2열**로 재배치한다 (M6-1).
+ *
+ * 이전에는 단일 열 5행이었고 플레이어가 **맨 아래**였다. 1000×713 실측에서
+ * `.player-mount` 의 top 이 1247px — 화면 밖이라 재생 요청마다 자동 스크롤이
+ * 필요했다. 데크도 전체 폭을 써서 너무 컸다.
+ *
+ * 플레이어를 **데크 바로 아래**에 둔다. 사용자가 지정한 자리다.
  *
  * grid-template-areas 만 바꾼다. DOM 부모·순서·컴포넌트 인스턴스는 그대로이며
- * 언마운트나 re-parenting 이 일어나지 않는다.
- * 730 / 650 / 600px 의 정교한 조정은 M5에서 한다.
+ * 언마운트나 re-parenting 이 일어나지 않는다 (ADR 0002).
  */
 @media (max-width: 1100px) {
   .widget-host {
     grid-template-areas:
-      'deck'
-      'mascot'
-      'clock'
-      'weather'
-      'player';
-    grid-template-columns: minmax(0, 1fr);
+      'deck clock'
+      'deck weather'
+      'player player'
+      'mascot mascot';
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   /*
-   * 1열에서는 가로선이 된다. 승인된 디자인도 같은 전환을 한다
-   * (`.info { border-left: 0; border-top: 1px }`). 시계 위, 즉 정보 블록이
-   * 시작하는 자리에 둔다.
+   * ⚠ **플레이어가 두 열을 가로지르는 것은 공식 요구사항 때문이다.**
+   *
+   * 폰 세로(390px)에서 워크스페이스 안쪽 폭은 약 356px 이고 반 칸은 ~168px 다.
+   * `.video-holder` 의 최소값은 202px(200 + 테두리 2)이므로 반 칸에 두면
+   * 넘치거나 `too-small` 로 재생이 거절된다. 그래서 전체 폭을 쓴다.
+   *
+   * 대신 상한을 둔다. 1000px 쯤에서 전체 폭이면 16:9 높이가 530px 까지 커져
+   * "스크롤 없이 한 화면" 이 깨진다.
+   */
+  .widget-host > [data-widget='player'] {
+    width: 100%;
+    max-width: var(--size-player-max-compact);
+    justify-self: center;
+  }
+
+  /*
+   * 2열이므로 세로 구분선을 유지한다. 데크와 정보 열 사이, 위 두 행에만 둔다.
+   * 단일 열이던 이전에는 가로선으로 바꿨지만(레퍼런스의 `.info` 전환) 이제는
+   * 열이 둘이라 세로선이 그 역할을 그대로 한다.
    */
   .widget-host::before {
-    margin-top: calc(-0.5 * var(--host-gap));
-    margin-left: 0;
-    border-top: 1px solid var(--info-border-compact-color);
-    border-left: 0;
-    grid-row: 3;
-    grid-column: 1;
-    align-self: start;
+    grid-row: 1 / 3;
+    grid-column: 2;
   }
 }
 </style>

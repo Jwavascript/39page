@@ -752,7 +752,17 @@ async function seedPlaying(trackCount = 3) {
 }
 
 describe('D. 드로어 연동', () => {
-  it('좁은 화면에서 드로어를 열면 DOM 이 바뀌기 전에 멈춘다', async () => {
+  /*
+   * M6-2: 좁은 화면에서도 드로어를 열면 **멈추지 않는다.**
+   *
+   * M3-4 에서는 드로어가 스테이지를 `display: none` 으로 대체했기 때문에
+   * 가려지기 전에 멈춰야 했다. 그 결과 세로 화면에서는 재생 경로가 사라졌고,
+   * 실기기에서 "세로에서는 음악 재생이 불가능하다" 로 보고됐다.
+   *
+   * 지금은 플레이어만 남기고 드로어가 아래 행을 쓴다. 가려지지 않으므로
+   * 멈출 이유가 없다. 이 테스트가 그 수정을 고정한다.
+   */
+  it('좁은 화면에서 드로어를 열어도 재생이 끊기지 않는다 (M6-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
@@ -763,12 +773,28 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    // 기다리지 않는다. 핸들러가 동기적으로 멈춰야 한다.
-    void deckTrigger(context.wrapper).trigger('click')
+    await deckTrigger(context.wrapper).trigger('click')
 
-    expect(context.fake.calls.pause).toBe(1)
-    await nextTick()
+    expect(context.fake.calls.pause).toBe(0)
+    expect(context.playback.playerState).toBe('playing')
     expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
+  })
+
+  it('드로어가 열려 있어도 플레이어는 숨지 않는다 (겹침 금지의 근거)', () => {
+    const shell = readFileSync(
+      resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
+      'utf8',
+    )
+    const compact = shell.slice(shell.indexOf('@media (max-width: 1100px)'))
+
+    // 플레이어를 제외한 위젯만 숨긴다.
+    expect(compact).toContain(":deep(.widget-host > *:not([data-widget='player']))")
+
+    // 드로어는 아래 행이다. 같은 셀에 겹치지 않는다.
+    expect(compact).toContain('grid-area: 2 / 1')
+
+    // 스테이지를 통째로 숨기던 규칙이 남아 있으면 안 된다.
+    expect(compact).not.toMatch(/> :first-child \{\s*display: none/)
   })
 
   it('넓은 화면에서는 드로어를 열어도 멈추지 않는다', async () => {

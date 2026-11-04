@@ -150,14 +150,69 @@ describe('B. 정보 열 구분선', () => {
     expect(source).toContain('margin-left: calc(-0.5 * var(--host-gap))')
   })
 
-  it('1열 레이아웃에서 가로선으로 바뀐다', () => {
+  /*
+   * M6-1 에서 좁은 화면이 **1열에서 2열로** 바뀌었다.
+   *
+   * 1열이던 때는 세로선을 그을 자리가 없어 시계 위의 가로선으로 바꿨다
+   * (레퍼런스의 `.info { border-left: 0; border-top: 1px }`). 이제는 열이
+   * 둘이므로 세로선이 그 역할을 그대로 한다. 따라서 가로선 전환을 제거했고
+   * `--info-border-compact-color` 도 함께 지웠다.
+   */
+  it('2열 레이아웃에서도 세로선을 유지한다', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
 
-    expect(compact).toContain('border-top: 1px solid var(--info-border-compact-color)')
-    expect(compact).toContain('border-left: 0')
-    // 정보 블록이 시작하는 자리(시계 행)에 둔다.
-    expect(compact).toMatch(/grid-row: 3/)
+    // 데크와 정보 열 사이, 위 두 행에만 둔다.
+    expect(compact).toContain('grid-row: 1 / 3')
+    expect(compact).toContain('grid-column: 2')
+
+    // 가로선으로 바꾸지 않는다.
+    expect(compact).not.toContain('border-top:')
+    expect(compact).not.toContain('--info-border-compact-color')
+  })
+
+  it('좁은 화면에서 플레이어가 두 열을 가로지른다 (200×200 요구)', () => {
+    const source = readSource('src/components/layout/WidgetHost.vue')
+    const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
+
+    /*
+     * 폰 세로에서 반 칸은 약 150px 다. `.video-holder` 의 최소값은 202px
+     * 이므로 반 칸에 두면 넘치거나 `too-small` 로 재생이 거절된다.
+     */
+    expect(compact).toContain("'player player'")
+
+    // 넓은 화면에서 커지는 것은 상한으로 막는다.
+    expect(compact).toContain('max-width: var(--size-player-max-compact)')
+  })
+
+  it('넓은 화면에서 플레이어가 2열 1행에 선다', () => {
+    const source = readSource('src/components/layout/WidgetHost.vue')
+    const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
+
+    expect(wide).toContain("'deck player clock'")
+    expect(wide).toContain("'deck player weather'")
+  })
+
+  it('플레이어 열의 최소 폭이 16:9 를 지킬 수 있는 값이다', () => {
+    const source = readSource('src/components/layout/WidgetHost.vue')
+
+    /*
+     * `.video-holder` 는 min-height 202px 과 aspect-ratio 16/9 를 함께 갖는다.
+     * 폭이 202 × 16/9 ≈ 359px 미만이면 16:9 를 지킬 수 없다.
+     */
+    expect(source).toContain('minmax(360px,')
+  })
+
+  it('드로어 폭이 정보 열의 최소 폭을 넘지 않는다 (오버레이가 플레이어를 가리지 않는 근거)', () => {
+    const source = readSource('src/components/layout/WidgetHost.vue')
+
+    /*
+     * 가시성 측정은 **다른 요소에 덮인 것을 감지하지 못한다**
+     * (`playerVisibility.ts`). 그래서 오버레이가 플레이어를 비켜간다는 것은
+     * 레이아웃으로 보장해야 한다. 정보 열의 최소 폭을 드로어 폭 자체로
+     * 묶어두면, 우측 오버레이가 정보 열 안에서 끝난다.
+     */
+    expect(source).toContain('minmax(var(--size-drawer-width),')
   })
 
   it('클릭을 가로채지 않는다', () => {
