@@ -112,7 +112,7 @@ Cloudflare 대시보드 → **Workers & Pages** → **Create** → 저장소 가
 
 TODO: 대시보드 화면 구성은 변할 수 있다. 위 세 값이 들어갈 자리를 찾는다.
 
-## 3. 커스텀 도메인
+## 3. 커스텀 도메인 — 추가 완료 (2026-11-04)
 
 `wrangler.toml` 의 아래 설정이 배포 시 apex 커스텀 도메인과 프록시된 DNS
 레코드를 만든다.
@@ -124,7 +124,38 @@ custom_domain = true
 ```
 
 도메인이 **Workers 를 쓰는 것과 같은 Cloudflare 계정**에 있어야 한다.
-DNS 는 이미 Cloudflare 네임서버에 있다 (ADR 0015).
+Workers Builds 가 자동 생성하는 API 토큰의 권한이
+`Zone: Workers Routes (edit) for all zones on the account` 이므로,
+다른 계정의 zone 에는 커스텀 도메인을 만들 수 없다.
+
+실제로는 첫 배포를 기다리지 않고 대시보드에서 직접 추가했다
+(Worker → Settings → Domains & Routes → Add → Custom domain).
+`[[routes]]` 는 이미 존재하는 것을 가리키게 되므로 충돌하지 않는다.
+
+**실측** (2026-11-04)
+
+| 확인                     | 결과                                               |
+| ------------------------ | -------------------------------------------------- |
+| A                        | `104.21.49.182`, `172.67.191.178`                  |
+| AAAA                     | `2606:4700:3036::ac43:bfb2`, `2606:4700:3037::…`   |
+| `https://39page.com`     | **200**, TLS 검증 통과 (`ssl_verify_result=0`)     |
+| 본문                     | `Hello world` (`content-type: text/plain`)         |
+| `https://www.39page.com` | **530** — 레코드가 없다 (4단계가 남았다)           |
+| `http://39page.com`      | **200, 리다이렉트 없음** — Always Use HTTPS 미설정 |
+
+**본문이 `Hello world` 라는 것이 중요하다.** 대시보드에서 Worker 를 만들 때
+쓴 템플릿이 그대로 서비스되고 있다는 뜻이고, 저장소 빌드가 아직 배포되지
+않았다는 뜻이다. 39page 는 HTML 을 주므로 `content-type` 이 `text/html` 이어야
+한다. 저장소에서 빌드가 성공해 `wrangler deploy` 가 `dist/` 를 올리면 바뀐다.
+
+> ⚠ **이 기기에서는 `39page.com` 이 해석되지 않는다.** `curl` 이
+> `(6) Could not resolve host` 를 낸다. 레코드는 존재하므로(위 표) 안드로이드
+> 리졸버가 아직 받아오지 못한 것이다. 서버 문제와 구별하려면 IP 를 직접
+> 지정한다.
+>
+> ```sh
+> curl -sI --resolve 39page.com:443:104.21.49.182 https://39page.com
+> ```
 
 ## 4. ⚠ www → apex 리다이렉트 — DNS 레코드가 먼저다
 
@@ -154,6 +185,9 @@ TODO: Single Redirect 의 무료 플랜 규칙 수 한도는 확인하지 못했
 ## 5. 검증 체크리스트
 
 배포 후 확인한다. **처음 네 줄이 데이터 무결성에 직결된다.**
+
+이 기기에서 돌릴 때는 `--resolve 39page.com:443:<A 레코드 IP>` 를 붙인다.
+안드로이드 리졸버가 이 도메인을 해석하지 못한다 (3단계 참조).
 
 ```sh
 # 표준 origin 이 200 을 준다
