@@ -80,8 +80,9 @@ http://  (모든 호스트)       → 301 (Always Use HTTPS)
 
 ## 결과
 
-- `SYSTEM_DESIGN.md` §1 의 배포 대상 TODO 가 닫힌다. **단 아직 배포하지
-  않았다** — 절차는 `docs/development/DEPLOYMENT.md` 다.
+- `SYSTEM_DESIGN.md` §1 의 배포 대상 TODO 가 닫힌다. **2026-11-04 배포를
+  완료했다** — `https://39page.com` 이 200 과 `text/html` 로 앱을 준다.
+  절차와 실측은 `docs/development/DEPLOYMENT.md` 다.
 - 호스팅 비용이 $0 이다. 전체 스택(호스팅·Supabase·Open-Meteo·YouTube)에서
   **연 단위 도메인 갱신비만 실제 비용으로 남는다.**
 - `wrangler.toml` 이 저장소에 들어간다. **의존성은 추가하지 않았다** —
@@ -96,6 +97,5 @@ arm64 LE`). 따라서 배포는 **Cloudflare Workers Builds (Git 연동)** 로 �
 - 계정·동기화(POST_MVP_PLAN.md 트랙 B)를 도입하면 이 origin 결정이 그대로
   전제가 된다. OAuth 리다이렉트 URL 이 여기서 나온다.
 
-TODO: 실제 배포 수행과 `https://39page.com` 응답 확인
 TODO: Single Redirect 의 무료 플랜 규칙 수 한도는 확인하지 못했다
 TODO: 프리뷰 URL 비활성화 설정의 정확한 이름을 확인한다 (대시보드 확인 필요)

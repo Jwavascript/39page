@@ -1,6 +1,7 @@
 # 배포 — Cloudflare Workers Static Assets
 
-> 상태: 설정 완료 · **아직 배포하지 않았다.**
+> 상태: **배포 완료 (2026-11-04).** `https://39page.com` 이 앱을 서비스한다.
+> `www`·`http` 리다이렉트(§4)는 남아 있다.
 > 결정 근거: [`../decisions/0015-deployment-target.md`](../decisions/0015-deployment-target.md)
 > 비용 분석: [`POST_MVP_PLAN.md`](POST_MVP_PLAN.md) §F.1
 
@@ -210,6 +211,30 @@ curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" http://39page.com
 - [ ] **실제 YouTube 재생** — 이 환경에서 검증하지 못한 유일한 항목이다
       (`POST_MVP_PLAN.md` 작성 시점 기준). 일반 브라우저에서 확인한다
 - [ ] 알 수 없는 경로(`/anything`)가 404 가 아니라 앱으로 간다
+
+### 실측 결과 (2026-11-04, 첫 배포 직후)
+
+`--resolve` 로 로컬 DNS 를 우회해 확인했다.
+
+| 확인                     | 결과                                   | 판정 |
+| ------------------------ | -------------------------------------- | ---- |
+| `https://39page.com`     | 200 · `text/html` · 1932 bytes         | ✅   |
+| `<title>`                | `39page`                               | ✅   |
+| JS 자산                  | 200 · `text/javascript` · 136443 bytes | ✅   |
+| CSS 자산                 | 200 · `text/css` · 28894 bytes         | ✅   |
+| SPA 폴백 `/anything`     | 200 · `text/html` (404 가 아니다)      | ✅   |
+| `https://www.39page.com` | **530** — 레코드가 없다                | ❌   |
+| `http://39page.com`      | **200, 리다이렉트 없음**               | ❌   |
+
+자산 파일명과 크기가 로컬 `npm run build` 산출물과 일치한다
+(`index-7X_aIsYw.js` 136.44 kB, `index-Ds6ZfYCY.css` 28.89 kB). 즉 배포된
+것이 이 저장소의 코드다.
+
+**남은 두 줄이 데이터 무결성 문제다.** `www` 와 `http` 는 각각 별도 origin
+이고, 지금 상태에서 사용자가 `http://39page.com` 으로 들어오면 `https` 와
+다른 `localStorage` 를 쓴다. §4 를 수행해야 닫힌다.
+
+브라우저 항목(테마·드로어·영속성·실제 재생)은 **아직 확인하지 않았다.**
 
 ## 6. 다음에 할 일
 

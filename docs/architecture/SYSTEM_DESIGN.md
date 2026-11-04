@@ -20,10 +20,13 @@
 
 **배포 대상은 Cloudflare Workers Static Assets 로 확정했다** (ADR 0015).
 표준 origin 은 `https://39page.com` 하나다. `localStorage` 가 origin 단위이므로
-origin 을 둘 이상 열지 않는다. **아직 배포하지 않았다** — 절차와 환경 제약은
+origin 을 둘 이상 열지 않는다. **2026-11-04 배포했다** — `https://39page.com`
+이 앱을 서비스한다. 절차와 환경 제약은
 [`../development/DEPLOYMENT.md`](../development/DEPLOYMENT.md).
 
-TODO: 실제 배포 수행 (`../development/DEPLOYMENT.md`)
+TODO: `www` 와 `http` 를 apex 로 301 시킨다. 지금 `www` 는 530, `http` 는
+리다이렉트 없이 200 이다. 셋 다 같은 앱을 서로 다른 origin 으로 노출하므로
+`localStorage` 가 갈린다 (`../development/DEPLOYMENT.md` §4)
 TODO: 계정·동기화를 도입하면 이 절의 "백엔드 없음" 전제를 개정한다
 (`../development/POST_MVP_PLAN.md` 트랙 B)
 
