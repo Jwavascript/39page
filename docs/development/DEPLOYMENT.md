@@ -53,22 +53,25 @@ npm error path .../node_modules/workerd
 
 ---
 
-## 1. Git 원격 만들기 (선행)
+## 1. Git 원격 만들기 (선행) — 완료 (2026-11-04)
 
-현재 원격이 없다 (`git remote -v` 가 비어 있다). `main` 에 로컬 커밋만 있다.
-
-```sh
-# GitHub 에 저장소를 만든 뒤
-git remote add origin git@github.com:<사용자>/39page.git
-git push -u origin main
+```
+origin  https://github.com/Jwavascript/39page.git
 ```
 
-**공개/비공개를 정해야 한다.** publishable key 는 공개용 설계이므로 노출되어도
-되지만, **secret / service_role key 는 어느 쪽이든 저장소에 넣지 않는다.**
+공개 저장소로 만들었다. 커밋 22개, 파일 147개, `main` 이 업스트림을 추적한다.
+`node_modules`·`dist`·`.vscode/settings.json` 은 올라가지 않았다.
+
+publishable key 는 공개용 설계이므로 노출되어도 되지만, **secret /
+service_role key 는 공개·비공개 어느 쪽이든 저장소에 넣지 않는다.**
 `.gitignore` 가 `.env*` 와 `*.key` 를 이미 막는다.
 
-> 무인 실행 지시에 따라 `git push` 는 자동 수행하지 않는다. 위 명령은 사용자가
-> 직접 실행한다.
+나중에 비공개로 전환해도 Workers Builds 는 끊기지 않는다. 연결은
+`Cloudflare Workers and Pages` **GitHub App** 설치로 이뤄지고, App 에 접근
+권한을 준 저장소는 공개 여부와 무관하게 읽는다. "저장소가 public 이어야
+한다" 는 제약은 Deploy to Cloudflare 버튼에만 적용되며 Workers Builds 와
+무관하다. 단 GitHub 에서 App 접근을 **제거**하면 이후 빌드는 멈춘다
+(기존 배포본은 계속 서비스된다).
 
 ## 2. Workers Builds 연결
 
@@ -82,6 +85,30 @@ Cloudflare 대시보드 → **Workers & Pages** → **Create** → 저장소 가
 
 `wrangler.toml` 이 나머지를 결정한다 — 자산 디렉터리, SPA 폴백,
 `workers_dev = false`, 커스텀 도메인.
+
+### ⚠ 대시보드의 Worker 이름과 `wrangler.toml` 의 `name` 이 같아야 한다
+
+다르면 빌드가 이 오류로 실패한다 (공식 문서의 알려진 제약).
+
+```
+✘ [ERROR] The name in your Wrangler configuration file (<Worker name>)
+  must match the name of your Worker.
+```
+
+빌드 시스템은 `wrangler.toml` 의 `name` 으로 **어느 Worker 에 배포할지**
+결정한다. 그래서 대시보드에서 만든 Worker 이름을 그대로 `name` 에 써야 한다.
+현재 둘 다 `39page` 다.
+
+### 이름 규칙 (공식)
+
+- 영숫자(`a-z`, `A-Z`, `0-9`)와 하이픈(`-`)만
+- 하이픈으로 **시작하거나 끝날 수 없다**
+- `workers.dev` 를 쓸 때 63자 이하. 쓰지 않으면 255자까지
+
+**숫자로 시작하는 이름은 허용된다.** 제약은 하이픈에만 걸린다. 이름이
+`workers.dev` 하위 도메인의 DNS 레이블로 쓰이기 때문인데, DNS 레이블은
+숫자로 시작할 수 있다. 즉 `39page` 는 유효한 이름이고, 더구나 이 프로젝트는
+`workers_dev = false` 라서 DNS 레이블 제약 자체가 적용되지 않는다.
 
 TODO: 대시보드 화면 구성은 변할 수 있다. 위 세 값이 들어갈 자리를 찾는다.
 
