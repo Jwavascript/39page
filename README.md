@@ -2,11 +2,16 @@
 
 음악 중심의 커스터마이징 웹 대시보드.
 
-> 상태: **M1 준비 완료 — 문서·아키텍처 확정.** 서비스 기능은 아직 구현되지 않았다.
-> 현재 앱은 빈 셸만 렌더링한다.
+> 상태: **MVP(M0–M5) 완료.** 테마 2종과 테마 전환, YouTube IFrame Player API 재생,
+> 플레이리스트·Record Library, 시계·날씨 위젯, 테마별 도트 마스코트까지 구현했다.
+> 테스트 926개 통과. **아직 배포하지 않았다.**
+>
+> 남은 검증: 실제 재생 상태(`PLAYING`)는 헤드리스 브라우저에서 임베드가
+> `불러오는 중`을 넘지 못해 **관측하지 못했다.** 실제 브라우저 확인이 남아 있다.
 >
 > 승인된 디자인 기준은 [`design/references/`](design/references/README.md),
-> 다음 작업은 [`docs/development/IMPLEMENTATION_PLAN.md`](docs/development/IMPLEMENTATION_PLAN.md) 참조.
+> MVP 이후 계획은 [`docs/development/POST_MVP_PLAN.md`](docs/development/POST_MVP_PLAN.md),
+> 배포 절차는 [`docs/development/DEPLOYMENT.md`](docs/development/DEPLOYMENT.md) 참조.
 
 ## 요구사항
 
