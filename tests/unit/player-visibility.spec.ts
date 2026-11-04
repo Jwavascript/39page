@@ -827,26 +827,43 @@ describe('D. 드로어 연동', () => {
     expect(context.fake.calls.pause).toBe(0)
   })
 
-  it('가려진 상태에서 드로어의 트랙 ▶ 를 누르면 드로어가 이유를 알린다', async () => {
+  /*
+   * M6-5 에서 뒤집힌 두 테스트다.
+   *
+   * 이전에는 드로어가 "닫고 ▶ 를 눌러주세요" 를 띄웠다. 좁은 화면에서 드로어가
+   * 플레이어를 **대체**했기 때문이고, 그때는 플레이어의 `.status` 가 함께
+   * 숨었으므로 누른 자리에 띄워야 했다.
+   *
+   * M6-2 부터 드로어는 플레이어를 가리지 않는다. 그래서 그 안내는 **틀린
+   * 조언**이 됐다 (닫을 필요가 없다). 가시성 사유는 플레이어의 `.status` 가
+   * 혼자 말한다 — 재생을 요청하는 세 표면(드로어 · 플레이리스트 위젯 · 데크)이
+   * 모두 같은 규칙을 쓴다.
+   */
+  it('가려진 상태에서 트랙 ▶ 를 누르면 플레이어가 이유를 알린다', async () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
     await deckTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
 
-    expect(context.wrapper.get('.play-notice').text()).toContain('닫고')
+    expect(context.playback.statusMessage).toContain('화면에 보이지 않아')
+    expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
+    // 같은 사유를 드로어에서 또 말하지 않는다.
+    expect(context.wrapper.find('.play-notice').exists()).toBe(false)
     expect(context.playback.queue).toEqual([])
     expect(context.fake.calls.load).toEqual([])
   })
 
-  it('가려진 상태에서 목록 전체 재생도 같은 안내를 띄운다', async () => {
+  it('가려진 상태에서 목록 전체 재생도 같은 곳에서 알린다', async () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
     await deckTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.playlist-play').trigger('click')
 
-    expect(context.wrapper.find('.play-notice').exists()).toBe(true)
+    expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
+    expect(context.wrapper.find('.play-notice').exists()).toBe(false)
+    expect(context.wrapper.find('.widget-notice').exists()).toBe(false)
     expect(context.playback.currentTrack).toBeNull()
   })
 
@@ -867,12 +884,12 @@ describe('D. 드로어 연동', () => {
 
     await deckTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
-    expect(context.wrapper.find('.play-notice').exists()).toBe(true)
+    expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
 
     setPlayerRect(VISIBLE_RECT)
     await context.wrapper.get('.track-play').trigger('click')
 
-    expect(context.wrapper.find('.play-notice').exists()).toBe(false)
+    expect(context.wrapper.get('.status').text()).toBe('')
   })
 
   it('드로어를 빠르게 여닫아도 어댑터와 iframe 호스트가 그대로다', async () => {

@@ -60,6 +60,25 @@ async function openDrawer(wrapper: Wrapper) {
   await nextTick()
 }
 
+/*
+ * M6-4 에서 플레이리스트를 드로어에서 **위젯으로 꺼냈다.**
+ *
+ * `＋ 새 목록` 은 플레이리스트가 사는 위젯에, `＋ YouTube 링크 추가` 는 트랙이
+ * 사는 드로어에 있다. 위계가 공간에 드러나야 한다는 보고 6a 의 답이다.
+ */
+const createButton = (wrapper: Wrapper) => wrapper.get('.playlist-widget .pill--strong')
+
+/** 위젯의 생성 폼으로 플레이리스트를 만든다. */
+async function createPlaylistViaUi(wrapper: Wrapper, name: string) {
+  await createButton(wrapper).trigger('click')
+  await wrapper.get('#new-playlist-name').setValue(name)
+  await wrapper.get('form.create-form').trigger('submit')
+  await nextTick()
+}
+
+/** 타일의 `⋯` — 그 목록을 선택하고 편집 오버레이를 연다. */
+const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.playlist-tile .playlist-open')
+
 async function switchTheme(key: 'mono-vinyl' | 'kawaii-synth-cassette') {
   useThemeStore().setTheme(key)
   await nextTick()
@@ -192,7 +211,8 @@ describe('B. 플레이리스트 UI', () => {
     library.createPlaylist('NIGHT DRIVE')
     await openDrawer(wrapper)
 
-    const names = wrapper.findAll('.playlist-select .pname').map((node) => node.text())
+    // 목록은 이제 위젯의 타일 격자다 (M6-4).
+    const names = wrapper.findAll('.playlist-tile .pname').map((node) => node.text())
     expect(names).toEqual(['MY RECORDS', 'NIGHT DRIVE'])
   })
 
@@ -201,10 +221,7 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     await openDrawer(wrapper)
 
-    await wrapper.get('.drawer-actions .pill--strong').trigger('click')
-    await wrapper.get('#playlist-name').setValue('NEW LIST')
-    await wrapper.get('form.name-form').trigger('submit')
-    await nextTick()
+    await createPlaylistViaUi(wrapper, 'NEW LIST')
 
     expect(library.playlists.map((playlist) => playlist.name)).toEqual(['NEW LIST'])
     expect(library.selectedPlaylist?.name).toBe('NEW LIST')
@@ -215,13 +232,12 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     await openDrawer(wrapper)
 
-    await wrapper.get('.drawer-actions .pill--strong').trigger('click')
-    await wrapper.get('#playlist-name').setValue('   ')
-    await wrapper.get('form.name-form').trigger('submit')
-    await nextTick()
+    await createPlaylistViaUi(wrapper, '   ')
 
     expect(library.playlists).toEqual([])
-    expect(wrapper.get('.error-msg').text()).toContain('이름을 입력')
+    expect(wrapper.get('.create-form .error-msg').text()).toContain('이름을 입력')
+    // 실패했으므로 폼이 닫히지 않는다. 사용자가 고쳐 쓸 수 있어야 한다.
+    expect(wrapper.find('form.create-form').exists()).toBe(true)
   })
 
   it('11. 이름을 바꾸고 취소할 수 있다', async () => {
@@ -266,7 +282,7 @@ describe('B. 플레이리스트 UI', () => {
 
     await wrapper
       .findAll('.pill')
-      .filter((b) => b.text() === '삭제')[0]
+      .filter((b) => b.text() === '목록 삭제')[0]
       ?.trigger('click')
     await nextTick()
 
@@ -286,7 +302,7 @@ describe('B. 플레이리스트 UI', () => {
     library.createPlaylist('ONLY')
     await openDrawer(wrapper)
 
-    const deleteButton = wrapper.findAll('.pill').filter((b) => b.text() === '삭제')[0]
+    const deleteButton = wrapper.findAll('.pill').filter((b) => b.text() === '목록 삭제')[0]
     expect(deleteButton?.attributes('disabled')).toBeDefined()
     expect(library.playlists).toHaveLength(1)
   })
@@ -306,11 +322,16 @@ describe('B. 플레이리스트 UI', () => {
     library.restore()
     await openDrawer(wrapper)
 
-    const rows = wrapper.findAll('.playlist-select')
-    expect(rows[0]?.find('.pmeta').text()).toBe('2 TRACKS')
-    expect(rows[1]?.classes()).toContain('is-active')
-    expect(rows[1]?.attributes('aria-current')).toBe('true')
-    expect(rows[0]?.attributes('aria-current')).toBeUndefined()
+    const tiles = wrapper.findAll('.playlist-tile')
+    expect(tiles[0]?.find('.pmeta').text()).toBe('2 TRACKS')
+    // 빈 목록은 트랙 수 대신 비었음을 말한다 (M6-4).
+    expect(tiles[1]?.find('.pmeta').text()).toBe('EMPTY')
+    expect(tiles[1]?.classes()).toContain('is-selected')
+    expect(tiles[1]?.find('.playlist-play').attributes('aria-current')).toBe('true')
+    expect(tiles[0]?.find('.playlist-play').attributes('aria-current')).toBeUndefined()
+
+    // 드로어 머리말이 **무엇을 편집하는지** 말한다 (보고 6b).
+    expect(wrapper.get('#record-library-title').text()).toBe('B')
   })
 
   it('선택을 바꿔도 재생 큐가 그대로다', async () => {
@@ -323,7 +344,7 @@ describe('B. 플레이리스트 UI', () => {
     const before = { queue: [...playback.queue], index: playback.queueIndex }
     await openDrawer(wrapper)
 
-    await wrapper.findAll('.playlist-select')[0]?.trigger('click')
+    await tileOpenButtons(wrapper)[0]?.trigger('click')
     await nextTick()
 
     expect(library.selectedPlaylistId).not.toBe(b.ok ? b.playlistId : null)
@@ -335,7 +356,7 @@ describe('B. 플레이리스트 UI', () => {
     const { wrapper } = mountApp()
     await openDrawer(wrapper)
 
-    expect(wrapper.get('.playlists').text()).toContain('아직 플레이리스트가 없습니다')
+    expect(wrapper.get('.playlist-widget').text()).toContain('아직 플레이리스트가 없습니다')
     expect(wrapper.get('.track-list').text()).toContain('플레이리스트를 선택하면')
   })
 
@@ -360,8 +381,14 @@ describe('B. 플레이리스트 UI', () => {
       'dQw4w9WgXcQ',
       'dQw4w9WgXcQ',
     ])
-    // M2-3 부터 각 행에 ↑ ↓ × 가 있다. 재생 버튼은 없다 (M3).
-    expect(wrapper.findAll('.track .track-controls button')).toHaveLength(6)
+    // M6-5 부터 각 행에 ✎ ↑ ↓ × 네 개가 있다. ▶ 는 `.track-play` 로 따로 있다.
+    expect(wrapper.findAll('.track .track-controls button')).toHaveLength(8)
+    expect(
+      wrapper
+        .findAll('.track')[0]
+        ?.findAll('.track-controls button')
+        .map((node) => node.attributes('aria-label')),
+    ).toEqual(['Track t1 이름 변경', 'Track t1 위로', 'Track t1 아래로', 'Track t1 삭제'])
   })
 
   it('빈 플레이리스트를 안내한다', async () => {
@@ -465,7 +492,7 @@ describe('C. 영속화와 보호', () => {
 
     expect(second.playlists.map((playlist) => playlist.name)).toEqual(expectedNames)
     expect(second.selectedPlaylistId).toBe(expectedSelected)
-    expect(wrapper.findAll('.playlist-select .pname').map((n) => n.text())).toEqual(expectedNames)
+    expect(wrapper.findAll('.playlist-tile .pname').map((n) => n.text())).toEqual(expectedNames)
   })
 
   it('20. protected 상태를 경고로 알린다', async () => {
@@ -499,13 +526,11 @@ describe('C. 영속화와 보호', () => {
     library.restore()
     await openDrawer(wrapper)
 
-    await wrapper.get('.drawer-actions .pill--strong').trigger('click')
-    await wrapper.get('#playlist-name').setValue('IN MEMORY ONLY')
-    await wrapper.get('form.name-form').trigger('submit')
-    await nextTick()
+    await createPlaylistViaUi(wrapper, 'IN MEMORY ONLY')
 
     expect(library.playlists).toHaveLength(1)
-    expect(wrapper.get('.unsaved').text()).toContain('저장되지 않았습니다')
+    // 만든 자리에서 알린다. 생성은 이제 위젯의 일이다 (M6-4).
+    expect(wrapper.get('.widget-notice').text()).toContain('저장되지 않았습니다')
   })
 
   it('23. 보호 상태에서 원본이 보존된다', async () => {
@@ -516,10 +541,7 @@ describe('C. 영속화와 보호', () => {
     library.restore()
     await openDrawer(wrapper)
 
-    await wrapper.get('.drawer-actions .pill--strong').trigger('click')
-    await wrapper.get('#playlist-name').setValue('NEW')
-    await wrapper.get('form.name-form').trigger('submit')
-    await nextTick()
+    await createPlaylistViaUi(wrapper, 'NEW')
 
     expect(readRaw()).toBe(raw)
   })
@@ -629,10 +651,10 @@ describe('D. 플레이어 안정성', () => {
     }
 
     await openDrawer(wrapper)
-    await wrapper.findAll('.playlist-select')[0]?.trigger('click')
+    await tileOpenButtons(wrapper)[0]?.trigger('click')
     await wrapper
       .findAll('.pill')
-      .filter((p) => p.text() === '삭제')[0]
+      .filter((p) => p.text() === '목록 삭제')[0]
       ?.trigger('click')
     await wrapper.get('[role="alertdialog"] .pill--strong').trigger('click')
     await nextTick()

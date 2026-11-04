@@ -1,0 +1,309 @@
+<script setup lang="ts">
+/**
+ * 플레이리스트 위젯 (M6-4).
+ *
+ * 실기기 검증 보고 7번의 답이다 — 플레이리스트와 트랙이 드로어 한 열에
+ * 쌓여 있어서 둘 중 하나만 길어져도 전체가 아래로 늘어났다. 두 표면으로
+ * 나눈다 (`M6_PLAN.md` §3).
+ *
+ *   이 위젯          플레이리스트 타일 격자. 생성·전체 재생. **내부 스크롤**
+ *   편집 오버레이    한 목록의 트랙. 이름 변경, 레코드 추가·삭제·순서·이름
+ *
+ * 사용자 구상은 바탕화면의 폴더 아이콘이다: 누르면 그 목록이 전체 재생되고,
+ * `⋯`(또는 길게 누르기)로 그 목록의 레코드가 오른쪽 오버레이에 열린다.
+ *
+ * 왜 `src/widgets/` 가 아니라 여기인가: 플레이리스트 관리는 라이브러리
+ * 도메인이다 (`AGENTS.md` 디렉터리 규약). `src/widgets/` 는 clock·weather
+ * 처럼 도메인과 무관한 독립 위젯 자리다. 데크(`features/deck/DeckWidget.vue`)
+ * 와 같은 선례를 따른다.
+ *
+ * 재생은 **요청만** 한다. 큐를 만들지 않고 플레이어를 부르지 않는다. 주입받은
+ * Playback Coordinator 에 플레이리스트 id 를 넘길 뿐이다 (규칙 2, 4).
+ */
+import { computed, inject, nextTick, ref } from 'vue'
+
+import PlaylistTile from '@/features/library/PlaylistTile.vue'
+import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import {
+  PLAYBACK_COORDINATOR,
+  type PlayRequestFailure,
+  type PlayRequestResult,
+} from '@/features/playback/playbackCoordinator'
+import { MAX_PLAYLIST_NAME_LENGTH, useLibraryStore } from '@/stores/library'
+
+const library = useLibraryStore()
+
+/**
+ * 둘 다 주입되지 않을 수 있다. 위젯을 단독으로 마운트하는 테스트를 위한
+ * 기본값이고, 그때는 해당 동작을 **하지 않는다**.
+ */
+const playback = inject(PLAYBACK_COORDINATOR, null)
+const drawer = inject(LIBRARY_DRAWER, null)
+
+const isCreating = ref(false)
+const draftName = ref('')
+const formError = ref('')
+const nameInput = ref<HTMLInputElement | null>(null)
+
+/** 저장되지 않았거나 요청이 거절된 사실을 알린다. */
+const notice = ref('')
+
+const FAILURE_MESSAGE: Record<string, string> = {
+  'empty-name': '이름을 입력해주세요.',
+  'not-found': '대상을 찾을 수 없습니다.',
+}
+
+/**
+ * 재생 거절 안내.
+ *
+ * `player-hidden` 은 **비워 둔다.** 그 경우 코디네이터가 이미 플레이어의
+ * `.status` 영역에 사유를 적는다 (`useDeckTransport` 와 같은 이유).
+ * `empty-playlist` 는 빈 타일이 재생이 아니라 열기를 하므로 보통 닿지 않지만,
+ * 마지막 트랙이 지워진 직후 같은 경계에서는 닿을 수 있다.
+ */
+const REFUSED_MESSAGE: Record<PlayRequestFailure, string> = {
+  'empty-playlist': '이 목록에 아직 레코드가 없어요.',
+  'playlist-not-found': '대상을 찾을 수 없습니다.',
+  'track-not-found': '대상을 찾을 수 없습니다.',
+  'player-hidden': '',
+}
+
+const hasPlaylists = computed<boolean>(() => library.playlists.length > 0)
+
+/** 저장 여부를 성공과 뭉뚱그리지 않고 따로 알린다. */
+function reportPersisted(result: { persisted?: boolean }): void {
+  notice.value =
+    result.persisted === false ? '이 변경은 저장되지 않았습니다. 현재 세션에서만 유지됩니다.' : ''
+}
+
+async function startCreate(): Promise<void> {
+  notice.value = ''
+  formError.value = ''
+  draftName.value = ''
+  isCreating.value = true
+  await nextTick()
+  nameInput.value?.focus()
+}
+
+function cancelCreate(): void {
+  isCreating.value = false
+  draftName.value = ''
+  formError.value = ''
+}
+
+function submitCreate(): void {
+  const result = library.createPlaylist(draftName.value)
+
+  if (!result.ok) {
+    // 실패해도 입력값을 지우지 않는다. 사용자가 고쳐 쓸 수 있어야 한다.
+    formError.value = FAILURE_MESSAGE[result.reason] ?? '요청을 처리하지 못했습니다.'
+    return
+  }
+
+  reportPersisted(result)
+  isCreating.value = false
+  draftName.value = ''
+  formError.value = ''
+}
+
+function report(result: PlayRequestResult | undefined): void {
+  notice.value = result === undefined || result.ok ? '' : REFUSED_MESSAGE[result.reason]
+}
+
+/**
+ * 타일 누름 — 그 목록 전체 재생.
+ *
+ * **재생하는 목록을 선택 상태로 맞춘다.** 그래야 편집 오버레이와 데크의 ▶ 가
+ * 지금 울리는 목록을 가리킨다. 코디네이터는 선택을 바꾸지 않는다.
+ */
+function playPlaylist(id: string): void {
+  notice.value = ''
+  if (id !== library.selectedPlaylistId) library.selectPlaylist(id)
+
+  report(playback?.playPlaylist(id))
+}
+
+/** `⋯` 누름 — 그 목록을 선택하고 편집 오버레이를 연다. */
+function openPlaylist(id: string): void {
+  notice.value = ''
+  library.selectPlaylist(id)
+  drawer?.open()
+}
+</script>
+
+<template>
+  <section class="playlist-widget" aria-labelledby="playlist-widget-title">
+    <div class="widget-head">
+      <div>
+        <h2 id="playlist-widget-title" class="widget-title">PLAYLISTS</h2>
+        <!-- 무엇을 누르면 무슨 일이 일어나는지 화면에 적는다 (보고 6a). -->
+        <p class="widget-sub">누르면 전체 재생 · ⋯ 로 편집</p>
+      </div>
+      <button type="button" class="pill pill--strong" @click="startCreate">＋ 새 목록</button>
+    </div>
+
+    <form v-if="isCreating" class="create-form" @submit.prevent="submitCreate">
+      <label class="label" for="new-playlist-name">새 플레이리스트 이름</label>
+      <input
+        id="new-playlist-name"
+        ref="nameInput"
+        v-model="draftName"
+        class="field"
+        type="text"
+        :maxlength="MAX_PLAYLIST_NAME_LENGTH"
+        autocomplete="off"
+        :aria-invalid="formError !== '' || undefined"
+        aria-describedby="new-playlist-error"
+      />
+      <p id="new-playlist-error" class="error-msg">{{ formError }}</p>
+      <div class="form-actions">
+        <button type="submit" class="pill pill--strong">만들기</button>
+        <button type="button" class="pill" @click="cancelCreate">취소</button>
+      </div>
+    </form>
+
+    <p v-if="notice !== ''" class="widget-notice" role="status" aria-live="polite">
+      {{ notice }}
+    </p>
+
+    <!--
+      내부 스크롤 (사용자 요청). 목록이 길어져도 위젯이 아래로 늘어나지 않아
+      다른 위젯을 밀지 않는다 — 보고 7번의 핵심이다.
+    -->
+    <div class="tile-scroll">
+      <p v-if="!hasPlaylists" class="empty">
+        아직 플레이리스트가 없습니다.<br />＋ 새 목록으로 시작하세요.
+      </p>
+
+      <div v-else class="tile-grid">
+        <!-- :key 는 배열 인덱스가 아니라 플레이리스트 id 다. -->
+        <PlaylistTile
+          v-for="playlist in library.playlists"
+          :key="playlist.id"
+          :playlist="playlist"
+          :is-selected="playlist.id === library.selectedPlaylistId"
+          @play="playPlaylist(playlist.id)"
+          @open="openPlaylist(playlist.id)"
+        />
+      </div>
+    </div>
+  </section>
+</template>
+
+<style scoped>
+/*
+ * 색은 모두 승인된 디자인의 드로어·행 토큰을 재사용한다. 새 색을 만들지
+ * 않는다 (`theme-tokens.spec.ts` 가 레퍼런스에 없는 색을 거부한다).
+ */
+.playlist-widget {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.widget-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 드로어의 `.drawer-title` 과 같은 조판이다. 같은 물건의 다른 표면이다. */
+.widget-title {
+  margin: 0;
+  color: var(--drawer-title-text-color);
+  font: 13px var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+.widget-sub {
+  margin: 7px 0 0;
+  color: var(--drawer-sub-text-color);
+  font: 11px var(--font-mono);
+}
+
+/* 승인된 디자인의 `.pill` 값을 따른다. */
+.pill {
+  min-height: 36px;
+  flex: none;
+  padding: 7px 12px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: var(--pill-surface-color);
+  color: var(--pill-text-color);
+  font: 11px var(--font-mono);
+}
+
+.pill:hover:not(:disabled) {
+  background: var(--pill-surface-hover-color);
+}
+
+.pill--strong {
+  border-color: var(--accent-strong-color);
+  background: var(--accent-strong-color);
+  color: var(--accent-strong-text-color);
+}
+
+.label {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--label-text-color);
+  font: 11px var(--font-mono);
+}
+
+.field {
+  display: block;
+  width: 100%;
+  height: 46px;
+  padding: 10px;
+  border: 1px solid var(--field-border-color);
+  border-radius: var(--radius-field);
+  background: var(--field-surface-color);
+  color: var(--field-text-color);
+}
+
+.error-msg {
+  min-height: 17px;
+  margin: 6px 0 0;
+  color: var(--error-text-color);
+  font-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.widget-notice {
+  margin: 0;
+  color: var(--status-warning-text-color);
+  font: 10px/1.6 var(--font-mono);
+}
+
+/*
+ * 내부 스크롤. 상한은 토큰이 정한다 (`--size-playlist-max-height`).
+ * `min-height: 0` 이 없으면 flex 자식이 줄어들지 않아 상한이 무시된다.
+ */
+.tile-scroll {
+  min-height: 0;
+  max-height: var(--size-playlist-max-height);
+  overflow-y: auto;
+}
+
+.tile-grid {
+  display: grid;
+  /* 폭에 따라 칸 수가 바뀐다. 폰 세로에서도 두 칸이 들어간다. */
+  grid-template-columns: repeat(auto-fill, minmax(var(--size-playlist-tile-min), 1fr));
+  gap: 7px;
+}
+
+.empty {
+  margin: 0;
+  color: var(--drawer-muted-text-color);
+  font-size: 11px;
+  line-height: 1.6;
+}
+</style>

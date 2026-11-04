@@ -341,13 +341,36 @@ describe('A. 데크 렌더링', () => {
     }
   })
 
-  it('데크에 동작하지 않는 버튼이나 안내 문구가 없다', () => {
+  it('드로어가 없으면 열기 버튼과 안내 문구를 만들지 않는다', () => {
     const wrapper = mount(DeckWidget)
 
-    expect(wrapper.findAll('button')).toHaveLength(0)
+    expect(wrapper.findAll('.deck-open')).toHaveLength(0)
     expect(wrapper.find('[role="button"]').exists()).toBe(false)
-    // "LP를 누르면 ..." 안내는 Drawer 가 동작하는 M2 에서 붙인다.
+    // "LP를 누르면 ..." 안내는 드로어가 주입됐을 때만 붙인다.
     expect(wrapper.text()).not.toContain('누르면')
+  })
+
+  /*
+   * M6-6 에서 뒤집힌 테스트다.
+   *
+   * 이전에는 "데크에 버튼이 하나도 없다" 를 고정하고 있었다. 아트에 그려진
+   * ▶ / ■ 가 동작하지 않았기 때문이고, 그 상태를 실기기 검증에서 사용자가
+   * 두 번 지적했다 (`M6_PLAN.md` §5-a). 이제는 동작하므로 "버튼이 없다" 가
+   * 아니라 **"있는 버튼은 전부 이름이 있고 동작한다"** 를 고정한다.
+   */
+  it('데크의 버튼은 트랜스포트 키뿐이고 모두 이름이 있다 (M6-6)', () => {
+    const wrapper = mount(DeckWidget)
+    const buttons = wrapper.findAll('button')
+
+    // mono 토글 1개 + 카세트 ■ · ▶ 2개. 열기 버튼은 드로어가 없으니 빠진다.
+    expect(buttons).toHaveLength(3)
+    for (const button of buttons) {
+      expect(button.classes()).toContain('deck-key')
+      expect(button.element.tagName).toBe('BUTTON')
+      expect(button.attributes('type')).toBe('button')
+      expect(button.attributes('aria-label')).toBeTruthy()
+      expect(button.attributes('role')).toBeUndefined()
+    }
   })
 
   it('회전 중심을 승인된 값으로 유지한다', () => {
@@ -427,6 +450,7 @@ describe('B. 테마 전환 안정성', () => {
       'clock-main',
       'weather-main',
       'player-main',
+      'playlist-main',
     ])
   })
 

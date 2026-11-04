@@ -127,7 +127,14 @@ describe('B. 정보 열 구분선', () => {
     const host = wrapper.getComponent(WidgetHost).get('.widget-host').element
 
     // 구분선을 넣느라 래퍼가 끼면 iframe 의 부모가 바뀐다 (ADR 0002).
-    for (const id of ['deck-main', 'mascot-main', 'clock-main', 'weather-main', 'player-main']) {
+    for (const id of [
+      'deck-main',
+      'mascot-main',
+      'clock-main',
+      'weather-main',
+      'player-main',
+      'playlist-main',
+    ]) {
       const widget = wrapper.get(`[data-instance-id="${id}"]`).element
       expect(widget.parentElement).toBe(host)
     }
@@ -137,8 +144,8 @@ describe('B. 정보 열 구분선', () => {
     const { wrapper } = mountApp()
     const host = wrapper.getComponent(WidgetHost).get('.widget-host').element
 
-    // 위젯 5개뿐이다. 의사 요소는 요소 노드가 아니다.
-    expect(host.children).toHaveLength(5)
+    // 위젯 6개뿐이다. 의사 요소는 요소 노드가 아니다.
+    expect(host.children).toHaveLength(6)
   })
 
   it('간격의 절반만큼 왼쪽으로 나간다', () => {
@@ -191,6 +198,21 @@ describe('B. 정보 열 구분선', () => {
 
     expect(wide).toContain("'deck player clock'")
     expect(wide).toContain("'deck player weather'")
+  })
+
+  /*
+   * M6-4 — 플레이리스트 위젯은 **플레이어와 같은 열**이다.
+   *
+   * 3열(정보)까지 넓히면 우측 오버레이 드로어가 타일을 덮는다. 2열에 두면
+   * 편집 오버레이가 열려 있어도 타일이 보이므로 다른 목록으로 건너갈 수 있다.
+   */
+  it('플레이리스트가 플레이어 아래 같은 열에 선다', () => {
+    const source = readSource('src/components/layout/WidgetHost.vue')
+    const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
+    const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
+
+    expect(wide).toContain("'mascot playlist .'")
+    expect(compact).toContain("'playlist playlist'")
   })
 
   it('플레이어 열의 최소 폭이 16:9 를 지킬 수 있는 값이다', () => {

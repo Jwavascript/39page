@@ -2,12 +2,15 @@
 
 음악 중심의 커스터마이징 웹 대시보드.
 
-> 상태: **MVP(M0–M5) 완료.** 테마 2종과 테마 전환, YouTube IFrame Player API 재생,
-> 플레이리스트·Record Library, 시계·날씨 위젯, 테마별 도트 마스코트까지 구현했다.
-> 테스트 926개 통과. **<https://39page.com> 에 배포했다.**
+> 상태: **MVP(M0–M5) 완료**, **M6(실기기 검증 후속) 구현 완료.** 테마 2종과
+> 테마 전환, YouTube IFrame Player API 재생, 플레이리스트 위젯과 편집 오버레이,
+> 시계·날씨 위젯, 테마별 도트 마스코트까지 구현했다.
+> **<https://39page.com> 에 배포했다.**
 >
-> 남은 검증: 실제 재생 상태(`PLAYING`)는 헤드리스 브라우저에서 임베드가
-> `불러오는 중`을 넘지 못해 **관측하지 못했다.** 실제 브라우저 확인이 남아 있다.
+> 남은 검증: M6 의 변경(레이아웃 재배치, 오버레이 드로어, 플레이리스트 위젯,
+> 데크 트랜스포트)은 jsdom 단위·통합 테스트로만 확인했다. **실기기 재확인이
+> 남아 있다** — 목록은
+> [`docs/development/M6_PLAN.md`](docs/development/M6_PLAN.md) §6 에 있다.
 >
 > 승인된 디자인 기준은 [`design/references/`](design/references/README.md),
 > MVP 이후 계획은 [`docs/development/POST_MVP_PLAN.md`](docs/development/POST_MVP_PLAN.md),
@@ -79,7 +82,7 @@ Vitest · ESLint + Prettier · CSS Variables 기반 테마 시스템
 ## MVP 범위
 
 포함: 테마 2종(Mono Vinyl, Kawaii Synth Cassette), 테마 전환,
-YouTube IFrame Player API 재생, 플레이리스트 관리, Record Library,
+YouTube IFrame Player API 재생, 플레이리스트 위젯과 편집 오버레이,
 시계·날씨 위젯, 테마별 도트 마스코트, 기본 설정 로컬 저장.
 
 제외: 로컬 음악 재생, 집중 모드, AI 에이전트, 소셜 기능.

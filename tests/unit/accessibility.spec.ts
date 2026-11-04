@@ -185,10 +185,15 @@ describe('C. 컨트롤 이름과 크기', () => {
 
   it('작은 컨트롤이 최소 터치 크기를 갖는다', () => {
     // 브라우저 실측에서 `.track-play` 가 30×22 였다 (24px 미달).
-    const drawer = readSource('src/features/library/RecordLibraryDrawer.vue')
+    // M6-5 에서 트랙 행이 `TrackList.vue` 로 분리됐다 (규칙 3).
+    const list = readSource('src/features/library/TrackList.vue')
 
-    expect(drawer).toMatch(/\.track-play \{[\s\S]*?min-height: 29px/)
-    expect(drawer).toMatch(/\.track-controls button \{[\s\S]*?height: 29px/)
+    expect(list).toMatch(/\.track-play \{[\s\S]*?min-height: 29px/)
+    expect(list).toMatch(/\.track-controls button \{[\s\S]*?height: 29px/)
+
+    // 타일의 편집 버튼도 같은 29px 를 쓴다 (M6-4).
+    const tile = readSource('src/features/library/PlaylistTile.vue')
+    expect(tile).toMatch(/\.playlist-open \{[\s\S]*?height: 29px/)
   })
 
   it('외부 링크가 새 창을 안전하게 연다', async () => {
@@ -222,7 +227,9 @@ describe('D. 포커스 링', () => {
       'src/components/ui/ThemeSwitcher.vue',
       'src/features/playback/PlayerTransport.vue',
       'src/features/library/RecordLibraryDrawer.vue',
-      'src/features/library/PlaylistList.vue',
+      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/PlaylistTile.vue',
+      'src/features/library/TrackList.vue',
       'src/features/deck/DeckWidget.vue',
     ]) {
       const source = readSource(file)

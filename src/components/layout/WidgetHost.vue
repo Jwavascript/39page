@@ -92,7 +92,7 @@ const placed = computed<PlacedWidget[]>(() =>
   grid-template-areas:
     'deck player clock'
     'deck player weather'
-    'mascot . .';
+    'mascot playlist .';
   /*
    * 3열의 최소값이 둘 다 근거가 있는 값이다.
    *
@@ -117,6 +117,17 @@ const placed = computed<PlacedWidget[]>(() =>
    */
   align-items: start;
 }
+
+/*
+ * 플레이리스트 위젯의 자리 (M6-4).
+ *
+ * **플레이어와 같은 2열**, 그 아래 행이다. 3열(정보)까지 넓히지 않은 것은
+ * 의도다 — 우측 오버레이 드로어가 3열 안에서 끝나므로, 플레이리스트를 2열에
+ * 두면 **편집 오버레이가 열려 있어도 타일이 가려지지 않는다.** 오버레이에서
+ * 한 목록을 편집하면서 다른 목록으로 건너갈 수 있다.
+ *
+ * 폭이 플레이어 열(최소 360px)과 같으므로 타일이 두 칸 이상 들어간다.
+ */
 
 /*
  * 정보 열 구분선 (M5). 승인된 디자인의 `.info { border-left }` 다.
@@ -164,6 +175,7 @@ const placed = computed<PlacedWidget[]>(() =>
       'deck clock'
       'deck weather'
       'player player'
+      'playlist playlist'
       'mascot mascot';
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }

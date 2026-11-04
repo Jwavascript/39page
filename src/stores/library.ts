@@ -493,6 +493,37 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /**
+   * 트랙의 표시 이름을 바꾼다 (M6-5).
+   *
+   * `id` · `videoId` · 순서는 그대로다. 이름만 바뀐다. 다른 플레이리스트는
+   * `replaceTracks` 덕분에 같은 객체 참조로 남는다.
+   *
+   * **빈 값을 거부하지 않는다.** `addTrack` 과 **같은** `normalizeTitle` 을
+   * 쓰므로 제목을 비우면 `YouTube · <videoId>` 로 되돌아간다
+   * (`MVP_SPEC.md` F4). 두 경로가 같은 규칙을 쓰는 것이 중요하다 — 추가할
+   * 때와 고칠 때 빈 제목의 뜻이 달라지면 사용자가 예측할 수 없다.
+   */
+  function renameTrack(playlistId: string, trackId: string, title: string): LibraryMutationResult {
+    const index = items.value.findIndex((playlist) => playlist.id === playlistId)
+    if (index === -1) return failure('not-found')
+
+    const playlist = items.value[index]
+    if (playlist === undefined) return failure('not-found')
+
+    const from = playlist.tracks.findIndex((track) => track.id === trackId)
+    if (from === -1) return failure('not-found')
+
+    const current = playlist.tracks[from]
+    if (current === undefined) return failure('not-found')
+
+    const tracks = [...playlist.tracks]
+    tracks[from] = { ...current, title: normalizeTitle(title, current.videoId) }
+
+    replaceTracks(index, playlist, tracks)
+    return success(playlistId, trackId)
+  }
+
+  /**
    * 최초 실행일 때만 기본 플레이리스트를 만든다.
    *
    * **`restore()` 와 분리된 별도 액션이다.** 복원이 저장소를 건드리지 않는다는
@@ -550,5 +581,6 @@ export const useLibraryStore = defineStore('library', () => {
     addTrack,
     removeTrack,
     moveTrack,
+    renameTrack,
   }
 })

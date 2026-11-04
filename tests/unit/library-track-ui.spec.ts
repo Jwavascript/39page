@@ -176,16 +176,30 @@ describe('B. 링크 등록 UI', () => {
     await openLinkForm(wrapper)
     expect(wrapper.find('form.link-form').exists()).toBe(true)
 
-    await wrapper.findAll('.playlist-select')[0]?.trigger('click')
+    // 선택은 이제 플레이리스트 위젯의 타일에서 바뀐다 (M6-4).
+    await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
     await nextTick()
 
     // 등록 대상이 모호해지지 않도록 닫는다.
     expect(wrapper.find('form.link-form').exists()).toBe(false)
   })
 
-  it('20. 선택이 UI 밖에서 바뀌어도 열릴 때 정한 대상에 등록한다', async () => {
-    // 드로어의 클릭 핸들러는 폼을 닫지만, 다른 경로로 선택이 바뀔 수도 있다.
-    // 그때도 등록 대상이 흔들리지 않아야 한다.
+  /*
+   * M6-5 에서 뒤집힌 테스트다.
+   *
+   * 이전에는 "선택이 드로어 밖에서 바뀌어도 폼은 열린 채 원래 대상에
+   * 등록한다" 였다. 그때는 선택을 바꾸는 유일한 UI 가 드로어 안에 있어서
+   * '밖에서 바뀌는 경로' 가 비정상 경로였다.
+   *
+   * 지금은 선택을 바꾸는 곳이 **드로어 밖**(`PlaylistWidget`)이 정상이다.
+   * 머리말은 새 목록을 가리키는데 폼이 옛 목록을 겨냥한 채 열려 있으면
+   * 사용자가 어디에 쓰는지 알 수 없다. 그래서 **어떤 경로로 바뀌어도** 닫고,
+   * 다시 열면 새 선택을 대상으로 한다.
+   *
+   * `linkTargetId` 가 열릴 때 대상을 붙잡는 것은 그대로다 — 폼이 살아남는
+   * 경로가 생겨도 잘못된 목록에 들어가지 않게 하는 방어선이다.
+   */
+  it('20. 선택이 바뀌면 폼을 닫고, 다시 열면 새 대상을 겨냥한다', async () => {
     const { wrapper, library, id } = await setup()
     const other = library.createPlaylist('OTHER')
     const otherId = other.ok ? other.playlistId : ''
@@ -193,13 +207,19 @@ describe('B. 링크 등록 UI', () => {
     await nextTick()
 
     await openLinkForm(wrapper)
-    // store 를 직접 건드려 선택만 바꾼다 (폼은 열린 채로 남는다).
+    expect(wrapper.get('.form-target').text()).toContain('MY RECORDS')
+
+    // store 를 직접 건드려 선택만 바꾼다.
     library.selectPlaylist(otherId)
     await nextTick()
+    expect(wrapper.find('form.link-form').exists()).toBe(false)
+
+    await openLinkForm(wrapper)
+    expect(wrapper.get('.form-target').text()).toContain('OTHER')
     await submitLink(wrapper, URL_A, 'Pinned')
 
-    expect(library.getPlaylist(id)?.tracks.map((t) => t.title)).toEqual(['Pinned'])
-    expect(library.getPlaylist(otherId)?.tracks).toEqual([])
+    expect(library.getPlaylist(otherId)?.tracks.map((t) => t.title)).toEqual(['Pinned'])
+    expect(library.getPlaylist(id)?.tracks).toEqual([])
   })
 
   it('20. 폼이 대상 플레이리스트를 명시한다', async () => {
@@ -270,7 +290,7 @@ describe('B. 트랙 목록 UI', () => {
   it('22. 트랙을 삭제한다 (인라인 확인)', async () => {
     const { wrapper, library, id } = await withThreeTracks()
 
-    await wrapper.findAll('.track-controls button')[2]?.trigger('click')
+    await wrapper.get('[aria-label="One 삭제"]').trigger('click')
     await nextTick()
     // 확인 전에는 지워지지 않는다.
     expect(library.getPlaylist(id)?.tracks).toHaveLength(3)
@@ -285,7 +305,7 @@ describe('B. 트랙 목록 UI', () => {
   it('22. 삭제를 취소할 수 있다', async () => {
     const { wrapper, library, id } = await withThreeTracks()
 
-    await wrapper.findAll('.track-controls button')[2]?.trigger('click')
+    await wrapper.get('[aria-label="One 삭제"]').trigger('click')
     await nextTick()
     await byText(wrapper, '[aria-label="트랙 삭제 확인"] .pill', '취소')?.trigger('click')
     await nextTick()
@@ -298,12 +318,12 @@ describe('B. 트랙 목록 UI', () => {
     const { wrapper } = await withThreeTracks()
 
     // 두 번째 행의 ↑
-    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
+    await wrapper.get('[aria-label="Two 위로"]').trigger('click')
     await nextTick()
     expect(titles(wrapper)).toEqual(['Two', 'One', 'Three'])
 
-    // 첫 번째 행의 ↓
-    await wrapper.findAll('.track')[0]?.findAll('.track-controls button')[1]?.trigger('click')
+    // 맨 위가 된 Two 의 ↓
+    await wrapper.get('[aria-label="Two 아래로"]').trigger('click')
     await nextTick()
     expect(titles(wrapper)).toEqual(['One', 'Two', 'Three'])
   })
@@ -312,10 +332,15 @@ describe('B. 트랙 목록 UI', () => {
     const { wrapper } = await withThreeTracks()
     const rows = wrapper.findAll('.track')
 
-    expect(rows[0]?.findAll('.track-controls button')[0]?.attributes('disabled')).toBeDefined()
-    expect(rows[0]?.findAll('.track-controls button')[1]?.attributes('disabled')).toBeUndefined()
-    expect(rows[2]?.findAll('.track-controls button')[0]?.attributes('disabled')).toBeUndefined()
-    expect(rows[2]?.findAll('.track-controls button')[1]?.attributes('disabled')).toBeDefined()
+    // 행의 버튼은 ✎ ↑ ↓ × 네 개다. 인덱스 1 이 ↑, 2 가 ↓ 다 (M6-5).
+    expect(rows[0]?.findAll('.track-controls button')[1]?.attributes('disabled')).toBeDefined()
+    expect(rows[0]?.findAll('.track-controls button')[2]?.attributes('disabled')).toBeUndefined()
+    expect(rows[2]?.findAll('.track-controls button')[1]?.attributes('disabled')).toBeUndefined()
+    expect(rows[2]?.findAll('.track-controls button')[2]?.attributes('disabled')).toBeDefined()
+
+    // 이름 변경과 삭제는 어느 자리에서도 막지 않는다.
+    expect(rows[0]?.findAll('.track-controls button')[0]?.attributes('disabled')).toBeUndefined()
+    expect(rows[0]?.findAll('.track-controls button')[3]?.attributes('disabled')).toBeUndefined()
   })
 
   it('25. 트랙 버튼에 접근성 이름이 있다', async () => {
@@ -324,7 +349,7 @@ describe('B. 트랙 목록 UI', () => {
       .findAll('.track-controls button')
       .map((node) => node.attributes('aria-label'))
 
-    expect(labels.slice(0, 3)).toEqual(['One 위로', 'One 아래로', 'One 삭제'])
+    expect(labels.slice(0, 4)).toEqual(['One 이름 변경', 'One 위로', 'One 아래로', 'One 삭제'])
   })
 
   it('긴 제목이 잘려도 전체를 확인할 수 있다', async () => {
@@ -357,22 +382,139 @@ describe('B. 트랙 목록 UI', () => {
   })
 })
 
-describe('D. Playback 독립성과 플레이어 DOM', () => {
-  async function playing() {
+/** 큐가 울리는 상태의 앱. C · D 가 함께 쓴다. */
+async function playing() {
+  const ctx = await setup()
+  const playback = usePlaybackStore()
+  playback.setQueue([track('q1'), track('q2')], 1)
+  playback.setPlayerState('playing')
+  return { ...ctx, playback }
+}
+
+const snapshot = (playback: ReturnType<typeof usePlaybackStore>) => ({
+  currentTrack: playback.currentTrack,
+  queue: [...playback.queue],
+  queueIndex: playback.queueIndex,
+  playerState: playback.playerState,
+})
+
+describe('C. 트랙 이름 변경 (M6-5)', () => {
+  /*
+   * 보고 6c 의 답이다. 그때까지 이미 저장한 레코드의 이름을 바꿀 방법이 없었다.
+   *
+   * 폼은 고치는 **행 바로 아래**에 선다. 무엇의 이름인지 자리가 말해준다 —
+   * 보고 6b 에서 위치가 뜻을 바꾼다는 것을 배웠다.
+   */
+  async function withTrack(title = 'Before') {
     const ctx = await setup()
-    const playback = usePlaybackStore()
-    playback.setQueue([track('q1'), track('q2')], 1)
-    playback.setPlayerState('playing')
-    return { ...ctx, playback }
+    ctx.library.addTrack(ctx.id, { videoId: VIDEO_A, title })
+    await nextTick()
+    return ctx
   }
 
-  const snapshot = (playback: ReturnType<typeof usePlaybackStore>) => ({
-    currentTrack: playback.currentTrack,
-    queue: [...playback.queue],
-    queueIndex: playback.queueIndex,
-    playerState: playback.playerState,
+  it('✎ 를 누르면 그 행 아래에 폼이 열린다', async () => {
+    const { wrapper } = await withTrack()
+
+    expect(wrapper.find('form.rename-form').exists()).toBe(false)
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await nextTick()
+
+    const form = wrapper.get('form.rename-form')
+    expect(form.get<HTMLInputElement>('input').element.value).toBe('Before')
+    // 폼은 그 행 바로 다음 형제다.
+    expect(wrapper.get('.track').element.nextElementSibling).toBe(form.element)
   })
 
+  it('저장하면 이름이 바뀌고 폼이 닫힌다', async () => {
+    const { wrapper, library, id } = await withTrack()
+
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await wrapper.get('form.rename-form input').setValue('After')
+    await wrapper.get('form.rename-form').trigger('submit')
+    await nextTick()
+
+    expect(library.getPlaylist(id)?.tracks.map((t) => t.title)).toEqual(['After'])
+    expect(wrapper.find('form.rename-form').exists()).toBe(false)
+    expect(wrapper.get('.track-name').text()).toBe('After')
+  })
+
+  it('취소하면 이름이 그대로다', async () => {
+    const { wrapper, library, id } = await withTrack()
+
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await wrapper.get('form.rename-form input').setValue('Discarded')
+    await byText(wrapper, '.rename-form .pill', '취소')?.trigger('click')
+    await nextTick()
+
+    expect(library.getPlaylist(id)?.tracks.map((t) => t.title)).toEqual(['Before'])
+    expect(wrapper.find('form.rename-form').exists()).toBe(false)
+  })
+
+  it('비우면 YouTube 영상 ID 표기로 되돌아간다', async () => {
+    const { wrapper, library, id } = await withTrack()
+
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await wrapper.get('form.rename-form input').setValue('')
+    await wrapper.get('form.rename-form').trigger('submit')
+    await nextTick()
+
+    expect(library.getPlaylist(id)?.tracks[0]?.title).toBe(`YouTube · ${VIDEO_A}`)
+  })
+
+  it('한 번에 한 행만 고친다', async () => {
+    const { wrapper, library, id } = await setup()
+    for (const title of ['One', 'Two']) library.addTrack(id, { videoId: VIDEO_A, title })
+    await nextTick()
+
+    await wrapper.get('[aria-label="One 이름 변경"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[aria-label="Two 이름 변경"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.findAll('form.rename-form')).toHaveLength(1)
+    expect(wrapper.get<HTMLInputElement>('form.rename-form input').element.value).toBe('Two')
+  })
+
+  it('삭제를 누르면 이름 변경 폼이 닫힌다 — 두 폼이 겹치지 않는다', async () => {
+    const { wrapper } = await withTrack()
+
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[aria-label="Before 삭제"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('form.rename-form').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="트랙 삭제 확인"]').exists()).toBe(true)
+  })
+
+  it('이름을 바꿔도 재생 큐가 흔들리지 않는다', async () => {
+    const { wrapper, library, id, playback } = await playing()
+    library.addTrack(id, { videoId: VIDEO_A, title: 'Before' })
+    await nextTick()
+    const before = snapshot(playback)
+
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await wrapper.get('form.rename-form input').setValue('After')
+    await wrapper.get('form.rename-form').trigger('submit')
+    await nextTick()
+
+    // 큐는 재생 시작 시점의 스냅샷이다 (`MVP_SPEC.md` F4).
+    expect(snapshot(playback)).toEqual(before)
+  })
+
+  it('입력에 label 이 연결된다', async () => {
+    const { wrapper } = await withTrack()
+
+    await wrapper.get('[aria-label="Before 이름 변경"]').trigger('click')
+    await nextTick()
+
+    const input = wrapper.get('form.rename-form input')
+    const label = wrapper.get('form.rename-form label')
+    expect(label.attributes('for')).toBe(input.attributes('id'))
+  })
+})
+
+describe('D. Playback 독립성과 플레이어 DOM', () => {
   it('35. 트랙 추가 후 재생 큐가 동일하다', async () => {
     const { wrapper, playback } = await playing()
     const before = snapshot(playback)
@@ -389,7 +531,8 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     await nextTick()
     const before = snapshot(playback)
 
-    await wrapper.findAll('.track-controls button')[2]?.trigger('click')
+    // 행의 버튼은 ✎ ↑ ↓ × 네 개이므로 × 는 인덱스 3 이다 (M6-5).
+    await wrapper.findAll('.track-controls button')[3]?.trigger('click')
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
     await nextTick()
 
@@ -402,7 +545,7 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     await nextTick()
     const before = snapshot(playback)
 
-    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
+    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[1]?.trigger('click')
     await nextTick()
 
     expect(snapshot(playback)).toEqual(before)
@@ -418,9 +561,9 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     await submitLink(wrapper, URL_A, 'One')
     library.addTrack(id, { videoId: VIDEO_A, title: 'Two' })
     await nextTick()
-    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
+    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[1]?.trigger('click')
     await nextTick()
-    await wrapper.findAll('.track-controls button')[2]?.trigger('click')
+    await wrapper.findAll('.track-controls button')[3]?.trigger('click')
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
     await nextTick()
 

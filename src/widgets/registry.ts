@@ -15,6 +15,7 @@ import type { Component } from 'vue'
 
 import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/shared/types'
 import DeckWidget from '@/features/deck/DeckWidget.vue'
+import PlaylistWidget from '@/features/library/PlaylistWidget.vue'
 import MascotPanel from '@/features/mascot/MascotPanel.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import ClockWidget from '@/widgets/clock/ClockWidget.vue'
@@ -94,6 +95,21 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     // M4-2에서 플레이스홀더를 실제 날씨 위젯으로 교체했다 (ADR 0013).
     component: WeatherWidget,
     defaultArea: 'weather',
+    ...NOT_EDITABLE,
+  },
+  playlist: {
+    type: 'playlist',
+    title: '플레이리스트',
+    /*
+     * M6-4 에서 새로 추가한 **첫 상호작용 위젯**이다. 시계·날씨처럼 보여주기만
+     * 하지 않고 사용자 데이터를 만들고 재생을 요청한다.
+     *
+     * 레지스트리에는 그 사실이 드러나지 않는다 — 정의는 여전히 컴포넌트와 기본
+     * 배치뿐이고, 상호작용은 컴포넌트 안에 있다. 레지스트리가 위젯의 능력을
+     * 알아야 했다면 확장 지점이 잘못 그려진 것이다 (ADR 0003).
+     */
+    component: PlaylistWidget,
+    defaultArea: 'playlist',
     ...NOT_EDITABLE,
   },
   player: {

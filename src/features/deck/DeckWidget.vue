@@ -23,11 +23,18 @@
  * `.workspace` 에 걸지만, 우리는 이 위젯 루트에 걸어
  * `DashboardShell` / `WidgetHost` 를 건드리지 않는다.
  *
+ * M6-6: 아트에 그려져 있던 ▶ / ■ 를 **동작하게** 했다. 실기기 검증에서 두 번
+ * 보고된 문제다 (`M6_PLAN.md` §5-a). 열기 버튼과 **같은 방식**으로, SVG 밖의
+ * 네이티브 `<button>` 을 승인된 아트의 컨트롤 위에 겹친다. DeckArt SVG 는
+ * 수정하지 않았다 (규칙 6). 판단은 `useDeckTransport` 가 하고 이 컴포넌트는
+ * 자리와 이름만 정한다 (규칙 3).
+ *
  * 단일 루트를 유지한다. `WidgetHost` 가 `grid-area` 를 루트에 적용한다.
  */
 import { computed, inject } from 'vue'
 
 import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import { useDeckTransport } from '@/features/deck/useDeckTransport'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
 import { THEMES } from '@/themes'
@@ -53,6 +60,14 @@ const isOpen = computed<boolean>(() => drawer?.isOpen.value ?? false)
  * 멈춰 있어도 바늘은 판 위에 있다.
  */
 const isPaused = computed<boolean>(() => playback.playerState === 'paused')
+
+/**
+ * 데크에 그려진 ▶ / ■ 의 동작 (M6-6).
+ *
+ * 이 위젯은 여전히 플레이어를 직접 부르지 않는다. 명령은 composable 이
+ * 코디네이터에게 넘긴다 (`AGENTS.md` 규칙 4).
+ */
+const transport = useDeckTransport()
 
 function openLibrary(): void {
   drawer?.open()
@@ -97,11 +112,52 @@ function openLibrary(): void {
       >
         <span class="deck-open-hint">{{ kawaiiCopy.openHint }}</span>
       </button>
+
+      <!--
+        아트에 그려진 트랜스포트 (M6-6).
+
+        **열기 버튼보다 뒤에 둔다.** 둘 다 절대 위치이므로 같은 z-index 에서는
+        나중 형제가 위에 온다. Mono Vinyl 의 `START / STOP` 키 상자가 LP 열기
+        원과 모서리에서 겹치는데, 이 순서가 트랜스포트를 이기게 한다.
+
+        비활성 테마의 키는 `display: none` 이라 Tab 순서에서도 빠진다.
+      -->
+      <button
+        type="button"
+        class="deck-key deck-key--mono-vinyl"
+        :aria-label="transport.toggleLabel.value"
+        :title="transport.toggleLabel.value"
+        @click="transport.toggle()"
+      ></button>
+      <button
+        type="button"
+        class="deck-key deck-key--kawaii-stop"
+        :aria-label="transport.pauseLabel.value"
+        :title="transport.pauseLabel.value"
+        @click="transport.pause()"
+      ></button>
+      <button
+        type="button"
+        class="deck-key deck-key--kawaii-play"
+        :aria-label="transport.playLabel.value"
+        :title="transport.playLabel.value"
+        @click="transport.play()"
+      ></button>
     </div>
 
     <!-- 데크 아래 안내. Drawer 가 실제로 동작하므로 이제 표시한다. -->
     <p v-if="drawer !== null" class="deck-hint">
       {{ copy.hintMark }} <strong>{{ copy.hintStrong }}</strong> {{ copy.hintRest }}
+    </p>
+
+    <!--
+      재생 요청이 거절된 이유 (M6-6).
+
+      사용자가 누른 자리에 띄운다. 가려짐 때문에 거절된 경우는 비워 두는데,
+      그때는 플레이어의 `.status` 가 이미 사유를 말한다 (`useDeckTransport`).
+    -->
+    <p v-if="transport.notice.value !== ''" class="deck-notice" role="status" aria-live="polite">
+      {{ transport.notice.value }}
     </p>
   </div>
 </template>
@@ -188,6 +244,70 @@ function openLibrary(): void {
   transform: none;
 }
 
+/*
+ * 아트에 그려진 트랜스포트 키 (M6-6).
+ *
+ * 좌표는 승인된 SVG 에서 그대로 읽은 값이다. `.deck-art` 가
+ * `width: 100%; height: auto` 이고 viewBox 가 `0 0 900 570` 이므로 퍼센트가
+ * viewBox 단위에 선형으로 대응한다 — `.deck-open` 과 같은 방식이다.
+ *
+ * 상자를 글자보다 **넉넉하게** 잡는다. 카세트의 `■ STOP` / `▶ PLAY` 는
+ * 15px 글자라 글자 폭(약 54 단위)만 덮으면 데크가 400px 일 때 터치 목표가
+ * 24px 아래로 내려간다. 84 × 60 단위로 잡으면 같은 폭에서 약 37 × 27px 이
+ * 된다. 넓혀도 겹치는 것이 없다 — 카세트 열기 버튼은 y 467 에서 끝나고
+ * 본체는 y 536 까지다.
+ */
+.deck-key {
+  position: absolute;
+  display: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.deck-key:hover {
+  background: var(--deck-open-hover-surface-color);
+}
+
+.deck-key:focus-visible {
+  outline: var(--deck-open-focus-ring-width) solid var(--deck-open-focus-ring-color);
+  outline-offset: var(--deck-open-focus-ring-offset);
+}
+
+/*
+ * Mono Vinyl 의 `START / STOP` 금속 키. 원본 좌표는 cx 103 · cy 478 이고
+ * 바깥 히트 원이 r 36 이다 → x 67‥139, y 442‥514.
+ *
+ * 키가 **하나뿐이므로 토글**이다. 레퍼런스의 글자도 `START / STOP` 이라
+ * 한 키가 두 일을 한다는 뜻이 이미 들어 있다.
+ */
+:root[data-theme='mono-vinyl'] .deck-key--mono-vinyl {
+  display: block;
+  top: 77.54%;
+  left: 7.44%;
+  width: 8%;
+  height: 12.63%;
+  border-radius: var(--radius-circle);
+}
+
+/* 카세트의 `■ STOP` 글자 (x 70, y 504) 를 덮는다 → x 58‥142, y 470‥530. */
+:root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-stop {
+  display: block;
+  top: 82.46%;
+  left: 6.44%;
+  width: 9.33%;
+  height: 10.53%;
+}
+
+/* 카세트의 `▶ PLAY` 글자 (x 274, y 504) 를 덮는다 → x 262‥346. */
+:root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-play {
+  display: block;
+  top: 82.46%;
+  left: 29.11%;
+  width: 9.33%;
+  height: 10.53%;
+}
+
 /* 승인된 디자인의 `.deck-hint` 값을 따른다. */
 .deck-hint {
   margin: 5px 0 0;
@@ -200,5 +320,13 @@ function openLibrary(): void {
 .deck-hint strong {
   color: var(--deck-hint-strong-text-color);
   font-weight: 500;
+}
+
+/* 재생 요청이 거절된 이유 (M6-6). 사용자가 뭔가 해야 하므로 경고 색이다. */
+.deck-notice {
+  margin: 6px 0 0;
+  color: var(--status-warning-text-color);
+  font: 11px/1.6 var(--font-mono);
+  text-align: center;
 }
 </style>

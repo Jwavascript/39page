@@ -79,6 +79,19 @@ async function closeDrawer(session: Session) {
   await nextTick()
 }
 
+/**
+ * 플레이리스트 위젯으로 새 목록을 만든다.
+ *
+ * M6-4 에서 `＋ 새 목록` 이 드로어에서 위젯으로 옮겼다. 플레이리스트가 사는
+ * 곳에서 만든다 (보고 6a).
+ */
+async function createPlaylist(session: Session, name: string) {
+  await session.wrapper.get('.playlist-widget .pill--strong').trigger('click')
+  await session.wrapper.get('#new-playlist-name').setValue(name)
+  await session.wrapper.get('form.create-form').trigger('submit')
+  await nextTick()
+}
+
 /** 드로어의 링크 폼으로 트랙을 등록한다. */
 async function addTrack(session: Session, url: string, title: string) {
   await session.wrapper.get('[aria-label], .drawer-actions .pill:nth-child(2)').trigger('click')
@@ -127,7 +140,25 @@ describe('1. 최초 실행 → 기본 라이브러리 생성', () => {
     const session = boot()
     await openDrawer(session)
 
-    expect(session.wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
+    /*
+     * M6-4 — 빈 타일을 누르면 재생이 아니라 편집 오버레이가 열린다.
+     *
+     * 비활성 타일은 막다른 길이다. 레코드를 넣을 곳으로 데려가는 쪽이 맞다.
+     * 드로어의 `▶ 목록 전체 재생` 은 그대로 비활성이다.
+     */
+    const tile = session.wrapper.get('.playlist-play')
+    expect(tile.attributes('aria-label')).toContain('열기')
+
+    await tile.trigger('click')
+    await nextTick()
+
+    expect(session.playback.queue).toEqual([])
+    expect(session.playback.currentTrack).toBeNull()
+
+    const playAll = session.wrapper
+      .findAll('.drawer-actions button')
+      .find((button) => button.text().includes('목록 전체 재생'))
+    expect(playAll?.attributes('disabled')).toBeDefined()
   })
 })
 
@@ -136,15 +167,11 @@ describe('2. 플레이리스트 생성과 YouTube 링크 등록', () => {
     const session = boot()
     await openDrawer(session)
 
-    const create = session.wrapper
-      .findAll('.drawer-actions button')
-      .find((button) => button.text().includes('새 목록'))
-    await create?.trigger('click')
-    await session.wrapper.get('#playlist-name').setValue('EVENING')
-    await session.wrapper.get('.name-form button[type="submit"]').trigger('click')
-    await nextTick()
+    await createPlaylist(session, 'EVENING')
 
     expect(session.library.playlists.map((playlist) => playlist.name)).toContain('EVENING')
+    // 만들면 바로 선택된다 — 편집 오버레이가 그 목록을 가리킨다.
+    expect(session.library.selectedPlaylist?.name).toBe('EVENING')
   })
 
   it('링크를 등록하면 트랙이 생기고 저장된다', async () => {
@@ -434,13 +461,7 @@ describe('9. 플레이리스트 편집 후 큐 안정성', () => {
     await addTrack(session, VIDEO_URL, 'ONE')
     await startPlaying(session, 0)
 
-    const create = session.wrapper
-      .findAll('.drawer-actions button')
-      .find((button) => button.text().includes('새 목록'))
-    await create?.trigger('click')
-    await session.wrapper.get('#playlist-name').setValue('OTHER')
-    await session.wrapper.get('.name-form button[type="submit"]').trigger('click')
-    await nextTick()
+    await createPlaylist(session, 'OTHER')
 
     expect(session.playback.currentTrack?.title).toBe('ONE')
     expect(session.playback.playerState).toBe('playing')

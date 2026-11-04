@@ -221,14 +221,24 @@ describe('A. 드로어에서 재생 시작', () => {
     const { wrapper } = await setup(0)
 
     expect(byText(wrapper, '.pill', '▶ 목록 전체 재생')?.attributes('disabled')).toBeDefined()
-    expect(wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
+    /*
+     * M6-4 — 빈 타일은 **비활성이 아니라 열기**다.
+     *
+     * 비활성 타일은 막다른 길이다. 작은 `⋯` 말고는 들어갈 길이 없다.
+     * 그래서 빈 목록의 타일은 재생 대신 편집 오버레이를 연다. 이름도 그렇게
+     * 말한다. 어느 쪽이든 **재생은 시작되지 않는다.**
+     */
+    expect(wrapper.get('.playlist-play').attributes('aria-label')).toContain('열기')
+    await wrapper.get('.playlist-play').trigger('click')
     expect(FakeYtPlayer.instances).toHaveLength(0)
   })
 
   it('재생 버튼에 접근성 이름이 있다', async () => {
     const { wrapper } = await setup()
 
-    expect(wrapper.get('.playlist-play').attributes('aria-label')).toBe('MY RECORDS 재생')
+    expect(wrapper.get('.playlist-play').attributes('aria-label')).toBe(
+      'MY RECORDS 전체 재생 (3곡)',
+    )
     expect(wrapper.findAll('.track-play').map((node) => node.attributes('aria-label'))).toEqual([
       'Track 1 재생',
       'Track 2 재생',
@@ -354,10 +364,10 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     const before = [...playback.queue]
 
     // 두 번째 트랙을 위로 올린다.
-    await wrapper.findAll('.track')[1]?.findAll('.track-controls button')[0]?.trigger('click')
+    await wrapper.get('[aria-label="Track 2 위로"]').trigger('click')
     await nextTick()
-    // 세 번째 트랙을 지운다.
-    await wrapper.findAll('.track')[2]?.findAll('.track-controls button')[2]?.trigger('click')
+    // 세 번째 트랙을 지운다. 행의 버튼은 ✎ ↑ ↓ × 네 개다 (M6-5).
+    await wrapper.get('[aria-label="Track 3 삭제"]').trigger('click')
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
     await nextTick()
 

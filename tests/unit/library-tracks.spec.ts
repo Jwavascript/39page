@@ -261,6 +261,100 @@ describe('A. moveTrack', () => {
   })
 })
 
+describe('A. renameTrack (M6-5)', () => {
+  /*
+   * 실기기 검증 보고 6c: "이미 저장한 레코드들의 이름을 변경하는 기능이 추가로
+   * 필요할 것 같고." 그때까지 트랙 이름을 바꿀 방법이 없었다.
+   */
+  function twoTracks() {
+    const { library, id } = withPlaylist()
+    library.addTrack(id, { videoId: VIDEO_A, title: 'First' })
+    library.addTrack(id, { videoId: VIDEO_B, title: 'Second' })
+    return { library, id, ids: library.getPlaylist(id)?.tracks.map((t) => t.id) ?? [] }
+  }
+
+  it('제목만 바꾸고 id · videoId · 순서는 그대로다', () => {
+    const { library, id, ids } = twoTracks()
+    const before = library.getPlaylist(id)?.tracks.map((t) => ({ ...t })) ?? []
+
+    const result = library.renameTrack(id, ids[0] ?? '', 'Renamed')
+
+    expect(result.ok).toBe(true)
+    const after = library.getPlaylist(id)?.tracks ?? []
+    expect(after.map((t) => t.title)).toEqual(['Renamed', 'Second'])
+    expect(after.map((t) => t.id)).toEqual(before.map((t) => t.id))
+    expect(after.map((t) => t.videoId)).toEqual(before.map((t) => t.videoId))
+  })
+
+  it('앞뒤 공백을 제거한다', () => {
+    const { library, id, ids } = twoTracks()
+
+    library.renameTrack(id, ids[0] ?? '', '  Trimmed  ')
+
+    expect(library.getPlaylist(id)?.tracks[0]?.title).toBe('Trimmed')
+  })
+
+  it('100자로 자른다', () => {
+    const { library, id, ids } = twoTracks()
+
+    library.renameTrack(id, ids[0] ?? '', 'x'.repeat(MAX_TRACK_TITLE_LENGTH + 20))
+
+    expect(library.getPlaylist(id)?.tracks[0]?.title).toHaveLength(MAX_TRACK_TITLE_LENGTH)
+  })
+
+  it('비우면 기본 표기로 되돌아간다 — addTrack 과 같은 규칙이다', () => {
+    const { library, id, ids } = twoTracks()
+
+    const result = library.renameTrack(id, ids[0] ?? '', '   ')
+
+    // 추가할 때와 고칠 때 빈 제목의 뜻이 달라지면 예측할 수 없다.
+    expect(result.ok).toBe(true)
+    expect(library.getPlaylist(id)?.tracks[0]?.title).toBe(defaultTrackTitle(VIDEO_A))
+  })
+
+  it('없는 트랙·플레이리스트는 거부한다', () => {
+    const { library, id, ids } = twoTracks()
+
+    expect(library.renameTrack(id, 'nope', 'X')).toEqual({ ok: false, reason: 'not-found' })
+    expect(library.renameTrack('nope', ids[0] ?? '', 'X')).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
+    expect(library.getPlaylist(id)?.tracks.map((t) => t.title)).toEqual(['First', 'Second'])
+  })
+
+  it('다른 플레이리스트를 건드리지 않는다', () => {
+    const { library, id, ids } = twoTracks()
+    const other = library.createPlaylist('OTHER')
+    const otherId = other.ok ? other.playlistId : ''
+    library.addTrack(otherId, { videoId: VIDEO_A, title: 'Untouched' })
+    const otherTracks = library.getPlaylist(otherId)?.tracks
+
+    library.renameTrack(id, ids[0] ?? '', 'Renamed')
+
+    // 편집하지 않은 목록은 같은 객체 참조로 남는다.
+    expect(library.getPlaylist(otherId)?.tracks).toBe(otherTracks)
+  })
+
+  it('이름을 바꾸면 저장된다', () => {
+    const { library, id, ids } = twoTracks()
+
+    const result = library.renameTrack(id, ids[0] ?? '', 'Persisted')
+
+    expect(result.ok && result.persisted).toBe(true)
+    expect(readRaw()).toContain('Persisted')
+  })
+
+  it('실패한 이름 변경은 쓰기를 발생시키지 않는다', () => {
+    const { library, id } = twoTracks()
+    const before = readRaw()
+
+    library.renameTrack(id, 'nope', 'X')
+
+    expect(readRaw()).toBe(before)
+  })
+})
+
 describe('A. 실패 시 저장소를 건드리지 않는다', () => {
   it('14. 실패한 트랙 동작은 쓰기를 발생시키지 않는다', () => {
     const { library, id } = withPlaylist()

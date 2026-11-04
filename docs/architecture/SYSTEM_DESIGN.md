@@ -431,8 +431,9 @@ UI 는 `PlayerAdapter` 도 YouTube API 도 직접 부르지 않는다. 전부
 
 ```ts
 // src/shared/types/widget.ts — 순수 데이터
-type WidgetType = 'deck' | 'clock' | 'weather' | 'player' | 'mascot'
-type GridArea = 'deck' | 'mascot' | 'clock' | 'weather' | 'player'
+// M6-4 에서 `playlist` 를 더했다 (ADR 0016).
+type WidgetType = 'deck' | 'clock' | 'weather' | 'player' | 'mascot' | 'playlist'
+type GridArea = 'deck' | 'mascot' | 'clock' | 'weather' | 'player' | 'playlist'
 
 interface WidgetInstance {
   instanceId: string // 안정적. :key 로 쓰는 유일한 값
