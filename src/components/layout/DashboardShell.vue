@@ -20,6 +20,7 @@
  */
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
 
+import AppFooter from '@/components/layout/AppFooter.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
 import RecordLibraryDrawer from '@/features/library/RecordLibraryDrawer.vue'
@@ -130,6 +131,12 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
       <WidgetHost :layout="layout" />
       <RecordLibraryDrawer :open="isDrawerOpen" :drawer-id="DRAWER_ID" @close="closeDrawer" />
     </div>
+
+    <!--
+      승인된 디자인의 `.footer`. 테마 문구를 쓰므로 별도 컴포넌트다 —
+      이 셸은 테마를 모르는 상태로 남아야 한다 (ADR 0001).
+    -->
+    <AppFooter />
   </div>
 </template>
 

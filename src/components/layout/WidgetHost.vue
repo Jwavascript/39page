@@ -13,6 +13,9 @@
  *
  * 테마는 참조하지 않는다. 테마 전환은 CSS 토큰 교체이며 위젯 목록·순서·키에
  * 영향을 주지 않는다.
+ *
+ * M5: 정보 열 구분선을 **의사 요소**로 그린다. 선을 위한 DOM 래퍼를 만들면
+ * 위젯 루트가 그리드의 직계 자식이 아니게 되어 ADR 0002 를 깬다.
  */
 import { computed } from 'vue'
 
@@ -62,17 +65,55 @@ const placed = computed<PlacedWidget[]>(() =>
 /*
  * 넓은 화면: 왼쪽에 데크·마스코트, 오른쪽에 시계·날씨·플레이어.
  * 비율과 간격은 승인된 디자인의 .content 값을 따른다.
+ *
+ * 행은 셋이다. 데크가 위 두 행을 가로지르고 마스코트가 셋째 행에 선다.
+ * 승인된 디자인은 두 열이 각자 흐르는 구조(`.deck-wrap` / `.info`)지만,
+ * 위젯 루트가 그리드의 직계 자식이어야 하므로 래퍼를 쓸 수 없다 (ADR 0002).
+ * 행을 이렇게 나누면 래퍼 없이도 마스코트가 데크 바로 아래에 붙는다.
+ *
+ * 남는 차이 하나: 데크가 위 두 행보다 크면 그 차이가 두 행에 나뉘어, 시계와
+ * 날씨 사이가 레퍼런스보다 약 35px 넓어진다 (1440px 실측). 행을
+ * `max-content` 로 묶어봐도 막히지 않는다 — 두 트랙 모두 내재 크기라서
+ * 분배 대상이다. 래퍼 없이 두 열을 **각자 흐르게** 할 방법이 없으므로
+ * 여기까지가 한계다. 레퍼런스와의 차이를 M5 보고에 적었다.
  */
 .widget-host {
+  /* 간격을 변수로 둔다. 구분선이 이 값의 절반만큼 왼쪽으로 나가야 한다. */
+  --host-gap: clamp(20px, 2.3vw, 39px);
+
   display: grid;
   grid-template-areas:
     'deck clock'
     'deck weather'
-    'deck player'
     'mascot player';
   grid-template-columns: minmax(0, 1.13fr) minmax(420px, 0.87fr);
-  gap: clamp(20px, 2.3vw, 39px);
+  gap: var(--host-gap);
   align-content: start;
+  /*
+   * 늘이지 않는다. 승인된 디자인은 두 열이 각자의 흐름이라 마스코트가 데크
+   * **바로 아래**에 붙는다. 늘이면 마스코트가 열 바닥까지 밀려 데크와의
+   * 사이에 큰 빈 공간이 생긴다 (M5 스크린샷 비교에서 발견).
+   */
+  align-items: start;
+}
+
+/*
+ * 정보 열 구분선 (M5). 승인된 디자인의 `.info { border-left }` 다.
+ *
+ * **DOM 래퍼를 만들지 않는다.** 위젯 루트가 그리드의 직계 자식이라는 성질을
+ * 지켜야 한다 — 래퍼를 끼우면 플레이어 iframe 의 부모가 바뀐다 (ADR 0002).
+ * 그래서 선을 의사 요소로 그린다. 의사 요소도 그리드 아이템이 될 수 있고,
+ * 명시적 `grid-column` / `grid-row` 를 주므로 다른 위젯의 배치를 밀지 않는다.
+ *
+ * 간격의 가운데에 선다. 위젯 안쪽이 아니라 두 열 사이다.
+ */
+.widget-host::before {
+  content: '';
+  grid-row: 1 / -1;
+  grid-column: 2;
+  margin-left: calc(-0.5 * var(--host-gap));
+  border-left: 1px solid var(--info-border-color);
+  pointer-events: none;
 }
 
 /*
@@ -100,6 +141,21 @@ const placed = computed<PlacedWidget[]>(() =>
       'weather'
       'player';
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+   * 1열에서는 가로선이 된다. 승인된 디자인도 같은 전환을 한다
+   * (`.info { border-left: 0; border-top: 1px }`). 시계 위, 즉 정보 블록이
+   * 시작하는 자리에 둔다.
+   */
+  .widget-host::before {
+    margin-top: calc(-0.5 * var(--host-gap));
+    margin-left: 0;
+    border-top: 1px solid var(--info-border-compact-color);
+    border-left: 0;
+    grid-row: 3;
+    grid-column: 1;
+    align-self: start;
   }
 }
 </style>

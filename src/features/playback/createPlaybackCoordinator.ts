@@ -180,9 +180,19 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     return second.ok ? null : second.reason
   }
 
+  /**
+   * 지금 띄워둔 안내가 **가시성 때문**인지 (M5).
+   *
+   * 가려짐이 풀리면 지워야 한다. 그대로 두면 "영상이 보이지 않아 재생할 수
+   * 없어요" 가 영상이 다시 보이는 동안에도 남아 사실과 어긋난다. 오류 안내는
+   * 사정이 그대로이므로 지우지 않는다 — 그래서 출처를 기억한다.
+   */
+  let visibilityNotice = false
+
   /** 가시성 때문에 시작을 거절한다. 큐는 건드리지 않는다. */
   function refuseStart(reason: PlayerHiddenReason): void {
     awaitingUserAction = true
+    visibilityNotice = true
     playback.setStatus(START_BLOCKED_MESSAGE[reason], 'warning')
   }
 
@@ -195,6 +205,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   function pauseForVisibility(message: string): void {
     adapter?.pause()
     awaitingUserAction = true
+    visibilityNotice = true
     playback.setStatus(message)
   }
 
@@ -216,9 +227,15 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
    * 큐가 다시 흐른다.
    */
   function startCurrent(): void {
-    playback.setStatus('')
-    awaitingUserAction = false
+    clearStatus()
     commandCurrentTrack()
+  }
+
+  /** 안내를 지우고 대기 상태를 푼다. 사용자의 요청이 받아들여졌을 때다. */
+  function clearStatus(): void {
+    visibilityNotice = false
+    awaitingUserAction = false
+    playback.setStatus('')
   }
 
   function startQueue(tracks: readonly Track[], index: number): PlayRequestResult {
@@ -290,8 +307,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     }
 
     // 'paused' · 'idle' · 'ended'
-    playback.setStatus('')
-    awaitingUserAction = false
+    clearStatus()
     adapter?.play()
   }
 
@@ -355,8 +371,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
       if (state === 'playing') {
         hasStartedPlaying = true
-        awaitingUserAction = false
-        playback.setStatus('')
+        clearStatus()
         return
       }
 
@@ -369,6 +384,8 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
       // 자동으로 다음 곡으로 넘기지 않는다 (M3-0.7).
       awaitingUserAction = true
+      // 가시성 안내가 아니다. 영상이 다시 보여도 이 안내는 남아야 한다.
+      visibilityNotice = false
       playback.setStatus(errorMessage(info), 'warning')
     },
 
@@ -383,6 +400,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
        * 다시 요청할 수 있다.
        */
       awaitingUserAction = true
+      visibilityNotice = false
       playback.setStatus(
         '브라우저가 자동재생을 막았어요. ▶ 를 다시 누르거나 영상의 ▶ 를 눌러주세요.',
         'warning',
@@ -408,6 +426,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
     adapter?.pause()
     awaitingUserAction = true
+    visibilityNotice = false
     playback.setStatus(TRACK_REMOVED_MESSAGE, 'warning')
   }
 
@@ -420,10 +439,25 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
   /** 가시성이 바뀌었을 수 있다. 다시 재서 필요하면 멈춘다 (M3-4). */
   function revalidatePlayerVisibility(): void {
-    if (!isSounding()) return
-
     const verdict = presence?.measure()
-    if (verdict === undefined || verdict.ok) return
+    if (verdict === undefined) return
+
+    if (verdict.ok) {
+      /*
+       * 다시 보인다. 가시성 때문에 띄운 안내만 지운다 (M5).
+       *
+       * 재생을 되살리지는 **않는다.** 보이게 됐다는 것만으로 소리를 내면
+       * 사용자가 의도하지 않은 재생이다 (M3-4). 사용자 조작 대기 플래그도
+       * 그대로 둔다 — 다음 동작은 사용자가 고른다.
+       */
+      if (visibilityNotice) {
+        visibilityNotice = false
+        playback.setStatus('')
+      }
+      return
+    }
+
+    if (!isSounding()) return
 
     pauseForVisibility(COVERED_PAUSE_MESSAGE)
   }

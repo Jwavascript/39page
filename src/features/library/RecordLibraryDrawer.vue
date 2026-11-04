@@ -747,8 +747,17 @@ watch(
 }
 
 /* 승인된 디자인의 `.track-play` 값을 따른다. */
+/*
+ * 승인된 디자인의 `.track-play` 값을 따른다.
+ *
+ * `min-height` 만 더했다. 레퍼런스는 높이를 적지 않아 글자 높이(22px)가 되는데,
+ * 그러면 터치 목표가 24px 아래로 내려간다 (M5 실측 30×22). 같은 행의
+ * `.track-controls button` 이 29px 이므로 그 값에 맞춘다 — 새 치수를 만들지
+ * 않고 이웃과 나란해진다.
+ */
 .track-play {
   width: 30px;
+  min-height: 29px;
   flex: none;
   border: 0;
   background: transparent;

@@ -230,12 +230,22 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
  * 실제 측정은 `playerVisibility.ts` 가 한다 (M3-4).
  */
 .video-holder {
+  /*
+   * 테두리 두께. 최소 크기 계산에 쓰므로 변수로 둔다.
+   *
+   * 공식 요구는 **플레이어 뷰포트**(iframe)가 200×200 이상이라는 것이다.
+   * 테두리는 그 바깥이다. `box-sizing: border-box` 아래에서 최소값에 테두리를
+   * 더하지 않으면, 360px 화면에서 iframe 이 198px 이 되어 요구를 어긴다
+   * (M5 브라우저 실측에서 발견).
+   */
+  --video-border-width: 1px;
+
   position: relative;
   width: 100%;
-  min-width: var(--size-video-min);
-  min-height: var(--size-video-min);
+  min-width: calc(var(--size-video-min) + 2 * var(--video-border-width));
+  min-height: calc(var(--size-video-min) + 2 * var(--video-border-width));
   aspect-ratio: var(--ratio-video);
-  border: 1px solid var(--video-border-color);
+  border: var(--video-border-width) solid var(--video-border-color);
   background: var(--video-surface-color);
   box-shadow: var(--video-shadow);
 }

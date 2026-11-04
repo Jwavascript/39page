@@ -40,6 +40,7 @@
 | [0011](0011-player-visibility-guard.md)       | 가시성은 순수 측정으로 판정하고, 가리는 쪽이 미리 통지한다                           | 채택 |
 | [0012](0012-playback-failure-handling.md)     | 재생 실패는 종류별로 설명하고, 늦은 사건보다 조용한 실패를 더 경계한다               | 채택 |
 | [0013](0013-weather-provider.md)              | 날씨는 Open-Meteo 에서 키 없이 받고, 위치는 서울로 고정한다                          | 채택 |
+| [0014](0014-layout-finishing.md)              | 레이아웃 마무리는 DOM 래퍼 없이 하고, 실측으로 검증한다                              | 채택 |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

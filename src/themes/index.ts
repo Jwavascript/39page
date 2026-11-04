@@ -48,6 +48,13 @@ export interface ThemeMetadata {
   mascot: MascotCopy
   /** 데크 문구. 데크를 눌러 Record Library 를 여는 흐름에 쓴다. */
   deck: DeckCopy
+  /**
+   * 푸터 왼쪽의 테마 설명 (M5).
+   *
+   * 승인된 디자인의 `footerThemeLabel` 값이다. 오른쪽 문구는 테마와
+   * 무관하므로 컴포넌트가 들고 있다.
+   */
+  footerLabel: string
 }
 
 export const THEMES: Record<ThemeKey, ThemeMetadata> = {
@@ -57,6 +64,7 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     label: '01 / MONO VINYL',
     description: '따뜻한 회갈색 금속 턴테이블. 검은 LP와 아이보리 도트.',
     mascot: { message: 'SIGNAL READY', sub: 'a little life inside your music' },
+    footerLabel: 'MONO VINYL · ANALOG × DIGITAL',
     deck: {
       openLabel: 'LP를 눌러 Record Library 열기',
       openHint: 'OPEN LIBRARY ↗',
@@ -71,6 +79,7 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     label: '02 / SYNTH CASSETTE',
     description: '민트 카세트 데크에 분홍 포인트. 90s 신스 레트로 디지털.',
     mascot: { message: 'MIXTAPE READY', sub: 'a tiny melody from tomorrow' },
+    footerLabel: 'SYNTH CASSETTE · PIXEL × KAWAII',
     deck: {
       openLabel: '카세트를 눌러 믹스테이프 보관함 열기',
       openHint: '▶ OPEN MIXTAPES',

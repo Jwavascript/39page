@@ -165,6 +165,37 @@
 연출을 **실제 재생으로** 트리거하지는 못했다. 클래스 배선은 단위 테스트로,
 CSS 가 그 클래스에 반응하는 것은 위처럼 **수동 토글로** 확인했다.
 
-### M5 — 반응형·접근성·통합 검증·안정화 (진행 중)
+### M5 — 반응형·접근성·통합 검증·안정화 (완료)
 
-TODO: 구현 후 결과 기록
+**설계**: ADR 0014.
+
+**추가 파일**
+
+- `src/components/layout/AppFooter.vue`
+- `docs/decisions/0014-layout-finishing.md`
+- `tests/unit/shell-design.spec.ts` (15) · `accessibility.spec.ts` (20) ·
+  `lifecycle-hygiene.spec.ts` (13)
+- `tests/integration/mvp-flows.spec.ts` (31) — 지시받은 13개 흐름
+
+**수정 파일**: `WidgetHost.vue`(구분선·3행 그리드) ·
+`DashboardShell.vue`(푸터 배치) · `AppHeader.vue`(`h1`) ·
+`PlayerSurface.vue`(최소 크기 보정) · `RecordLibraryDrawer.vue`(터치 목표) ·
+`createPlaybackCoordinator.ts`(안내 정리) · `themes/index.ts`(푸터 문구) ·
+`player-visibility.spec.ts` 보강 · 문서 5종.
+
+**브라우저 실측에서 찾아 고친 결함 3건**: 360px 영상 뷰포트 198px(공식 요구
+위반) · `.track-play` 터치 목표 30×22 · 페이지에 `h1` 없음.
+
+**스크린샷 비교에서 찾아 고친 것**: 마스코트가 열 바닥으로 밀려 데크와 300px
+벌어져 있었다. 그리드를 3행으로 바꿔 데크 바로 아래로 올렸다.
+
+**검증 도구**: 최소 CDP 클라이언트를 세워 뷰포트 에뮬레이션(360px 모바일,
+DPR 3) · 미디어 에뮬레이션(모션 감소) · 실제 키 입력(Tab·Enter·ESC·Space) ·
+스크린샷을 썼다. 스크립트는 저장소에 넣지 않았다 — 결과를 문서와 테스트로
+옮기는 쪽이 재현 가능하다 (ADR 0014 §8).
+
+**검증**: type-check / test / lint / format:check / build 전부 통과.
+테스트 926개 (M4 종료 시 840 → +86). 돌연변이 9종 전부 검출.
+
+**남은 차이 하나**: 1440px 에서 시계와 날씨 사이가 레퍼런스보다 약 35px
+넓다. 래퍼 없이 두 열을 각자 흐르게 할 방법이 없다 (ADR 0014 §3).

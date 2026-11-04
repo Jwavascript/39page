@@ -11,6 +11,9 @@
  * (`tests/support/playerLayout.ts`). 실제 브레이크포인트 적용과 실제 재생은
  * 브라우저 검증에서 확인한다.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { nextTick } from 'vue'
 
 import { mount } from '@vue/test-utils'
@@ -130,6 +133,39 @@ describe('A. 측정 — measurePlayerVisibility', () => {
   it('가로로 절반 밀려나도 센다', () => {
     const rect = { width: 400, height: 400, top: 10, left: -210, right: 190, bottom: 410 }
     expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: false, reason: 'covered' })
+  })
+})
+
+describe('A2. 최소 크기의 CSS 보장 (M5)', () => {
+  it('영상 영역의 최소 크기가 테두리를 더해 계산된다', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/features/playback/PlayerSurface.vue'),
+      'utf8',
+    )
+
+    /*
+     * 공식 요구는 **플레이어 뷰포트**(iframe)가 200×200 이상이라는 것이다.
+     * `box-sizing: border-box` 아래에서 테두리를 더하지 않으면 360px 화면에서
+     * iframe 이 198px 이 된다 (M5 브라우저 실측).
+     */
+    expect(source).toContain('--video-border-width: 1px')
+    expect(source).toContain(
+      'min-width: calc(var(--size-video-min) + 2 * var(--video-border-width))',
+    )
+    expect(source).toContain(
+      'min-height: calc(var(--size-video-min) + 2 * var(--video-border-width))',
+    )
+    expect(source).toContain('border: var(--video-border-width) solid var(--video-border-color)')
+  })
+
+  it('어댑터 영역이 홀더를 꽉 채운다', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/features/playback/PlayerSurface.vue'),
+      'utf8',
+    )
+
+    // 측정 대상이 `.player-mount` 다. 홀더와 같은 사각형이어야 한다.
+    expect(source).toMatch(/\.player-mount \{[\s\S]*?position: absolute;[\s\S]*?inset: 0/)
   })
 })
 
@@ -536,6 +572,69 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     context.fake.emitStateChange('ended')
 
     expect(context.playback.queueIndex).toBe(0)
+  })
+
+  it('다시 보이면 가시성 안내를 지운다 (M5)', () => {
+    const context = playing(setupCoordinator())
+    context.hide()
+    context.coordinator.revalidatePlayerVisibility()
+    context.fake.emitStateChange('paused')
+    expect(context.playback.statusMessage).not.toBe('')
+
+    context.show()
+    context.coordinator.revalidatePlayerVisibility()
+
+    /*
+     * "영상이 가려져 일시정지됐어요" 가 영상이 다시 보이는 동안 남아 있으면
+     * 사실과 어긋난다.
+     */
+    expect(context.playback.statusMessage).toBe('')
+  })
+
+  it('안내를 지워도 재생을 되살리지는 않는다 (M5)', () => {
+    const context = playing(setupCoordinator())
+    context.hide()
+    context.coordinator.revalidatePlayerVisibility()
+    context.fake.emitStateChange('paused')
+
+    context.show()
+    context.coordinator.revalidatePlayerVisibility()
+
+    expect(context.fake.calls.play).toBe(0)
+    expect(context.playback.playerState).toBe('paused')
+  })
+
+  it('거절 안내도 다시 보이면 지워진다 (M5)', () => {
+    const context = setupCoordinator()
+    context.hide()
+    context.coordinator.playPlaylist(context.playlistId)
+    expect(context.playback.statusMessage).toContain('보이지 않아')
+
+    context.show()
+    context.coordinator.revalidatePlayerVisibility()
+
+    expect(context.playback.statusMessage).toBe('')
+  })
+
+  it('오류 안내는 다시 보여도 남는다 (M5)', () => {
+    const context = playing(setupCoordinator())
+    context.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
+    const message = context.playback.statusMessage
+
+    context.coordinator.revalidatePlayerVisibility()
+
+    // 영상이 보이는 것과 그 영상이 재생되는 것은 다른 문제다.
+    expect(context.playback.statusMessage).toBe(message)
+  })
+
+  it('큐 끝 안내도 다시 보여도 남는다 (M5)', () => {
+    const context = playing(setupCoordinator(1))
+    context.fake.emitStateChange('ended')
+    expect(context.playback.statusMessage).toContain('마지막 곡')
+
+    context.coordinator.revalidatePlayerVisibility()
+
+    expect(context.playback.statusMessage).toContain('마지막 곡')
   })
 
   it('가려진 뒤 사용자가 다시 누르면 재생된다', () => {
