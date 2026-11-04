@@ -5,9 +5,14 @@
  *
  * - **200×200 은 공식 요구사항이다.** "Embedded players must have a viewport
  *   that is at least 200px by 200px." 바꿀 수 없다.
- * - **노출 비율 임계값은 우리 휴리스틱이다.** 개발자 정책에 수치 기준은 없다.
- *   공식적으로 금지된 것은 "사용자가 보고 있지 않은 곳에서의 재생"(III.I.9)
- *   이며, 그 원칙은 조정 대상이 아니다. 숫자는 조정할 수 있다 (M3-0.6).
+ * - **"완전히 보이지 않으면 정지" 는 III.I.9 의 직접적인 귀결이다.** 금지된
+ *   것은 "사용자가 보고 있지 않은 곳에서의 재생" 이다.
+ *
+ * **M6 에서 노출 비율 임계값(0.5)을 폐지했다.** 그 숫자는 공식 기준이 아니라
+ * 우리 휴리스틱이었고, 영상이 조금만 가려져도 음악이 끊기는 원인이었다
+ * (실제 브라우저 검증에서 보고됨). 부분적으로 가려진 플레이어는 사용자가
+ * 여전히 볼 수 있으므로 III.I.9 가 금지하는 상태가 아니다. 판정선은
+ * **"조금이라도 보이는가"** 하나로 남긴다.
  *
  * 측정은 **순수 함수**다. 레이아웃 없는 환경(jsdom)에서도 전수 검증할 수 있게
  * 하기 위해서다. DOM 과 관찰자는 `watchPlayerVisibility()` 에만 있다.
@@ -17,13 +22,6 @@
 
 /** 공식 요구사항. 이 값을 낮추면 정책 위반이다. */
 export const MIN_PLAYER_SIZE_PX = 200
-
-/**
- * 보이는 면적의 최소 비율. **우리 휴리스틱**이다 (프로토타입 `syncVisibility`).
- *
- * 프로토타입과 같이 "초과" 로 비교한다 — 정확히 절반만 보이면 재생하지 않는다.
- */
-export const MIN_VISIBLE_FRACTION = 0.5
 
 /** 측정에 필요한 만큼의 사각형. `DOMRect` 를 그대로 넘겨도 맞는다. */
 export interface PlayerRect {
@@ -54,8 +52,7 @@ const VISIBLE: PlayerVisibility = { ok: true }
 /**
  * 영상 영역이 재생할 만큼 보이는지 판정한다.
  *
- * 프로토타입 `syncVisibility()` 와 같은 계산이다. 뷰포트와 겹치는 면적을
- * 전체 면적으로 나눈다. 다른 요소에 덮인 경우까지 알아내지는 못한다 —
+ * 뷰포트와 겹치는 면적이 0 인지만 본다. 다른 요소에 덮인 경우까지 알아내지는 못한다 —
  * 그 경우는 드로어를 **형제 열**로 둔 구조(III.I.6)와 `playerWillHide()`
  * 통지로 다룬다.
  */
@@ -75,7 +72,8 @@ export function measurePlayerVisibility(
   const visibleWidth = Math.max(0, Math.min(rect.right, viewport.width) - Math.max(rect.left, 0))
   const visibleHeight = Math.max(0, Math.min(rect.bottom, viewport.height) - Math.max(rect.top, 0))
 
-  if ((visibleWidth * visibleHeight) / area <= MIN_VISIBLE_FRACTION) {
+  // 뷰포트와 전혀 겹치지 않으면 정지한다. 비율은 보지 않는다 (M6).
+  if (visibleWidth * visibleHeight <= 0) {
     return { ok: false, reason: 'covered' }
   }
 
@@ -156,8 +154,8 @@ export function watchPlayerVisibility(
   let observer: IntersectionObserver | null = null
   if (typeof view.IntersectionObserver === 'function') {
     observer = new view.IntersectionObserver(handler, {
-      // 0 은 완전히 사라지는 순간, 임계 비율은 휴리스틱 경계를 알려준다.
-      threshold: [0, MIN_VISIBLE_FRACTION, 1],
+      // 판정선이 "조금이라도 보이는가" 하나이므로 경계도 0 하나다 (M6).
+      threshold: [0],
     })
     observer.observe(element)
   }

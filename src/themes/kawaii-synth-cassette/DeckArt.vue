@@ -132,28 +132,32 @@
     />
     <path d="M265 328 H638" stroke="#ffd1e6" stroke-width="4" opacity=".56" />
     <g class="cassette-spools">
-      <g class="cassette-spool" transform="translate(310 327)">
-        <circle r="68" fill="#0c3248" stroke="#91f4e1" stroke-width="7" />
-        <circle r="48" fill="#2a7082" stroke="#18495c" stroke-width="12" />
-        <circle r="28" fill="#d5fff1" />
-        <circle r="10" fill="#377e91" />
-        <g fill="#7acec7">
-          <rect x="-5" y="-45" width="10" height="20" rx="2" />
-          <rect x="-5" y="25" width="10" height="20" rx="2" />
-          <rect x="-45" y="-5" width="20" height="10" rx="2" />
-          <rect x="25" y="-5" width="20" height="10" rx="2" />
+      <g transform="translate(310 327)">
+        <g class="cassette-spool">
+          <circle r="68" fill="#0c3248" stroke="#91f4e1" stroke-width="7" />
+          <circle r="48" fill="#2a7082" stroke="#18495c" stroke-width="12" />
+          <circle r="28" fill="#d5fff1" />
+          <circle r="10" fill="#377e91" />
+          <g fill="#7acec7">
+            <rect x="-5" y="-45" width="10" height="20" rx="2" />
+            <rect x="-5" y="25" width="10" height="20" rx="2" />
+            <rect x="-45" y="-5" width="20" height="10" rx="2" />
+            <rect x="25" y="-5" width="20" height="10" rx="2" />
+          </g>
         </g>
       </g>
-      <g class="cassette-spool" transform="translate(589 327)">
-        <circle r="68" fill="#0c3248" stroke="#91f4e1" stroke-width="7" />
-        <circle r="48" fill="#2a7082" stroke="#18495c" stroke-width="12" />
-        <circle r="28" fill="#d5fff1" />
-        <circle r="10" fill="#377e91" />
-        <g fill="#7acec7">
-          <rect x="-5" y="-45" width="10" height="20" rx="2" />
-          <rect x="-5" y="25" width="10" height="20" rx="2" />
-          <rect x="-45" y="-5" width="20" height="10" rx="2" />
-          <rect x="25" y="-5" width="20" height="10" rx="2" />
+      <g transform="translate(589 327)">
+        <g class="cassette-spool">
+          <circle r="68" fill="#0c3248" stroke="#91f4e1" stroke-width="7" />
+          <circle r="48" fill="#2a7082" stroke="#18495c" stroke-width="12" />
+          <circle r="28" fill="#d5fff1" />
+          <circle r="10" fill="#377e91" />
+          <g fill="#7acec7">
+            <rect x="-5" y="-45" width="10" height="20" rx="2" />
+            <rect x="-5" y="25" width="10" height="20" rx="2" />
+            <rect x="-45" y="-5" width="20" height="10" rx="2" />
+            <rect x="25" y="-5" width="20" height="10" rx="2" />
+          </g>
         </g>
       </g>
     </g>

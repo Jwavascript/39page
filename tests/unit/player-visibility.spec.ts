@@ -28,7 +28,6 @@ import type { PlaybackCoordinator } from '@/features/playback/playbackCoordinato
 import {
   measurePlayerVisibility,
   MIN_PLAYER_SIZE_PX,
-  MIN_VISIBLE_FRACTION,
   watchPlayerVisibility,
   type PlayerVisibility,
 } from '@/features/playback/playerVisibility'
@@ -76,10 +75,6 @@ describe('A. 측정 — measurePlayerVisibility', () => {
     expect(MIN_PLAYER_SIZE_PX).toBe(200)
   })
 
-  it('노출 비율 임계값은 자체 휴리스틱인 0.5 다', () => {
-    expect(MIN_VISIBLE_FRACTION).toBe(0.5)
-  })
-
   it('정확히 200×200 이고 전부 보이면 재생할 수 있다', () => {
     expect(measurePlayerVisibility(inside(200, 200), VIEWPORT)).toEqual({ ok: true })
   })
@@ -106,11 +101,17 @@ describe('A. 측정 — measurePlayerVisibility', () => {
     })
   })
 
-  it('정확히 절반만 보이면 거절한다 (초과여야 한다)', () => {
-    expect(measurePlayerVisibility(HALF_VISIBLE_RECT, VIEWPORT)).toEqual({
-      ok: false,
-      reason: 'covered',
-    })
+  /*
+   * M6: 노출 비율 임계값(0.5)을 폐지했다.
+   *
+   * 그 숫자는 공식 기준이 아니라 우리 휴리스틱이었고, 영상이 조금만 가려져도
+   * 음악이 끊기는 원인이었다. 부분적으로 가려진 플레이어는 사용자가 여전히
+   * 볼 수 있으므로 III.I.9 가 금지하는 상태가 아니다.
+   *
+   * 아래 네 케이스는 M3-4 에서 `covered` 였고 지금은 재생을 허용한다.
+   */
+  it('절반만 보여도 재생을 허용한다 (M6: 임계값 폐지)', () => {
+    expect(measurePlayerVisibility(HALF_VISIBLE_RECT, VIEWPORT)).toEqual({ ok: true })
   })
 
   it('절반을 조금 넘게 보이면 허용한다', () => {
@@ -119,19 +120,41 @@ describe('A. 측정 — measurePlayerVisibility', () => {
     expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: true })
   })
 
-  it('위로 스크롤되어 밀려난 경우도 잘라서 센다', () => {
+  it('위로 스크롤되어 절반 미만만 남아도 허용한다', () => {
     const rect = { width: 400, height: 400, top: -210, left: 100, right: 500, bottom: 190 }
-    // 보이는 높이 190 → 47.5%
-    expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: false, reason: 'covered' })
+    // 보이는 높이 190 → 47.5%. M3-4 에서는 거절이었다
+    expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: true })
   })
 
-  it('뷰포트 완전히 밖이면 거절한다', () => {
+  it('가로로 절반 밀려나도 허용한다', () => {
+    const rect = { width: 400, height: 400, top: 10, left: -210, right: 190, bottom: 410 }
+    expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: true })
+  })
+
+  it('1px 만 보여도 허용한다 — 판정선은 "조금이라도 보이는가" 하나다', () => {
+    const rect = { width: 400, height: 400, top: 767, left: 100, right: 500, bottom: 1167 }
+    expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: true })
+  })
+
+  /* 여기부터는 여전히 거절한다. 이 선은 조정 대상이 아니다. */
+
+  it('뷰포트 아래로 완전히 밀려나면 거절한다', () => {
     const rect = { width: 400, height: 400, top: 900, left: 100, right: 500, bottom: 1300 }
     expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: false, reason: 'covered' })
   })
 
-  it('가로로 절반 밀려나도 센다', () => {
-    const rect = { width: 400, height: 400, top: 10, left: -210, right: 190, bottom: 410 }
+  it('뷰포트 위로 완전히 밀려나면 거절한다', () => {
+    const rect = { width: 400, height: 400, top: -500, left: 100, right: 500, bottom: -100 }
+    expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: false, reason: 'covered' })
+  })
+
+  it('뷰포트 왼쪽으로 완전히 밀려나면 거절한다', () => {
+    const rect = { width: 400, height: 400, top: 10, left: -500, right: -100, bottom: 410 }
+    expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: false, reason: 'covered' })
+  })
+
+  it('경계: 아래쪽이 뷰포트에 정확히 닿기만 하면 거절한다 (겹침 0)', () => {
+    const rect = { width: 400, height: 400, top: 768, left: 100, right: 500, bottom: 1168 }
     expect(measurePlayerVisibility(rect, VIEWPORT)).toEqual({ ok: false, reason: 'covered' })
   })
 })

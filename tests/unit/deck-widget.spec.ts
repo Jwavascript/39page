@@ -82,7 +82,31 @@ function applyIntendedChanges(svg: string, prefix: string, rootClass: string): s
   out = out.slice(0, headEnd) + out.slice(headEnd).replace(/\s+aria-label="[^"]*"/g, '')
 
   out = out.replace(/^<svg class="[^"]*"/, `<svg class="${rootClass}"`)
-  return out.replace(' xmlns="http://www.w3.org/2000/svg"', '')
+  out = out.replace(' xmlns="http://www.w3.org/2000/svg"', '')
+
+  /*
+   * M6: 테이프 릴의 배치와 회전을 **다른 요소로 분리한다.**
+   *
+   * 레퍼런스는 한 `<g>` 에 `transform="translate(...)"` 와 회전 클래스를 함께
+   * 둔다. 개별 변환 속성(`rotate`)은 `transform` 속성보다 나중에 합성되므로
+   * 최종 행렬이 `rotate × translate` 가 되고 **translate 된 위치가 회전한다.**
+   * 릴이 제자리에서 돌지 않고 viewBox 원점을 중심으로 궤도를 그린다.
+   *
+   * 즉 이것은 레퍼런스에 있는 **버그**다. 실제 브라우저 검증에서 보고되어
+   * 사용자 확인을 받고 고쳤다 (AGENTS.md 규칙 6). 좌표와 색은 그대로다 —
+   * 그룹을 한 겹 나누는 것 말고는 아무것도 바뀌지 않는다.
+   */
+  const spoolSplit =
+    /<g class="cassette-spool" transform="(translate\([^)]*\))">([\s\S]*?)<\/g>\s*<\/g>/g
+  const before = out
+  out = out.replace(spoolSplit, '<g transform="$1"><g class="cassette-spool">$2</g></g></g>')
+
+  // 카세트에만 있는 변경이다. 적용되지 않았다면 레퍼런스 구조가 바뀐 것이다.
+  if (rootClass.includes('kawaii-synth-cassette') && out === before) {
+    throw new Error('레퍼런스에서 cassette-spool 그룹을 찾지 못했다')
+  }
+
+  return out
 }
 
 /** .vue 의 template 안에 있는 SVG. */
@@ -255,6 +279,39 @@ describe('A. 데크 렌더링', () => {
     )
 
     expect(squash(portedSvg('src/themes/kawaii-synth-cassette/DeckArt.vue'))).toBe(squash(expected))
+  })
+
+  /*
+   * M6 회귀 방지.
+   *
+   * 이 셋이 동시에 성립해야 릴이 제자리에서 돈다. 하나라도 깨지면 릴이
+   * viewBox 원점을 중심으로 궤도를 그린다 (반지름 450·674).
+   */
+  it('회전하는 릴에는 자기 transform 이 없다 (M6: 궤도 버그 방지)', () => {
+    const ported = portedSvg('src/themes/kawaii-synth-cassette/DeckArt.vue')
+
+    const spoolTags = [...ported.matchAll(/<g[^>]*class="cassette-spool"[^>]*>/g)].map((m) => m[0])
+
+    expect(spoolTags).toHaveLength(2)
+    // transform 이 붙으면 rotate 가 그 translate 를 회전시킨다.
+    expect(spoolTags.filter((tag) => tag.includes('transform'))).toEqual([])
+  })
+
+  it('릴의 배치는 바깥 그룹이 맡는다', () => {
+    const ported = portedSvg('src/themes/kawaii-synth-cassette/DeckArt.vue')
+
+    // 레퍼런스의 두 좌표가 바깥 그룹에 그대로 남아 있어야 한다.
+    for (const pos of ['translate(310 327)', 'translate(589 327)']) {
+      expect(ported).toContain(`<g transform="${pos}">`)
+    }
+  })
+
+  it('회전 축이 릴 자신의 바운딩 박스 중심이다', () => {
+    const css = readSource('src/themes/kawaii-synth-cassette/deck.css')
+
+    // fill-box 가 아니면 viewBox 중심이 축이 되어 다시 궤도가 된다.
+    expect(css).toContain('transform-box: fill-box')
+    expect(css).toContain('transform-origin: center')
   })
 
   it('v08 과 v09 의 턴테이블 형태가 같다', () => {
