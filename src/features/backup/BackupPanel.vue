@@ -128,6 +128,31 @@ function onFileChange(event: Event): void {
     </p>
 
     <!--
+      화면에는 복원됐지만 저장되지 않은 상태 (M8-4).
+
+      새로고침하면 사라진다. 사용자가 이것을 영구 복원 성공으로 오인하면
+      데이터를 잃으므로, **다음 행동**을 함께 둔다.
+    -->
+    <div
+      v-if="restore.unsaved.value"
+      class="unsaved-block"
+      role="alert"
+      aria-label="저장되지 않은 복원"
+    >
+      <p class="unsaved-text">
+        지금 화면은 복원됐지만 <strong>저장되지 않았습니다.</strong> 새로고침하면 되돌아갑니다.
+      </p>
+      <div class="backup-actions">
+        <button type="button" class="pill pill--strong" @click="restore.retrySave()">
+          다시 저장 시도
+        </button>
+        <button type="button" class="pill" @click="restore.exportCurrentFirst()">
+          지금 화면을 JSON으로 내보내기
+        </button>
+      </div>
+    </div>
+
+    <!--
       미리보기. **여기까지 저장소에 아무것도 쓰지 않았다.** 사용자가 아래
       '교체하고 가져오기' 를 눌러야 처음 쓴다.
     -->
@@ -349,6 +374,24 @@ function onFileChange(event: Event): void {
 .backup-import {
   position: relative;
   margin-top: 12px;
+}
+
+/* 저장되지 않은 복원 안내 (M8-4). 경고 색으로 테두리까지 쓴다. */
+.unsaved-block {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--row-selected-border-color);
+  background: var(--row-selected-surface-color);
+}
+
+.unsaved-text {
+  margin: 0 0 10px;
+  color: var(--status-warning-text-color);
+  font: 11px/1.6 var(--font-mono);
+}
+
+.unsaved-text strong {
+  font-weight: 600;
 }
 
 /* 미리보기. 드로어의 `.confirm` 과 같은 표면을 쓴다. */

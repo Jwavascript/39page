@@ -15,7 +15,7 @@
 import { computed, inject, ref, type ComputedRef, type Ref } from 'vue'
 
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
-import type { ThemeKey } from '@/shared/types'
+import type { LibraryData, ThemeKey } from '@/shared/types'
 import { libraryStorage, useLibraryStore } from '@/stores/library'
 import { themeStorage, useThemeStore } from '@/stores/theme'
 
@@ -91,7 +91,11 @@ export function describeWarning(warning: BackupWarning): string {
     case 'invalid-exported-at':
       return '내보낸 시각을 읽을 수 없습니다.'
     case 'large-file':
-      return `파일이 큽니다 (${String(Math.round(warning.size / 1024 / 1024))} MB). 저장 공간이 부족할 수 있습니다.`
+      /*
+       * 실측 (Chromium 155, 7.68 MB · 30,000곡): 적용에 약 2.3초가 걸렸다.
+       * "몇 초" 는 추정이 아니라 잰 값에서 나온 말이다.
+       */
+      return `파일이 큽니다 (${String(Math.round(warning.size / 1024 / 1024))} MB). 가져오는 데 몇 초 걸릴 수 있고, 저장 공간이 부족할 수 있습니다.`
   }
 }
 
@@ -105,6 +109,13 @@ export interface BackupImportModel {
   applyTheme: Ref<boolean>
   /** 미리보기를 뜬 뒤 현재 데이터가 바뀌었다. 다시 확인해야 한다. */
   stale: Readonly<Ref<boolean>>
+  /**
+   * 화면에는 복원됐지만 **저장되지 않은** 상태 (M8-4).
+   *
+   * 새로고침하면 사라진다. 사용자가 이것을 영구 복원 성공으로 오인하면
+   * 데이터를 잃는다 — 그래서 안내를 띄우고 다음 행동을 제공한다.
+   */
+  unsaved: Readonly<Ref<boolean>>
 
   /** 파일을 받아 검증하고 미리보기를 만든다. **아무것도 쓰지 않는다.** */
   selectFile(file: File): Promise<void>
@@ -116,6 +127,8 @@ export interface BackupImportModel {
   downloadRawOriginal(): void
   /** 승인. 여기서 **처음** 쓴다. */
   apply(): void
+  /** 저장에 실패한 것을 다시 저장해 본다 (M8-4). */
+  retrySave(): void
 }
 
 /** 현재 데이터의 지문. 미리보기 승인이 낡았는지 본다. */
@@ -135,6 +148,14 @@ export function useBackupImport(): BackupImportModel {
   const failed = ref(false)
   const applyTheme = ref(true)
   const stale = ref(false)
+
+  /**
+   * 저장에 실패해 **메모리에만** 남은 것 (M8-4).
+   *
+   * 다시 저장을 시도할 수 있게 들고 있는다. 저장되면 비운다.
+   */
+  const pending = ref<{ library: LibraryData | null; theme: ThemeKey | null } | null>(null)
+  const unsaved = computed<boolean>(() => pending.value !== null)
 
   /** 읽은 파일. 반응형 상태에 두지만 **store 가 아니다.** */
   const read = ref<BackupReadSuccess | null>(null)
@@ -346,22 +367,60 @@ export function useBackupImport(): BackupImportModel {
     }
     stale.value = false
 
-    const applied: string[] = []
-    const skipped: string[] = []
-    let hadFailure = false
+    const outcome = write(file.library, applyTheme.value ? file.theme : null, {
+      playlists: file.counts.playlists,
+      tracks: file.counts.tracks,
+    })
 
-    /* ---------- 라이브러리 (가치가 큰 것부터) ---------- */
+    if (file.library === null) outcome.skipped.push('플레이리스트 (파일에서 가져올 수 없음)')
+    if (file.theme !== null && !applyTheme.value) {
+      outcome.skipped.push('테마 (적용하지 않도록 껐음)')
+    }
 
-    if (file.library !== null) {
-      const result = library.replaceAll(file.library)
+    report(outcome)
+    reset()
+  }
 
-      if (result.persisted) {
-        applied.push(
-          `플레이리스트 ${String(file.counts.playlists)}개 · ${String(file.counts.tracks)}곡`,
+  /** 집계 결과. 저장되지 않은 것이 있으면 `pending` 에 남는다. */
+  interface WriteOutcome {
+    applied: string[]
+    skipped: string[]
+    unsavedLibrary: LibraryData | null
+    unsavedTheme: ThemeKey | null
+  }
+
+  /**
+   * 실제 쓰기. **가치가 큰 것부터** 쓴다 (ADR 0018 결정 9).
+   *
+   * `localStorage` 에 여러 키 트랜잭션이 없으므로 원자성을 약속하지 않는다.
+   * 대신 무엇이 반영되고 무엇이 안 됐는지 정확히 돌려준다.
+   */
+  function write(
+    nextLibrary: LibraryData | null,
+    nextTheme: ThemeKey | null,
+    counts: { playlists: number; tracks: number },
+  ): WriteOutcome {
+    const outcome: WriteOutcome = {
+      applied: [],
+      skipped: [],
+      unsavedLibrary: null,
+      unsavedTheme: null,
+    }
+
+    if (nextLibrary !== null) {
+      const result = library.replaceAll(nextLibrary)
+
+      if (result.persisted && result.verified) {
+        outcome.applied.push(
+          `플레이리스트 ${String(counts.playlists)}개 · ${String(counts.tracks)}곡`,
         )
+      } else if (result.persisted) {
+        // 썼다고 했는데 다시 읽으니 다르다. 성공으로 보고하지 않는다 (M8-4).
+        outcome.unsavedLibrary = nextLibrary
+        outcome.skipped.push('플레이리스트 (저장했지만 다시 읽을 수 없음)')
       } else {
-        hadFailure = true
-        skipped.push(
+        outcome.unsavedLibrary = nextLibrary
+        outcome.skipped.push(
           result.writeFailure === 'quota-exceeded'
             ? '플레이리스트 (저장 공간 부족 — 이번 세션에만 반영)'
             : '플레이리스트 (저장 실패 — 이번 세션에만 반영)',
@@ -375,33 +434,59 @@ export function useBackupImport(): BackupImportModel {
        * 라이브러리가 사라진 것은 저장 성공 여부와 상관없는 사실이다.
        */
       playback?.libraryReplaced()
-    } else {
-      skipped.push('플레이리스트 (파일에서 가져올 수 없음)')
     }
 
-    /* ---------- 테마 (최선 노력) ---------- */
-
-    if (file.theme !== null && applyTheme.value) {
-      const saved = theme.setTheme(file.theme)
+    if (nextTheme !== null) {
+      const saved = theme.setTheme(nextTheme)
       if (saved) {
-        applied.push(`테마 ${file.theme}`)
+        outcome.applied.push(`테마 ${nextTheme}`)
       } else {
-        hadFailure = true
-        skipped.push('테마 (적용은 됐지만 저장 실패)')
+        outcome.unsavedTheme = nextTheme
+        outcome.skipped.push('테마 (적용은 됐지만 저장 실패)')
       }
-    } else if (file.theme !== null) {
-      skipped.push('테마 (적용하지 않도록 껐음)')
     }
 
-    /* ---------- 결과 ---------- */
+    return outcome
+  }
 
-    failed.value = hadFailure
-    const head = hadFailure ? '일부만 복원했습니다.' : '복원했습니다.'
-    const appliedText = applied.length === 0 ? '' : ` 반영: ${applied.join(' · ')}.`
-    const skippedText = skipped.length === 0 ? '' : ` 반영되지 않음: ${skipped.join(' · ')}.`
+  /** 결과를 문구로 옮기고 저장 안 된 것을 기억한다. */
+  function report(outcome: WriteOutcome): void {
+    const hadFailure = outcome.unsavedLibrary !== null || outcome.unsavedTheme !== null
+
+    pending.value = hadFailure
+      ? { library: outcome.unsavedLibrary, theme: outcome.unsavedTheme }
+      : null
+
+    failed.value = outcome.skipped.length > 0
+    const head = hadFailure
+      ? '일부만 복원했습니다.'
+      : outcome.skipped.length > 0
+        ? '일부만 복원했습니다.'
+        : '복원했습니다.'
+    const appliedText = outcome.applied.length === 0 ? '' : ` 반영: ${outcome.applied.join(' · ')}.`
+    const skippedText =
+      outcome.skipped.length === 0 ? '' : ` 반영되지 않음: ${outcome.skipped.join(' · ')}.`
     notice.value = `${head}${appliedText}${skippedText}`
+  }
 
-    reset()
+  /**
+   * 저장에 실패한 것을 다시 저장해 본다 (M8-4).
+   *
+   * 사용자가 승인한 **같은 데이터**를 같은 경로로 다시 쓴다. 새 승인을 받을
+   * 이유가 없다 — 승인한 복원이 저장되지 않았을 뿐이다.
+   */
+  function retrySave(): void {
+    const target = pending.value
+    if (target === null) return
+
+    const counts = {
+      playlists: target.library?.playlists.length ?? 0,
+      tracks:
+        target.library?.playlists.reduce((total, playlist) => total + playlist.tracks.length, 0) ??
+        0,
+    }
+
+    report(write(target.library, target.theme, counts))
   }
 
   return {
@@ -411,10 +496,12 @@ export function useBackupImport(): BackupImportModel {
     failed,
     applyTheme,
     stale,
+    unsaved,
     selectFile,
     cancel,
     exportCurrentFirst,
     downloadRawOriginal,
     apply,
+    retrySave,
   }
 }

@@ -520,7 +520,8 @@ describe('D. library.replaceAll — 보호 우회 액션', () => {
 
     const result = context.library.replaceAll(libraryData())
 
-    expect(result).toEqual({ ok: true, persisted: true, writeFailure: null })
+    // M8-4: 쓴 값을 다시 읽어 확인한다.
+    expect(result).toEqual({ ok: true, persisted: true, writeFailure: null, verified: true })
     expect(context.library.playlists.map((playlist) => playlist.name)).toEqual([
       'NIGHT DRIVE',
       'MORNING',
@@ -555,6 +556,7 @@ describe('D. library.replaceAll — 보호 우회 액션', () => {
 
     expect(result.persisted).toBe(false)
     expect(result.writeFailure).toBe('unknown')
+    expect(result.verified).toBe(false)
     // 원본을 아직 읽지 못했으므로 보호를 풀지 않는다.
     expect(context.library.status).toBe('protected')
     // 메모리에는 반영된다.
@@ -1106,6 +1108,201 @@ describe('G. 보호 상태의 복원', () => {
     // 파일 쪽 사정 (복구본) 과 저장소 쪽 사정 (읽지 못한 원본) 을 따로 말한다.
     expect(text).toContain('복구본')
     expect(text).toContain('덮어씁니다')
+  })
+})
+
+describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4)', () => {
+  /** 라이브러리 키만 막는다. 테마는 통과시킨다. */
+  function blockLibraryWrites(): void {
+    const real = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function patched(
+      this: Storage,
+      key: string,
+      value: string,
+    ) {
+      if (key === STORAGE_KEYS.library) {
+        const error = new Error('quota')
+        error.name = 'QuotaExceededError'
+        throw error
+      }
+      real.call(this, key, value)
+    })
+  }
+
+  it('저장 실패 뒤 화면은 복원됐지만 새로고침하면 되돌아간다', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+    const rawBefore = globalThis.localStorage.getItem(STORAGE_KEYS.library)
+
+    await pick(context, backupText())
+    blockLibraryWrites()
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    // 메모리(화면)는 복원됐다.
+    expect(context.library.playlists.map((playlist) => playlist.name)).toEqual([
+      'NIGHT DRIVE',
+      'MORNING',
+    ])
+    // 저장소는 그대로다.
+    expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toBe(rawBefore)
+
+    // 새로고침하면 복원 전으로 돌아간다 — 이것이 사용자가 오인하면 안 되는 상태다.
+    vi.restoreAllMocks()
+    setActivePinia(createPinia())
+    const fresh = useLibraryStore()
+    fresh.restore()
+    expect(fresh.playlists.map((playlist) => playlist.name)).toEqual(['CURRENT'])
+  })
+
+  it('영구 복원 성공으로 오인하지 않게 안내한다', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+
+    await pick(context, backupText())
+    blockLibraryWrites()
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    const block = context.wrapper.get('[aria-label="저장되지 않은 복원"]')
+    expect(block.text()).toContain('저장되지 않았습니다')
+    expect(block.text()).toContain('새로고침하면 되돌아갑니다')
+  })
+
+  it('다음 행동을 제공한다 — 다시 저장과 JSON 내보내기', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+
+    await pick(context, backupText())
+    blockLibraryWrites()
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    const labels = context.wrapper
+      .findAll('[aria-label="저장되지 않은 복원"] .pill')
+      .map((node) => node.text())
+    expect(labels).toContain('다시 저장 시도')
+    expect(labels).toContain('지금 화면을 JSON으로 내보내기')
+  })
+
+  it('다시 저장이 성공하면 안내가 사라진다', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+
+    await pick(context, backupText())
+    blockLibraryWrites()
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+    expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(true)
+
+    // 저장소가 다시 동작한다.
+    vi.restoreAllMocks()
+    const retry = context.wrapper
+      .findAll('[aria-label="저장되지 않은 복원"] .pill')
+      .find((node) => node.text() === '다시 저장 시도')
+    await retry?.trigger('click')
+    await nextTick()
+
+    expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(false)
+    expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toContain('NIGHT DRIVE')
+  })
+
+  it('다시 저장도 실패하면 안내가 남는다', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+
+    await pick(context, backupText())
+    blockLibraryWrites()
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    const retry = context.wrapper
+      .findAll('[aria-label="저장되지 않은 복원"] .pill')
+      .find((node) => node.text() === '다시 저장 시도')
+    await retry?.trigger('click')
+    await nextTick()
+
+    expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(true)
+  })
+
+  it('지금 화면을 JSON으로 내보내 잃지 않게 할 수 있다', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+
+    await pick(context, backupText())
+    blockLibraryWrites()
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    vi.restoreAllMocks()
+    const created = stubDownloadGlobals()
+    const exportNow = context.wrapper
+      .findAll('[aria-label="저장되지 않은 복원"] .pill')
+      .find((node) => node.text().includes('JSON으로 내보내기'))
+    await exportNow?.trigger('click')
+    await nextTick()
+
+    expect(created).toHaveLength(1)
+    const dumped = JSON.parse(await (created[0] as Blob).text()) as BackupFile
+    // 저장되지 않은 **메모리 상태**가 파일로 나온다.
+    expect(dumped.data.library.data.playlists.map((playlist) => playlist.name)).toEqual([
+      'NIGHT DRIVE',
+      'MORNING',
+    ])
+  })
+
+  it('테마만 실패하면 라이브러리는 저장된 채로 안내한다', async () => {
+    const context = mountApp()
+    await nextTick()
+    await pick(context, backupText())
+
+    const real = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function patched(
+      this: Storage,
+      key: string,
+      value: string,
+    ) {
+      if (key === STORAGE_KEYS.theme) throw new Error('blocked')
+      real.call(this, key, value)
+    })
+
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toContain('NIGHT DRIVE')
+    expect(context.wrapper.get('[aria-label="저장되지 않은 복원"]').text()).toContain(
+      '저장되지 않았습니다',
+    )
+  })
+
+  it('쓰기는 성공했는데 다시 읽으니 다르면 성공으로 보고하지 않는다', async () => {
+    const context = mountApp()
+    seed(context)
+    await nextTick()
+    await pick(context, backupText())
+
+    /*
+     * 쓰기를 삼키는 저장소를 흉내낸다 — `setItem` 은 성공하지만 값이 남지
+     * 않는다. 쓰기 결과만 믿으면 "복원했습니다" 가 나간다.
+     */
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {})
+
+    await applyButton(context)?.trigger('click')
+    await nextTick()
+
+    const notice = context.wrapper
+      .findAll('.backup-result')
+      .map((node) => node.text())
+      .join(' ')
+    expect(notice).toContain('일부만 복원했습니다')
+    expect(notice).toContain('다시 읽을 수 없음')
+    expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(true)
   })
 })
 

@@ -256,6 +256,39 @@ export interface LibraryReplaceResult {
   readonly persisted: boolean
   /** 저장 실패 이유. 성공이면 `null`. */
   readonly writeFailure: WriteFailureReason | null
+  /**
+   * 쓴 값을 **다시 읽어 확인했는지** (M8-4).
+   *
+   * `persisted` 가 `true` 일 때만 뜻이 있다. 쓰기는 성공했다고 했는데 다시
+   * 읽으니 달라지는 저장소가 있을 수 있다 — 그 경우를 **성공으로 보고하지
+   * 않기 위해** 따로 센다.
+   *
+   * 되돌리지는 않는다. 되돌리려면 저장 계층에 원문 쓰기 경로를 열어야 하고,
+   * 그것은 "쓰기는 봉투를 거친다" 는 보장을 깬다. 대신 정직하게 알린다.
+   */
+  readonly verified: boolean
+}
+
+/**
+ * 비교를 위한 정규 형태 (M8-4).
+ *
+ * 키 순서가 달라도 같은 데이터로 보려면 한 번 다시 쌓아야 한다. 호출부가
+ * `{ name, id, tracks }` 순으로 넘겨도 검증이 헛되게 실패하지 않는다.
+ */
+function canonicalLibrary(data: LibraryData): string {
+  return JSON.stringify({
+    playlists: data.playlists.map((playlist) => ({
+      id: playlist.id,
+      name: playlist.name,
+      tracks: playlist.tracks.map((track) => ({
+        id: track.id,
+        source: track.source,
+        videoId: track.videoId,
+        title: track.title,
+      })),
+    })),
+    selectedPlaylistId: data.selectedPlaylistId,
+  })
 }
 
 /** 앞뒤 공백을 떼고 길이를 자른다. 공백뿐이면 `null`. */
@@ -581,16 +614,30 @@ export const useLibraryStore = defineStore('library', () => {
 
     lastWriteFailure.value = result.ok ? null : result.reason
 
-    if (result.ok) {
-      /*
-       * 사용자가 원본을 버리기로 **결정했고** 그 결정이 저장됐다. 보호할
-       * 원본이 더는 없으므로 보호를 푼다.
-       */
-      status.value = 'ready'
-      protectedReason.value = null
+    if (!result.ok) {
+      return { ok: true, persisted: false, writeFailure: result.reason, verified: false }
     }
 
-    return { ok: true, persisted: result.ok, writeFailure: result.ok ? null : result.reason }
+    /*
+     * 사용자가 원본을 버리기로 **결정했고** 그 결정이 저장됐다. 보호할
+     * 원본이 더는 없으므로 보호를 푼다.
+     */
+    status.value = 'ready'
+    protectedReason.value = null
+
+    /*
+     * 쓴 값을 다시 읽어 확인한다 (M8-4).
+     *
+     * 복원은 한 번만 일어나므로 파싱 한 번을 더 해도 된다. 쓰기가 성공했다고
+     * 했는데 읽으니 달라지는 경우를 **성공으로 보고하지 않기** 위해서다.
+     */
+    const readBack = libraryStorage.read()
+    const verified =
+      readBack.outcome === 'stored' &&
+      canonicalLibrary(readBack.value) ===
+        canonicalLibrary({ playlists: items.value, selectedPlaylistId: selectedId.value })
+
+    return { ok: true, persisted: true, writeFailure: null, verified }
   }
 
   /**

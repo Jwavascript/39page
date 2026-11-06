@@ -1,0 +1,51 @@
+{
+  "format": "39page-backup",
+  "schemaVersion": 1,
+  "exportedAt": "2026-11-06T04:21:07.512Z",
+  "data": {
+    "library": {
+      "version": 1,
+      "data": {
+        "playlists": [
+          {
+            "id": "p-night",
+            "name": "NIGHT DRIVE",
+            "tracks": [
+              {
+                "id": "t-1",
+                "source": "youtube",
+                "videoId": "aaaaaaaaaaa",
+                "title": "ALPHA"
+              },
+              {
+                "id": "t-2",
+                "source": "youtube",
+                "videoId": "bbbbbbbbbbb",
+                "title": "BETA"
+              }
+            ]
+          },
+          {
+            "id": "p-morning",
+            "name": "MORNING",
+            "tracks": [
+              {
+                "id": "t-3",
+                "source": "youtube",
+                "videoId": "ccccccccccc",
+                "title": "GAMMA"
+              }
+            ]
+          }
+        ],
+        "selectedPlaylistId": "p-morning"
+      }
+    },
+    "preferences": {
+      "theme": {
+        "version": 1,
+        "data": "kawaii-synth-cassette"
+      }
+    }
+  }
+}
