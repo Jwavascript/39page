@@ -104,7 +104,10 @@ describe('A. 문서 구조', () => {
 describe('B. 키보드 경로', () => {
   it('드로어를 열면 닫기 버튼으로 포커스가 옮겨간다', async () => {
     const { wrapper } = mountApp()
-    const trigger = wrapper.get('.deck-open--mono-vinyl')
+    seedLibrary()
+    await nextTick()
+    // M7: 트랙 드로어는 플레이리스트 타일 본문으로 연다.
+    const trigger = wrapper.get('.playlist-tile .playlist-open')
 
     await trigger.trigger('click')
     await flushPromises()

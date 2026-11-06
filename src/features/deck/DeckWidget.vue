@@ -14,6 +14,10 @@
  * **SVG 밖의 네이티브 `<button>`** 이며, 승인된 디자인의 `.disc-open` /
  * `.cassette-open` 위치를 따른다. DeckArt SVG 는 수정하지 않았다.
  *
+ * M7: 그 버튼이 여는 것이 **트랙 드로어에서 플레이리스트 위젯으로** 바뀌었다.
+ * 실기기에서 "lp판을 누르면 최소화 되었던 playlist 위젯이 펼쳐지게" 로
+ * 요청받았다. 트랙 드로어는 플레이리스트 타일을 눌러서 연다.
+ *
  * 비활성 테마의 버튼은 `display: none` 이므로 Tab 순서에서도 빠진다.
  *
  * M4: 재생 상태에 따라 루트에 `is-playing` / `is-paused` 를 건다. LP 회전 ·
@@ -33,7 +37,7 @@
  */
 import { computed, inject } from 'vue'
 
-import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
 import { useDeckTransport } from '@/features/deck/useDeckTransport'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
@@ -43,7 +47,7 @@ import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
 const playback = usePlaybackStore()
-const drawer = inject(LIBRARY_DRAWER, null)
+const shelf = inject(PLAYLIST_SHELF, null)
 
 /** 각 트리거는 **자기 테마의** 문구를 쓴다. 숨겨진 쪽도 올바른 이름을 갖는다. */
 const monoCopy = THEMES['mono-vinyl'].deck
@@ -51,7 +55,7 @@ const kawaiiCopy = THEMES['kawaii-synth-cassette'].deck
 
 /** 데크 아래 안내는 활성 테마의 문구다. */
 const copy = computed(() => theme.metadata.deck)
-const isOpen = computed<boolean>(() => drawer?.isOpen.value ?? false)
+const isOpen = computed<boolean>(() => shelf?.isExpanded.value ?? false)
 
 /**
  * 톤암이 내려와 있는 상태.
@@ -69,8 +73,9 @@ const isPaused = computed<boolean>(() => playback.playerState === 'paused')
  */
 const transport = useDeckTransport()
 
-function openLibrary(): void {
-  drawer?.open()
+/** 플레이리스트 위젯을 펼치거나 접는다 (M7). */
+function toggleShelf(): void {
+  shelf?.toggle()
 }
 </script>
 
@@ -91,24 +96,24 @@ function openLibrary(): void {
         위치는 테마별로 다르다 (LP 는 원형, 카세트는 사각).
       -->
       <button
-        v-if="drawer !== null"
+        v-if="shelf !== null"
         type="button"
         class="deck-open deck-open--mono-vinyl"
         :aria-label="monoCopy.openLabel"
         :aria-expanded="isOpen"
-        :aria-controls="drawer.drawerId"
-        @click="openLibrary"
+        :aria-controls="shelf.shelfId"
+        @click="toggleShelf"
       >
         <span class="deck-open-hint">{{ monoCopy.openHint }}</span>
       </button>
       <button
-        v-if="drawer !== null"
+        v-if="shelf !== null"
         type="button"
         class="deck-open deck-open--kawaii-synth-cassette"
         :aria-label="kawaiiCopy.openLabel"
         :aria-expanded="isOpen"
-        :aria-controls="drawer.drawerId"
-        @click="openLibrary"
+        :aria-controls="shelf.shelfId"
+        @click="toggleShelf"
       >
         <span class="deck-open-hint">{{ kawaiiCopy.openHint }}</span>
       </button>
@@ -145,8 +150,8 @@ function openLibrary(): void {
       ></button>
     </div>
 
-    <!-- 데크 아래 안내. Drawer 가 실제로 동작하므로 이제 표시한다. -->
-    <p v-if="drawer !== null" class="deck-hint">
+    <!-- 데크 아래 안내. 트리거가 실제로 동작하므로 표시한다. -->
+    <p v-if="shelf !== null" class="deck-hint">
       {{ copy.hintMark }} <strong>{{ copy.hintStrong }}</strong> {{ copy.hintRest }}
     </p>
 

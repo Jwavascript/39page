@@ -102,8 +102,8 @@ describe('A. 타일 격자', () => {
     await nextTick()
 
     expect(tiles(context)[0]?.classes()).toContain('is-selected')
-    expect(tiles(context)[0]?.get('.playlist-play').attributes('aria-current')).toBe('true')
-    expect(tiles(context)[1]?.get('.playlist-play').attributes('aria-current')).toBeUndefined()
+    expect(tiles(context)[0]?.get('.playlist-open').attributes('aria-current')).toBe('true')
+    expect(tiles(context)[1]?.get('.playlist-open').attributes('aria-current')).toBeUndefined()
   })
 
   it('비어 있으면 안내한다', () => {
@@ -120,10 +120,59 @@ describe('A. 타일 격자', () => {
     expect(sub).toContain('전체 재생')
     expect(sub).toContain('편집')
   })
+
+  /*
+   * M7 요청 1 — 데크를 누르면 펼쳐진다. 기본은 접힘이다.
+   *
+   * 접혀 있어도 타일은 보인다. `display: none` 으로 숨기면 플레이리스트가
+   * 있는지조차 알 수 없고, 드로어로 가는 길도 막힌다.
+   */
+  it('기본은 접힌 상태이고 타일은 그래도 보인다', async () => {
+    const context = mountApp()
+    seed(context.library)
+    await nextTick()
+
+    expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+    expect(tiles(context)).toHaveLength(2)
+  })
+
+  it('데크를 누르면 펼쳐지고 다시 누르면 접힌다', async () => {
+    const context = mountApp()
+    seed(context.library)
+    await nextTick()
+    const deck = context.wrapper.get('.deck-open--mono-vinyl')
+
+    await deck.trigger('click')
+    expect(context.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+
+    await deck.trigger('click')
+    expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+  })
+
+  it('Escape 로 접힌다', async () => {
+    const context = mountApp()
+    await context.wrapper.get('.deck-open--mono-vinyl').trigger('click')
+    expect(context.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+
+    expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+  })
+
+  it('접힘·펼침이 타일 영역의 높이로만 드러난다', () => {
+    const source = readSource('src/features/library/PlaylistWidget.vue')
+
+    expect(source).toMatch(
+      /\.playlist-widget\.is-collapsed \.tile-scroll \{[\s\S]*?max-height: var\(--size-playlist-collapsed-max-height\)/,
+    )
+    // 숨기지 않는다. 접힌 상태에서도 타일이 보여야 한다.
+    expect(source).not.toMatch(/\.is-collapsed[\s\S]{0,120}display: none/)
+  })
 })
 
 describe('B. 타일 누름 — 전체 재생', () => {
-  it('타일을 누르면 그 목록이 처음부터 재생된다', async () => {
+  it('타일의 ▶ 를 누르면 그 목록이 처음부터 재생된다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
@@ -147,7 +196,7 @@ describe('B. 타일 누름 — 전체 재생', () => {
     expect(context.library.selectedPlaylistId).toBe(filledId)
   })
 
-  it('누름이 편집 오버레이를 열지는 않는다', async () => {
+  it('▶ 는 편집 오버레이를 열지 않는다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
@@ -157,21 +206,17 @@ describe('B. 타일 누름 — 전체 재생', () => {
     expect(drawerOpen(context)).toBe(false)
   })
 
-  it('빈 타일은 재생이 아니라 편집 오버레이를 연다', async () => {
+  it('빈 목록은 ▶ 가 비활성이고, 그 사실을 이름이 말한다', async () => {
     const context = mountApp()
-    const { emptyId } = seed(context.library)
+    seed(context.library)
     await nextTick()
 
-    await tiles(context)[1]?.get('.playlist-play').trigger('click')
-    await nextTick()
-
-    // 비활성 타일은 막다른 길이다. 레코드를 넣을 곳으로 데려간다.
-    expect(context.playback.queue).toEqual([])
-    expect(drawerOpen(context)).toBe(true)
-    expect(context.library.selectedPlaylistId).toBe(emptyId)
+    const play = tiles(context)[1]?.get('.playlist-play')
+    expect(play?.attributes('disabled')).toBeDefined()
+    expect(play?.attributes('aria-label')).toBe('EMPTY SHELF 전체 재생 — 비어 있음')
   })
 
-  it('빈 타일의 이름이 재생이 아니라 열기라고 말한다', async () => {
+  it('▶ 의 이름이 곡 수를 말한다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
@@ -179,14 +224,11 @@ describe('B. 타일 누름 — 전체 재생', () => {
     expect(tiles(context)[0]?.get('.playlist-play').attributes('aria-label')).toBe(
       'NIGHT DRIVE 전체 재생 (2곡)',
     )
-    expect(tiles(context)[1]?.get('.playlist-play').attributes('aria-label')).toBe(
-      'EMPTY SHELF 열기 — 비어 있음',
-    )
   })
 })
 
 describe('C. 편집 오버레이 열기', () => {
-  it('⋯ 가 그 목록을 선택하고 오버레이를 연다', async () => {
+  it('타일 본문이 그 목록을 선택하고 오버레이를 연다', async () => {
     const context = mountApp()
     const { emptyId } = seed(context.library)
     await nextTick()
@@ -200,7 +242,7 @@ describe('C. 편집 오버레이 열기', () => {
     expect(context.wrapper.get('#record-library-title').text()).toBe('EMPTY SHELF')
   })
 
-  it('⋯ 는 재생을 시작하지 않는다', async () => {
+  it('타일 본문은 재생을 시작하지 않는다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
@@ -211,30 +253,14 @@ describe('C. 편집 오버레이 열기', () => {
     expect(context.fake.calls.load).toEqual([])
   })
 
-  it('⋯ 에 접근성 이름이 있다', async () => {
+  it('타일 본문에 접근성 이름이 있다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
 
     expect(tiles(context)[0]?.get('.playlist-open').attributes('aria-label')).toBe(
-      'NIGHT DRIVE 편집',
+      'NIGHT DRIVE 트랙 편집 (2곡)',
     )
-  })
-
-  /*
-   * 길게 누르기는 **추가 경로**일 뿐이다. 보이는 `⋯` 가 본체다 — 롱프레스만
-   * 두면 키보드·스크린리더에 대응되는 동작이 없다 (`M6_PLAN.md` §3).
-   * 안드로이드 Chrome 은 길게 누르면 `contextmenu` 를 보낸다.
-   */
-  it('타일을 길게 누르거나 우클릭해도 열린다', async () => {
-    const context = mountApp()
-    seed(context.library)
-    await nextTick()
-
-    await tiles(context)[0]?.trigger('contextmenu')
-    await nextTick()
-
-    expect(drawerOpen(context)).toBe(true)
   })
 
   it('타일의 보이는 조작은 둘뿐이다 — 재생과 편집', async () => {
@@ -350,16 +376,36 @@ describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
   })
 
   /*
-   * 위젯은 플레이어와 **같은 2열**에 있다. 우측 오버레이 드로어는 3열(정보)
-   * 안에서 끝나므로, 편집 오버레이가 열려 있어도 타일이 가려지지 않는다.
-   * 가시성 측정은 덮인 것을 감지하지 못하므로 이 보장은 레이아웃이 진다.
+   * 위젯은 **데크 바로 아래(1열)** 다 (M7 요청 3). 우측 오버레이 드로어는
+   * 3열(정보) 안에서 끝나므로 편집 오버레이가 열려 있어도 타일이 가려지지
+   * 않는다. 가시성 측정은 덮인 것을 감지하지 못하므로 이 보장은 레이아웃이
+   * 진다.
    */
-  it('넓은 화면에서 오버레이가 타일을 덮지 않는 배치다', () => {
+  it('넓은 화면에서 데크 아래에 서고, 오버레이가 타일을 덮지 않는다', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
 
-    expect(wide).toContain("'mascot playlist .'")
+    expect(wide).toContain("'playlist mascot .'")
     expect(wide).toContain('minmax(var(--size-drawer-width), 0.55fr)')
+  })
+
+  /*
+   * M7 요청 5 — 세로에서는 데크 옆(이전의 시계·날씨 자리)이고, 펼쳐도
+   * **데크 높이를 넘지 않는다.** 높이를 숫자로 정하지 않고 행에 늘려 붙인다.
+   */
+  it('세로에서 데크 옆에 서고 데크 높이를 넘지 않는다', () => {
+    const host = readSource('src/components/layout/WidgetHost.vue')
+    const compact = host.slice(host.indexOf('@media (max-width: 1100px)'))
+    const widget = readSource('src/features/library/PlaylistWidget.vue')
+
+    expect(compact).toContain("'deck playlist'")
+    // 시계·날씨는 아래로 내려갔다.
+    expect(compact).toContain("'clock weather'")
+    expect(compact).toMatch(
+      /\[data-widget='playlist'\]:not\(\.is-collapsed\) \{[\s\S]*?align-self: stretch/,
+    )
+    // 행 높이 안에서 스크롤한다.
+    expect(widget).toMatch(/@media \(max-width: 1100px\)[\s\S]*?max-height: none/)
   })
 })
 

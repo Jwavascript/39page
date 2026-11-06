@@ -32,6 +32,10 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
 import RecordLibraryDrawer from '@/features/library/RecordLibraryDrawer.vue'
 import { LIBRARY_DRAWER, type LibraryDrawerController } from '@/features/library/drawerController'
+import {
+  PLAYLIST_SHELF,
+  type PlaylistShelfController,
+} from '@/features/library/playlistShelfController'
 import type { DashboardLayout } from '@/shared/types'
 
 defineProps<{
@@ -83,8 +87,39 @@ const controller: LibraryDrawerController = {
 }
 provide(LIBRARY_DRAWER, controller)
 
+/**
+ * 플레이리스트 위젯의 펼침 상태 (M7 요청 1).
+ *
+ * 데크를 누르면 토글한다. 기본은 접힘이다 — 위젯이 타일 한 줄만 보이다가
+ * 펼쳐지면 더 많이 보인다. 접힌 상태에서도 타일이 보이므로 플레이리스트를
+ * 찾지 못하는 일은 없다.
+ */
+const SHELF_ID = 'playlist-shelf'
+const isShelfExpanded = ref(false)
+
+const shelf: PlaylistShelfController = {
+  isExpanded: readonly(isShelfExpanded),
+  shelfId: SHELF_ID,
+  toggle: () => {
+    isShelfExpanded.value = !isShelfExpanded.value
+  },
+}
+provide(PLAYLIST_SHELF, shelf)
+
+/**
+ * Escape 는 **가장 바깥 것부터** 닫는다.
+ *
+ * 드로어가 열려 있으면 드로어를, 아니면 펼쳐진 선반을 접는다. 한 번에 둘을
+ * 닫으면 사용자가 무엇을 닫았는지 알 수 없다.
+ */
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && isDrawerOpen.value) void closeDrawer()
+  if (event.key !== 'Escape') return
+
+  if (isDrawerOpen.value) {
+    void closeDrawer()
+    return
+  }
+  if (isShelfExpanded.value) isShelfExpanded.value = false
 }
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
@@ -158,9 +193,19 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
  * (`features/playback/playerVisibility.ts`). 그래서 `WidgetHost` 의 정보 열
  * 최소 폭을 `--size-drawer-width` 자체로 묶어 두었다. 우측 드로어가 그 열
  * 안에서 끝나므로 플레이어(2열)에 닿지 않는다.
+ *
+ * ⚠ **스테이지에도 셀을 명시해야 한다** (M7 에서 고친 버그).
+ * 드로어만 `grid-area: 1 / 1` 을 가지면, 자동 배치되는 스테이지가 **이미 찬
+ * 셀을 피해 2 행으로 밀린다.** 실기기에서 "드로어가 위쪽에 별도 공간으로
+ * 생긴다" 로 보고된 것이 이 증상이다. jsdom 은 그리드를 계산하지 않으므로
+ * 단위 테스트가 잡지 못했다.
  */
+.workspace.is-drawer-open > :first-child,
 .workspace.is-drawer-open > :last-child {
   grid-area: 1 / 1;
+}
+
+.workspace.is-drawer-open > :last-child {
   justify-self: end;
   width: var(--size-drawer-width);
   /* `.workspace` 에 `isolation: isolate` 가 있어 쌓임 맥락이 갇힌다. */
@@ -168,45 +213,71 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
 }
 
 /*
- * 1100px 이하: 나란히 둘 공간이 없다. 드로어를 **아래 행**에 둔다.
+ * 1100px 이하: 드로어를 **화면 하단에서 올라오는 시트**로 둔다 (M7 요청 5).
  *
- * 이전에는 스테이지를 `display: none` 으로 대체했다. 그래서 세로 화면에서
- * 플레이어가 0×0 이 되고 가드가 재생을 거절했다 — 실기기에서 "세로에서는
- * 음악 재생이 불가능하다" 로 보고된 문제다.
+ * 세 번 바뀐 자리다. 무엇이 왜 바뀌었는지 남겨 둔다.
  *
- * 지금은 **플레이어만 남기고** 나머지 위젯을 숨긴다. 플레이어가 계속 보이므로
- * 재생이 끊기지 않고, 드로어가 아래 행을 쓰므로 겹칠 수 없다. 겹침이 구조적으로
- * 불가능하다는 점이 중요하다 — 픽셀 비율로 맞추면 화면 크기마다 깨진다.
+ * | 시점 | 배치                        | 왜 바꿨나                                  |
+ * | ---- | --------------------------- | ------------------------------------------ |
+ * | M3-4 | 스테이지를 `display: none`  | 플레이어가 0×0 → 세로에서 재생이 불가능했다 |
+ * | M6-2 | 아래 **행**(별도 공간)      | 다른 위젯이 모두 사라지고 화면이 통째로 바뀌었다 |
+ * | M7   | 하단 **고정 시트**(겹침)    | 보던 화면 위로 올라오기를 요청받았다        |
  *
- * 숨기는 것은 위젯의 `display` 뿐이고 언마운트가 아니다. 플레이어는 숨기지
- * 않으므로 iframe 과 그 부모는 그대로다 (ADR 0002).
+ * 위젯을 숨기지 않는다. 시트는 `position: fixed` 로 뷰포트 하단에 겹친다.
+ *
+ * ⚠ **그래서 플레이어가 시트에 덮일 수 있다.** 덮인 채로 소리가 나면 III.I.9
+ * 가 금지하는 상태이고, 가시성 측정은 덮인 것을 감지하지 못한다. 그러면
+ * "시트를 열고 ▶ 를 눌렀는데 재생되지 않는다" 로 보고 5번이 재발한다.
+ *
+ * 그래서 시트가 열려 있는 동안 **플레이어를 `position: sticky` 로 뷰포트
+ * 상단에 붙인다.** 시트가 아래 `--size-sheet-height` 를 쓰므로 그 위 영역에
+ * 플레이어가 남는다. `sticky` 가 문서 스크롤에 붙으려면 조상의 `overflow` 가
+ * `visible` 이어야 하므로 그동안만 바꾼다.
+ *
+ * 스테이지에 시트 높이만큼 아래 여백을 준다. 시트에 영구히 묻히는 콘텐츠가
+ * 없어야 한다.
+ *
+ * `display` 도 DOM 부모도 건드리지 않으므로 iframe 은 그대로다 (ADR 0002).
  */
 @media (max-width: 1100px) {
   .workspace.is-drawer-open {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: clamp(14px, 2vw, 24px);
+    position: relative;
+    /* 시트가 푸터보다 위에 그려지도록 워크스페이스를 올린다. */
+    z-index: 2;
+    /* sticky 가 문서 스크롤에 붙게 한다. */
+    overflow: visible;
+    padding-bottom: calc(var(--size-sheet-height) + 18px);
   }
 
   .workspace.is-drawer-open > :last-child {
-    grid-area: 2 / 1;
+    position: fixed;
+    inset: auto 0 0;
     justify-self: stretch;
     width: auto;
+    max-height: var(--size-sheet-height);
+    /* 전체 폭이므로 왼쪽 테두리가 아니라 윗 테두리가 시트의 경계다. */
+    border-top: 1px solid var(--drawer-border-color);
+    border-left: 0;
+    z-index: 3;
   }
 
-  /* 플레이어만 남긴다. 플레이어는 계속 보여야 한다 (III.I.9). */
-  .workspace.is-drawer-open :deep(.widget-host) {
-    grid-template-areas: 'player';
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .workspace.is-drawer-open :deep(.widget-host > *:not([data-widget='player'])) {
-    display: none;
-  }
-
-  /* 의사 요소 구분선도 숨긴다. 열이 하나뿐이라 그을 자리가 없다. */
-  .workspace.is-drawer-open :deep(.widget-host::before) {
-    display: none;
+  /*
+   * 플레이어는 시트 위에 머문다 (III.I.9).
+   *
+   * 다른 위젯은 그 아래로 지나가며 시트에 가려진다 — 보여주기만 하는
+   * 위젯이므로 가려져도 잘못되는 것이 없다.
+   *
+   * ⚠ **쌓임 순서를 시트보다 높게 둔다.** `sticky` 가 기대대로 동작하지
+   * 않으면(짧은 화면, 조상의 `overflow` 변화) 둘이 겹칠 수 있다. 그때
+   * 플레이어가 아래에 있으면 **소리는 나는데 영상은 안 보이는 상태**가 되고
+   * 그것이 III.I.9 가 금지하는 바로 그 상태다. 플레이어를 위에 두면 시트 일부가
+   * 가려져 보기 나쁠 뿐이고, 정책을 어기지는 않는다. **안전한 쪽으로 깨지게
+   * 둔다.**
+   */
+  .workspace.is-drawer-open :deep(.widget-host > [data-widget='player']) {
+    position: sticky;
+    top: 8px;
+    z-index: 4;
   }
 }
 

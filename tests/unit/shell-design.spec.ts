@@ -169,8 +169,8 @@ describe('B. 정보 열 구분선', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
 
-    // 데크와 정보 열 사이, 위 두 행에만 둔다.
-    expect(compact).toContain('grid-row: 1 / 3')
+    // M7: 데크와 플레이리스트 사이, 첫 행에만 둔다.
+    expect(compact).toContain('grid-row: 1 / 2')
     expect(compact).toContain('grid-column: 2')
 
     // 가로선으로 바꾸지 않는다.
@@ -201,18 +201,37 @@ describe('B. 정보 열 구분선', () => {
   })
 
   /*
-   * M6-4 — 플레이리스트 위젯은 **플레이어와 같은 열**이다.
+   * M7 요청 3 — 플레이리스트는 **데크 아래(1열)**, 마스코트는 2열 아래다.
    *
-   * 3열(정보)까지 넓히면 우측 오버레이 드로어가 타일을 덮는다. 2열에 두면
-   * 편집 오버레이가 열려 있어도 타일이 보이므로 다른 목록으로 건너갈 수 있다.
+   * 데크를 누르면 이 위젯이 펼쳐지므로 둘이 붙어 있어야 무엇이 열렸는지 눈으로
+   * 따라갈 수 있다. 3열(정보)은 비워 둬서 우측 오버레이가 타일을 덮지 않는다.
    */
-  it('플레이리스트가 플레이어 아래 같은 열에 선다', () => {
+  it('플레이리스트가 데크 아래, 마스코트가 2열 아래에 선다', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
     const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
 
-    expect(wide).toContain("'mascot playlist .'")
-    expect(compact).toContain("'playlist playlist'")
+    expect(wide).toContain("'playlist mascot .'")
+    // 세로에서는 데크 옆(이전의 시계·날씨 자리)이다 (요청 5).
+    expect(compact).toContain("'deck playlist'")
+    expect(compact).toContain("'clock weather'")
+  })
+
+  /*
+   * M7 요청 4 — 정보 열의 빈자리를 **아래로** 모은다.
+   *
+   * 이전에는 행이 둘뿐이어서 행 높이를 데크·플레이어가 지배했다. 시계가 1 행
+   * 위쪽에 붙고 그 아래로 빈 공간이 생긴 다음 날씨가 2 행 시작에 붙어, 둘
+   * 사이가 벌어져 보였다. 1·2 행을 `auto` 로 두고 3 행이 `1fr` 로 남은 높이를
+   * 먹으면 시계와 날씨가 붙고 빈자리가 아래에 모인다 — 다른 위젯을 더할 자리다.
+   */
+  it('시계와 날씨가 붙고 정보 열의 빈자리는 아래에 모인다', () => {
+    const source = readSource('src/components/layout/WidgetHost.vue')
+    const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
+
+    expect(wide).toContain('grid-template-rows: auto auto 1fr auto')
+    // 3 행의 정보 열은 비어 있다.
+    expect(wide).toContain("'deck player .'")
   })
 
   it('플레이어 열의 최소 폭이 16:9 를 지킬 수 있는 값이다', () => {

@@ -732,6 +732,15 @@ function deckTrigger(wrapper: Wrapper) {
   return wrapper.get(`.deck-open--${useThemeStore().current}`)
 }
 
+/**
+ * 트랙 드로어를 여는 트리거 (M7).
+ *
+ * 데크는 이제 플레이리스트 위젯을 펼친다. 드로어는 **타일 본문**으로 연다.
+ */
+function editorTrigger(wrapper: Wrapper) {
+  return wrapper.get('.playlist-tile .playlist-open')
+}
+
 async function seedPlaying(trackCount = 3) {
   const { wrapper, fake } = mountApp()
   const library = useLibraryStore()
@@ -759,8 +768,10 @@ describe('D. 드로어 연동', () => {
    * 가려지기 전에 멈춰야 했다. 그 결과 세로 화면에서는 재생 경로가 사라졌고,
    * 실기기에서 "세로에서는 음악 재생이 불가능하다" 로 보고됐다.
    *
-   * 지금은 플레이어만 남기고 드로어가 아래 행을 쓴다. 가려지지 않으므로
-   * 멈출 이유가 없다. 이 테스트가 그 수정을 고정한다.
+   * 지금은 플레이어를 숨기지 않고 시트가 그 아래에서 올라온다. 가려지지
+   * 않으므로 멈출 이유가 없다. 이 테스트가 그 수정을 고정한다.
+   *
+   * M7: 드로어를 여는 트리거가 데크에서 **플레이리스트 타일 본문**으로 바뀌었다.
    */
   it('좁은 화면에서 드로어를 열어도 재생이 끊기지 않는다 (M6-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
@@ -773,28 +784,86 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await nextTick()
 
     expect(context.fake.calls.pause).toBe(0)
     expect(context.playback.playerState).toBe('playing')
     expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
   })
 
-  it('드로어가 열려 있어도 플레이어는 숨지 않는다 (겹침 금지의 근거)', () => {
+  it('데크를 눌러도 재생이 끊기지 않는다 — 선반만 펼친다 (M7)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+
+    context.wrapper.get('.playlist-play').trigger('click')
+    await nextTick()
+    context.fake.emitReady()
+    context.fake.emitStateChange('playing')
+    await nextTick()
+
+    await deckTrigger(context.wrapper).trigger('click')
+    await nextTick()
+
+    expect(context.fake.calls.pause).toBe(0)
+    expect(context.playback.playerState).toBe('playing')
+    // 드로어는 열리지 않는다.
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+  })
+
+  /*
+   * M7 에서 다시 쓴 테스트다.
+   *
+   * 좁은 화면의 드로어가 **아래 행**(별도 공간)에서 **하단 고정 시트**(겹침)로
+   * 바뀌었다. 겹치게 되었으므로 "같은 셀에 없다" 로는 더 이상 보장할 수 없다.
+   * 대신 **플레이어를 시트 위에 붙여** 보장한다.
+   */
+  it('좁은 화면에서 시트가 열려도 플레이어가 시트 위에 남는다', () => {
     const shell = readFileSync(
       resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
       'utf8',
     )
     const compact = shell.slice(shell.indexOf('@media (max-width: 1100px)'))
 
-    // 플레이어를 제외한 위젯만 숨긴다.
-    expect(compact).toContain(":deep(.widget-host > *:not([data-widget='player']))")
+    // 시트는 뷰포트 하단에 고정되고 높이에 상한이 있다.
+    expect(compact).toContain('position: fixed')
+    expect(compact).toContain('max-height: var(--size-sheet-height)')
 
-    // 드로어는 아래 행이다. 같은 셀에 겹치지 않는다.
-    expect(compact).toContain('grid-area: 2 / 1')
+    // 플레이어는 그 위에 머문다. 덮인 채로 소리가 나면 III.I.9 위반이다.
+    expect(compact).toMatch(/\[data-widget='player'\]\) \{[\s\S]*?position: sticky[\s\S]*?top: 8px/)
 
-    // 스테이지를 통째로 숨기던 규칙이 남아 있으면 안 된다.
+    /*
+     * 쌓임 순서는 **플레이어가 시트보다 높다.** sticky 가 기대대로 동작하지
+     * 않아 둘이 겹치면, 플레이어가 아래에 있으면 소리만 나는 상태가 된다.
+     * 위에 두면 시트가 가려져 보기 나쁠 뿐이다 — 안전한 쪽으로 깨지게 둔다.
+     */
+    const sheetZ = /> :last-child \{[\s\S]*?z-index: (\d+)/.exec(compact)?.[1]
+    const playerZ = /\[data-widget='player'\]\) \{[\s\S]*?z-index: (\d+)/.exec(compact)?.[1]
+    expect(Number(playerZ)).toBeGreaterThan(Number(sheetZ))
+
+    // 위젯을 숨기지 않는다. 보던 화면 위로 시트가 올라온다.
+    expect(compact).not.toContain(":deep(.widget-host > *:not([data-widget='player']))")
     expect(compact).not.toMatch(/> :first-child \{\s*display: none/)
+  })
+
+  /*
+   * M7 에서 고친 **실기기 버그**다.
+   *
+   * 드로어만 `grid-area: 1 / 1` 을 가지면 자동 배치되는 스테이지가 찬 셀을
+   * 피해 2 행으로 밀린다 — "드로어가 위쪽에 별도 공간으로 생긴다" 로 보고된
+   * 증상이다. jsdom 은 그리드를 계산하지 않으므로 이 보장은 소스로 고정한다.
+   */
+  it('넓은 화면에서 스테이지와 드로어가 같은 셀을 쓴다', () => {
+    const shell = readFileSync(
+      resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
+      'utf8',
+    )
+    const wide = shell.slice(0, shell.indexOf('@media (max-width: 1100px)'))
+
+    expect(wide).toMatch(
+      /\.workspace\.is-drawer-open > :first-child,\s*\.workspace\.is-drawer-open > :last-child \{\s*grid-area: 1 \/ 1;/,
+    )
   })
 
   it('넓은 화면에서는 드로어를 열어도 멈추지 않는다', async () => {
@@ -807,7 +876,7 @@ describe('D. 드로어 연동', () => {
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
 
     expect(context.fake.calls.pause).toBe(0)
     expect(context.playback.playerState).toBe('playing')
@@ -822,7 +891,7 @@ describe('D. 드로어 연동', () => {
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
 
     expect(context.fake.calls.pause).toBe(0)
   })
@@ -843,7 +912,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
 
     expect(context.playback.statusMessage).toContain('화면에 보이지 않아')
@@ -858,7 +927,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.playlist-play').trigger('click')
 
     expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
@@ -871,7 +940,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(VISIBLE_RECT)
     const context = await seedPlaying()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
 
     expect(context.wrapper.find('.play-notice').exists()).toBe(false)
@@ -882,7 +951,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
     expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
 
@@ -901,7 +970,7 @@ describe('D. 드로어 연동', () => {
     const mount0 = context.wrapper.get('.player-mount').element
 
     for (let round = 0; round < 3; round += 1) {
-      await deckTrigger(context.wrapper).trigger('click')
+      await editorTrigger(context.wrapper).trigger('click')
       await context.wrapper.get('.drawer .close').trigger('click')
     }
 
@@ -917,7 +986,7 @@ describe('D. 드로어 연동', () => {
     const context = await seedPlaying()
 
     for (let round = 0; round < 3; round += 1) {
-      await deckTrigger(context.wrapper).trigger('click')
+      await editorTrigger(context.wrapper).trigger('click')
       await context.wrapper.get('.drawer .close').trigger('click')
     }
 

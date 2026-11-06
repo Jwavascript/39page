@@ -2,15 +2,14 @@
 
 음악 중심의 커스터마이징 웹 대시보드.
 
-> 상태: **MVP(M0–M5) 완료**, **M6(실기기 검증 후속) 구현 완료.** 테마 2종과
+> 상태: **MVP(M0–M5) 완료**, **M6·M7(실기기 검증 후속) 구현 완료.** 테마 2종과
 > 테마 전환, YouTube IFrame Player API 재생, 플레이리스트 위젯과 편집 오버레이,
 > 시계·날씨 위젯, 테마별 도트 마스코트까지 구현했다.
 > **<https://39page.com> 에 배포했다.**
 >
-> 남은 검증: M6 의 변경(레이아웃 재배치, 오버레이 드로어, 플레이리스트 위젯,
-> 데크 트랜스포트)은 jsdom 단위·통합 테스트로만 확인했다. **실기기 재확인이
-> 남아 있다** — 목록은
-> [`docs/development/M6_PLAN.md`](docs/development/M6_PLAN.md) §6 에 있다.
+> 남은 검증: M7 의 변경(트리거 재배치, 하단 겹침 시트, 정보 열 정리)은 jsdom
+> 단위·통합 테스트로만 확인했다. **실기기 재확인이 남아 있다** — 목록은
+> [`docs/development/M7_PLAN.md`](docs/development/M7_PLAN.md) §6 에 있다.
 >
 > 승인된 디자인 기준은 [`design/references/`](design/references/README.md),
 > MVP 이후 계획은 [`docs/development/POST_MVP_PLAN.md`](docs/development/POST_MVP_PLAN.md),

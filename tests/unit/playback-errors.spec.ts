@@ -24,7 +24,6 @@ import type { PlaybackCoordinator } from '@/features/playback/playbackCoordinato
 import type { Track } from '@/shared/types'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
-import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
 
@@ -399,8 +398,13 @@ function mountApp() {
 
 type Wrapper = ReturnType<typeof mountApp>['wrapper']
 
-function deckTrigger(wrapper: Wrapper) {
-  return wrapper.get(`.deck-open--${useThemeStore().current}`)
+/**
+ * 트랙 드로어를 여는 트리거 (M7).
+ *
+ * 데크는 이제 플레이리스트 위젯을 펼친다. 드로어는 **타일 본문**으로 연다.
+ */
+function editorTrigger(wrapper: Wrapper) {
+  return wrapper.get('.playlist-tile .playlist-open')
 }
 
 async function seeded(trackCount = 2) {
@@ -509,7 +513,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('[aria-label="Track 1 삭제"]').trigger('click')
     await context.wrapper.get('.confirm .pill--strong').trigger('click')
 
@@ -525,7 +529,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await deckTrigger(context.wrapper).trigger('click')
+    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('[aria-label="Track 2 삭제"]').trigger('click')
     await context.wrapper.get('.confirm .pill--strong').trigger('click')
 

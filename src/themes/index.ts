@@ -66,11 +66,12 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     mascot: { message: 'SIGNAL READY', sub: 'a little life inside your music' },
     footerLabel: 'MONO VINYL · ANALOG × DIGITAL',
     deck: {
-      openLabel: 'LP를 눌러 Record Library 열기',
-      openHint: 'OPEN LIBRARY ↗',
+      // M7: 이 트리거가 여는 것이 트랙 드로어에서 플레이리스트 위젯으로 바뀌었다.
+      openLabel: 'LP를 눌러 플레이리스트 펼치기',
+      openHint: 'OPEN PLAYLISTS ↗',
       hintMark: '◉',
       hintStrong: 'LP를 누르면',
-      hintRest: '음악 보관함이 열립니다',
+      hintRest: '플레이리스트가 펼쳐집니다',
     },
   },
   'kawaii-synth-cassette': {
@@ -81,11 +82,11 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     mascot: { message: 'MIXTAPE READY', sub: 'a tiny melody from tomorrow' },
     footerLabel: 'SYNTH CASSETTE · PIXEL × KAWAII',
     deck: {
-      openLabel: '카세트를 눌러 믹스테이프 보관함 열기',
+      openLabel: '카세트를 눌러 믹스테이프 목록 펼치기',
       openHint: '▶ OPEN MIXTAPES',
       hintMark: '✧',
       hintStrong: '카세트를 누르면',
-      hintRest: '믹스테이프 보관함이 열립니다',
+      hintRest: '믹스테이프 목록이 펼쳐집니다',
     },
   },
 }

@@ -222,14 +222,13 @@ describe('A. 드로어에서 재생 시작', () => {
 
     expect(byText(wrapper, '.pill', '▶ 목록 전체 재생')?.attributes('disabled')).toBeDefined()
     /*
-     * M6-4 — 빈 타일은 **비활성이 아니라 열기**다.
+     * M7 — 타일의 `▶` 는 전체 재생 전용이고 빈 목록에서 비활성이다.
      *
-     * 비활성 타일은 막다른 길이다. 작은 `⋯` 말고는 들어갈 길이 없다.
-     * 그래서 빈 목록의 타일은 재생 대신 편집 오버레이를 연다. 이름도 그렇게
-     * 말한다. 어느 쪽이든 **재생은 시작되지 않는다.**
+     * 타일 **본문**은 트랙 편집을 열므로 막다른 길이 아니다 — 비워 둔 목록에
+     * 레코드를 넣으러 들어갈 수 있다.
      */
-    expect(wrapper.get('.playlist-play').attributes('aria-label')).toContain('열기')
-    await wrapper.get('.playlist-play').trigger('click')
+    expect(wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.playlist-open').attributes('aria-label')).toContain('트랙 편집')
     expect(FakeYtPlayer.instances).toHaveLength(0)
   })
 

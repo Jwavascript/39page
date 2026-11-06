@@ -69,8 +69,17 @@ function boot() {
 
 type Session = ReturnType<typeof boot>
 
+/**
+ * 트랙 드로어를 연다.
+ *
+ * M7 에서 여는 경로가 바뀌었다 — 데크는 플레이리스트 위젯을 펼치고, 트랙
+ * 드로어는 타일 본문을 눌러서 연다.
+ */
 async function openDrawer(session: Session) {
-  await session.wrapper.get(`.deck-open--${session.theme.current}`).trigger('click')
+  if (session.library.playlists.length === 0) session.library.createPlaylist('MY RECORDS')
+  await nextTick()
+
+  await session.wrapper.get('.playlist-tile .playlist-open').trigger('click')
   await nextTick()
 }
 
@@ -141,15 +150,12 @@ describe('1. 최초 실행 → 기본 라이브러리 생성', () => {
     await openDrawer(session)
 
     /*
-     * M6-4 — 빈 타일을 누르면 재생이 아니라 편집 오버레이가 열린다.
-     *
-     * 비활성 타일은 막다른 길이다. 레코드를 넣을 곳으로 데려가는 쪽이 맞다.
-     * 드로어의 `▶ 목록 전체 재생` 은 그대로 비활성이다.
+     * M7 — 타일의 `▶`(전체 재생)가 비활성이고, 본문은 트랙 편집을 연다.
+     * 드로어의 `▶ 목록 전체 재생` 도 그대로 비활성이다.
      */
-    const tile = session.wrapper.get('.playlist-play')
-    expect(tile.attributes('aria-label')).toContain('열기')
+    expect(session.wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
 
-    await tile.trigger('click')
+    await session.wrapper.get('.playlist-open').trigger('click')
     await nextTick()
 
     expect(session.playback.queue).toEqual([])
@@ -411,7 +417,8 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
 
   it('닫으면 포커스가 트리거로 돌아온다', async () => {
     const session = boot()
-    const trigger = session.wrapper.get(`.deck-open--${session.theme.current}`)
+    // M7: 드로어를 여는 트리거는 플레이리스트 타일 본문이다.
+    const trigger = session.wrapper.get('.playlist-tile .playlist-open')
     ;(trigger.element as HTMLElement).focus()
 
     await trigger.trigger('click')
@@ -423,6 +430,19 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
     await flushPromises()
 
     expect(document.activeElement).toBe(trigger.element)
+  })
+
+  it('데크를 누르면 드로어가 아니라 플레이리스트 위젯이 펼쳐진다 (M7)', async () => {
+    const session = boot()
+    const deck = session.wrapper.get(`.deck-open--${session.theme.current}`)
+
+    expect(session.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+
+    await deck.trigger('click')
+    await nextTick()
+
+    expect(session.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+    expect(session.wrapper.get('#record-library-drawer').attributes('hidden')).toBeDefined()
   })
 })
 

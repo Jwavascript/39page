@@ -92,7 +92,18 @@ const placed = computed<PlacedWidget[]>(() =>
   grid-template-areas:
     'deck player clock'
     'deck player weather'
-    'mascot playlist .';
+    'deck player .'
+    'playlist mascot .';
+  /*
+   * 1·2 행은 **콘텐츠 높이**(`auto`)다. 그래야 시계와 날씨가 서로 붙는다.
+   * 3 행이 `1fr` 로 남은 높이를 모두 먹으므로 정보 열의 빈자리가 **아래**에
+   * 모인다 — 다른 위젯을 더할 자리다 (M7 요청 4).
+   *
+   * 이전에는 행이 둘뿐이어서 행 높이를 데크·플레이어가 지배했고, 시계가
+   * 1 행 위쪽에 붙은 뒤 **아래로 빈 공간이 생긴 다음** 날씨가 2 행 시작에
+   * 붙었다. 둘 사이가 벌어져 보인 원인이다.
+   */
+  grid-template-rows: auto auto 1fr auto;
   /*
    * 3열의 최소값이 둘 다 근거가 있는 값이다.
    *
@@ -119,14 +130,16 @@ const placed = computed<PlacedWidget[]>(() =>
 }
 
 /*
- * 플레이리스트 위젯의 자리 (M6-4).
+ * 플레이리스트 위젯의 자리 (M6-4, M7 에서 이동).
  *
- * **플레이어와 같은 2열**, 그 아래 행이다. 3열(정보)까지 넓히지 않은 것은
- * 의도다 — 우측 오버레이 드로어가 3열 안에서 끝나므로, 플레이리스트를 2열에
- * 두면 **편집 오버레이가 열려 있어도 타일이 가려지지 않는다.** 오버레이에서
- * 한 목록을 편집하면서 다른 목록으로 건너갈 수 있다.
+ * **데크 바로 아래(1열)** 다. 데크를 누르면 이 위젯이 펼쳐지므로 둘이 붙어
+ * 있어야 무엇이 열렸는지 눈으로 따라갈 수 있다 (M7 요청 1·3). 마스코트는
+ * 2열 아래로 내려갔다.
  *
- * 폭이 플레이어 열(최소 360px)과 같으므로 타일이 두 칸 이상 들어간다.
+ * 3열(정보)을 비워 둔 것은 의도다 — 우측 오버레이 드로어가 3열 안에서
+ * 끝나므로, 플레이리스트가 1열에 있으면 **편집 오버레이가 열려 있어도 타일이
+ * 가려지지 않는다.** 오버레이에서 한 목록을 편집하면서 다른 목록으로 건너갈
+ * 수 있다.
  */
 
 /*
@@ -171,13 +184,29 @@ const placed = computed<PlacedWidget[]>(() =>
  */
 @media (max-width: 1100px) {
   .widget-host {
+    /*
+     * M7 요청 5 — 데크 옆(이전의 시계·날씨 자리)이 플레이리스트다.
+     * 시계·날씨는 플레이어 아래로 내려가 한 행을 나눠 쓴다.
+     */
     grid-template-areas:
-      'deck clock'
-      'deck weather'
+      'deck playlist'
       'player player'
-      'playlist playlist'
+      'clock weather'
       'mascot mascot';
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+
+  /*
+   * 플레이리스트가 **데크 높이를 넘지 않는다** (M7 요청 5).
+   *
+   * 행 높이는 데크가 정한다. 위젯을 그 행에 늘려 붙이면(`stretch`) 높이가
+   * 데크와 같아지고, 목록이 길면 위젯 **안에서** 스크롤한다. 높이를 숫자로
+   * 정하지 않으므로 화면 폭이 바뀌어도 따라간다.
+   */
+  .widget-host > [data-widget='playlist']:not(.is-collapsed) {
+    min-height: 0;
+    align-self: stretch;
   }
 
   /*
@@ -197,12 +226,12 @@ const placed = computed<PlacedWidget[]>(() =>
   }
 
   /*
-   * 2열이므로 세로 구분선을 유지한다. 데크와 정보 열 사이, 위 두 행에만 둔다.
-   * 단일 열이던 이전에는 가로선으로 바꿨지만(레퍼런스의 `.info` 전환) 이제는
-   * 열이 둘이라 세로선이 그 역할을 그대로 한다.
+   * 2열이므로 세로 구분선을 유지한다. 데크와 플레이리스트 사이, **첫 행**에만
+   * 둔다. 단일 열이던 이전에는 가로선으로 바꿨지만(레퍼런스의 `.info` 전환)
+   * 이제는 열이 둘이라 세로선이 그 역할을 그대로 한다.
    */
   .widget-host::before {
-    grid-row: 1 / 3;
+    grid-row: 1 / 2;
     grid-column: 2;
   }
 }

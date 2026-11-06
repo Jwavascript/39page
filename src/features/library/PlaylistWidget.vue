@@ -24,6 +24,7 @@ import { computed, inject, nextTick, ref } from 'vue'
 
 import PlaylistTile from '@/features/library/PlaylistTile.vue'
 import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
 import {
   PLAYBACK_COORDINATOR,
   type PlayRequestFailure,
@@ -39,6 +40,15 @@ const library = useLibraryStore()
  */
 const playback = inject(PLAYBACK_COORDINATOR, null)
 const drawer = inject(LIBRARY_DRAWER, null)
+
+/**
+ * 접힘/펼침 (M7 요청 1). 데크를 누르면 바뀐다.
+ *
+ * 주입되지 않으면 **펼쳐진 것으로 본다** — 위젯을 단독으로 마운트하는
+ * 테스트에서 타일이 접힌 채 숨지 않게 한다.
+ */
+const shelf = inject(PLAYLIST_SHELF, null)
+const isExpanded = computed<boolean>(() => shelf?.isExpanded.value ?? true)
 
 const isCreating = ref(false)
 const draftName = ref('')
@@ -132,12 +142,17 @@ function openPlaylist(id: string): void {
 </script>
 
 <template>
-  <section class="playlist-widget" aria-labelledby="playlist-widget-title">
+  <section
+    :id="shelf?.shelfId"
+    class="playlist-widget"
+    :class="{ 'is-collapsed': !isExpanded }"
+    aria-labelledby="playlist-widget-title"
+  >
     <div class="widget-head">
       <div>
         <h2 id="playlist-widget-title" class="widget-title">PLAYLISTS</h2>
         <!-- 무엇을 누르면 무슨 일이 일어나는지 화면에 적는다 (보고 6a). -->
-        <p class="widget-sub">누르면 전체 재생 · ⋯ 로 편집</p>
+        <p class="widget-sub">누르면 트랙 편집 · ▶ 로 전체 재생</p>
       </div>
       <button type="button" class="pill pill--strong" @click="startCreate">＋ 새 목록</button>
     </div>
@@ -291,6 +306,30 @@ function openPlaylist(id: string): void {
   min-height: 0;
   max-height: var(--size-playlist-max-height);
   overflow-y: auto;
+}
+
+/*
+ * 접힌 상태 (M7 요청 1). 타일 한 줄만 보인다.
+ *
+ * `display: none` 으로 숨기지 않는다. 접혀 있어도 타일이 보여야 무엇이
+ * 여기 있는지 알 수 있고, 데크를 누르면 펼쳐진다는 것도 짐작할 수 있다.
+ */
+.playlist-widget.is-collapsed .tile-scroll {
+  max-height: var(--size-playlist-collapsed-max-height);
+}
+
+/*
+ * 좁은 화면에서 펼치면 **데크 높이만큼** 쓴다 (M7 요청 5).
+ *
+ * 높이를 숫자로 정하지 않는다. `WidgetHost` 가 이 위젯을 데크와 같은 행에
+ * 늘려 붙이므로(`align-self: stretch`) 행 높이가 곧 데크 높이다. 그 안에서
+ * 목록이 길면 스크롤한다.
+ */
+@media (max-width: 1100px) {
+  .playlist-widget:not(.is-collapsed) .tile-scroll {
+    max-height: none;
+    flex: 1;
+  }
 }
 
 .tile-grid {
