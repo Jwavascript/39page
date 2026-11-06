@@ -18,6 +18,9 @@
 | M5       | UX, 반응형, 접근성, 통합 테스트 및 안정화                                  | 완료                           |
 | **M6**   | 실제 브라우저 검증 후속 (레이아웃·오버레이·플레이리스트 위젯)              | 완료                           |
 | **M7**   | 2차 실기기 검증 후속 (트리거 재배치·하단 시트·정보 열 정리)                | 구현 완료 — 실기기 재확인 대기 |
+| **M8**   | JSON 백업·복원                                                             | 설계 완료 (M8-1) — 구현 대기   |
+| M9       | Music Moments                                                              | 예정                           |
+| M10      | Chrome 확장을 통한 음악·Moment 수집                                        | 예정                           |
 
 ### M0 — 프로젝트 초기화 (완료)
 
@@ -102,6 +105,32 @@ M6 의 변경을 실기기에서 쓴 결과 보고된 5건을 다룬다.
 않는지다. 목록은 [`../development/M7_PLAN.md`](../development/M7_PLAN.md) §6.
 
 상세: [`../development/M6_PLAN.md`](../development/M6_PLAN.md)
+
+### M8 — JSON 백업·복원 (설계 완료, 구현 대기)
+
+계정·서버 없이 데이터를 꺼내고 되살린다. `localStorage` 는 origin 단위이므로
+브라우저 데이터 삭제·기기 이전·주소 변경에서 유실되는데, 파일이 그 셋을 모두
+해결한다.
+
+M8-1(설계)만 끝났다. 포맷·버전 정책·검증·데이터 보호는
+[`../architecture/BACKUP_FORMAT.md`](../architecture/BACKUP_FORMAT.md) 와
+**ADR 0018**, 사용자 기능은
+[`BACKUP_RESTORE.md`](BACKUP_RESTORE.md), 작업 분해는
+[`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md) M8.
+
+> ⚠ 작업 지시서의 **"M6"** 가 여기서는 **M8** 이다. M6·M7 은 실기기 검증
+> 후속에 이미 쓰였다. 우선순위와 분해는 지시서와 같다.
+
+### M9 — Music Moments (예정)
+
+영상의 한 순간(`videoId` + 시점 + 메모)을 저장한다. 도메인 모델은 M9 에서
+정한다. 백업 파일에는 **선택 섹션**으로 들어오며 파일 버전을 올리지 않는다
+(`BACKUP_FORMAT.md` §6).
+
+### M10 — Chrome 확장을 통한 수집 (예정)
+
+[`BACKLOG.md`](BACKLOG.md) §3. **백업 파일을 확장과의 실시간 동기화 수단으로
+쓰지 않는다** (ADR 0018 결정 12).
 
 ## 범위 외
 

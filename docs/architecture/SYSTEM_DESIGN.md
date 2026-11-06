@@ -769,6 +769,63 @@ moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
 
 `main.ts` 가 마운트 전에 `restore()` → `seedFirstRunPlaylist()` 순으로 부른다.
 
+### 7.3 테마 저장 — 구현 완료 (M1-3)
+
+```
+키: 39page.theme
+{ "version": 1, "data": "mono-vinyl" }
+```
+
+`validate` 가 `isThemeKey` 를 그대로 쓴다. 알 수 없는 키는 거부되고 기본
+테마로 복구되며 **저장소는 변경되지 않는다.**
+
+### 7.4 백업·복원 — 설계 완료 (M8-1), 미구현
+
+파일 스키마는 [`BACKUP_FORMAT.md`](BACKUP_FORMAT.md) 가, 결정과 대안은
+**ADR 0018** 이, 사용자 기능은
+[`../product/BACKUP_RESTORE.md`](../product/BACKUP_RESTORE.md) 가 갖는다.
+여기서는 **계층 책임**만 정한다.
+
+```
+ features/backup/                      ← M8 에서 새로 생긴다
+   createBackup(stores)  : 순수       → 백업 객체
+   readBackup(unknown)   : 순수       → { sections, warnings, errors }
+   downloadBackup(obj)   : 브라우저   → Blob + a[download]
+   pickBackupFile()      : 브라우저   → File
+        │                                   ▲
+        │ 읽기                               │ 검증 재사용
+        ▼                                   │
+ stores/library · stores/theme ──── normalizeLibraryData · isThemeKey
+        │
+        ▼
+ shared/storage (defineStorage) ──── localStorage
+```
+
+| 책임                 | 어디                      | 왜 거기인가                                                  |
+| -------------------- | ------------------------- | ------------------------------------------------------------ |
+| 파일 포맷 조립·해석  | `features/backup/` (순수) | 레이아웃 없는 환경에서 전수 검증할 수 있어야 한다            |
+| 파일 내려받기·고르기 | `features/backup/` (경계) | 브라우저 API 를 한 군데 모은다. 순수 로직과 섞지 않는다      |
+| **데이터 검증**      | **기존 store 의 검증기**  | 가져오기 전용 규칙을 만들면 M2 와 어긋난다 (ADR 0018 결정 2) |
+| 저장 쓰기            | store 액션                | `defineStorage` 를 우회해 `localStorage` 를 직접 쓰지 않는다 |
+| 보호 상태 우회       | `library.replaceAll`      | 명시적 승인을 받은 교체만. 평범한 수정 경로의 보호는 그대로  |
+
+**저장 계층은 바뀌지 않는다.** `defineStorage` 도 `STORAGE_KEYS` 도 건드리지
+않는다. 백업은 그 위에 **얹히는 기능**이고, 기존 보장(읽기는 쓰지 않는다,
+실패를 결과로 알린다)을 파일 경계 밖으로 확장한 것이다.
+
+| 기존 보장 (§7.1)            | 백업에서의 대응                                |
+| --------------------------- | ---------------------------------------------- |
+| 읽기는 저장소에 쓰지 않는다 | **승인 전까지 저장소에 쓰지 않는다**           |
+| 상위 버전은 되돌리지 않는다 | 상위 `schemaVersion`·상위 섹션 버전을 거부한다 |
+| 쓰기 실패를 결과로 알린다   | `quota-exceeded` 등을 그대로 사용자에게 옮긴다 |
+| 손상 원본을 덮어쓰지 않는다 | ADR 0007 유지. 단 **승인된 교체**는 허용한다   |
+
+여러 키에 걸친 원자성은 **약속하지 않는다.** `localStorage` 에 멀티키
+트랜잭션이 없으므로, 가치 순으로 쓰고(라이브러리 → 테마) 결과를 구분해
+알린다. 상세는 `BACKUP_FORMAT.md` §8-4.
+
+TODO: 내보내기·가져오기 UI 자리 (레퍼런스에 없다 — 규칙 6 확인 필요)
+
 ## 8. 외부 의존
 
 | 대상                      | 용도      | 키 필요            | 상태                   |

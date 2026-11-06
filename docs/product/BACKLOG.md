@@ -98,6 +98,16 @@ ADR 0013 이 미뤄 둔 항목이다. 승인된 디자인에 컨트롤이 없으
 
 TODO: 컨트롤 디자인 승인 · 시계 연동 여부 결정
 
+## 8-0. JSON 백업·복원 — **M8 로 승격 (설계 완료)**
+
+계정 없이 데이터를 꺼내고 되살리는 최소 기능. `POST_MVP_PLAN.md` §B.12 의
+**B-0** 이며, 의존성·서버·계정이 전혀 없다.
+
+설계는 끝났고 구현이 남았다 —
+[`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) ·
+[`../architecture/BACKUP_FORMAT.md`](../architecture/BACKUP_FORMAT.md) ·
+ADR 0018 · `IMPLEMENTATION_PLAN.md` M8.
+
 ## 8. 계정과 기기 간 동기화
 
 `MVP_SPEC.md` §3 의 제외 항목(서버 계정 시스템)이다.

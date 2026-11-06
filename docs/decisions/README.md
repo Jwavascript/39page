@@ -44,6 +44,7 @@
 | [0015](0015-deployment-target.md)             | 배포는 Cloudflare Workers Static Assets 로 하고 표준 origin 을 apex 하나로 고정한다  | 채택              |
 | [0016](0016-playlist-surface-split.md)        | 플레이리스트와 트랙을 두 표면으로 나누고, 플레이리스트는 위젯으로 꺼낸다             | 채택 (M7 개정)    |
 | [0017](0017-deck-transport.md)                | 데크에 그려진 트랜스포트를 네이티브 버튼으로 덮어 동작하게 한다                      | 채택              |
+| [0018](0018-json-backup-restore.md)           | JSON 백업 파일은 저장 봉투를 품고, 가져오기는 승인 전까지 읽기 전용이다              | 채택 (설계)       |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.
