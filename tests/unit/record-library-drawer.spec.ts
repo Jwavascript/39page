@@ -624,15 +624,33 @@ describe('C. 영속화와 보호', () => {
     expect(wrapper.find('.unsaved').exists()).toBe(false)
   })
 
-  it('24. 동작하지 않는 복구·초기화 버튼을 만들지 않는다', async () => {
+  /*
+   * M8-2 에서 전제가 바뀐 테스트다.
+   *
+   * 이전에는 보호 상태에 "복구" 라는 말이 붙은 버튼이 **하나도 없어야** 했다.
+   * ADR 0007 이 복구 UI 를 범위에서 뺐고, 없는 기능의 버튼을 만들지 않는다는
+   * 원칙 때문이다.
+   *
+   * 이제 `복구본 내보내기` 가 있고 **실제로 동작한다** — 읽지 못한 원본 대신
+   * 이번 세션의 내용을 파일로 꺼낸다. 그래서 "복구라는 말이 없다" 가 아니라
+   * **"있는 것은 동작한다"** 를 고정한다.
+   *
+   * 저장된 원본을 되살리거나 버리는 조작은 **아직 없다** (M8-3).
+   */
+  it('24. 보호 상태의 복구본 내보내기는 동작하고, 없는 기능의 버튼은 없다', async () => {
     seedRaw('{not json')
     const { wrapper } = mountApp()
     useLibraryStore().restore()
     await openDrawer(wrapper)
 
     const labels = wrapper.findAll('button').map((button) => button.text())
-    expect(labels.filter((label) => label.includes('복구'))).toEqual([])
-    expect(labels.filter((label) => label.includes('초기화'))).toEqual([])
+
+    expect(labels.filter((label) => label.includes('복구'))).toEqual(['복구본 내보내기'])
+    expect(wrapper.find('.backup').exists()).toBe(true)
+
+    for (const absent of ['초기화', '되살리', '가져오기', '불러오기']) {
+      expect(labels.filter((label) => label.includes(absent))).toEqual([])
+    }
   })
 })
 

@@ -28,6 +28,9 @@
  * 트랙을 지운 뒤에는 **사실만** 알린다 (M3-5). 재생 중이던 곡이면 멈추는
  * 판단은 코디네이터가 한다.
  *
+ * M8-2 에서 바닥에 `BackupPanel` 이 들어왔다. 이 컴포넌트는 백업을 모른다 —
+ * 자리만 내어 준다.
+ *
  * 가시성 때문에 거절된 경우도 **여기서 말한다** (M7-1). M6-5 에서 "플레이어가
  * 항상 보이므로 플레이어의 `.status` 하나면 된다" 고 지웠는데, 세로 화면의
  * 시트가 플레이어를 덮을 수 있게 되면서 그 근거가 무너졌다 — 덮이면 그 안내도
@@ -35,6 +38,7 @@
  */
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
+import BackupPanel from '@/features/backup/BackupPanel.vue'
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import TrackList from '@/features/library/TrackList.vue'
 import { LIBRARY_DRAWER } from '@/features/library/drawerController'
@@ -518,6 +522,12 @@ watch(
         @remove="removeTrack"
         @rename="renameTrack"
       />
+
+      <!--
+        JSON 백업 (M8-2). 편집 영역과 **선으로 끊고 다른 머리말**을 둔다 —
+        이 목록을 고치는 일과 앱 전체 데이터를 파일로 꺼내는 일은 성격이 다르다.
+      -->
+      <BackupPanel />
     </div>
 
     <p class="drawer-foot">

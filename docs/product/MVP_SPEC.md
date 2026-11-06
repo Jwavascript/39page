@@ -37,8 +37,8 @@ TODO: 대상 사용자 확정
 | F8  | 도트 마스코트     | 테마별 메시지, 재생 중 호흡 애니메이션             | v09           | 완료 (M4)                             |
 | F9  | 설정 로컬 저장    | 라이브러리 + 선택 테마 영속화                      | v08 / v09     | 완료 (M1-1 · M1-3 · M2-1)             |
 
-Post-MVP 기능(F10 이후)은
-[`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) 에 있다.
+Post-MVP 기능(F10 이후)은 [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md) 에 있다.
+F10(JSON 내보내기)은 M8-2 에서 구현됐다.
 
 ---
 
