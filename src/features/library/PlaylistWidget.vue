@@ -124,16 +124,22 @@ function report(result: PlayRequestResult | undefined): void {
 }
 
 /**
- * 타일 누름 — 그 목록 전체 재생.
+ * 타일의 `▶` — 그 목록 전체 재생.
  *
  * **재생하는 목록을 선택 상태로 맞춘다.** 그래야 편집 오버레이와 데크의 ▶ 가
  * 지금 울리는 목록을 가리킨다. 코디네이터는 선택을 바꾸지 않는다.
+ *
+ * 편집 시트가 열려 있으면 **먼저 비켜달라고 한다** (M7-2). 세로 화면에서는
+ * 시트가 플레이어를 덮고 있을 수 있고, 그 상태로 요청하면 거절된다.
  */
 function playPlaylist(id: string): void {
   notice.value = ''
   if (id !== library.selectedPlaylistId) library.selectPlaylist(id)
 
-  report(playback?.playPlaylist(id))
+  void (async () => {
+    await drawer?.stepAside()
+    report(playback?.playPlaylist(id))
+  })()
 }
 
 /** `⋯` 누름 — 그 목록을 선택하고 편집 오버레이를 연다. */

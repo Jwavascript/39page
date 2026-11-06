@@ -23,6 +23,7 @@ import { computed, inject, ref, type ComputedRef } from 'vue'
 
 import { usePlaybackStore } from '@/stores/playback'
 import { useLibraryStore } from '@/stores/library'
+import { LIBRARY_DRAWER } from '@/features/library/drawerController'
 
 import {
   PLAYBACK_COORDINATOR,
@@ -90,6 +91,14 @@ export function useDeckTransport(): DeckTransportModel {
    */
   const coordinator = inject(PLAYBACK_COORDINATOR, null)
 
+  /**
+   * 재생 전에 레코드 시트를 비켜달라고 부탁하는 통로 (M7-2).
+   *
+   * 계약 파일만 가져온다. 세로 화면에서 시트가 플레이어를 덮고 있으면 데크의
+   * ▶ 도 거절되므로, 세 표면이 모두 같은 길을 쓴다.
+   */
+  const drawer = inject(LIBRARY_DRAWER, null)
+
   const refusal = ref('')
   const notice = computed<string>(() => refusal.value)
 
@@ -115,19 +124,25 @@ export function useDeckTransport(): DeckTransportModel {
   function play(): void {
     refusal.value = ''
 
-    // 큐가 있으면 트랜스포트와 같은 동작이다. 가시성 판단은 코디네이터가 한다.
-    if (hasQueue.value) {
-      coordinator?.togglePlay()
-      return
-    }
-
     const selectedId = library.selectedPlaylistId
-    if (selectedId === null) {
+    if (!hasQueue.value && selectedId === null) {
       refusal.value = REFUSED_MESSAGE['playlist-not-found']
       return
     }
 
-    report(coordinator?.playPlaylist(selectedId))
+    void (async () => {
+      // 시트가 플레이어를 덮고 있으면 먼저 비켜준다 (M7-2).
+      await drawer?.stepAside()
+
+      // 큐가 있으면 트랜스포트와 같은 동작이다. 가시성 판단은 코디네이터가 한다.
+      if (hasQueue.value) {
+        coordinator?.togglePlay()
+        return
+      }
+      if (selectedId === null) return
+
+      report(coordinator?.playPlaylist(selectedId))
+    })()
   }
 
   function pause(): void {

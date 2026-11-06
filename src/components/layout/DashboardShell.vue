@@ -136,11 +136,27 @@ async function closeDrawer(): Promise<void> {
   lastTrigger = null
 }
 
+/**
+ * 재생 전에 시트를 비켜준다 (M7-2).
+ *
+ * 가리고 있을 때만 닫는다. 넓은 화면에서는 드로어가 플레이어를 가리지 않으므로
+ * 편집 맥락을 유지한다.
+ *
+ * `closeDrawer()` 가 닫은 뒤 가림을 0 으로 다시 알리므로, 이 함수를 기다린
+ * 호출부는 **가림이 걷힌 상태에서** 재생을 요청하게 된다.
+ */
+async function stepAside(): Promise<void> {
+  if (!isDrawerOpen.value || !isSheetLayout()) return
+
+  await closeDrawer()
+}
+
 const controller: LibraryDrawerController = {
   isOpen: readonly(isDrawerOpen),
   drawerId: DRAWER_ID,
   open: openDrawer,
   close: () => void closeDrawer(),
+  stepAside,
 }
 provide(LIBRARY_DRAWER, controller)
 

@@ -16,7 +16,7 @@ import { resolve } from 'node:path'
 
 import { nextTick } from 'vue'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -1081,6 +1081,134 @@ describe('D. 드로어 연동', () => {
     expect(context.playback.playerState).toBe('playing')
   })
 
+  /*
+   * M7-2 — 실기기 보고: "트랙 중에 두 번째 곡으로 변경하고 싶어서 재생을
+   * 눌러도 저 오류가 나서 영상이 바뀌지 않아."
+   *
+   * 안내가 맞는 말이어도 사용자가 할 일이 남으면 막힌 것이다. 재생을 누르면
+   * 시트가 **먼저 비켜주고** 재생한다.
+   */
+  it('시트 안에서 트랙 ▶ 를 누르면 시트가 닫히고 재생된다 (M7-2)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+    // 시트가 플레이어를 규정 이상으로 덮는다.
+    setRectOverride('#record-library-drawer', sheetRect(528))
+
+    await editorTrigger(context.wrapper).trigger('click')
+    await nextTick()
+    await nextTick()
+
+    await context.wrapper.get('.track-play').trigger('click')
+    await flushPromises()
+
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.fake.calls.load).toEqual([{ videoId: VIDEOS[0], autoplay: true }])
+  })
+
+  it('재생 중에 다른 트랙으로 바꿀 수 있다 (M7-2, 보고된 시나리오)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+
+    // 1곡을 재생 중이다.
+    await context.wrapper.get('.playlist-play').trigger('click')
+    await flushPromises()
+    context.fake.emitReady()
+    context.fake.emitStateChange('playing')
+    await nextTick()
+    expect(context.fake.calls.load).toHaveLength(1)
+
+    // 시트를 열어 트랙 목록을 본다. 영상이 덮여 일시정지된다.
+    setRectOverride('#record-library-drawer', sheetRect(528))
+    await editorTrigger(context.wrapper).trigger('click')
+    await nextTick()
+    await nextTick()
+    expect(context.fake.calls.pause).toBe(1)
+
+    // 두 번째 곡의 ▶ 를 누른다.
+    await context.wrapper.findAll('.track-play')[1]?.trigger('click')
+    await flushPromises()
+
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.playback.queueIndex).toBe(1)
+    expect(context.fake.calls.load[1]).toEqual({ videoId: VIDEOS[1], autoplay: true })
+  })
+
+  it('시트 안에서 목록 전체 재생도 시트를 닫고 재생한다 (M7-2)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+    setRectOverride('#record-library-drawer', sheetRect(528))
+
+    await editorTrigger(context.wrapper).trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const playAll = context.wrapper
+      .findAll('.drawer-actions button')
+      .find((button) => button.text().includes('목록 전체 재생'))
+    await playAll?.trigger('click')
+    await flushPromises()
+
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.playback.queue).toHaveLength(3)
+    expect(context.fake.calls.load).toHaveLength(1)
+  })
+
+  it('타일의 ▶ 도 시트를 닫고 재생한다 (M7-2)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+    setRectOverride('#record-library-drawer', sheetRect(528))
+
+    await editorTrigger(context.wrapper).trigger('click')
+    await nextTick()
+    await nextTick()
+
+    await context.wrapper.get('.playlist-play').trigger('click')
+    await flushPromises()
+
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.fake.calls.load).toHaveLength(1)
+  })
+
+  it('데크의 ▶ 도 같은 길을 쓴다 (M7-2)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+    setRectOverride('#record-library-drawer', sheetRect(528))
+
+    await editorTrigger(context.wrapper).trigger('click')
+    await nextTick()
+    await nextTick()
+
+    await context.wrapper.get('.deck-key--mono-vinyl').trigger('click')
+    await flushPromises()
+
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.fake.calls.load).toHaveLength(1)
+  })
+
+  /*
+   * 넓은 화면에서는 드로어가 플레이어를 가리지 않는다. 닫으면 편집 중인
+   * 맥락을 괜히 잃는다.
+   */
+  it('넓은 화면에서는 재생해도 드로어가 닫히지 않는다 (M7-2)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(false)
+    const context = await seedPlaying()
+
+    await editorTrigger(context.wrapper).trigger('click')
+    await nextTick()
+
+    await context.wrapper.get('.track-play').trigger('click')
+    await flushPromises()
+
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
+    expect(context.fake.calls.load).toHaveLength(1)
+  })
+
   it('시트를 닫으면 가림이 걷히고 안내가 지워진다 (M7-1)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
@@ -1239,7 +1367,13 @@ describe('D. 드로어 연동', () => {
     expect(context.playback.statusMessage).toContain('화면에 보이지 않아')
     // 누른 자리의 안내 — 시트 안이므로 항상 읽힌다.
     expect(context.wrapper.get('.play-notice').text()).toContain('영상이 가려져')
-    expect(context.wrapper.get('.play-notice').text()).toContain('이 창을 닫거나')
+    /*
+     * "창을 닫으세요" 라고 말하지 않는다 (M7-2). 재생을 누르면 시트가 스스로
+     * 비켜주므로 닫는 것은 사용자가 할 일이 아니고, 위젯·데크에서 눌렀을 때는
+     * 닫을 창이 없을 수도 있다.
+     */
+    expect(context.wrapper.get('.play-notice').text()).not.toContain('창을 닫')
+    expect(context.wrapper.get('.play-notice').text()).toContain('보이는 곳으로')
     expect(context.playback.queue).toEqual([])
     expect(context.fake.calls.load).toEqual([])
   })

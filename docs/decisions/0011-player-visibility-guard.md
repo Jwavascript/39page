@@ -192,6 +192,11 @@ measurePlayerVisibility(rect, { width, height, obstructedBottom })
 - **거절 안내가 누른 자리로 돌아왔다.** M6-5 에서 "플레이어는 가려지지 않으니
   `.status` 하나면 된다" 고 지웠는데, 덮이면 그 안내도 함께 덮인다. 세 표면
   (시트 · 위젯 · 데크)이 `PLAY_REFUSED_HIDDEN_MESSAGE` 를 공유한다
+- **M7-2: 재생을 요청하는 쪽이 먼저 시트에 비켜달라고 한다**
+  (`LibraryDrawerController.stepAside()`). 안내가 맞는 말이어도 사용자가 할 일이
+  남으면 막힌 것이다 — 트랙을 고르는 자리가 바로 시트 안인데 그 시트가 거절의
+  원인이었다. 요청이 **동기**이므로 코디네이터 안에서 기다릴 수 없고, 호출부가
+  요청 전에 기다린다 (`M7_PLAN.md` §4-2)
 
 넓은 화면의 보장은 그대로다. 우측 드로어가 정보 열 안에서 끝나므로 가림이
 0 이고, `DashboardShell` 도 좁은 화면에서만 가림을 알린다.

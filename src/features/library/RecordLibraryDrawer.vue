@@ -37,6 +37,7 @@ import { computed, inject, nextTick, ref, watch } from 'vue'
 
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import TrackList from '@/features/library/TrackList.vue'
+import { LIBRARY_DRAWER } from '@/features/library/drawerController'
 import {
   PLAYBACK_COORDINATOR,
   PLAY_REFUSED_HIDDEN_MESSAGE,
@@ -59,6 +60,15 @@ const library = useLibraryStore()
  * 않는다 — 드로어를 단독으로 마운트하는 테스트를 위한 기본값이다.
  */
 const playback = inject(PLAYBACK_COORDINATOR, null)
+
+/**
+ * 재생 전에 비켜달라고 부탁하는 통로 (M7-2).
+ *
+ * 열림 상태는 `open` prop 으로 받지만, **스스로 비켜주는 일**은 셸이 해야 한다
+ * — 가리는지 아닌지는 브레이크포인트를 아는 쪽만 판단할 수 있다.
+ * 주입되지 않으면 비켜주지 않는다 (단독 마운트 테스트).
+ */
+const drawer = inject(LIBRARY_DRAWER, null)
 
 const closeButton = ref<HTMLButtonElement | null>(null)
 
@@ -265,12 +275,30 @@ function confirmDelete(): void {
 
 /* ---------- 재생 요청 ---------- */
 
+/**
+ * 재생을 요청하기 전에 **시트를 비켜준다** (M7-2).
+ *
+ * 세로 화면에서 이 드로어가 플레이어를 덮고 있으면 가드가 거절한다. 사용자가
+ * 안내를 읽고 직접 닫는 대신 그냥 닫히고 재생되기를 원했다.
+ *
+ * 비켜준 **뒤에** 요청한다. 순서가 중요하다 — 같은 틱에 요청하면 가림이 아직
+ * 0 으로 보고되지 않아 그대로 거절된다.
+ *
+ * 넓은 화면에서는 `stepAside()` 가 아무 일도 하지 않으므로 드로어가 열린 채로
+ * 남는다.
+ */
+async function playAfterStepAside(request: () => PlayRequestResult | undefined): Promise<void> {
+  await drawer?.stepAside()
+
+  reportPlayRequest(request())
+}
+
 /** 지금 선택된 목록을 처음부터 재생한다. */
 function requestPlaySelected(): void {
   const current = library.selectedPlaylist
   if (current === null) return
 
-  reportPlayRequest(playback?.playPlaylist(current.id))
+  void playAfterStepAside(() => playback?.playPlaylist(current.id))
 }
 
 /**
@@ -282,7 +310,7 @@ function requestPlayTrack(trackId: string): void {
   const current = library.selectedPlaylist
   if (current === null) return
 
-  reportPlayRequest(playback?.playTrack(current.id, trackId))
+  void playAfterStepAside(() => playback?.playTrack(current.id, trackId))
 }
 
 /** 선택된 목록을 재생할 수 있는지. 빈 목록은 재생할 수 없다. */
