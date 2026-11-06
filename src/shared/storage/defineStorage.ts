@@ -92,6 +92,28 @@ export interface TypedStorage<T> {
   readonly version: number
   read(): ReadResult<T>
   write(value: T): WriteResult
+
+  /**
+   * 저장된 **원문** 그대로. 값이 없거나 저장소를 쓸 수 없으면 `null` (M8-3).
+   *
+   * 왜 필요한가: 해석하지 못한 원본을 사용자에게 **파일로 넘겨주기** 위해서다.
+   * 백업 가져오기가 보호 상태의 원본을 덮어쓰기 전에 "원문 내려받기" 를
+   * 제공하는데, 우리가 파싱하지 못한 문자열이므로 `read()` 로는 꺼낼 수 없다.
+   *
+   * 읽기 전용이고 저장소를 바꾸지 않는다. 매체를 아는 쪽이 이 계층이므로
+   * 호출부가 `localStorage` 를 직접 만지지 않아도 된다
+   * (`SYSTEM_DESIGN.md` §7.4).
+   */
+  raw(): string | null
+
+  /**
+   * 저장소에 **접근할 수 있는지** (M8-3).
+   *
+   * `raw()` 의 `null` 은 "값이 없다" 와 "저장소를 못 쓴다" 를 구분하지
+   * 못한다. 그 둘은 데이터 보호 판단이 달라진다 — 값이 없으면 덮어쓸 것이
+   * 없고, 못 쓰는 상태면 원본을 꺼낼 수도 없다.
+   */
+  available(): boolean
 }
 
 /**
@@ -227,5 +249,29 @@ export function defineStorage<T>(options: DefineStorageOptions<T>): TypedStorage
     }
   }
 
-  return { key, version, read, write }
+  function raw(): string | null {
+    const backend = getBackend()
+    if (backend === null) return null
+
+    try {
+      return backend.getItem(key)
+    } catch {
+      return null
+    }
+  }
+
+  function available(): boolean {
+    const backend = getBackend()
+    if (backend === null) return false
+
+    try {
+      // 접근 자체가 던지는 환경이 있다. 읽어 봐야 알 수 있다.
+      backend.getItem(key)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  return { key, version, read, write, raw, available }
 }

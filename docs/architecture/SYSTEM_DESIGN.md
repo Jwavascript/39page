@@ -779,7 +779,7 @@ moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
 `validate` 가 `isThemeKey` 를 그대로 쓴다. 알 수 없는 키는 거부되고 기본
 테마로 복구되며 **저장소는 변경되지 않는다.**
 
-### 7.4 백업·복원 — 설계 완료 (M8-1), 미구현
+### 7.4 백업·복원 — 구현 완료 (M8-2 내보내기 · M8-3 가져오기)
 
 파일 스키마는 [`BACKUP_FORMAT.md`](BACKUP_FORMAT.md) 가, 결정과 대안은
 **ADR 0018** 이, 사용자 기능은
@@ -787,27 +787,30 @@ moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
 여기서는 **계층 책임**만 정한다.
 
 ```
- features/backup/                      ← M8 에서 새로 생긴다
-   createBackup(stores)  : 순수       → 백업 객체
-   readBackup(unknown)   : 순수       → { sections, warnings, errors }
-   downloadBackup(obj)   : 브라우저   → Blob + a[download]
-   pickBackupFile()      : 브라우저   → File
+ features/backup/
+   createBackup(source)  : 순수       → 백업 객체
+   readBackup(text)      : 순수       → { library, theme, warnings } | { error }
+   downloadText(text)    : 브라우저   → Blob + a[download]
+   useBackupExport()     : 뷰 모델    → 내보내기 흐름
+   useBackupImport()     : 뷰 모델    → 미리보기 · 지문 · 적용
         │                                   ▲
         │ 읽기                               │ 검증 재사용
         ▼                                   │
  stores/library · stores/theme ──── normalizeLibraryData · isThemeKey
-        │
-        ▼
- shared/storage (defineStorage) ──── localStorage
+        │  replaceAll / setTheme                  libraryReplaced()
+        ▼                                             ▼
+ shared/storage (defineStorage) ─ localStorage    Playback Coordinator
 ```
 
-| 책임                 | 어디                      | 왜 거기인가                                                  |
-| -------------------- | ------------------------- | ------------------------------------------------------------ |
-| 파일 포맷 조립·해석  | `features/backup/` (순수) | 레이아웃 없는 환경에서 전수 검증할 수 있어야 한다            |
-| 파일 내려받기·고르기 | `features/backup/` (경계) | 브라우저 API 를 한 군데 모은다. 순수 로직과 섞지 않는다      |
-| **데이터 검증**      | **기존 store 의 검증기**  | 가져오기 전용 규칙을 만들면 M2 와 어긋난다 (ADR 0018 결정 2) |
-| 저장 쓰기            | store 액션                | `defineStorage` 를 우회해 `localStorage` 를 직접 쓰지 않는다 |
-| 보호 상태 우회       | `library.replaceAll`      | 명시적 승인을 받은 교체만. 평범한 수정 경로의 보호는 그대로  |
+| 책임                 | 어디                            | 왜 거기인가                                                  |
+| -------------------- | ------------------------------- | ------------------------------------------------------------ |
+| 파일 포맷 조립·해석  | `features/backup/` (순수)       | 레이아웃 없는 환경에서 전수 검증할 수 있어야 한다            |
+| 파일 내려받기·고르기 | `features/backup/` (경계)       | 브라우저 API 를 한 군데 모은다. 순수 로직과 섞지 않는다      |
+| **데이터 검증**      | **기존 store 의 검증기**        | 가져오기 전용 규칙을 만들면 M2 와 어긋난다 (ADR 0018 결정 2) |
+| 저장 쓰기            | store 액션                      | `defineStorage` 를 우회해 `localStorage` 를 직접 쓰지 않는다 |
+| 보호 상태 우회       | `library.replaceAll`            | 명시적 승인을 받은 교체만. 평범한 수정 경로의 보호는 그대로  |
+| 원본 원문 꺼내기     | `TypedStorage.raw()`            | 해석하지 못한 문자열이므로 `read()` 로는 못 꺼낸다 (M8-3)    |
+| 교체 사실 통지       | `coordinator.libraryReplaced()` | 가져오기는 사실만 알리고 멈출지는 재생 쪽이 정한다 (규칙 4)  |
 
 **저장 계층은 바뀌지 않는다.** `defineStorage` 도 `STORAGE_KEYS` 도 건드리지
 않는다. 백업은 그 위에 **얹히는 기능**이고, 기존 보장(읽기는 쓰지 않는다,
@@ -824,7 +827,12 @@ moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
 트랜잭션이 없으므로, 가치 순으로 쓰고(라이브러리 → 테마) 결과를 구분해
 알린다. 상세는 `BACKUP_FORMAT.md` §8-4.
 
-TODO: 내보내기·가져오기 UI 자리 (레퍼런스에 없다 — 규칙 6 확인 필요)
+UI 자리는 **레코드 편집 시트 바닥의 `DATA` 패널**이다 (M8-2 에서 결정).
+레퍼런스에 없는 영역이므로 승인된 값을 바꾸지 않도록 드로어 토큰만 재사용한다.
+
+**저장 계층에 더한 것은 읽기 전용 두 메서드뿐이다** — `raw()` 와
+`available()`. `defineStorage` 의 쓰기 경로, 봉투 형태, `STORAGE_KEYS` 는
+그대로다.
 
 ## 8. 외부 의존
 

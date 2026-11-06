@@ -242,6 +242,22 @@ function failure(reason: LibraryMutationFailure): LibraryMutationResult {
   return { ok: false, reason }
 }
 
+/**
+ * `replaceAll` 의 결과 (M8-3).
+ *
+ * 평범한 액션과 모양이 다르다. 대상 id 가 없고, **저장 실패 이유를 그대로
+ * 돌려준다** — 가져오기가 "라이브러리는 반영됐지만 저장은 실패했다" 를 사용자에게
+ * 정확히 말해야 하기 때문이다.
+ */
+export interface LibraryReplaceResult {
+  /** 메모리 반영은 항상 성공한다. 이 값은 저장 여부가 아니다. */
+  readonly ok: true
+  /** 저장소에 반영됐는지. */
+  readonly persisted: boolean
+  /** 저장 실패 이유. 성공이면 `null`. */
+  readonly writeFailure: WriteFailureReason | null
+}
+
 /** 앞뒤 공백을 떼고 길이를 자른다. 공백뿐이면 `null`. */
 function normalizeName(name: string): string | null {
   const trimmed = name.trim()
@@ -524,6 +540,60 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /**
+   * 라이브러리를 **통째로 교체한다** (M8-3). ⚠ **보호 우회 경로다.**
+   *
+   * ADR 0007 은 `protected` / `unavailable` 에서 **평범한 수정**의 저장을
+   * 막는다. 읽지 못한 원본을 첫 쓰기로 잃지 않기 위해서다. 그 ADR 은 동시에
+   * 남겨 두었다:
+   *
+   * > "기존 데이터를 버리고 새로 시작" 같은 명시적 조작을 제공해야 한다.
+   * > 그 확인 UI 와 강제 초기화 액션은 이번 범위에 없다.
+   *
+   * 이 액션이 그 조작이다. **백업 가져오기 경로에서만 부른다** — 사용자가
+   * 미리보기를 보고 "교체하고 가져오기" 를 누른 뒤에만. 다른 곳에서 부르면
+   * ADR 0007 이 무의미해지므로 테스트로 호출 지점을 고정한다
+   * (`tests/unit/backup-import.spec.ts`).
+   *
+   * `persist()` 를 쓰지 않는다. 그 함수는 `canPersist` 로 막혀 있고, 막혀
+   * 있는 것이 평범한 경로에서는 옳다. 여기서는 **의도적으로** 그 문을 지난다.
+   *
+   * 저장이 실패하면 **`status` 를 바꾸지 않는다.** 원본이 아직 저장소에
+   * 그대로 있으므로 보호를 풀 이유가 없다. 메모리는 교체된 상태로 남고
+   * `persisted: false` 로 알린다.
+   *
+   * @param data **이미 검증된** `LibraryData`. 방어적으로 다시 정규화하지
+   *   않는다 — 호출부가 `normalizeLibraryData` 로 검증하고 사용자에게 버린
+   *   항목까지 보여준 뒤에 넘긴다. 여기서 또 버리면 사용자가 승인한 것과
+   *   저장되는 것이 달라진다.
+   */
+  function replaceAll(data: LibraryData): LibraryReplaceResult {
+    // 트랙 배열까지 복사한다. 호출부가 넘긴 객체와 store 가 참조를 공유하지 않는다.
+    items.value = data.playlists.map((playlist) => ({
+      ...playlist,
+      tracks: playlist.tracks.map((track) => ({ ...track })),
+    }))
+    selectedId.value = data.selectedPlaylistId
+
+    const result = libraryStorage.write({
+      playlists: items.value,
+      selectedPlaylistId: selectedId.value,
+    })
+
+    lastWriteFailure.value = result.ok ? null : result.reason
+
+    if (result.ok) {
+      /*
+       * 사용자가 원본을 버리기로 **결정했고** 그 결정이 저장됐다. 보호할
+       * 원본이 더는 없으므로 보호를 푼다.
+       */
+      status.value = 'ready'
+      protectedReason.value = null
+    }
+
+    return { ok: true, persisted: result.ok, writeFailure: result.ok ? null : result.reason }
+  }
+
+  /**
    * 최초 실행일 때만 기본 플레이리스트를 만든다.
    *
    * **`restore()` 와 분리된 별도 액션이다.** 복원이 저장소를 건드리지 않는다는
@@ -582,5 +652,8 @@ export const useLibraryStore = defineStore('library', () => {
     removeTrack,
     moveTrack,
     renameTrack,
+
+    // ⚠ 보호 우회. 백업 가져오기 경로에서만 부른다 (ADR 0007 · 0018).
+    replaceAll,
   }
 })

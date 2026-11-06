@@ -112,6 +112,9 @@ function errorMessage(info: PlayerErrorInfo): string {
 /** 재생 중인 트랙이 라이브러리에서 지워졌을 때 (`MVP_SPEC.md` F4). */
 const TRACK_REMOVED_MESSAGE = '재생 중이던 곡이 목록에서 삭제돼 재생을 멈췄습니다.'
 
+/** 라이브러리가 통째로 교체됐을 때 (M8-3). */
+const LIBRARY_REPLACED_MESSAGE = '백업을 복원해 재생을 멈췄습니다. 목록에서 다시 골라주세요.'
+
 export function createPlaybackCoordinator(): PlaybackCoordinator {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
@@ -438,6 +441,26 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     playback.setStatus(TRACK_REMOVED_MESSAGE, 'warning')
   }
 
+  /**
+   * 라이브러리가 통째로 교체됐다 (M8-3).
+   *
+   * 멈추고 **큐를 비운다.** `playback.reset()` 이 큐·현재 트랙·상태를 모두
+   * 안전한 빈 상태로 되돌리므로, 뒤이어 안내만 다시 세운다.
+   *
+   * 내부 플래그도 함께 되돌린다 — 이전 큐의 늦은 `ENDED` 가 새 상태를
+   * 건드리지 못하게 한다.
+   */
+  function libraryReplaced(): void {
+    adapter?.pause()
+
+    playback.reset()
+    hasStartedPlaying = false
+    awaitingUserAction = false
+    visibilityNotice = false
+
+    playback.setStatus(LIBRARY_REPLACED_MESSAGE)
+  }
+
   /** 플레이어가 곧 가려진다 (M3-4). 가려지기 **전에** 멈춘다. */
   function playerWillHide(): void {
     if (!isSounding()) return
@@ -543,6 +566,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     next,
     previous,
     trackRemoved,
+    libraryReplaced,
     playerWillHide,
     revalidatePlayerVisibility,
     setBottomObstruction,
