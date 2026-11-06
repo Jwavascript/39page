@@ -63,6 +63,34 @@ let active: StubRect = VISIBLE_RECT
 let original: typeof Element.prototype.getBoundingClientRect | null = null
 
 /**
+ * 선택자별 사각형 (M7-1).
+ *
+ * 하단 시트가 플레이어를 **얼마나** 덮는지 보려면 둘의 사각형이 달라야 한다.
+ * 기본 스텁은 모든 요소에 같은 값을 주므로 덮는 양을 표현할 수 없다.
+ */
+const overrides: { selector: string; rect: StubRect }[] = []
+
+/** 이 선택자에 맞는 요소만 다른 사각형을 갖게 한다. */
+export function setRectOverride(selector: string, rect: StubRect): void {
+  const existing = overrides.find((entry) => entry.selector === selector)
+  if (existing === undefined) {
+    overrides.push({ selector, rect })
+    return
+  }
+  existing.rect = rect
+}
+
+export function clearRectOverrides(): void {
+  overrides.length = 0
+}
+
+/** 뷰포트 하단 `height` px 를 덮는 전체 폭 시트. */
+export function sheetRect(height: number, viewportHeight = 768): StubRect {
+  const top = viewportHeight - height
+  return { width: 1024, height, top, left: 0, right: 1024, bottom: viewportHeight }
+}
+
+/**
  * 모든 요소가 같은 사각형을 돌려주게 한다.
  *
  * 측정 대상은 `.player-mount` 하나뿐이므로 요소를 가려 받을 필요가 없다.
@@ -74,7 +102,9 @@ export function installPlayerRect(rect: StubRect = VISIBLE_RECT): void {
   original = Element.prototype.getBoundingClientRect
 
   Element.prototype.getBoundingClientRect = function stubbed(this: Element): DOMRect {
-    const value = { ...active, x: active.left, y: active.top }
+    const override = overrides.find((entry) => this.matches(entry.selector))
+    const rect = override?.rect ?? active
+    const value = { ...rect, x: rect.left, y: rect.top }
     return { ...value, toJSON: () => value } as DOMRect
   }
 }
@@ -85,6 +115,7 @@ export function setPlayerRect(rect: StubRect): void {
 }
 
 export function uninstallPlayerRect(): void {
+  clearRectOverrides()
   if (original === null) return
 
   Element.prototype.getBoundingClientRect = original

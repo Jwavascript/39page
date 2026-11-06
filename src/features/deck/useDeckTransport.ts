@@ -26,6 +26,7 @@ import { useLibraryStore } from '@/stores/library'
 
 import {
   PLAYBACK_COORDINATOR,
+  PLAY_REFUSED_HIDDEN_MESSAGE,
   type PlayRequestFailure,
   type PlayRequestResult,
 } from '../playback/playbackCoordinator'
@@ -33,15 +34,15 @@ import {
 /**
  * 재생 요청이 거절됐을 때 데크 옆에 띄울 문구.
  *
- * `player-hidden` 이 **빈 문자열인 것은 의도다.** 그 경우에는 코디네이터가
- * 이미 플레이어의 `.status` 영역에 사유를 적는다 (`START_BLOCKED_MESSAGE`).
- * 같은 말을 두 곳에 띄우면 사용자가 서로 다른 두 문제로 읽는다.
+ * `player-hidden` 문구는 드로어·플레이리스트 위젯과 **공유한다** (M7-1).
+ * 세로 시트가 플레이어를 덮으면 플레이어의 `.status` 도 함께 덮이므로, 누른
+ * 자리에서 말해야 읽힌다.
  */
 const REFUSED_MESSAGE: Record<PlayRequestFailure, string> = {
   'empty-playlist': '이 목록에 아직 레코드가 없어요. 레코드를 먼저 추가해주세요.',
   'playlist-not-found': '재생할 목록을 먼저 선택해주세요.',
   'track-not-found': '재생할 트랙을 찾을 수 없어요.',
-  'player-hidden': '',
+  'player-hidden': PLAY_REFUSED_HIDDEN_MESSAGE,
 }
 
 export interface DeckTransportModel {

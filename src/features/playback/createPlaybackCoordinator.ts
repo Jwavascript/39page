@@ -128,6 +128,14 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   let presence: PlayerPresence | null = null
 
   /**
+   * 우리 UI 가 뷰포트 하단을 덮은 높이 (M7-1).
+   *
+   * 반응형이 아니다. 가리는 쪽(`DashboardShell`)이 숫자로 알려주고 측정에
+   * 그대로 넘긴다. 무엇이 가리는지는 모른다.
+   */
+  let bottomObstruction = 0
+
+  /**
    * 지금 트랙이 **한 번이라도 재생됐는지.**
    *
    * `ENDED` 를 받아도 이것이 `false` 면 다음 곡으로 넘기지 않는다.
@@ -171,12 +179,12 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   function startBlock(): PlayerHiddenReason | null {
     if (presence === null) return null
 
-    const first = presence.measure()
+    const first = presence.measure(bottomObstruction)
     if (first.ok) return null
     if (first.reason !== 'covered') return first.reason
 
     presence.reveal()
-    const second = presence.measure()
+    const second = presence.measure(bottomObstruction)
     return second.ok ? null : second.reason
   }
 
@@ -439,7 +447,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
   /** 가시성이 바뀌었을 수 있다. 다시 재서 필요하면 멈춘다 (M3-4). */
   function revalidatePlayerVisibility(): void {
-    const verdict = presence?.measure()
+    const verdict = presence?.measure(bottomObstruction)
     if (verdict === undefined) return
 
     if (verdict.ok) {
@@ -470,6 +478,23 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
    */
   function isSounding(): boolean {
     return playback.playerState === 'playing' || playback.playerState === 'loading'
+  }
+
+  /**
+   * 하단 가림 높이가 바뀌었다 (M7-1).
+   *
+   * 값이 같으면 아무 일도 하지 않는다 — `resize` 마다 같은 값이 들어올 수
+   * 있고, 그때마다 재측정하면 멈춘 이유를 덮어쓴다.
+   *
+   * 바뀌었으면 **즉시 다시 잰다.** 시트가 올라와 덮는 순간 멈춰야 하고,
+   * 닫혀 걷히는 순간 가시성 안내가 지워져야 한다. 되살려 재생하지는 않는다.
+   */
+  function setBottomObstruction(px: number): void {
+    const next = Math.max(0, px)
+    if (next === bottomObstruction) return
+
+    bottomObstruction = next
+    revalidatePlayerVisibility()
   }
 
   function attachAdapter(instance: PlayerAdapter, area?: PlayerPresence): PlayerAttachment {
@@ -520,6 +545,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     trackRemoved,
     playerWillHide,
     revalidatePlayerVisibility,
+    setBottomObstruction,
     attachAdapter,
   }
 }

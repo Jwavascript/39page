@@ -28,10 +28,10 @@
  * 트랙을 지운 뒤에는 **사실만** 알린다 (M3-5). 재생 중이던 곡이면 멈추는
  * 판단은 코디네이터가 한다.
  *
- * 가시성 때문에 거절된 경우는 **여기서 말하지 않는다** (M6-5). 그 사유는
- * 코디네이터가 플레이어의 `.status` 에 적는다. M3-4 에는 좁은 화면에서
- * 드로어가 플레이어를 **대체**했기 때문에 여기서 말해야 했지만, 지금은
- * 플레이어가 항상 보이므로 같은 말을 두 곳에 띄우는 것이 된다.
+ * 가시성 때문에 거절된 경우도 **여기서 말한다** (M7-1). M6-5 에서 "플레이어가
+ * 항상 보이므로 플레이어의 `.status` 하나면 된다" 고 지웠는데, 세로 화면의
+ * 시트가 플레이어를 덮을 수 있게 되면서 그 근거가 무너졌다 — 덮이면 그 안내도
+ * 함께 덮인다. 사용자가 보고 있는 곳에 있어야 읽힌다.
  */
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
@@ -39,6 +39,7 @@ import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import TrackList from '@/features/library/TrackList.vue'
 import {
   PLAYBACK_COORDINATOR,
+  PLAY_REFUSED_HIDDEN_MESSAGE,
   type PlayRequestFailure,
   type PlayRequestResult,
 } from '@/features/playback/playbackCoordinator'
@@ -94,13 +95,12 @@ const playbackNotice = ref('')
 /**
  * 거절 사유별 안내.
  *
- * `player-hidden` 이 **빈 문자열인 것은 의도다.** 그 사유는 플레이어의
- * `.status` 가 혼자 말한다 (위 모듈 주석). `PlaylistWidget` ·
- * `useDeckTransport` 도 같은 규칙을 쓴다 — 재생을 요청하는 세 표면이 모두
- * 같아야 사용자가 같은 사정을 두 가지 문제로 읽지 않는다.
+ * `player-hidden` 문구는 `PlaylistWidget` · `useDeckTransport` 와 **공유한다**
+ * (`PLAY_REFUSED_HIDDEN_MESSAGE`). 재생을 요청하는 세 표면이 같은 말을 해야
+ * 사용자가 같은 사정을 두 가지 문제로 읽지 않는다.
  */
 const PLAY_REFUSED_MESSAGE: Record<PlayRequestFailure, string> = {
-  'player-hidden': '',
+  'player-hidden': PLAY_REFUSED_HIDDEN_MESSAGE,
   'empty-playlist': '재생할 트랙이 없습니다.',
   'playlist-not-found': '대상을 찾을 수 없습니다.',
   'track-not-found': '대상을 찾을 수 없습니다.',

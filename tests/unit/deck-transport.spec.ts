@@ -217,7 +217,15 @@ describe('C. 거절 — 왜 안 되는지 알린다', () => {
     expect(notice(context).exists()).toBe(false)
   })
 
-  it('가려져서 거절된 경우에는 데크가 말하지 않는다 — 플레이어가 말한다', async () => {
+  /*
+   * M7-1 에서 뒤집힌 두 테스트다.
+   *
+   * M6-6 에는 가시성 사유를 데크가 말하지 않았다 — 플레이어의 `.status` 가
+   * 혼자 말했고, 플레이어는 가려지지 않는다는 전제가 있었다. 세로 시트가
+   * 플레이어를 덮을 수 있게 되면서 그 전제가 무너졌다. 덮이면 `.status` 도
+   * 함께 덮이므로, 누른 자리에서도 말해야 읽힌다.
+   */
+  it('가려져서 거절되면 데크와 플레이어가 함께 알린다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
@@ -225,13 +233,12 @@ describe('C. 거절 — 왜 안 되는지 알린다', () => {
 
     await cassettePlay(context).trigger('click')
 
-    // 같은 사유를 두 곳에 띄우면 서로 다른 두 문제로 읽힌다.
-    expect(notice(context).exists()).toBe(false)
+    expect(notice(context).text()).toContain('영상이 가려져')
     expect(context.playback.statusMessage).toContain('화면에 보이지 않아')
     expect(context.playback.queue).toEqual([])
   })
 
-  it('영역이 작아서 거절된 경우도 플레이어가 말한다', async () => {
+  it('영역이 작아서 거절된 경우도 같은 길로 알린다', async () => {
     const context = mountApp()
     seed(context.library)
     await nextTick()
@@ -239,7 +246,8 @@ describe('C. 거절 — 왜 안 되는지 알린다', () => {
 
     await cassettePlay(context).trigger('click')
 
-    expect(notice(context).exists()).toBe(false)
+    // 요청 결과는 둘 다 `player-hidden` 이다. 크기 사유는 플레이어가 자세히 말한다.
+    expect(notice(context).exists()).toBe(true)
     expect(context.playback.statusMessage).toContain('200×200')
   })
 })

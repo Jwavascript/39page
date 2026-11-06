@@ -27,6 +27,7 @@ import { LIBRARY_DRAWER } from '@/features/library/drawerController'
 import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
 import {
   PLAYBACK_COORDINATOR,
+  PLAY_REFUSED_HIDDEN_MESSAGE,
   type PlayRequestFailure,
   type PlayRequestResult,
 } from '@/features/playback/playbackCoordinator'
@@ -66,16 +67,18 @@ const FAILURE_MESSAGE: Record<string, string> = {
 /**
  * 재생 거절 안내.
  *
- * `player-hidden` 은 **비워 둔다.** 그 경우 코디네이터가 이미 플레이어의
- * `.status` 영역에 사유를 적는다 (`useDeckTransport` 와 같은 이유).
- * `empty-playlist` 는 빈 타일이 재생이 아니라 열기를 하므로 보통 닿지 않지만,
- * 마지막 트랙이 지워진 직후 같은 경계에서는 닿을 수 있다.
+ * `player-hidden` 문구는 드로어·데크와 **공유한다** (M7-1). 세로 시트가
+ * 플레이어를 덮으면 플레이어의 `.status` 도 함께 덮이므로, 누른 자리에서
+ * 말해야 읽힌다.
+ *
+ * `empty-playlist` 는 빈 타일의 `▶` 가 비활성이라 보통 닿지 않지만, 마지막
+ * 트랙이 지워진 직후 같은 경계에서는 닿을 수 있다.
  */
 const REFUSED_MESSAGE: Record<PlayRequestFailure, string> = {
   'empty-playlist': '이 목록에 아직 레코드가 없어요.',
   'playlist-not-found': '대상을 찾을 수 없습니다.',
   'track-not-found': '대상을 찾을 수 없습니다.',
-  'player-hidden': '',
+  'player-hidden': PLAY_REFUSED_HIDDEN_MESSAGE,
 }
 
 const hasPlaylists = computed<boolean>(() => library.playlists.length > 0)

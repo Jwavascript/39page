@@ -29,6 +29,7 @@ import {
   measurePlayerVisibility,
   MIN_PLAYER_SIZE_PX,
   watchPlayerVisibility,
+  type PlayerRect,
   type PlayerVisibility,
 } from '@/features/playback/playerVisibility'
 import { useLibraryStore } from '@/stores/library'
@@ -38,6 +39,8 @@ import { useThemeStore } from '@/stores/theme'
 import {
   HALF_VISIBLE_RECT,
   HIDDEN_RECT,
+  setRectOverride,
+  sheetRect,
   installMatchMedia,
   installPlayerRect,
   setPlayerRect,
@@ -159,6 +162,117 @@ describe('A. 측정 — measurePlayerVisibility', () => {
   })
 })
 
+describe('A3. 우리 UI 가 덮은 경우 (M7-1)', () => {
+  /*
+   * 세로 화면의 레코드 시트가 플레이어를 덮을 수 있게 됐다 (사용자 지시:
+   * "만약 유튜브 화면을 규정 이상으로 가리면 그냥 일시정지").
+   *
+   * **규정은 200×200 이다.** 새 비율 임계값을 만들지 않는다 — M6 에서 폐지한
+   * 휴리스틱이 되살아나기 때문이다. 공식 요구사항이 "임베드 플레이어는
+   * 200×200 이상의 뷰포트를 가져야 한다" 이므로, 우리가 그 아래로 덮어 버리면
+   * 요구사항을 우리 손으로 깬 것이다.
+   */
+  const viewport = { width: 1024, height: 768 }
+
+  /** 뷰포트 안에 완전히 들어오는 300×300 플레이어. top 100 ~ bottom 400. */
+  const rect: PlayerRect = {
+    width: 300,
+    height: 300,
+    top: 100,
+    left: 100,
+    right: 400,
+    bottom: 400,
+  }
+
+  it('가림이 없으면 그대로 허용한다', () => {
+    expect(measurePlayerVisibility(rect, { ...viewport, obstructedBottom: 0 })).toEqual({
+      ok: true,
+    })
+  })
+
+  it('가림 값을 주지 않아도 허용한다 — 기본은 0 이다', () => {
+    expect(measurePlayerVisibility(rect, viewport)).toEqual({ ok: true })
+  })
+
+  it('덮고 남은 높이가 200px 이면 허용한다 (경계)', () => {
+    // 시트 위쪽을 300 에 둔다 → 남는 높이는 100‥300 = 200px.
+    const obstructedBottom = viewport.height - 300
+
+    expect(measurePlayerVisibility(rect, { ...viewport, obstructedBottom })).toEqual({ ok: true })
+  })
+
+  it('덮고 남은 높이가 1px 모자라면 거절한다', () => {
+    const obstructedBottom = viewport.height - 299
+
+    expect(measurePlayerVisibility(rect, { ...viewport, obstructedBottom })).toEqual({
+      ok: false,
+      reason: 'covered',
+    })
+  })
+
+  it('절반쯤 덮으면 거절한다 — 비율이 아니라 남은 높이로 본다', () => {
+    // 150px 만 남는다. 비율로는 절반이지만 규정 미달이다.
+    const obstructedBottom = viewport.height - 250
+
+    expect(measurePlayerVisibility(rect, { ...viewport, obstructedBottom })).toEqual({
+      ok: false,
+      reason: 'covered',
+    })
+  })
+
+  it('완전히 덮으면 거절한다', () => {
+    expect(
+      measurePlayerVisibility(rect, { ...viewport, obstructedBottom: viewport.height }),
+    ).toEqual({ ok: false, reason: 'covered' })
+  })
+
+  it('`too-small` 이 아니라 `covered` 다 — 사용자가 할 일이 다르다', () => {
+    const verdict = measurePlayerVisibility(rect, {
+      ...viewport,
+      obstructedBottom: viewport.height - 100,
+    })
+
+    // 창을 키우는 것이 아니라 시트를 닫거나 스크롤해야 한다.
+    expect(verdict).toEqual({ ok: false, reason: 'covered' })
+  })
+
+  it('영역 자체가 200×200 미만이면 가림과 무관하게 `too-small` 이다', () => {
+    const small: PlayerRect = {
+      width: 180,
+      height: 180,
+      top: 10,
+      left: 10,
+      right: 190,
+      bottom: 190,
+    }
+
+    expect(measurePlayerVisibility(small, { ...viewport, obstructedBottom: 0 })).toEqual({
+      ok: false,
+      reason: 'too-small',
+    })
+  })
+
+  it('음수 가림은 0 으로 본다', () => {
+    expect(measurePlayerVisibility(rect, { ...viewport, obstructedBottom: -100 })).toEqual({
+      ok: true,
+    })
+  })
+
+  it('뷰포트 클리핑은 여전히 비율을 보지 않는다 (M6 유지)', () => {
+    // 아래쪽이 뷰포트 밖으로 나가 100px 만 남았다. 가림은 없다.
+    const hanging: PlayerRect = {
+      width: 300,
+      height: 300,
+      top: 668,
+      left: 100,
+      right: 400,
+      bottom: 968,
+    }
+
+    expect(measurePlayerVisibility(hanging, viewport)).toEqual({ ok: true })
+  })
+})
+
 describe('A2. 최소 크기의 CSS 보장 (M5)', () => {
   it('영상 영역의 최소 크기가 테두리를 더해 계산된다', () => {
     const source = readFileSync(
@@ -263,7 +377,13 @@ describe('B. 감시 — watchPlayerVisibility', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('reveal() 은 scrollIntoView 를 즉시 스크롤로 부른다', () => {
+  /*
+   * M7-1 에서 `block` 이 `'center'` → `'start'` 로 바뀌었다.
+   *
+   * 하단 시트가 열려 있으면 화면 가운데는 **시트 아래**다 — 끌어온 결과가
+   * 다시 덮인 자리가 된다. 위쪽에 붙이면 덮이지 않은 띠를 최대로 쓴다.
+   */
+  it('reveal() 은 scrollIntoView 를 즉시 스크롤로 위쪽에 붙여 부른다', () => {
     const element = document.createElement('div')
     document.body.append(element)
     const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>()
@@ -274,7 +394,7 @@ describe('B. 감시 — watchPlayerVisibility', () => {
 
     expect(scrollIntoView).toHaveBeenCalledWith({
       behavior: 'instant',
-      block: 'center',
+      block: 'start',
       inline: 'nearest',
     })
     watcher.stop()
@@ -324,8 +444,13 @@ function setupCoordinator(trackCount = 3) {
   let verdict: PlayerVisibility = { ok: true }
   /** `reveal()` 이 성공하면 끌어온 뒤 보이게 될지. */
   let revealWorks = false
+  /** 측정에 넘어온 하단 가림 높이 (M7-1). */
+  const measuredObstruction: (number | undefined)[] = []
   const presence = {
-    measure: () => verdict,
+    measure: (obstructedBottom?: number) => {
+      measuredObstruction.push(obstructedBottom)
+      return verdict
+    },
     reveal: vi.fn<() => void>(() => {
       if (revealWorks) verdict = { ok: true }
     }),
@@ -343,6 +468,7 @@ function setupCoordinator(trackCount = 3) {
     fake,
     attachment,
     presence,
+    measuredObstruction,
     playlistId,
     hide: (reason: 'covered' | 'too-small' = 'covered') => {
       verdict = { ok: false, reason }
@@ -674,6 +800,110 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
   })
 })
 
+describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
+  /*
+   * 세로 화면의 레코드 시트가 플레이어를 덮을 수 있게 됐다. 가리는 쪽만
+   * **얼마나** 가리는지 알 수 있으므로 숫자를 알린다. 판단은 재생 쪽이 한다.
+   */
+  it('알린 가림 높이를 측정에 그대로 넘긴다', () => {
+    const context = setupCoordinator()
+    context.coordinator.setBottomObstruction(420)
+    context.measuredObstruction.length = 0
+
+    context.coordinator.playPlaylist(context.playlistId)
+
+    expect(context.measuredObstruction).toContain(420)
+  })
+
+  it('알리지 않으면 0 으로 잰다', () => {
+    const context = setupCoordinator()
+    context.measuredObstruction.length = 0
+
+    context.coordinator.playPlaylist(context.playlistId)
+
+    expect(context.measuredObstruction.every((value) => value === 0)).toBe(true)
+  })
+
+  it('음수는 0 으로 본다', () => {
+    const context = setupCoordinator()
+    context.coordinator.setBottomObstruction(-50)
+    context.measuredObstruction.length = 0
+
+    context.coordinator.playPlaylist(context.playlistId)
+
+    expect(context.measuredObstruction).toContain(0)
+  })
+
+  it('같은 값을 다시 알리면 재측정하지 않는다', () => {
+    const context = playing(setupCoordinator())
+    context.coordinator.setBottomObstruction(300)
+    context.measuredObstruction.length = 0
+
+    context.coordinator.setBottomObstruction(300)
+
+    // 매 resize 마다 재측정하면 멈춘 이유를 덮어쓴다.
+    expect(context.measuredObstruction).toEqual([])
+  })
+
+  it('값이 바뀌면 즉시 다시 재고, 덮였으면 멈춘다', () => {
+    const context = playing(setupCoordinator())
+    // 시트가 올라와 영상을 덮었다.
+    context.hide('covered')
+
+    context.coordinator.setBottomObstruction(560)
+
+    expect(context.fake.calls.pause).toBe(1)
+    expect(context.playback.statusMessage).toContain('가려져 일시정지')
+  })
+
+  it('덮이지 않았으면 멈추지 않는다', () => {
+    const context = playing(setupCoordinator())
+
+    context.coordinator.setBottomObstruction(120)
+
+    expect(context.fake.calls.pause).toBe(0)
+    expect(context.playback.playerState).toBe('playing')
+  })
+
+  it('덮인 동안에는 재생을 시작하지 않는다', () => {
+    const context = setupCoordinator()
+    context.hide('covered')
+    context.coordinator.setBottomObstruction(560)
+
+    const result = context.coordinator.playPlaylist(context.playlistId)
+
+    expect(result).toEqual({ ok: false, reason: 'player-hidden' })
+    expect(context.playback.queue).toEqual([])
+  })
+
+  it('시트가 닫혀 가림이 걷히면 가시성 안내가 지워진다', () => {
+    const context = setupCoordinator()
+    context.hide('covered')
+    context.coordinator.setBottomObstruction(560)
+    context.coordinator.playPlaylist(context.playlistId)
+    expect(context.playback.statusMessage).not.toBe('')
+
+    // 시트를 닫았다. 다시 보인다.
+    context.show()
+    context.coordinator.setBottomObstruction(0)
+
+    expect(context.playback.statusMessage).toBe('')
+  })
+
+  it('가림이 걷혀도 자동으로 재생하지 않는다', () => {
+    const context = playing(setupCoordinator())
+    context.hide('covered')
+    context.coordinator.setBottomObstruction(560)
+    expect(context.fake.calls.pause).toBe(1)
+
+    context.show()
+    context.coordinator.setBottomObstruction(0)
+
+    // 보이게 됐다는 것만으로 소리를 내면 사용자가 의도하지 않은 재생이다.
+    expect(context.fake.calls.play).toBe(0)
+  })
+})
+
 describe('C3. 가드 — 가려지기 직전 통지', () => {
   it('재생 중이면 통지만으로 멈춘다 — 측정하지 않는다', () => {
     // 아직 보이는 상태다. 측정에 맡기면 "보인다" 가 나와 멈추지 않는다.
@@ -768,12 +998,43 @@ describe('D. 드로어 연동', () => {
    * 가려지기 전에 멈춰야 했다. 그 결과 세로 화면에서는 재생 경로가 사라졌고,
    * 실기기에서 "세로에서는 음악 재생이 불가능하다" 로 보고됐다.
    *
-   * 지금은 플레이어를 숨기지 않고 시트가 그 아래에서 올라온다. 가려지지
-   * 않으므로 멈출 이유가 없다. 이 테스트가 그 수정을 고정한다.
+   * 지금은 플레이어를 숨기지 않고 시트가 그 아래에서 올라온다. **덮지 않으면**
+   * 멈출 이유가 없다. 이 테스트가 그 수정을 고정한다.
+   *
+   * M7-1: 시트가 화면을 가릴 수 있게 됐다. 그래서 "드로어를 열면 멈추지
+   * 않는다" 가 아니라 **"덮지 않으면 멈추지 않는다"** 가 보장이다. 아래
+   * 두 테스트가 양쪽을 고정한다.
    *
    * M7: 드로어를 여는 트리거가 데크에서 **플레이리스트 타일 본문**으로 바뀌었다.
    */
-  it('좁은 화면에서 드로어를 열어도 재생이 끊기지 않는다 (M6-2)', async () => {
+  it('좁은 화면에서 시트가 영상을 덮지 않으면 재생이 끊기지 않는다', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+
+    // 플레이어는 top 120 ~ bottom 425 다. 시트를 그 아래에서만 올린다.
+    setRectOverride('#record-library-drawer', sheetRect(300))
+
+    context.wrapper.get('.playlist-play').trigger('click')
+    await nextTick()
+    context.fake.emitReady()
+    context.fake.emitStateChange('playing')
+    await nextTick()
+
+    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    expect(context.fake.calls.pause).toBe(0)
+    expect(context.playback.playerState).toBe('playing')
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
+  })
+
+  /*
+   * 사용자 지시 그대로다: "만약 유튜브 화면을 규정 이상으로 가리면 그냥
+   * 일시정지". 규정은 200×200 이고, 남은 높이가 그 아래면 멈춘다.
+   */
+  it('시트가 규정 이상으로 덮으면 일시정지한다 (M7-1)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
@@ -784,12 +1045,66 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
+    // 플레이어 위쪽 120px 만 남긴다 → 200px 미달이다.
+    setRectOverride('#record-library-drawer', sheetRect(528))
+
     await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
     await nextTick()
+    await nextTick()
 
+    expect(context.fake.calls.pause).toBe(1)
+    expect(context.playback.statusMessage).toContain('가려져 일시정지')
+    // 큐는 그대로다. 돌아와서 ▶ 를 누르면 이어서 재생된다.
+    expect(context.playback.queue).toHaveLength(3)
+  })
+
+  it('넓은 화면에서는 드로어가 측면 열이므로 가림을 알리지 않는다', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(false)
+    const context = await seedPlaying()
+
+    // 측면 열이어도 스텁 사각형은 화면 하단까지 내려와 있다.
+    setRectOverride('#record-library-drawer', sheetRect(700))
+
+    context.wrapper.get('.playlist-play').trigger('click')
+    await nextTick()
+    context.fake.emitReady()
+    context.fake.emitStateChange('playing')
+    await nextTick()
+
+    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    // 브레이크포인트가 넓으면 시트가 아니다. 덮는 것이 없다.
     expect(context.fake.calls.pause).toBe(0)
     expect(context.playback.playerState).toBe('playing')
-    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
+  })
+
+  it('시트를 닫으면 가림이 걷히고 안내가 지워진다 (M7-1)', async () => {
+    installPlayerRect(VISIBLE_RECT)
+    installMatchMedia(true)
+    const context = await seedPlaying()
+
+    context.wrapper.get('.playlist-play').trigger('click')
+    await nextTick()
+    context.fake.emitReady()
+    context.fake.emitStateChange('playing')
+    await nextTick()
+
+    setRectOverride('#record-library-drawer', sheetRect(528))
+    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await nextTick()
+    await nextTick()
+    expect(context.playback.statusMessage).not.toBe('')
+
+    await context.wrapper.get('.drawer .close').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    expect(context.playback.statusMessage).toBe('')
+    // 걷혔다고 자동으로 재생하지는 않는다.
+    expect(context.fake.calls.play).toBe(0)
   })
 
   it('데크를 눌러도 재생이 끊기지 않는다 — 선반만 펼친다 (M7)', async () => {
@@ -819,7 +1134,16 @@ describe('D. 드로어 연동', () => {
    * 바뀌었다. 겹치게 되었으므로 "같은 셀에 없다" 로는 더 이상 보장할 수 없다.
    * 대신 **플레이어를 시트 위에 붙여** 보장한다.
    */
-  it('좁은 화면에서 시트가 열려도 플레이어가 시트 위에 남는다', () => {
+  /*
+   * M7-1 에서 다시 쓴 테스트다.
+   *
+   * 한동안 `position: sticky` 로 플레이어를 시트 위에 붙여 겹침을 막았는데
+   * 되돌렸다. 짧은 화면에서는 남는 띠가 플레이어보다 얇아 보장이 성립하지
+   * 않는다. 사용자 지시도 "덮으면 그냥 일시정지" 다.
+   *
+   * 이제 보장은 **측정**이 진다. 레이아웃은 시트를 하단에 고정하기만 한다.
+   */
+  it('좁은 화면에서 시트가 화면을 가리고, 위젯을 숨기지 않는다', () => {
     const shell = readFileSync(
       resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
       'utf8',
@@ -830,21 +1154,15 @@ describe('D. 드로어 연동', () => {
     expect(compact).toContain('position: fixed')
     expect(compact).toContain('max-height: var(--size-sheet-height)')
 
-    // 플레이어는 그 위에 머문다. 덮인 채로 소리가 나면 III.I.9 위반이다.
-    expect(compact).toMatch(/\[data-widget='player'\]\) \{[\s\S]*?position: sticky[\s\S]*?top: 8px/)
-
-    /*
-     * 쌓임 순서는 **플레이어가 시트보다 높다.** sticky 가 기대대로 동작하지
-     * 않아 둘이 겹치면, 플레이어가 아래에 있으면 소리만 나는 상태가 된다.
-     * 위에 두면 시트가 가려져 보기 나쁠 뿐이다 — 안전한 쪽으로 깨지게 둔다.
-     */
-    const sheetZ = /> :last-child \{[\s\S]*?z-index: (\d+)/.exec(compact)?.[1]
-    const playerZ = /\[data-widget='player'\]\) \{[\s\S]*?z-index: (\d+)/.exec(compact)?.[1]
-    expect(Number(playerZ)).toBeGreaterThan(Number(sheetZ))
-
     // 위젯을 숨기지 않는다. 보던 화면 위로 시트가 올라온다.
     expect(compact).not.toContain(":deep(.widget-host > *:not([data-widget='player']))")
     expect(compact).not.toMatch(/> :first-child \{\s*display: none/)
+
+    // 플레이어를 피하게 하는 우회를 두지 않는다. 측정이 사실을 본다.
+    expect(compact).not.toContain('position: sticky')
+
+    // 시트에 영구히 묻히는 콘텐츠가 없어야 한다.
+    expect(compact).toContain('padding-bottom: calc(var(--size-sheet-height) + 18px)')
   })
 
   /*
@@ -897,43 +1215,62 @@ describe('D. 드로어 연동', () => {
   })
 
   /*
-   * M6-5 에서 뒤집힌 두 테스트다.
+   * 두 번 뒤집힌 테스트다.
    *
-   * 이전에는 드로어가 "닫고 ▶ 를 눌러주세요" 를 띄웠다. 좁은 화면에서 드로어가
+   * M3-4 에는 드로어가 "닫고 ▶ 를 눌러주세요" 를 띄웠다. 좁은 화면에서 드로어가
    * 플레이어를 **대체**했기 때문이고, 그때는 플레이어의 `.status` 가 함께
    * 숨었으므로 누른 자리에 띄워야 했다.
    *
-   * M6-2 부터 드로어는 플레이어를 가리지 않는다. 그래서 그 안내는 **틀린
-   * 조언**이 됐다 (닫을 필요가 없다). 가시성 사유는 플레이어의 `.status` 가
-   * 혼자 말한다 — 재생을 요청하는 세 표면(드로어 · 플레이리스트 위젯 · 데크)이
-   * 모두 같은 규칙을 쓴다.
+   * M6-5 에는 그 안내를 지웠다. 드로어가 플레이어를 가리지 않게 되어 조언이
+   * 틀렸고, 플레이어의 `.status` 하나로 충분했다.
+   *
+   * M7-1 에는 **되살렸다.** 세로 시트가 플레이어를 덮을 수 있게 되면서
+   * `.status` 도 함께 덮일 수 있다. 사용자가 보고 있는 곳에 있어야 읽힌다.
+   * 문구는 세 표면이 공유한다 (`PLAY_REFUSED_HIDDEN_MESSAGE`).
    */
-  it('가려진 상태에서 트랙 ▶ 를 누르면 플레이어가 이유를 알린다', async () => {
+  it('가려진 상태에서 트랙 ▶ 를 누르면 누른 자리와 플레이어가 함께 알린다', async () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
     await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
 
+    // 플레이어 쪽 안내 — 시트에 덮이면 읽히지 않을 수 있다.
     expect(context.playback.statusMessage).toContain('화면에 보이지 않아')
-    expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
-    // 같은 사유를 드로어에서 또 말하지 않는다.
-    expect(context.wrapper.find('.play-notice').exists()).toBe(false)
+    // 누른 자리의 안내 — 시트 안이므로 항상 읽힌다.
+    expect(context.wrapper.get('.play-notice').text()).toContain('영상이 가려져')
+    expect(context.wrapper.get('.play-notice').text()).toContain('이 창을 닫거나')
     expect(context.playback.queue).toEqual([])
     expect(context.fake.calls.load).toEqual([])
   })
 
-  it('가려진 상태에서 목록 전체 재생도 같은 곳에서 알린다', async () => {
+  it('가려진 상태에서 타일 ▶ 는 위젯에서 알린다', async () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
-    await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.playlist-play').trigger('click')
 
-    expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
-    expect(context.wrapper.find('.play-notice').exists()).toBe(false)
-    expect(context.wrapper.find('.widget-notice').exists()).toBe(false)
+    expect(context.wrapper.get('.widget-notice').text()).toContain('영상이 가려져')
     expect(context.playback.currentTrack).toBeNull()
+  })
+
+  it('세 표면이 같은 문구를 쓴다', async () => {
+    installPlayerRect(HIDDEN_RECT)
+    const context = await seedPlaying()
+
+    await context.wrapper.get('.playlist-play').trigger('click')
+    const widgetNotice = context.wrapper.get('.widget-notice').text()
+
+    await editorTrigger(context.wrapper).trigger('click')
+    await context.wrapper.get('.track-play').trigger('click')
+    const drawerNotice = context.wrapper.get('.play-notice').text()
+
+    await context.wrapper.get('.deck-key--kawaii-play').trigger('click')
+    const deckNotice = context.wrapper.get('.deck-notice').text()
+
+    // 같은 사정을 서로 다른 세 문제로 읽지 않게 한다.
+    expect(drawerNotice).toBe(widgetNotice)
+    expect(deckNotice).toBe(widgetNotice)
   })
 
   it('영역이 보이면 안내가 뜨지 않고 재생이 시작된다', async () => {
@@ -954,11 +1291,14 @@ describe('D. 드로어 연동', () => {
     await editorTrigger(context.wrapper).trigger('click')
     await context.wrapper.get('.track-play').trigger('click')
     expect(context.wrapper.get('.status').text()).toContain('화면에 보이지 않아')
+    expect(context.wrapper.find('.play-notice').exists()).toBe(true)
 
     setPlayerRect(VISIBLE_RECT)
     await context.wrapper.get('.track-play').trigger('click')
 
     expect(context.wrapper.get('.status').text()).toBe('')
+    // 누른 자리의 안내도 성공과 함께 지워진다.
+    expect(context.wrapper.find('.play-notice').exists()).toBe(false)
   })
 
   it('드로어를 빠르게 여닫아도 어댑터와 iframe 호스트가 그대로다', async () => {

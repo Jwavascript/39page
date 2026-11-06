@@ -12,20 +12,22 @@
  * M2에서 Record Library 드로어가 `.workspace`의 형제 열로 들어온다.
  * 지금은 동작하지 않는 버튼을 만들지 않으므로 헤더에 액션이 없다.
  *
- * M6-2 에서 드로어를 **오버레이**로 바꿨고, 그 결과 이 컴포넌트는 재생 계약을
- * 다시 모르게 됐다.
+ * M6-2 에서 드로어를 **오버레이**로 바꿨다.
  *
- * M3-4 에서는 좁은 화면에서 드로어가 스테이지를 `display: none` 으로 대체했기
- * 때문에, 가려지기 전에 멈추라고 재생 쪽에 통지해야 했다
- * (`playerWillHide()`). 지금은 **플레이어를 숨기지 않는다** — 좁은 화면에서도
- * 플레이어만 남기고 드로어는 아래 행을 쓴다. 가려질 일이 없으므로 통지하지
- * 않는다. 그래서 세로 화면에서도 재생이 끊기지 않는다.
+ * M7-1 에서 좁은 화면의 드로어가 **화면을 가리는 하단 시트**가 됐다 (사용자
+ * 요청). 그래서 이 컴포넌트가 다시 재생 계약을 안다 — 가리는 쪽만 **얼마나
+ * 가리는지** 알 수 있기 때문이다.
  *
- * 겹침이 **구조적으로 불가능**하다는 점이 근거다. 아래 CSS 주석 참조.
- * 혹시 레이아웃이 깨져 플레이어가 화면 밖으로 밀리면
- * `PlayerSurface` 의 `IntersectionObserver` 가 안전망으로 잡는다.
+ * 가리는 높이를 숫자로 알리고(`setBottomObstruction`), 판단은 재생 쪽이 한다.
+ * 이 컴포넌트는 "덮으면 멈춰야 한다" 는 정책도, 200×200 이라는 숫자도 모른다.
+ *
+ * | 시점 | 방식                          | 왜                                         |
+ * | ---- | ----------------------------- | ------------------------------------------ |
+ * | M3-4 | `playerWillHide()` 사전 통지  | 스테이지를 `display: none` 으로 대체했다   |
+ * | M6-2 | 통지 없음                     | 겹치지 않는 구조라 가려질 일이 없었다      |
+ * | M7-1 | `setBottomObstruction(px)`    | 겹치게 됐다. **얼마나** 가리는지가 필요하다 |
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
 
 import AppFooter from '@/components/layout/AppFooter.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
@@ -36,6 +38,7 @@ import {
   PLAYLIST_SHELF,
   type PlaylistShelfController,
 } from '@/features/library/playlistShelfController'
+import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
 
 defineProps<{
@@ -56,6 +59,53 @@ const isDrawerOpen = ref(false)
 /** 닫을 때 포커스를 되돌릴 트리거. */
 let lastTrigger: HTMLElement | null = null
 
+/**
+ * 재생 쪽에 가림 높이를 알리는 통로 (M7-1).
+ *
+ * **계약 파일만** 가져온다. 주입되지 않으면 알리지 않는다 — 셸을 단독으로
+ * 마운트하는 테스트를 위한 기본값이다.
+ */
+const playback = inject(PLAYBACK_COORDINATOR, null)
+
+/**
+ * 좁은 화면에서만 드로어가 하단 시트다.
+ *
+ * 승인된 브레이크포인트를 그대로 쓴다. CSS 변수는 `@media` 조건에 쓸 수 없어
+ * 토큰으로 둘 수 없고, 그래서 `tokens.css` 가 값을 주석으로 적어 두었다.
+ * 여기서도 같은 값을 쓴다.
+ */
+const SHEET_QUERY = '(max-width: 1100px)'
+
+function isSheetLayout(): boolean {
+  // jsdom 에는 matchMedia 가 없다. 없으면 시트가 아닌 것으로 본다.
+  return typeof window.matchMedia === 'function' && window.matchMedia(SHEET_QUERY).matches
+}
+
+/**
+ * 시트가 뷰포트 하단을 덮은 높이를 재서 알린다.
+ *
+ * 시트의 **위쪽 테두리**에서 화면 바닥까지다. 높이를 직접 읽지 않는 이유:
+ * 시트가 화면 밖으로 조금 넘어가거나 안전 영역(safe-area) 여백이 붙으면
+ * 높이와 실제로 가리는 양이 달라진다. 위치를 재면 그 차이가 사라진다.
+ */
+function reportObstruction(): void {
+  if (playback === null) return
+
+  if (!isDrawerOpen.value || !isSheetLayout()) {
+    playback.setBottomObstruction(0)
+    return
+  }
+
+  const element = document.getElementById(DRAWER_ID)
+  if (element === null) {
+    playback.setBottomObstruction(0)
+    return
+  }
+
+  const top = element.getBoundingClientRect().top
+  playback.setBottomObstruction(Math.max(0, window.innerHeight - top))
+}
+
 function openDrawer(): void {
   /*
    * 재생을 멈추지 않는다 (M6-2).
@@ -67,6 +117,12 @@ function openDrawer(): void {
   const active = document.activeElement
   lastTrigger = active instanceof HTMLElement ? active : null
   isDrawerOpen.value = true
+
+  /*
+   * 시트가 자리를 잡은 **뒤에** 재야 한다. 같은 틱에 재면 아직 그리드 셀에
+   * 있는 사각형을 읽는다.
+   */
+  void nextTick(reportObstruction)
 }
 
 async function closeDrawer(): Promise<void> {
@@ -74,6 +130,7 @@ async function closeDrawer(): Promise<void> {
 
   isDrawerOpen.value = false
   await nextTick()
+  reportObstruction()
   // 트리거가 아직 화면에 있으면 포커스를 되돌린다.
   if (lastTrigger !== null && document.contains(lastTrigger)) lastTrigger.focus()
   lastTrigger = null
@@ -122,8 +179,22 @@ function onKeydown(event: KeyboardEvent): void {
   if (isShelfExpanded.value) isShelfExpanded.value = false
 }
 
-onMounted(() => document.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+/*
+ * 시트 높이는 `vh` 기반이므로 창 크기가 바뀌면 가리는 양도 바뀐다. 브레이크
+ * 포인트를 넘나들면 시트였던 것이 측면 열이 되기도 한다. 둘 다 `resize` 로
+ * 잡는다.
+ */
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', reportObstruction, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', reportObstruction)
+  // 셸이 사라지면 가리는 것도 없다. 멈춘 이유를 남겨두지 않는다.
+  playback?.setBottomObstruction(0)
+})
 
 const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value }))
 </script>
@@ -223,19 +294,20 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
  * | M6-2 | 아래 **행**(별도 공간)      | 다른 위젯이 모두 사라지고 화면이 통째로 바뀌었다 |
  * | M7   | 하단 **고정 시트**(겹침)    | 보던 화면 위로 올라오기를 요청받았다        |
  *
- * 위젯을 숨기지 않는다. 시트는 `position: fixed` 로 뷰포트 하단에 겹친다.
+ * 위젯을 숨기지 않는다. 시트는 `position: fixed` 로 뷰포트 하단에 겹쳐
+ * **화면을 가린다.**
  *
- * ⚠ **그래서 플레이어가 시트에 덮일 수 있다.** 덮인 채로 소리가 나면 III.I.9
- * 가 금지하는 상태이고, 가시성 측정은 덮인 것을 감지하지 못한다. 그러면
- * "시트를 열고 ▶ 를 눌렀는데 재생되지 않는다" 로 보고 5번이 재발한다.
+ * ⚠ **그래서 플레이어가 시트에 덮일 수 있다.** 그것을 레이아웃으로 막지
+ * 않는 것이 M7-1 의 결정이다 (사용자 지시). 대신 **가리는 높이를 재생 쪽에
+ * 알리고, 규정(200×200) 아래로 덮으면 일시정지한다.**
  *
- * 그래서 시트가 열려 있는 동안 **플레이어를 `position: sticky` 로 뷰포트
- * 상단에 붙인다.** 시트가 아래 `--size-sheet-height` 를 쓰므로 그 위 영역에
- * 플레이어가 남는다. `sticky` 가 문서 스크롤에 붙으려면 조상의 `overflow` 가
- * `visible` 이어야 하므로 그동안만 바꾼다.
+ * 한동안 `position: sticky` 로 플레이어를 시트 위에 붙여 두었는데 되돌렸다.
+ * 짧은 화면에서는 남는 띠가 플레이어보다 얇아 보장이 성립하지 않고, 조상의
+ * `overflow` 를 바꿔야 해서 레이아웃이 다른 이유로 깨질 수 있었다. 측정이
+ * 사실을 보는 쪽이 낫다 — `setBottomObstruction()` 와 ADR 0011 개정 절.
  *
  * 스테이지에 시트 높이만큼 아래 여백을 준다. 시트에 영구히 묻히는 콘텐츠가
- * 없어야 한다.
+ * 없어야 한다 — 스크롤해서 꺼낼 수 있어야 한다.
  *
  * `display` 도 DOM 부모도 건드리지 않으므로 iframe 은 그대로다 (ADR 0002).
  */
@@ -244,8 +316,6 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
     position: relative;
     /* 시트가 푸터보다 위에 그려지도록 워크스페이스를 올린다. */
     z-index: 2;
-    /* sticky 가 문서 스크롤에 붙게 한다. */
-    overflow: visible;
     padding-bottom: calc(var(--size-sheet-height) + 18px);
   }
 
@@ -259,25 +329,6 @@ const workspaceClass = computed(() => ({ 'is-drawer-open': isDrawerOpen.value })
     border-top: 1px solid var(--drawer-border-color);
     border-left: 0;
     z-index: 3;
-  }
-
-  /*
-   * 플레이어는 시트 위에 머문다 (III.I.9).
-   *
-   * 다른 위젯은 그 아래로 지나가며 시트에 가려진다 — 보여주기만 하는
-   * 위젯이므로 가려져도 잘못되는 것이 없다.
-   *
-   * ⚠ **쌓임 순서를 시트보다 높게 둔다.** `sticky` 가 기대대로 동작하지
-   * 않으면(짧은 화면, 조상의 `overflow` 변화) 둘이 겹칠 수 있다. 그때
-   * 플레이어가 아래에 있으면 **소리는 나는데 영상은 안 보이는 상태**가 되고
-   * 그것이 III.I.9 가 금지하는 바로 그 상태다. 플레이어를 위에 두면 시트 일부가
-   * 가려져 보기 나쁠 뿐이고, 정책을 어기지는 않는다. **안전한 쪽으로 깨지게
-   * 둔다.**
-   */
-  .workspace.is-drawer-open :deep(.widget-host > [data-widget='player']) {
-    position: sticky;
-    top: 8px;
-    z-index: 4;
   }
 }
 

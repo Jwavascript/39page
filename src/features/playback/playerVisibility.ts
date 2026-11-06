@@ -11,8 +11,22 @@
  * **M6 에서 노출 비율 임계값(0.5)을 폐지했다.** 그 숫자는 공식 기준이 아니라
  * 우리 휴리스틱이었고, 영상이 조금만 가려져도 음악이 끊기는 원인이었다
  * (실제 브라우저 검증에서 보고됨). 부분적으로 가려진 플레이어는 사용자가
- * 여전히 볼 수 있으므로 III.I.9 가 금지하는 상태가 아니다. 판정선은
- * **"조금이라도 보이는가"** 하나로 남긴다.
+ * 여전히 볼 수 있으므로 III.I.9 가 금지하는 상태가 아니다. 뷰포트에 대한
+ * 판정선은 **"조금이라도 보이는가"** 하나로 남긴다.
+ *
+ * **M7-1 에서 "우리 UI 가 덮은 높이" 를 받게 했다** (`obstructedBottom`).
+ * 세로 화면의 하단 시트가 플레이어를 덮을 수 있게 되었기 때문이다. 두 가지를
+ * 서로 다른 기준으로 보는 것은 사정이 다르기 때문이다.
+ *
+ * | 가리는 것      | 기준                   | 왜                                          |
+ * | -------------- | ---------------------- | ------------------------------------------- |
+ * | 뷰포트(스크롤) | 조금이라도 보이면 허용 | 사용자가 스크롤 위치를 고른 것이다 (M6)      |
+ * | **우리 오버레이** | **남은 영역이 200×200** | 앱이 영상을 덮어 놓고 소리를 내는 상태다 |
+ *
+ * 오버레이에 200×200 을 쓰는 것은 **새 숫자를 만들지 않기 위해서다.** 공식
+ * 요구사항이 "임베드 플레이어는 200×200 이상의 뷰포트를 가져야 한다" 이므로,
+ * 우리가 그 아래로 덮어 버리면 요구사항을 어긴 것과 같다. 비율 임계값을 다시
+ * 만들면 M6 에서 폐지한 그 휴리스틱이 되살아난다.
  *
  * 측정은 **순수 함수**다. 레이아웃 없는 환경(jsdom)에서도 전수 검증할 수 있게
  * 하기 위해서다. DOM 과 관찰자는 `watchPlayerVisibility()` 에만 있다.
@@ -36,6 +50,14 @@ export interface PlayerRect {
 export interface ViewportSize {
   readonly width: number
   readonly height: number
+  /**
+   * 뷰포트 **하단**에서 우리 UI 가 덮고 있는 높이 (px). 기본 0.
+   *
+   * 세로 화면의 레코드 시트가 이 값을 만든다. 가리는 쪽이 알려주고
+   * (`PlaybackVisibility.setBottomObstruction`), 이 모듈은 **무엇이 가리는지
+   * 모른다.** 숫자만 받는다.
+   */
+  readonly obstructedBottom?: number
 }
 
 /** 재생할 수 없는 이유. 사용자 안내 문구가 이것으로 갈린다. */
@@ -52,9 +74,16 @@ const VISIBLE: PlayerVisibility = { ok: true }
 /**
  * 영상 영역이 재생할 만큼 보이는지 판정한다.
  *
- * 뷰포트와 겹치는 면적이 0 인지만 본다. 다른 요소에 덮인 경우까지 알아내지는 못한다 —
- * 그 경우는 드로어를 **형제 열**로 둔 구조(III.I.6)와 `playerWillHide()`
- * 통지로 다룬다.
+ * 세 가지를 본다. 순서가 의미를 갖는다 — 먼저 걸린 사유가 안내 문구를 정한다.
+ *
+ * 1. 영역 자체가 0 이면 `covered` (`display: none`)
+ * 2. 영역이 200×200 미만이면 `too-small` (공식 요구사항)
+ * 3. 뷰포트와 전혀 겹치지 않으면 `covered`
+ * 4. **우리 오버레이가 덮어 남은 높이가 200px 미만이면 `covered`** (M7-1)
+ *
+ * 4 번에서 `covered` 를 쓰는 것은 의도다. 영역이 작은 것이 아니라 **덮인**
+ * 것이므로 사용자가 할 일이 다르다 — 창을 키우는 것이 아니라 시트를 닫거나
+ * 영상이 보이는 곳으로 스크롤하는 것이다.
  */
 export function measurePlayerVisibility(
   rect: PlayerRect,
@@ -77,6 +106,27 @@ export function measurePlayerVisibility(
     return { ok: false, reason: 'covered' }
   }
 
+  /*
+   * 우리 UI 가 하단을 덮는다 (M7-1).
+   *
+   * 뷰포트 하단을 시트 위쪽으로 끌어올려 다시 잰다. 남은 띠가 200px 보다
+   * 얇으면 공식 요구사항을 우리 손으로 깬 것이므로 재생하지 않는다.
+   *
+   * 뷰포트 클리핑과 달리 **비율이 아니라 절대 높이**를 본다 (위 표).
+   */
+  const obstruction = Math.max(0, viewport.obstructedBottom ?? 0)
+  if (obstruction > 0) {
+    const unobstructedBottom = viewport.height - obstruction
+    const unobstructedHeight = Math.max(
+      0,
+      Math.min(rect.bottom, unobstructedBottom) - Math.max(rect.top, 0),
+    )
+
+    if (unobstructedHeight < MIN_PLAYER_SIZE_PX) {
+      return { ok: false, reason: 'covered' }
+    }
+  }
+
   return VISIBLE
 }
 
@@ -87,8 +137,13 @@ export function measurePlayerVisibility(
  * DOM 을 모른 채 판정하고 끌어올 수 있다.
  */
 export interface PlayerPresence {
-  /** 지금 상태를 잰다. 호출 시점의 실제 레이아웃을 읽는다. */
-  measure(): PlayerVisibility
+  /**
+   * 지금 상태를 잰다. 호출 시점의 실제 레이아웃을 읽는다.
+   *
+   * `obstructedBottom` 은 **우리 UI 가 뷰포트 하단을 덮은 높이**다. 영역을
+   * 소유한 쪽은 그것을 알 수 없으므로 코디네이터가 넘긴다 (M7-1).
+   */
+  measure(obstructedBottom?: number): PlayerVisibility
 
   /**
    * 영상 영역을 화면 안으로 끌어온다.
@@ -128,13 +183,14 @@ export function watchPlayerVisibility(
 ): PlayerVisibilityWatcher {
   const view = element.ownerDocument.defaultView
 
-  function measure(): PlayerVisibility {
+  function measure(obstructedBottom = 0): PlayerVisibility {
     // 뷰를 못 얻으면(분리된 문서) 보이지 않는 것으로 본다. 재생을 막는 쪽이 안전하다.
     if (view === null) return { ok: false, reason: 'covered' }
 
     return measurePlayerVisibility(element.getBoundingClientRect(), {
       width: view.innerWidth,
       height: view.innerHeight,
+      obstructedBottom,
     })
   }
 
@@ -142,9 +198,15 @@ export function watchPlayerVisibility(
     // jsdom 등 구현이 없는 환경에서는 조용히 넘어간다.
     if (typeof element.scrollIntoView !== 'function') return
 
-    // 즉시 스크롤이어야 한다. 부드러운 스크롤이면 바로 뒤의 재측정이
-    // 아직 움직이지 않은 위치를 읽는다.
-    element.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' })
+    /*
+     * 즉시 스크롤이어야 한다. 부드러운 스크롤이면 바로 뒤의 재측정이 아직
+     * 움직이지 않은 위치를 읽는다.
+     *
+     * `block: 'start'` 다 (M7-1 에서 `'center'` 에서 바꿨다). 하단 시트가
+     * 열려 있으면 화면 가운데는 **시트 아래**다 — 끌어온 결과가 다시 덮인
+     * 자리가 된다. 위쪽에 붙이면 덮이지 않은 띠를 최대로 쓴다.
+     */
+    element.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'nearest' })
   }
 
   if (view === null) return { measure, reveal, stop: () => {} }
