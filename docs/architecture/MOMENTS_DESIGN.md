@@ -1,8 +1,18 @@
 # Music Moments — 도메인 · 저장 · 재생 · 백업 설계 (M9-1)
 
-> 상태: **설계만 완료 (2026-11-07). 코드는 없다.**
-> 이 문서의 타입·함수는 전부 **앞으로 만들 것**이며, 지금 저장소에 존재하지
-> 않는다.
+> 상태: **§1~§3 구현 완료 (M9-2, 2026-11-07). §4~§5 는 아직 설계다.**
+>
+> | 절               | 상태                                                       |
+> | ---------------- | ---------------------------------------------------------- |
+> | §1 도메인 모델   | **구현** — `src/shared/types/moments.ts`                   |
+> | §2 검증과 정규화 | **구현** — `src/stores/moments.ts`                         |
+> | §3 영속 저장     | **구현** — `STORAGE_KEYS.moments` · `momentsStorage`       |
+> | §4 재생 연동     | 설계. 코드 없음 (M9-3)                                     |
+> | §5 백업 통합     | 설계. 코드 없음 (**M9-5**) — ⚠ 지금 백업에 Moments 가 없다 |
+> | §6 M10 연계      | 설계                                                       |
+>
+> **아직 앱에 연결되지 않았다.** `main.ts` 는 Moments 를 복원하지 않고, 어떤
+> 컴포넌트도 store 를 부르지 않는다. 연결은 UI 가 생기는 M9-4 에서 한다.
 >
 > 기능 명세: [`../product/MUSIC_MOMENTS.md`](../product/MUSIC_MOMENTS.md)
 > 결정: **ADR 0019** (도메인·저장) · **ADR 0020** (시점 조회·이동)
@@ -11,7 +21,7 @@
 ## 1. 도메인 모델
 
 ```ts
-// src/shared/types/moments.ts (신규)
+// src/shared/types/moments.ts — 구현됨 (M9-2)
 
 /** 영상의 한 순간에 대한 사용자의 기록. */
 export interface Moment {
@@ -65,7 +75,7 @@ export type MomentsData = Moment[]
 버린 것을 세어 보고한다.
 
 ```ts
-// src/stores/moments.ts (신규)
+// src/stores/moments.ts — 구현됨 (M9-2)
 export function normalizeMomentsData(value: unknown): {
   data: MomentsData
   report: { droppedMoments: number }
@@ -89,6 +99,24 @@ export function normalizeMomentsData(value: unknown): {
 
 `videoId` 패턴은 **기존 것을 그대로 쓴다** — 트랙 검증이 쓰는 11자 규칙.
 두 벌을 만들면 갈라진다.
+
+항목 하나를 보는 `normalizeMoment(value): Moment | null` 을 따로 내보낸다.
+`normalizeMomentsData` 가 그것을 항목마다 부르고, store 의 묶음 추가
+(`addMoments`)도 같은 함수를 지난다. **검증이 한 벌이다.**
+
+### 2-0. M9-2 에서 확정한 세 가지
+
+M9-1 의 표가 답하지 않았던 것들이다. 근거는 **ADR 0019 결정 7·8·9**.
+
+| 질문                     | 확정                                                             |
+| ------------------------ | ---------------------------------------------------------------- |
+| 메모 길이                | 입력 **500자** (`MAX_MOMENT_NOTE_LENGTH`). 읽기는 길이를 안 본다 |
+| 제목 길이                | 입력 **100자**. 트랙 제목과 같은 값이지만 import 하지 않는다     |
+| 빈 제목 스냅샷           | **그대로 둔다.** 대체 표기로 채우지 않는다 (§1-1 의 3단계)       |
+| 해석 안 되는 `createdAt` | **버리지 않는다.** 문자열인지만 본다                             |
+
+읽기에서 길이를 보지 않는 이유: 상한은 입력 경로의 규칙이고, 이미 저장된 긴
+메모를 읽는 자리에서 자르거나 버리면 **사용자 데이터가 조용히 사라진다.**
 
 ### 2-1. 순수 함수로 만드는 것
 
@@ -120,6 +148,28 @@ createMoment(input: {
 - `validate: normalizeMomentsData` 의 `data` 부분
 - `STORAGE_KEYS.moments` 를 **더한다.** 기존 `library` · `theme` 의 이름과
   봉투와 쓰기 경로는 **바꾸지 않는다**
+
+### 3-0. Store API (M9-2 구현)
+
+| 이름                                         | 하는 일                                                     |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| `restore()`                                  | 저장된 목록을 읽는다. **쓰지 않는다**. `ReadOutcome` 반환   |
+| `add({ videoId, atSeconds, note?, title? })` | 하나 더한다. 검증 실패는 이유로 돌려준다                    |
+| `addMoments(list: unknown)`                  | 묶음 추가. 항목마다 검증하고 **버린 개수를 알린다**         |
+| `updateNote(id, note)`                       | 메모만 고치고 `updatedAt` 을 갱신한다. **시점은 못 고친다** |
+| `remove(id)`                                 | **그 Moment 만** 지운다                                     |
+| `getMoment(id)`                              | 조회                                                        |
+| `momentsForVideo(videoId)`                   | 한 영상의 목록. **시점 오름차순 파생값**                    |
+| `replaceAllMoments(data)`                    | ⚠ 보호 우회. 가져오기(M9-5)에서만 부른다                    |
+
+결과 계약은 라이브러리 store 와 **같은 모양**이다 —
+`{ ok: true, momentId, persisted }` 또는 `{ ok: false, reason }`.
+`persisted: false` 는 "메모리에는 반영됐지만 저장은 안 됐다" 를 뜻한다.
+
+실패 이유는 셋이다. `not-found` · `invalid-video-id` · `invalid-time`.
+
+"전부 지우기" 액션은 **없다.** 사용자 데이터 일괄 삭제는 명시적 요구 없이
+만들지 않는다 (`MUSIC_MOMENTS.md` §4).
 
 ### 3-1. 보호 (ADR 0007)
 
@@ -215,6 +265,12 @@ Moment 는 플레이리스트에 속하지 않는다. 큐를 이렇게 정한다
 
 ## 5. 백업 통합과 호환성
 
+> ⚠ **M9-2 시점에는 이 절의 코드가 하나도 없다.** 내보내기는 Moments 를
+> 담지 않고, 가져오기는 `data.moments` 를 여전히 "알 수 없는 섹션" 으로
+> 경고하고 넘긴다. 그래서 **지금 받은 백업 파일은 Moment 를 담고 있지
+> 않다** — 그 파일을 완전한 백업으로 취급하면 Moment 를 잃는다. 이 상태를
+> 소스 수준 테스트로 고정해 두었다 (`moments-store.spec.ts` G).
+
 ### 5-1. 파일에 들어가는 모양
 
 ```json
@@ -309,9 +365,20 @@ M10 은 YouTube 페이지에서 제목·링크를 모으고, 현재 시점과 �
 | 기존 저장 키를 바꾸지 않는다              | `moments` 를 **더할** 뿐이다                           |
 | 라이브러리 마이그레이션을 유발하지 않는다 | `39page.library` 의 스키마·버전을 건드리지 않는다      |
 
-## 8. 미결 (M9-2 이후에서 정한다)
+## 8. 미결
 
-- **TODO**: 세로 화면에서 Moments 위젯의 자리 (M9-4, 실기기 확인 후)
-- **TODO**: 같은 `videoId` · 같은 `atSeconds` 중복 저장을 합칠지 (M9-4)
-- **TODO**: `position()` 읽기 주기 — 버튼 활성/비활성만이면 주기 읽기가
-  필요 없다. 필요가 확인되기 전에 타이머를 만들지 않는다 (ADR 0020 TODO)
+M9-2 에서 **해결한 것**은 ADR 0019 결정 7·8·9 로 옮겼다 (메모·제목 길이,
+빈 스냅샷, 날짜 검증). 남은 것은 아래다.
+
+- **TODO (M9-3)**: 앱 시작 시 `moments.restore()` 를 어디서 부를지.
+  M9-2 는 `main.ts` 를 건드리지 않았다 — 읽어도 쓸 곳이 없는 동안 시작
+  경로에 키 읽기를 더하지 않는다. 부르는 쪽이 생기는 단계에서 함께 넣는다
+- **TODO (M9-4)**: 표시 제목 3단계 해석기의 자리. 라이브러리와 Moments 를
+  **둘 다** 보므로 store 가 아니라 표시 계층의 composable 이다 (§1-1)
+- **TODO (M9-4)**: 세로 화면에서 Moments 위젯의 자리 (실기기 확인 후)
+- **TODO (M9-4)**: 같은 `videoId` · 같은 `atSeconds` 중복 저장을 합칠지.
+  지금은 **둘 다 남긴다**
+- **TODO (M9-4)**: `position()` 읽기 주기 — 버튼 활성/비활성만이면 주기
+  읽기가 필요 없다. 필요가 확인되기 전에 타이머를 만들지 않는다 (ADR 0020)
+- **TODO (M9-5)**: `BACKUP_SECTION_VERSIONS.moments` 를 `MOMENTS_STORAGE_VERSION`
+  에서 가져온다. 상수를 다시 적지 않는다 (M8-2 가 세운 방식)

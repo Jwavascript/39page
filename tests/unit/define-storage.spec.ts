@@ -147,6 +147,7 @@ describe('STORAGE_KEYS', () => {
   it('버전 없는 고정 키를 쓴다', () => {
     expect(STORAGE_KEYS.library).toBe('39page.library')
     expect(STORAGE_KEYS.theme).toBe('39page.theme')
+    expect(STORAGE_KEYS.moments).toBe('39page.moments')
   })
 })
 

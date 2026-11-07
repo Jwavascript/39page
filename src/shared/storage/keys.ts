@@ -13,6 +13,14 @@ export const STORAGE_KEYS = {
   library: '39page.library',
   /** 선택한 테마 키. 구체 스키마는 M1-3에서 확정한다. */
   theme: '39page.theme',
+  /**
+   * Music Moments (M9). 라이브러리와 **다른 키**다.
+   *
+   * 같은 키에 넣지 않는 이유: 백업 가져오기는 라이브러리를 통째로
+   * 교체하므로, 한 키에 있으면 복원이 Moment 를 함께 날린다. 키가
+   * 다르면 그 교체가 Moment 에 닿지 않는다 (ADR 0019 결정 3).
+   */
+  moments: '39page.moments',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

@@ -1,7 +1,14 @@
 # Music Moments 기능 명세 (Post-MVP, M9)
 
-> 상태: **M9-1 설계만 완료 (2026-11-07). 구현은 시작하지 않았다.**
-> 아래 F13~F17 은 전부 **미구현**이다.
+> 상태: **데이터 계층만 구현 (M9-2, 2026-11-07).**
+> 아래 F13~F17 은 **전부 미구현**이다 — 사용자가 쓸 수 있는 것이 아직 없다.
+>
+> M9-2 가 만든 것은 화면 뒤의 것뿐이다. Moment 를 담는 타입, 검증, 저장 키
+> (`39page.moments`), 그리고 생성·조회·수정·삭제를 하는 store. **버튼도
+> 목록도 없고 `main.ts` 가 이 store 를 부르지도 않는다.**
+>
+> ⚠ **지금 내보내는 백업 파일에는 Moment 가 들어가지 않는다** (F17 미구현).
+> 백업 통합은 M9-5 다.
 >
 > 도메인·저장·재생·백업 설계: [`../architecture/MOMENTS_DESIGN.md`](../architecture/MOMENTS_DESIGN.md)
 > 결정 근거: [`../decisions/0019-music-moments-domain.md`](../decisions/0019-music-moments-domain.md) ·
