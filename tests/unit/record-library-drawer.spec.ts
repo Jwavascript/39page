@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { nextTick } from 'vue'
 
 import { mount } from '@vue/test-utils'
@@ -758,5 +760,35 @@ describe('D. 플레이어 안정성', () => {
       queueIndex: playback.queueIndex,
       playerState: playback.playerState,
     }).toEqual(before)
+  })
+})
+
+describe('E. 좁은 드로어에서의 트랙 행 폭 (2026-11-06 운영 검증에서 발견)', () => {
+  /**
+   * 가로 화면 드로어는 1440px 뷰포트 안의 339px 짜리 좁은 열이다. 그래서
+   * 영상 ID 를 접는 기준이 **뷰포트가 아니라 목록 자신의 폭**이어야 한다.
+   *
+   * jsdom 은 레이아웃을 계산하지 않으므로 실제 폭으로는 확인할 수 없다.
+   * 그래서 보장을 이루는 **두 조각을 모두** 본다 — 컨테이너를 선언하는 쪽과
+   * 그 컨테이너에 질의하는 쪽. 한쪽만 보면 나머지 한쪽이 사라져도 통과한다.
+   */
+  const source = () => readFileSync('src/features/library/TrackList.vue', 'utf8')
+
+  it('.track-list 가 인라인 크기 컨테이너를 선언한다', () => {
+    const block = /\.track-list\s*\{[^}]*\}/.exec(source())?.[0] ?? ''
+
+    expect(block).toContain('container-type: inline-size')
+  })
+
+  it('영상 ID 를 접는 질의가 컨테이너 폭을 본다', () => {
+    expect(source()).toMatch(
+      /@container\s*\(max-width:\s*420px\)\s*\{\s*\.track-id\s*\{\s*display:\s*none/,
+    )
+  })
+
+  it('컨테이너 질의를 모르는 브라우저를 위한 뷰포트 질의도 남아 있다', () => {
+    expect(source()).toMatch(
+      /@media\s*\(max-width:\s*420px\)\s*\{\s*\.track-id\s*\{\s*display:\s*none/,
+    )
   })
 })

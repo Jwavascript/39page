@@ -197,9 +197,16 @@ function requestRemove(trackId: string): void {
 </template>
 
 <style scoped>
-/* 승인된 디자인의 `.track-list` / `.track` 값을 따른다. */
+/*
+ * 승인된 디자인의 `.track-list` / `.track` 값을 따른다.
+ *
+ * `container-type` 만 더했다. 트랙 행이 들어갈 자리는 **뷰포트가 아니라 이
+ * 목록의 폭**이 정한다. 가로 화면에서 드로어는 1440px 뷰포트 안의 339px 짜리
+ * 좁은 열이라, 뷰포트 기준 질의로는 좁다는 사실을 알 수 없다 (아래 참조).
+ */
 .track-list {
   display: grid;
+  container-type: inline-size;
   gap: 5px;
 }
 
@@ -278,7 +285,26 @@ function requestRemove(trackId: string): void {
   font: 10px var(--font-mono);
 }
 
-/* 좁은 화면에서 영상 ID 를 접어 제목과 버튼을 확보한다. */
+/*
+ * 좁은 자리에서 영상 ID 를 접어 제목과 버튼을 확보한다.
+ *
+ * 두 질의를 **함께** 둔다. 컨테이너 질의가 실제 기준이고, 뷰포트 질의는
+ * 컨테이너 질의를 모르는 브라우저를 위한 보루다. 둘 중 하나만 맞아도 접힌다.
+ *
+ * 왜 뷰포트 질의만으로는 모자랐는가 (2026-11-06 운영 배포 검증에서 발견):
+ * 세로 화면에서는 드로어가 화면 폭을 다 쓰므로 둘이 같은 답을 낸다. 그러나
+ * 가로 화면에서 드로어는 3열 위에 겹치는 **339px 짜리 좁은 열**이고 뷰포트는
+ * 1440px 다. 뷰포트 질의는 "넓다"고 답하므로 ID 가 남고, 행이 목록보다 31px
+ * 넓어져 `.drawer-body` 에 가로 스크롤바가 생겼다.
+ * (`overflow-y: auto` 를 주면 `overflow-x: visible` 의 used value 가 `auto`
+ * 로 바뀌므로, 가로로 넘치는 순간 스크롤바가 선다.)
+ */
+@container (max-width: 420px) {
+  .track-id {
+    display: none;
+  }
+}
+
 @media (max-width: 420px) {
   .track-id {
     display: none;
