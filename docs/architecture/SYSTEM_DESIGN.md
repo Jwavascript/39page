@@ -810,15 +810,15 @@ moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
 ```
  features/backup/
    createBackup(source)  : 순수       → 백업 객체
-   readBackup(text)      : 순수       → { library, theme, warnings } | { error }
+   readBackup(text)      : 순수       → { library, theme, moments, momentsSection, warnings } | { error }
    downloadText(text)    : 브라우저   → Blob + a[download]
    useBackupExport()     : 뷰 모델    → 내보내기 흐름
    useBackupImport()     : 뷰 모델    → 미리보기 · 지문 · 적용
         │                                   ▲
         │ 읽기                               │ 검증 재사용
         ▼                                   │
- stores/library · stores/theme ──── normalizeLibraryData · isThemeKey
-        │  replaceAll / setTheme                  libraryReplaced()
+ stores/library · moments · theme ── normalizeLibraryData · normalizeMomentsData · isThemeKey
+        │  replaceAll / replaceAllMoments / setTheme      libraryReplaced()
         ▼                                             ▼
  shared/storage (defineStorage) ─ localStorage    Playback Coordinator
 ```

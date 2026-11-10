@@ -60,9 +60,24 @@ export const MAX_MOMENT_TITLE_LENGTH = 100
  * ------------------------------------------------------------------ */
 
 /** 정규화 과정에서 원본과 달라진 내용. */
+/**
+ * Moment 를 버린 **이유** (M9-5).
+ *
+ * 백업 가져오기 미리보기가 "몇 개를 왜 못 가져오는가" 를 말해야 한다. 이유를
+ * 세는 곳도 검증하는 곳과 **같은 함수**다 — 따로 세면 규칙이 두 벌이 된다.
+ *
+ * - `shape` — 객체가 아니거나 id · source · 메모 · 제목 · 날짜의 형식이 틀렸다
+ * - `video-id` — 11자 YouTube 영상 ID 가 아니다
+ * - `time` — `atSeconds` 가 0 이상 정수가 아니다
+ * - `duplicate-id` — 앞에 같은 id 가 있었다. 처음 것만 남긴다
+ */
+export type MomentDropReason = 'shape' | 'video-id' | 'time' | 'duplicate-id'
+
 export interface MomentsNormalizationReport {
-  /** 버린 Moment 수. */
+  /** 버린 Moment 수. 아래 이유별 개수의 합이다. */
   droppedMoments: number
+  /** 이유별로 버린 수 (M9-5). 버린 것이 없으면 모두 0 이다. */
+  droppedByReason: Record<MomentDropReason, number>
 }
 
 export interface MomentsNormalizationResult {
@@ -101,26 +116,41 @@ export function isValidAtSeconds(value: unknown): value is number {
  *   긴 메모를 읽는 자리에서 버리거나 자르면 사용자 데이터가 조용히 사라진다.
  */
 export function normalizeMoment(value: unknown): Moment | null {
-  if (!isRecord(value)) return null
-  if (!isNonEmptyString(value.id)) return null
+  const inspected = inspectMoment(value)
+  return 'moment' in inspected ? inspected.moment : null
+}
+
+/**
+ * `normalizeMoment` 의 본체. 버렸으면 **이유**를 함께 돌려준다 (M9-5).
+ *
+ * 규칙은 여기 한 곳뿐이다. `normalizeMoment` 와 `normalizeMomentsData` 가 모두
+ * 이 함수를 지난다.
+ */
+function inspectMoment(
+  value: unknown,
+): { moment: Moment } | { reason: Exclude<MomentDropReason, 'duplicate-id'> } {
+  if (!isRecord(value)) return { reason: 'shape' }
+  if (!isNonEmptyString(value.id)) return { reason: 'shape' }
   // M9 의 Moment 출처는 YouTube 단독이다.
-  if (value.source !== 'youtube') return null
-  if (!isYouTubeVideoId(value.videoId)) return null
-  if (!isValidAtSeconds(value.atSeconds)) return null
-  if (typeof value.note !== 'string') return null
-  if (typeof value.title !== 'string') return null
-  if (typeof value.createdAt !== 'string') return null
-  if (typeof value.updatedAt !== 'string') return null
+  if (value.source !== 'youtube') return { reason: 'shape' }
+  if (!isYouTubeVideoId(value.videoId)) return { reason: 'video-id' }
+  if (!isValidAtSeconds(value.atSeconds)) return { reason: 'time' }
+  if (typeof value.note !== 'string') return { reason: 'shape' }
+  if (typeof value.title !== 'string') return { reason: 'shape' }
+  if (typeof value.createdAt !== 'string') return { reason: 'shape' }
+  if (typeof value.updatedAt !== 'string') return { reason: 'shape' }
 
   return {
-    id: value.id,
-    source: 'youtube',
-    videoId: value.videoId,
-    atSeconds: value.atSeconds,
-    note: value.note,
-    title: value.title,
-    createdAt: value.createdAt,
-    updatedAt: value.updatedAt,
+    moment: {
+      id: value.id,
+      source: 'youtube',
+      videoId: value.videoId,
+      atSeconds: value.atSeconds,
+      note: value.note,
+      title: value.title,
+      createdAt: value.createdAt,
+      updatedAt: value.updatedAt,
+    },
   }
 }
 
@@ -135,20 +165,29 @@ export function normalizeMoment(value: unknown): Moment | null {
 export function normalizeMomentsData(value: unknown): MomentsNormalizationResult | null {
   if (!Array.isArray(value)) return null
 
-  const report: MomentsNormalizationReport = { droppedMoments: 0 }
+  const report: MomentsNormalizationReport = {
+    droppedMoments: 0,
+    droppedByReason: { shape: 0, 'video-id': 0, time: 0, 'duplicate-id': 0 },
+  }
   const moments: Moment[] = []
   const seenIds = new Set<string>()
 
   for (const candidate of value) {
-    const moment = normalizeMoment(candidate)
-    // 중복 id 는 조회·수정·삭제를 모호하게 만든다. 처음 것만 남긴다.
-    if (moment === null || seenIds.has(moment.id)) {
+    const inspected = inspectMoment(candidate)
+    if ('reason' in inspected) {
       report.droppedMoments += 1
+      report.droppedByReason[inspected.reason] += 1
       continue
     }
-    seenIds.add(moment.id)
+    // 중복 id 는 조회·수정·삭제를 모호하게 만든다. 처음 것만 남긴다.
+    if (seenIds.has(inspected.moment.id)) {
+      report.droppedMoments += 1
+      report.droppedByReason['duplicate-id'] += 1
+      continue
+    }
+    seenIds.add(inspected.moment.id)
     // 순서를 유지한다.
-    moments.push(moment)
+    moments.push(inspected.moment)
   }
 
   return { data: moments, report }

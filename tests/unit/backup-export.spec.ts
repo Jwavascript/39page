@@ -89,6 +89,7 @@ function library(): LibraryData {
 function source(overrides: Partial<BackupSource> = {}): BackupSource {
   return {
     library: library(),
+    moments: [],
     theme: 'mono-vinyl',
     integrity: null,
     exportedAt: FIXED,
@@ -293,7 +294,8 @@ describe('B. 내용 보존', () => {
     for (const token of ['queue', 'queueIndex', 'currentTrack', 'playerState', 'statusMessage']) {
       expect(text).not.toContain(token)
     }
-    expect(Object.keys(file.data).sort()).toEqual(['library', 'preferences'])
+    // M9-5: Moments 가 선택 섹션으로 더해졌다. 재생 큐·화면 상태는 여전히 없다.
+    expect(Object.keys(file.data).sort()).toEqual(['library', 'moments', 'preferences'])
   })
 })
 

@@ -1,0 +1,74 @@
+{
+  "format": "39page-backup",
+  "schemaVersion": 1,
+  "exportedAt": "2026-11-10T09:30:00.000Z",
+  "data": {
+    "library": {
+      "version": 1,
+      "data": {
+        "playlists": [
+          {
+            "id": "p-night",
+            "name": "NIGHT DRIVE",
+            "tracks": [
+              {
+                "id": "t-1",
+                "source": "youtube",
+                "videoId": "aaaaaaaaaaa",
+                "title": "ALPHA"
+              },
+              {
+                "id": "t-2",
+                "source": "youtube",
+                "videoId": "bbbbbbbbbbb",
+                "title": "BETA"
+              }
+            ]
+          }
+        ],
+        "selectedPlaylistId": "p-night"
+      }
+    },
+    "moments": {
+      "version": 1,
+      "data": [
+        {
+          "id": "m-alpha-42",
+          "source": "youtube",
+          "videoId": "aaaaaaaaaaa",
+          "atSeconds": 42,
+          "note": "여기부터 좋다",
+          "title": "ALPHA",
+          "createdAt": "2026-11-10T09:00:00.000Z",
+          "updatedAt": "2026-11-10T09:05:00.000Z"
+        },
+        {
+          "id": "m-gone-0",
+          "source": "youtube",
+          "videoId": "zzzzzzzzzzz",
+          "atSeconds": 0,
+          "note": "",
+          "title": "지운 곡의 스냅샷",
+          "createdAt": "2026-11-10T09:10:00.000Z",
+          "updatedAt": "2026-11-10T09:10:00.000Z"
+        },
+        {
+          "id": "m-beta-3725",
+          "source": "youtube",
+          "videoId": "bbbbbbbbbbb",
+          "atSeconds": 3725,
+          "note": "첫 줄\n둘째 줄",
+          "title": "BETA",
+          "createdAt": "2026-11-10T09:20:00.000Z",
+          "updatedAt": "2026-11-10T09:20:00.000Z"
+        }
+      ]
+    },
+    "preferences": {
+      "theme": {
+        "version": 1,
+        "data": "mono-vinyl"
+      }
+    }
+  }
+}

@@ -81,6 +81,7 @@ function libraryData(): LibraryData {
 function backupFile(): BackupFile {
   return createBackup({
     library: libraryData(),
+    moments: [],
     theme: 'kawaii-synth-cassette',
     integrity: null,
     exportedAt: FIXED,
@@ -139,6 +140,7 @@ describe('A. readBackup — 정상 경로', () => {
   it('빈 라이브러리 백업도 읽는다', () => {
     const file = createBackup({
       library: { playlists: [], selectedPlaylistId: null },
+      moments: [],
       theme: 'mono-vinyl',
       integrity: null,
       exportedAt: FIXED,
@@ -356,17 +358,22 @@ describe('C. readBackup — 경고하고 가져온다', () => {
     })
   })
 
-  it('알 수 없는 섹션은 무시하고 이름을 알린다 — M9 확장 경로', () => {
+  /*
+   * M8-3 은 이 자리에서 `moments` 를 확장 경로의 예로 썼다. M9-5 부터 그 섹션은
+   * 아는 섹션이므로 다른 이름으로 같은 성질 — 모르는 섹션이 있어도 파일 버전을
+   * 올리지 않고 읽힌다 — 을 본다.
+   */
+  it('알 수 없는 섹션은 무시하고 이름을 알린다 — 확장 경로', () => {
     const file = backupFile() as unknown as Record<string, unknown>
     const data = file.data as Record<string, unknown>
-    data.moments = { version: 1, data: [{ id: 'm1', videoId: VIDEO_A, atSeconds: 42 }] }
+    data.layouts = { version: 1, data: [{ id: 'l1' }] }
 
     const result = readBackup(JSON.stringify(file))
 
     // 파일 버전을 올리지 않아도 읽힌다. 라이브러리는 정상 복원된다.
     expect(result.ok).toBe(true)
     expect(result.ok && result.library).toEqual(libraryData())
-    expect(result.warnings).toContainEqual({ kind: 'unknown-section', section: 'moments' })
+    expect(result.warnings).toContainEqual({ kind: 'unknown-section', section: 'layouts' })
   })
 
   it('알 수 없는 설정도 알린다', () => {
@@ -407,6 +414,7 @@ describe('C. readBackup — 경고하고 가져온다', () => {
   it('복구본 표시를 읽어 경고한다', () => {
     const file = createBackup({
       library: libraryData(),
+      moments: [],
       theme: 'mono-vinyl',
       integrity: { library: { level: 'recovered', reason: 'partial-recovery' } },
       exportedAt: FIXED,
@@ -678,6 +686,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
     await nextTick()
     const file = createBackup({
       library: libraryData(),
+      moments: [],
       theme: 'mono-vinyl',
       integrity: { library: { level: 'recovered', reason: 'partial-recovery' } },
       exportedAt: FIXED,
@@ -1098,6 +1107,7 @@ describe('G. 보호 상태의 복원', () => {
 
     const file = createBackup({
       library: libraryData(),
+      moments: [],
       theme: 'mono-vinyl',
       integrity: { library: { level: 'recovered', reason: 'malformed' } },
       exportedAt: FIXED,

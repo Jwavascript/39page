@@ -16,8 +16,9 @@
  * 재생 큐·현재 트랙·플레이어·화면 상태는 **입력 자체에 없다.** 담지 않는 것이
  * 아니라 받지 않는다.
  */
-import type { LibraryData, Playlist, ThemeKey, Track } from '@/shared/types'
+import type { LibraryData, Moment, MomentsData, Playlist, ThemeKey, Track } from '@/shared/types'
 import type { LibraryProtectedReason, LibraryStatus } from '@/stores/library'
+import type { MomentsProtectedReason, MomentsStatus } from '@/stores/moments'
 
 import {
   BACKUP_FORMAT,
@@ -48,6 +49,23 @@ export interface BackupSource {
     }[]
     readonly selectedPlaylistId: string | null
   }
+  /**
+   * Music Moments (M9-5). **필수다** — 0개여도 빈 배열을 넘긴다.
+   *
+   * 선택으로 두면 호출부가 빠뜨렸을 때 섹션이 사라지고, 그 파일을 가져오는
+   * 쪽은 "Moments 를 모르던 시절 파일" 로 읽어 지금 Moments 를 유지한다.
+   * 사용자가 0개였다는 사실이 파일에서 사라진다. 그래서 타입이 막는다.
+   */
+  readonly moments: readonly {
+    readonly id: string
+    readonly source: Moment['source']
+    readonly videoId: string
+    readonly atSeconds: number
+    readonly note: string
+    readonly title: string
+    readonly createdAt: string
+    readonly updatedAt: string
+  }[]
   readonly theme: ThemeKey
   /** 온전하지 않으면 넣는다. `null` 이면 온전한 백업이다. */
   readonly integrity: BackupIntegrity | null
@@ -72,17 +90,40 @@ export interface BackupSource {
 export function resolveBackupIntegrity(input: {
   status: LibraryStatus
   protectedReason: LibraryProtectedReason | null
+  /**
+   * Moments 저장소 상태 (M9-5). 생략하면 온전한 것으로 본다 — M8 의 호출
+   * 모양을 그대로 받기 위해서다. 앱의 두 내보내기 경로는 항상 넘긴다.
+   */
+  moments?: { status: MomentsStatus; protectedReason: MomentsProtectedReason | null }
 }): BackupIntegrity | null {
+  const library = resolveSectionIntegrity(input)
+  const moments = input.moments === undefined ? null : resolveSectionIntegrity(input.moments)
+
+  if (library === null && moments === null) return null
+
+  // 온전한 섹션은 적지 않는다. 평범한 백업의 모양을 바꾸지 않는다.
+  const integrity: BackupIntegrity = {}
+  if (library !== null) integrity.library = library
+  if (moments !== null) integrity.moments = moments
+  return integrity
+}
+
+/**
+ * 저장소 하나의 상태를 섹션 온전성으로 옮긴다 (M9-5 에서 뽑아냈다).
+ *
+ * 라이브러리와 Moments 가 **같은 규칙**을 쓴다 — 같은 정책(ADR 0007)이다.
+ */
+export function resolveSectionIntegrity(input: {
+  status: LibraryStatus | MomentsStatus
+  protectedReason: LibraryProtectedReason | MomentsProtectedReason | null
+}): BackupSectionIntegrity | null {
   if (input.status === 'ready') return null
 
-  const section: BackupSectionIntegrity =
-    input.status === 'unavailable'
-      ? { level: 'recovered', reason: 'unavailable' }
-      : // 보호 상태인데 이유가 없는 조합은 store 가 만들지 않는다.
-        // 그래도 방어적으로 `invalid` 로 둔다 — 복구본이라는 사실이 더 중요하다.
-        { level: 'recovered', reason: input.protectedReason ?? 'invalid' }
-
-  return { library: section }
+  return input.status === 'unavailable'
+    ? { level: 'recovered', reason: 'unavailable' }
+    : // 보호 상태인데 이유가 없는 조합은 store 가 만들지 않는다.
+      // 그래도 방어적으로 `invalid` 로 둔다 — 복구본이라는 사실이 더 중요하다.
+      { level: 'recovered', reason: input.protectedReason ?? 'invalid' }
 }
 
 function copyTrack(track: BackupSource['library']['playlists'][number]['tracks'][number]): Track {
@@ -92,6 +133,28 @@ function copyTrack(track: BackupSource['library']['playlists'][number]['tracks']
 function copyPlaylist(playlist: BackupSource['library']['playlists'][number]): Playlist {
   // 순서를 그대로 유지한다. 정렬하지 않는다.
   return { id: playlist.id, name: playlist.name, tracks: playlist.tracks.map(copyTrack) }
+}
+
+/**
+ * Moment 하나를 **필드를 골라** 옮긴다. 화면 상태(고정해 둔 캡처, 쓰던 메모,
+ * 거르기)는 입력에 없다 — store 의 영속 필드만 담긴다.
+ */
+function copyMoment(moment: BackupSource['moments'][number]): Moment {
+  return {
+    id: moment.id,
+    source: moment.source,
+    videoId: moment.videoId,
+    atSeconds: moment.atSeconds,
+    note: moment.note,
+    title: moment.title,
+    createdAt: moment.createdAt,
+    updatedAt: moment.updatedAt,
+  }
+}
+
+function copyMoments(moments: BackupSource['moments']): MomentsData {
+  // 추가된 순서 그대로다. 정렬은 화면의 일이다 (ADR 0019 결정 5).
+  return moments.map(copyMoment)
 }
 
 function copyLibrary(library: BackupSource['library']): LibraryData {
@@ -112,6 +175,11 @@ export function createBackup(source: BackupSource): BackupFile {
         version: BACKUP_SECTION_VERSIONS.library,
         data: copyLibrary(source.library),
       },
+      // 0개여도 넣는다 — "없음" 과 "비었음" 을 파일에서 구별한다 (§6-2).
+      moments: {
+        version: BACKUP_SECTION_VERSIONS.moments,
+        data: copyMoments(source.moments),
+      },
       preferences: {
         theme: { version: BACKUP_SECTION_VERSIONS.theme, data: source.theme },
       },
@@ -122,6 +190,11 @@ export function createBackup(source: BackupSource): BackupFile {
   if (source.integrity !== null) file.integrity = source.integrity
 
   return file
+}
+
+/** 파일에 담긴 Moment 수 (M9-5). 섹션이 없으면 0 이다. */
+export function countBackupMoments(file: BackupFile): number {
+  return file.data.moments?.data.length ?? 0
 }
 
 /** 파일에 담긴 개수. 사용자 안내와 테스트에 쓴다. */

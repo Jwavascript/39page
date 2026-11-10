@@ -261,7 +261,14 @@ describe('A. normalizeMoment / normalizeMomentsData', () => {
   })
 
   it('빈 배열은 유효하다 — 버린 것도 없다', () => {
-    expect(normalizeMomentsData([])).toEqual({ data: [], report: { droppedMoments: 0 } })
+    expect(normalizeMomentsData([])).toEqual({
+      data: [],
+      report: {
+        droppedMoments: 0,
+        // M9-5: 이유별 개수가 함께 온다 (가져오기 미리보기용). 모두 0 이다.
+        droppedByReason: { shape: 0, 'video-id': 0, time: 0, 'duplicate-id': 0 },
+      },
+    })
   })
 
   it('불량 항목만 버리고 나머지를 살린다 — 개수를 센다', () => {
@@ -1180,7 +1187,11 @@ describe('G. 소스 수준 보장', () => {
    * ⚠ ADR 0007 의 보호가 무의미해지지 않게 호출 지점을 고정한다.
    * M9-2 에는 호출부가 **없다.** 가져오기 통합은 M9-5 다.
    */
-  it('replaceAllMoments 를 부르는 곳이 아직 없다', () => {
+  /*
+   * M9-5 부터 가져오기가 부른다. `library.replaceAll` 과 같은 방식으로, 그
+   * **한 곳뿐**임을 고정한다 — 다른 곳에서 부르면 ADR 0007 이 무의미해진다.
+   */
+  it('replaceAllMoments 는 가져오기 경로에서만 불린다', () => {
     const callers: string[] = []
     for (const file of [
       'src/features/backup/useBackupImport.ts',
@@ -1198,16 +1209,20 @@ describe('G. 소스 수준 보장', () => {
       if (readCode(file).includes('replaceAllMoments')) callers.push(file)
     }
 
-    expect(callers).toEqual([])
+    expect(callers).toEqual(['src/features/backup/useBackupImport.ts'])
   })
 
   /*
-   * M9-5 전까지 백업에 Moments 가 들어가지 않는다. 들어간 것처럼 보이지
-   * 않게 소스로 고정한다 — 사용자가 M9-2 시점의 백업을 완전한 백업으로
-   * 오인하면 Moment 를 잃는다.
+   * M9-2 ~ M9-4 동안 이 자리는 "백업에 Moments 가 **아직 없다**" 를 고정했다.
+   * M9-5 에서 백업에 들어갔으므로 반대를 고정한다 — 두 내보내기 경로(DATA 패널,
+   * 가져오기 전 "지금 데이터 먼저 내보내기")가 모두 Moments 를 넘긴다.
+   * 동작은 `backup-moments.spec.ts` 가 본다.
    */
-  it('백업 내보내기가 아직 Moments 를 담지 않는다 (M9-5)', () => {
-    expect(readCode('src/features/backup/createBackup.ts')).not.toContain('moments')
-    expect(readCode('src/features/backup/backupSchema.ts')).not.toContain('moments')
+  it('두 내보내기 경로가 모두 Moments 를 담는다 (M9-5)', () => {
+    expect(readCode('src/features/backup/backupSchema.ts')).toContain(
+      'moments: MOMENTS_STORAGE_VERSION',
+    )
+    expect(readCode('src/features/backup/useBackupExport.ts')).toContain('moments: moments.moments')
+    expect(readCode('src/features/backup/useBackupImport.ts')).toContain('moments: moments.moments')
   })
 })

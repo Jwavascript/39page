@@ -49,7 +49,13 @@ describe('A. 고정된 v1 백업을 지금 코드가 읽는다', () => {
     const result = readBackup(FIXTURE_TEXT)
 
     expect(result.ok).toBe(true)
-    expect(result.warnings).toEqual([])
+    /*
+     * M9-5 부터 이 파일에는 안내가 **하나** 붙는다 — Moments 가 생기기 전 파일이라
+     * 지금 Moments 는 그대로 남는다는 것. 그 밖의 경고는 여전히 없다.
+     */
+    expect(result.warnings).toEqual([{ kind: 'moments-section-absent' }])
+    expect(result.ok && result.momentsSection).toBe('absent')
+    expect(result.ok && result.moments).toBeNull()
   })
 
   it('플레이리스트 id 와 순서를 보존한다', () => {
@@ -116,14 +122,21 @@ describe('B. 왕복 동등성', () => {
 
     const rebuilt = createBackup({
       library: read.library,
+      moments: [],
       theme: read.theme,
       integrity: null,
       exportedAt: new Date(read.exportedAt ?? 0),
     })
 
     const original = JSON.parse(FIXTURE_TEXT) as BackupFile
-    // `data` 가 바이트 수준으로 같아야 한다. 왕복해도 아무것도 늘거나 줄지 않는다.
-    expect(rebuilt.data).toEqual(original.data)
+    /*
+     * 고정 파일에 있던 섹션은 바이트 수준으로 같아야 한다. 왕복해도 아무것도
+     * 늘거나 줄지 않는다. M9-5 의 조립은 Moments 섹션을 **항상** 더하므로(0개면
+     * 빈 배열) 그 하나만 다르다.
+     */
+    const { moments, ...rest } = rebuilt.data
+    expect(rest).toEqual(original.data)
+    expect(moments).toEqual({ version: 1, data: [] })
     expect(rebuilt.exportedAt).toBe(original.exportedAt)
   })
 
@@ -139,6 +152,7 @@ describe('B. 왕복 동등성', () => {
         ],
         selectedPlaylistId: 'x',
       },
+      moments: [],
       theme: 'mono-vinyl',
       integrity: null,
       exportedAt: new Date('2026-01-02T03:04:05.006Z'),
@@ -149,6 +163,7 @@ describe('B. 왕복 동등성', () => {
 
     const second = createBackup({
       library: read.library,
+      moments: [],
       theme: read.theme,
       integrity: null,
       exportedAt: new Date(first.exportedAt),
@@ -163,6 +178,7 @@ describe('B. 왕복 동등성', () => {
 
     const rebuilt = createBackup({
       library: read.library,
+      moments: [],
       theme: read.theme,
       integrity: null,
       exportedAt: new Date(0),
@@ -173,7 +189,11 @@ describe('B. 왕복 동등성', () => {
 })
 
 describe('C. 미래 확장과의 공존 (M9 Music Moments)', () => {
-  /** 고정 파일에 선택 섹션을 더한 것. M9 이 할 일을 미리 흉내낸다. */
+  /**
+   * 고정 파일에 선택 섹션을 더한 것. M8-4 가 M9 를 **미리 흉내낸** 모양이다 —
+   * `source` · `title` · `updatedAt` 이 빠져 있다. M9-5 의 검증은 그것을 형식
+   * 오류로 버린다 (아래).
+   */
   function withMoments(): string {
     const file = JSON.parse(FIXTURE_TEXT) as Record<string, unknown>
     const data = file.data as Record<string, unknown>
@@ -202,10 +222,32 @@ describe('C. 미래 확장과의 공존 (M9 Music Moments)', () => {
     expect(result.theme).toBe('kawaii-synth-cassette')
   })
 
-  it('모르는 섹션은 이름을 알린다 — 조용히 버리지 않는다', () => {
+  /*
+   * M8-4 까지 `moments` 는 "알 수 없는 섹션" 이었다. M9-5 부터는 아는 섹션이고
+   * `normalizeMomentsData` 가 검증한다. 흉내낸 모양은 필드가 빠졌으므로 버리고,
+   * **조용히 버리지 않고** 개수와 이유를 알린다.
+   */
+  it('흉내낸 Moment 는 필드가 빠져 형식 오류로 버리고 알린다', () => {
     const result = readBackup(withMoments())
 
-    expect(result.warnings).toContainEqual({ kind: 'unknown-section', section: 'moments' })
+    expect(result.warnings).not.toContainEqual({ kind: 'unknown-section', section: 'moments' })
+    expect(result.warnings).toContainEqual({
+      kind: 'dropped-moments',
+      count: 1,
+      byReason: { shape: 1, 'video-id': 0, time: 0, 'duplicate-id': 0 },
+    })
+    // 섹션 자체는 읽었다 — 남은 것이 0개일 뿐이다.
+    expect(result.ok && result.momentsSection).toBe('present')
+    expect(result.ok && result.moments).toEqual([])
+  })
+
+  it('모르는 섹션은 여전히 이름을 알린다 — 조용히 버리지 않는다', () => {
+    const file = JSON.parse(FIXTURE_TEXT) as Record<string, unknown>
+    ;(file.data as Record<string, unknown>).layouts = { version: 1, data: [] }
+
+    const result = readBackup(JSON.stringify(file))
+
+    expect(result.warnings).toContainEqual({ kind: 'unknown-section', section: 'layouts' })
   })
 
   /*

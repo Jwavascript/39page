@@ -23,7 +23,11 @@
 import { ref } from 'vue'
 
 import { useBackupExport } from '@/features/backup/useBackupExport'
-import { describeWarning, useBackupImport } from '@/features/backup/useBackupImport'
+import {
+  describeWarning,
+  useBackupImport,
+  type SectionOutcome,
+} from '@/features/backup/useBackupImport'
 
 const backup = useBackupExport()
 const restore = useBackupImport()
@@ -35,6 +39,15 @@ const restore = useBackupImport()
  * 열고 입력은 접근성 트리에만 남긴다.
  */
 const fileInput = ref<HTMLInputElement | null>(null)
+
+/** 섹션별 결과의 말 (M9-5). "저장됨" 만이 영구 반영이다. */
+const RESULT_LABEL: Readonly<Record<SectionOutcome, string>> = {
+  saved: '저장됨',
+  unsaved: '저장되지 않음 (새로고침하면 사라짐)',
+  held: '보류',
+  kept: '유지',
+  skipped: '가져오지 않음',
+}
 
 function pickFile(): void {
   fileInput.value?.click()
@@ -66,7 +79,8 @@ function onFileChange(event: Event): void {
         {{ backup.isRecovery.value ? '복구본 내보내기' : 'JSON 백업 내보내기' }}
       </button>
       <span class="backup-count">
-        플레이리스트 {{ backup.counts.value.playlists }}개 · {{ backup.counts.value.tracks }}곡
+        플레이리스트 {{ backup.counts.value.playlists }}개 · {{ backup.counts.value.tracks }}곡 ·
+        Moment {{ backup.counts.value.moments }}개
       </span>
     </div>
 
@@ -126,6 +140,21 @@ function onFileChange(event: Event): void {
     >
       {{ restore.notice.value }}
     </p>
+
+    <!--
+      섹션별 결과 (M9-5). 플레이리스트 · Moments · 테마를 **따로** 적는다 —
+      하나라도 저장되지 않았으면 그 줄이 그렇게 말한다.
+    -->
+    <ul v-if="restore.results.value.length > 0" class="result-list" aria-label="섹션별 복원 결과">
+      <li
+        v-for="result in restore.results.value"
+        :key="result.name"
+        :class="`result--${result.outcome}`"
+      >
+        <strong>{{ result.name }}</strong> — {{ RESULT_LABEL[result.outcome] }} ·
+        {{ result.detail }}
+      </li>
+    </ul>
 
     <!--
       화면에는 복원됐지만 저장되지 않은 상태 (M8-4).
@@ -212,6 +241,19 @@ function onFileChange(event: Event): void {
             </td>
           </tr>
           <tr>
+            <th scope="row">Moments</th>
+            <td>{{ restore.preview.value.currentMoments }}개</td>
+            <td>
+              {{
+                restore.preview.value.incomingMoments !== null
+                  ? `${restore.preview.value.incomingMoments}개`
+                  : restore.preview.value.momentsSection === 'absent'
+                    ? '— (파일에 없음)'
+                    : '— (읽을 수 없음)'
+              }}
+            </td>
+          </tr>
+          <tr>
             <th scope="row">테마</th>
             <td>{{ restore.preview.value.currentTheme }}</td>
             <td>{{ restore.preview.value.incomingTheme ?? '—' }}</td>
@@ -237,13 +279,26 @@ function onFileChange(event: Event): void {
         테마도 함께 적용
       </label>
 
-      <p class="preview-danger">
-        지금 플레이리스트 {{ restore.preview.value.current.playlists }}개가
-        <strong>교체됩니다.</strong> 되돌릴 수 없으니 먼저 내보내 두세요.
-      </p>
+      <!--
+        무엇이 교체되는지 섹션마다 적는다 (M9-5). 파일에 없는 섹션은 교체되지
+        않으므로 여기 나오지 않는다.
+      -->
+      <div v-if="restore.preview.value.replacing.length > 0" class="preview-danger">
+        <p class="preview-danger-head">
+          다음이 <strong>교체됩니다.</strong> 되돌릴 수 없으니 먼저 내보내 두세요.
+        </p>
+        <ul class="preview-danger-list">
+          <li v-for="line in restore.preview.value.replacing" :key="line">지금 {{ line }}</li>
+        </ul>
+      </div>
 
       <p v-if="restore.preview.value.overwritesProtected" class="preview-warning">
         저장된 원본을 읽지 못한 상태입니다. 가져오면 그 원본을
+        <strong>덮어씁니다.</strong>
+      </p>
+
+      <p v-if="restore.preview.value.overwritesProtectedMoments" class="preview-warning">
+        저장된 Moments 원본을 읽지 못한 상태입니다. 가져오면 그 원본을
         <strong>덮어씁니다.</strong>
       </p>
 
@@ -262,6 +317,17 @@ function onFileChange(event: Event): void {
           @click="restore.downloadRawOriginal()"
         >
           읽지 못한 원본 내려받기
+        </button>
+        <button
+          v-if="
+            restore.preview.value.overwritesProtectedMoments &&
+            restore.preview.value.rawMomentsAvailable
+          "
+          type="button"
+          class="pill"
+          @click="restore.downloadRawMoments()"
+        >
+          읽지 못한 Moments 원본 내려받기
         </button>
       </div>
 
@@ -476,6 +542,37 @@ function onFileChange(event: Event): void {
 
 .preview-danger strong,
 .preview-warning strong {
+  font-weight: 600;
+}
+
+/* M9-5: 교체되는 섹션을 한 줄씩. 머리말과 같은 경고 어조다. */
+.preview-danger-head {
+  margin: 0;
+}
+
+.preview-danger-list {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+
+/*
+ * 섹션별 복원 결과 (M9-5). "저장됨" 만 평소 어조이고, 나머지는 영구 반영이
+ * 아니므로 경고 어조다. `kept`(파일에 없어 유지)는 실패가 아니라 평소 어조다.
+ */
+.result-list {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: var(--row-meta-text-color);
+  font: 10px/1.6 var(--font-mono);
+}
+
+.result-list .result--unsaved,
+.result-list .result--held,
+.result-list .result--skipped {
+  color: var(--status-warning-text-color);
+}
+
+.result-list strong {
   font-weight: 600;
 }
 

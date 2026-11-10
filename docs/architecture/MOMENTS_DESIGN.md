@@ -1,6 +1,6 @@
 # Music Moments — 도메인 · 저장 · 재생 · 백업 설계 (M9-1)
 
-> 상태: **§1~§4 와 UI(§9) 구현 완료 (M9-2 · M9-3 · M9-4, 2026-11-10). §5 백업 통합은 아직 설계다.**
+> 상태: **§1–§5 와 UI(§9) 구현 완료 (M9-2 ~ M9-5, 2026-11-10).**
 >
 > | 절               | 상태                                                                                            |
 > | ---------------- | ----------------------------------------------------------------------------------------------- |
@@ -8,13 +8,12 @@
 > | §2 검증과 정규화 | **구현** — `src/stores/moments.ts`                                                              |
 > | §3 영속 저장     | **구현** — `STORAGE_KEYS.moments` · `momentsStorage`                                            |
 > | §4 재생 연동     | **구현** — 어댑터 `position()` · `seek()` · `startSeconds`, 코디네이터 `PlaybackMoments` (M9-3) |
-> | §5 백업 통합     | 설계. 코드 없음 (**M9-5**) — ⚠ 지금 백업에 Moments 가 없다                                      |
+> | §5 백업 통합     | **구현** — `data.moments` 선택 섹션 (M9-5, `BACKUP_FORMAT.md` §6-4)                             |
 > | §6 M10 연계      | 설계                                                                                            |
 > | §9 UI            | **구현** — `src/features/moments/` (M9-4, ADR 0021)                                             |
 >
-> ⚠ **백업에는 아직 실리지 않는다** (M9-5). 사용자가 화면에서 Moment 를 만들 수
-> 있게 됐으므로 M9-4 는 **운영에 배포하지 않는다** — 백업이 Moment 를 빠뜨리는
-> 상태로 내보내면, 그 백업을 믿고 기기를 옮긴 사용자가 잃는다.
+> M9-5 에서 백업에 들어갔다. M9-4 의 배포 보류 사유(백업이 Moment 를 빠뜨림)는
+> 해소됐고, 배포 판단은 M9-6 통합 검증 뒤에 한다.
 >
 > 기능 명세: [`../product/MUSIC_MOMENTS.md`](../product/MUSIC_MOMENTS.md)
 > 결정: **ADR 0019** (도메인·저장) · **ADR 0020** (시점 조회·이동)
@@ -425,8 +424,8 @@ M9-2 에서 **해결한 것**은 ADR 0019 결정 7·8·9 로, M9-4 에서 해결
 - **TODO**: `playPlaylist` · `playTrack` 이 어댑터 없이도 `ok: true` 를 돌려주는
   기존 동작. `playMoment` 는 `player-unavailable` 로 거절한다 — 둘을 맞출지
   (ADR 0020 결정 13)
-- **TODO (M9-5)**: `BACKUP_SECTION_VERSIONS.moments` 를 `MOMENTS_STORAGE_VERSION`
-  에서 가져온다. 상수를 다시 적지 않는다 (M8-2 가 세운 방식)
+- ~~TODO (M9-5)~~ `BACKUP_SECTION_VERSIONS.moments` → `MOMENTS_STORAGE_VERSION`
+  을 가져다 쓴다. **M9-5 에서 닫았다**
 
 ## 9. UI — M9-4 구현 (2026-11-10)
 

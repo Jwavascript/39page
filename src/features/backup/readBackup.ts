@@ -13,8 +13,9 @@
  * **임의로 고치지 않는다.** 지원하지 않는 버전이나 깨진 데이터를 그럴듯한
  * 값으로 바꾸지 않는다. 버리거나 건너뛰고, **개수와 사유를 보고한다.**
  */
-import { isThemeKey, type LibraryData, type ThemeKey } from '@/shared/types'
+import { isThemeKey, type LibraryData, type MomentsData, type ThemeKey } from '@/shared/types'
 import { normalizeLibraryData } from '@/stores/library'
+import { normalizeMomentsData, type MomentDropReason } from '@/stores/moments'
 
 import {
   BACKUP_FORMAT,
@@ -66,9 +67,43 @@ export type BackupWarning =
       readonly version?: number
     }
   | { readonly kind: 'unknown-section'; readonly section: string }
-  | { readonly kind: 'recovered-backup'; readonly reason: BackupIntegrityReason }
+  | {
+      readonly kind: 'recovered-backup'
+      readonly reason: BackupIntegrityReason
+      /** M9-5. Moments 섹션만 복구본이면 `'moments'`. 없으면 라이브러리다. */
+      readonly section?: 'moments'
+    }
+  | {
+      /** M9-5. 형식이 틀린 Moment 를 버렸다. 이유별 개수를 함께 준다. */
+      readonly kind: 'dropped-moments'
+      readonly count: number
+      readonly byReason: Readonly<Record<MomentDropReason, number>>
+    }
+  | {
+      /**
+       * M9-5. 파일에 `data.moments` 가 **아예 없다** — Moments 가 생기기 전
+       * (M8 이하) 빌드가 만든 파일이다. 지금 Moments 는 유지된다.
+       *
+       * 경고로 알리는 이유: 사용자가 이 파일을 자신의 **완전한** 백업으로
+       * 오인하지 않게 한다 (`BACKUP_FORMAT.md` §6-2-2).
+       */
+      readonly kind: 'moments-section-absent'
+    }
   | { readonly kind: 'invalid-exported-at' }
   | { readonly kind: 'large-file'; readonly size: number }
+
+/**
+ * 파일의 Moments 섹션이 어떤 상태인가 (M9-5).
+ *
+ * | 값        | 뜻                                      | 가져오기                 |
+ * | --------- | --------------------------------------- | ------------------------ |
+ * | `absent`  | 키가 없다 (M9 이전 파일)                | 지금 Moments **유지**    |
+ * | `skipped` | 있지만 읽을 수 없다 (형식·미래 버전)    | 지금 Moments **유지**    |
+ * | `present` | 읽었다. **빈 배열일 수 있다**           | 그 목록으로 **교체**     |
+ *
+ * `absent` 와 "빈 배열" 을 섞지 않는 것이 M9 호환성의 전부다 (§6-2).
+ */
+export type MomentsSectionState = 'absent' | 'skipped' | 'present'
 
 export interface BackupReadSuccess {
   readonly ok: true
@@ -81,6 +116,12 @@ export interface BackupReadSuccess {
   readonly library: LibraryData | null
   /** 가져올 수 있는 테마. 없거나 건너뛰었으면 `null`. */
   readonly theme: ThemeKey | null
+  /**
+   * 가져올 수 있는 Moments (M9-5). `momentsSection` 이 `present` 일 때만
+   * 값이 있고, **빈 배열일 수 있다.** 그 밖에는 `null` 이다.
+   */
+  readonly moments: MomentsData | null
+  readonly momentsSection: MomentsSectionState
   readonly warnings: readonly BackupWarning[]
   /** `library` 가 담고 있는 개수. 건너뛰었으면 0 이다. */
   readonly counts: { readonly playlists: number; readonly tracks: number }
@@ -130,20 +171,27 @@ const INTEGRITY_REASONS: readonly BackupIntegrityReason[] = [
 function readIntegrity(value: unknown): BackupIntegrity | null {
   if (!isRecord(value)) return null
 
-  const section = value.library
+  // 섹션마다 따로 읽는다 (M9-5). 한쪽이 깨졌다고 다른 쪽 표시를 버리지 않는다.
+  const library = readSectionIntegrity(value.library)
+  const moments = readSectionIntegrity(value.moments)
+  if (library === null && moments === null) return null
+
+  const integrity: BackupIntegrity = {}
+  if (library !== null) integrity.library = library
+  if (moments !== null) integrity.moments = moments
+  return integrity
+}
+
+function readSectionIntegrity(section: unknown): BackupSectionIntegrity | null {
   if (!isRecord(section)) return null
   if (section.level !== 'recovered' && section.level !== 'complete') return null
   if (!INTEGRITY_REASONS.includes(section.reason as BackupIntegrityReason)) return null
 
-  const library: BackupSectionIntegrity = {
-    level: section.level,
-    reason: section.reason as BackupIntegrityReason,
-  }
-  return { library }
+  return { level: section.level, reason: section.reason as BackupIntegrityReason }
 }
 
 /** 우리가 아는 섹션 이름. 그 밖은 "알 수 없는 섹션" 으로 알린다. */
-const KNOWN_SECTIONS = new Set(['library', 'preferences'])
+const KNOWN_SECTIONS = new Set(['library', 'moments', 'preferences'])
 
 /** 우리가 아는 설정 이름. */
 const KNOWN_PREFERENCES = new Set(['theme'])
@@ -209,6 +257,13 @@ export function readBackup(text: string, size?: number): BackupReadResult {
   if (integrity?.library?.level === 'recovered') {
     warnings.push({ kind: 'recovered-backup', reason: integrity.library.reason })
   }
+  if (integrity?.moments?.level === 'recovered') {
+    warnings.push({
+      kind: 'recovered-backup',
+      reason: integrity.moments.reason,
+      section: 'moments',
+    })
+  }
 
   /* ---------- 알 수 없는 섹션 ---------- */
 
@@ -271,6 +326,10 @@ export function readBackup(text: string, size?: number): BackupReadResult {
     }
   }
 
+  /* ---------- moments (M9-5) ---------- */
+
+  const { moments, momentsSection } = readMomentsSection(data, warnings)
+
   /* ---------- preferences.theme ---------- */
 
   let theme: ThemeKey | null = null
@@ -306,7 +365,7 @@ export function readBackup(text: string, size?: number): BackupReadResult {
 
   /* ---------- 가져올 것이 남았는가 ---------- */
 
-  if (libraryData === null && theme === null) {
+  if (libraryData === null && theme === null && moments === null) {
     return { ok: false, error: { kind: 'nothing-importable' }, warnings }
   }
 
@@ -319,10 +378,65 @@ export function readBackup(text: string, size?: number): BackupReadResult {
     integrity,
     library: libraryData,
     theme,
+    moments,
+    momentsSection,
     warnings,
     counts: {
       playlists: playlists.length,
       tracks: playlists.reduce((total, playlist) => total + playlist.tracks.length, 0),
     },
   }
+}
+
+/**
+ * `data.moments` 를 읽는다 (M9-5, `BACKUP_FORMAT.md` §6-2).
+ *
+ * **새 검증 규칙을 만들지 않는다.** 항목 검증은 `normalizeMomentsData` —
+ * 저장소에서 읽을 때와 **같은 함수**다. 가져온 Moment 가 다음 새로고침에서
+ * 버려지는 일이 없다.
+ *
+ * 건너뛰는 모든 경우에 지금 Moments 는 **그대로 남는다** (호출부가 `null` 을
+ * 보고 쓰지 않는다). 섹션 버전이 미래면 추측해서 변환하지 않는다 (§3-3).
+ */
+function readMomentsSection(
+  data: Record<string, unknown>,
+  warnings: BackupWarning[],
+): { moments: MomentsData | null; momentsSection: MomentsSectionState } {
+  if (!('moments' in data)) {
+    warnings.push({ kind: 'moments-section-absent' })
+    return { moments: null, momentsSection: 'absent' }
+  }
+
+  const section = asSection(data.moments)
+  if (section === null) {
+    warnings.push({ kind: 'section-skipped', section: 'moments', reason: 'invalid' })
+    return { moments: null, momentsSection: 'skipped' }
+  }
+
+  if (section.version !== BACKUP_SECTION_VERSIONS.moments) {
+    warnings.push({
+      kind: 'section-skipped',
+      section: 'moments',
+      reason: section.version > BACKUP_SECTION_VERSIONS.moments ? 'future-version' : 'old-version',
+      version: section.version,
+    })
+    return { moments: null, momentsSection: 'skipped' }
+  }
+
+  const normalized = normalizeMomentsData(section.data)
+  if (normalized === null) {
+    // 배열이 아니다. 복구할 것이 없다 — 0개로 읽지 않는다.
+    warnings.push({ kind: 'section-skipped', section: 'moments', reason: 'invalid' })
+    return { moments: null, momentsSection: 'skipped' }
+  }
+
+  if (normalized.report.droppedMoments > 0) {
+    warnings.push({
+      kind: 'dropped-moments',
+      count: normalized.report.droppedMoments,
+      byReason: { ...normalized.report.droppedByReason },
+    })
+  }
+
+  return { moments: normalized.data, momentsSection: 'present' }
 }

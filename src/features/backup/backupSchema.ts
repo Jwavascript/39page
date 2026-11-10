@@ -12,8 +12,9 @@
  * 섹션 버전을 **상수로 다시 적지 않고 store 에서 가져온다.** 다시 적으면
  * 내부 스키마를 올릴 때 한쪽만 바뀌어 조용히 어긋난다.
  */
-import type { LibraryData, ThemeKey } from '@/shared/types'
+import type { LibraryData, MomentsData, ThemeKey } from '@/shared/types'
 import { LIBRARY_STORAGE_VERSION, type LibraryProtectedReason } from '@/stores/library'
+import { MOMENTS_STORAGE_VERSION } from '@/stores/moments'
 import { THEME_STORAGE_VERSION } from '@/stores/theme'
 
 /** 파일 식별자. 이 값이 아니면 파싱된 JSON 이라도 우리 파일이 아니다. */
@@ -30,6 +31,8 @@ export const BACKUP_SCHEMA_VERSION = 1
 export const BACKUP_SECTION_VERSIONS = {
   library: LIBRARY_STORAGE_VERSION,
   theme: THEME_STORAGE_VERSION,
+  /** M9-5. 선택 섹션이므로 파일 버전(`schemaVersion`)은 올리지 않는다. */
+  moments: MOMENTS_STORAGE_VERSION,
 } as const
 
 /** 섹션 봉투. `defineStorage` 의 `StorageEnvelope` 와 같은 모양이다. */
@@ -47,6 +50,9 @@ export type BackupIntegrityLevel = 'complete' | 'recovered'
  * `LibraryProtectedReason` 네 가지에 `unavailable` 을 더한 것이다. 저장소
  * 자체를 쓸 수 없으면 보호 상태가 아니지만, 그때도 파일에는 이번 세션의
  * 내용만 들어간다.
+ *
+ * Moments 의 보호 이유(`MomentsProtectedReason`)도 **같은 네 가지**다 — 같은
+ * 정책(ADR 0007)을 같은 구현으로 쓰기 때문이다. 그래서 타입을 따로 두지 않는다.
  */
 export type BackupIntegrityReason = LibraryProtectedReason | 'unavailable'
 
@@ -67,6 +73,14 @@ export interface BackupSectionIntegrity {
  */
 export interface BackupIntegrity {
   library?: BackupSectionIntegrity
+  /**
+   * M9-5. Moments 저장소를 온전히 읽지 못했을 때만 들어간다.
+   *
+   * 라이브러리와 **따로** 적는다. 두 키는 따로 보호되므로(ADR 0019 결정 3)
+   * 라이브러리는 온전한데 Moments 만 복구본일 수 있다. M8 빌드는 이 필드를
+   * 모르지만, 그 빌드는 `data.moments` 자체를 무시하므로 해가 없다.
+   */
+  moments?: BackupSectionIntegrity
 }
 
 export interface BackupPreferences {
@@ -75,6 +89,14 @@ export interface BackupPreferences {
 
 export interface BackupData {
   library: BackupSection<LibraryData>
+  /**
+   * Music Moments (M9-5). **선택 섹션**이다 (`BACKUP_FORMAT.md` §6).
+   *
+   * 이 앱의 내보내기는 **항상** 넣는다 — 0개여도 `[]` 다. 읽을 때 "섹션이
+   * 없다"(M9 이전 파일 → 지금 Moments 유지)와 "섹션이 비었다"(사용자가
+   * 정말 0개 → 0개로 교체)를 구별해야 하기 때문이다 (§6-2).
+   */
+  moments?: BackupSection<MomentsData>
   preferences?: BackupPreferences
 }
 

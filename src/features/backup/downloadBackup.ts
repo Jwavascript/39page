@@ -42,6 +42,19 @@ export function rawDumpFileName(now: Date): string {
   return `39page-raw-library-${date}-${time}.txt`
 }
 
+/**
+ * 읽지 못한 **Moments** 원본을 원문 그대로 꺼낼 때의 이름 (M9-5).
+ *
+ * 라이브러리 원문과 이름을 나눈다. 두 키가 따로 보호되므로 둘 다 꺼내야 할 수
+ * 있고, 같은 이름이면 하나가 다른 하나를 덮는다.
+ */
+export function rawMomentsDumpFileName(now: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  const date = `${String(now.getFullYear())}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
+  const time = `${pad(now.getHours())}${pad(now.getMinutes())}`
+  return `39page-raw-moments-${date}-${time}.txt`
+}
+
 export type DownloadFailureReason =
   /** 객체를 JSON 으로 만들 수 없다. */
   | 'serialize-failed'
