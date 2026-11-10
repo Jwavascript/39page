@@ -10,7 +10,7 @@
  */
 
 /** 앱이 지원하는 위젯 종류. */
-export type WidgetType = 'deck' | 'clock' | 'weather' | 'player' | 'mascot' | 'playlist'
+export type WidgetType = 'deck' | 'clock' | 'weather' | 'player' | 'mascot' | 'playlist' | 'moments'
 
 /** 런타임 검증과 순회를 위한 목록. */
 export const WIDGET_TYPES = [
@@ -20,6 +20,7 @@ export const WIDGET_TYPES = [
   'player',
   'mascot',
   'playlist',
+  'moments',
 ] as const satisfies readonly WidgetType[]
 
 /** 저장된 레이아웃처럼 신뢰할 수 없는 값이 위젯 종류인지 확인한다. */
@@ -37,7 +38,7 @@ export function isWidgetType(value: unknown): value is WidgetType {
  *
  * 근거: `docs/decisions/0005-grid-area-layout-model.md`
  */
-export type GridArea = 'deck' | 'mascot' | 'clock' | 'weather' | 'player' | 'playlist'
+export type GridArea = 'deck' | 'mascot' | 'clock' | 'weather' | 'player' | 'playlist' | 'moments'
 
 /** 레이아웃에 배치된 위젯 하나. */
 export interface WidgetInstance {

@@ -8,9 +8,9 @@
 > 테마별 도트 마스코트, 라이브러리 JSON 백업·복원까지 구현했다.
 > **<https://39page.com> 에 배포했고 M8 도 반영돼 있다** (2026-11-06).
 >
-> **M9 Music Moments 는 설계(M9-1) · 데이터 계층(M9-2) · 재생 연동(M9-3)까지
-> 끝났다.** 화면에 보이는 기능은 아직 없고(M9-4), 백업에도 아직 실리지 않는다
-> (M9-5).
+> **M9 Music Moments 는 UI(M9-4)까지 끝났다** — 지금 이 순간을 저장하고, 목록에서
+> 찾아 그 시점부터 다시 듣는다. ⚠ **백업에는 아직 실리지 않으므로(M9-5) 운영에
+> 배포하지 않은 상태다.**
 > 명세는 [`docs/product/MUSIC_MOMENTS.md`](docs/product/MUSIC_MOMENTS.md),
 > 설계는 [`docs/architecture/MOMENTS_DESIGN.md`](docs/architecture/MOMENTS_DESIGN.md).
 >

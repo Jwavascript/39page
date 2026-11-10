@@ -657,8 +657,14 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
           position: () => value,
           seek: () => {},
         }
-        coordinator.attachAdapter(misbehaving)
+        const attachment = coordinator.attachAdapter(misbehaving)
         coordinator.playPlaylist(playlistId)
+        /*
+         * 재생이 실제로 시작된 상태로 만든다 (M9-4). 그래야 이 테스트가 보려는
+         * **숫자 검증**까지 내려간다 — 재생 전이면 그 앞의 신뢰 판정이 먼저
+         * `null` 을 돌려주므로, 숫자 검증을 지워도 이 테스트가 통과해 버린다.
+         */
+        attachment.events.stateChange?.('playing')
 
         expect(coordinator.capturePosition()).toBeNull()
       },
@@ -674,13 +680,78 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
 
       expect(coordinator.capturePosition()).toBeNull()
 
-      // Track 2 가 보고를 시작하면 그때부터 Track 2 의 값이다.
+      /*
+       * Track 2 가 `0` 을 보고하기 시작했다. **아직 믿지 않는다** (M9-4).
+       *
+       * 실제 플레이어는 새 영상을 적재한 뒤 지정 시점으로 가기 전 약 200ms
+       * 동안 `0` 을 보고한다 (M9-3 실측). 영상은 맞고 시간만 틀린 값이라
+       * 어댑터의 영상 식별로는 거를 수 없다. M9-3 까지 이 자리는 캡처를
+       * 돌려줬다 — 0초짜리 Moment 가 생길 수 있는 창이었다.
+       */
       fake.emitPosition(0)
+      expect(coordinator.capturePosition()).toBeNull()
+
+      // 실제로 재생이 시작된 뒤의 0 은 **정상적으로 확인된 0초**다. 유효하다.
+      fake.emitStateChange('playing')
       expect(coordinator.capturePosition()).toEqual({
         videoId: VIDEO[1],
         atSeconds: 0,
         title: 'Track 2',
       })
+    })
+
+    it('시점을 실은 적재 직후의 가짜 0 을 찍지 않는다 — 지정 시점에서 재생된 뒤에 찍는다', () => {
+      const { coordinator, fake } = playingAt(10)
+
+      // 다른 영상의 Moment 로 간다. 플레이어는 60 으로 가기 전에 0 을 먼저 보고한다.
+      coordinator.playMoment({ videoId: VIDEO[2], atSeconds: 60 })
+      fake.emitStateChange('paused')
+      fake.emitPosition(0)
+      expect(coordinator.capturePosition()).toBeNull()
+      fake.emitStateChange('idle')
+      fake.emitStateChange('loading')
+      expect(coordinator.capturePosition()).toBeNull()
+
+      fake.emitPosition(60.06)
+      fake.emitStateChange('playing')
+      expect(coordinator.capturePosition()).toMatchObject({ videoId: VIDEO[2], atSeconds: 60 })
+    })
+
+    it('같은 영상 안에서 시점을 옮긴 직후에도 재생이 다시 시작된 뒤에 찍는다', () => {
+      const { coordinator, fake } = playingAt(10)
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
+      fake.emitStateChange('loading')
+      expect(coordinator.capturePosition()).toBeNull()
+
+      fake.emitPosition(83.02)
+      fake.emitStateChange('playing')
+      expect(coordinator.capturePosition()?.atSeconds).toBe(83)
+    })
+
+    it('재생 중 오류가 나면 찍지 않는다 — 그 위치를 믿을 근거가 없다', () => {
+      const { coordinator, fake } = playingAt(40)
+
+      fake.emitError({ kind: 'not-playable', code: 5 })
+
+      expect(coordinator.capturePosition()).toBeNull()
+    })
+
+    it('재생이 시작된 뒤의 버퍼링·끝 상태에서는 찍는다 — 플레이어가 실제로 있던 자리다', () => {
+      // 한 곡짜리 큐다. 끝나도 다음 곡으로 넘어가지 않아 그 자리에 머문다.
+      const { coordinator, fake, playlistId } = setup(1)
+      coordinator.playPlaylist(playlistId)
+      fake.emitReady()
+      fake.emitStateChange('playing')
+      fake.emitPosition(40)
+
+      // 재생 중 네트워크 버퍼링. 명령한 것이 아니므로 재생 시작 표시는 그대로다.
+      fake.emitStateChange('loading')
+      expect(coordinator.capturePosition()?.atSeconds).toBe(40)
+
+      fake.emitPosition(212.4)
+      fake.emitStateChange('ended')
+      expect(coordinator.capturePosition()?.atSeconds).toBe(212)
     })
 
     it('일시정지 중에도 찍을 수 있다 — 재생 상태가 조건이 아니다', () => {

@@ -451,6 +451,7 @@ describe('B. 테마 전환 안정성', () => {
       'weather-main',
       'player-main',
       'playlist-main',
+      'moments-main',
     ])
   })
 

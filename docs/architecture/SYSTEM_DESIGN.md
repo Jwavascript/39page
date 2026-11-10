@@ -555,6 +555,13 @@ grid-template-columns: minmax(0, 1.13fr) minmax(420px, 0.87fr)
 
 플레이스홀더는 개발용 임시 표시이며 최종 디자인이 아니다.
 
+> **M9-4 (2026-11-10)**: `moments` 위젯을 더했다 (`features/moments/MomentsWidget.vue`).
+> 넓은 화면에서는 정보 열의 빈자리(`'deck player moments'` ·
+> `'playlist mascot moments'`)를 `contain: size` 로 채워 **행 높이를 정하지 않고**,
+> 좁은 화면에서는 `'player player'` 바로 아래 한 행이다. 영역 이름이 하나 늘었을 뿐
+> 기존 영역·순서·DOM 부모는 그대로다 (ADR 0021). 위 그림과 표는 M1 시점의 것이고,
+> 현재 배치는 `WidgetHost.vue` 의 `grid-template-areas` 가 단일 출처다.
+
 TODO: 드로어를 위젯으로 볼지 셸 소유로 볼지 최종 확정 (현재 셸 소유 전제)
 TODO: 푸터(테마별 문구)를 셸에 추가할지 결정 — 테마별 copy가 레지스트리에 없다
 
@@ -635,6 +642,10 @@ Playlist A 재생 중  →  Library 에서 B 선택  →  B 이름 변경 · 삭
 - 큐 끝에서는 멈추고 알린다. 처음으로 돌아가지 않는다 (M3-0.1).
 - 재생 불가 영상에서 **자동으로 다음 곡으로 넘기지 않는다** (M3-0.7).
   오류를 안내하고 사용자의 다음 선택을 기다린다.
+- "그 트랙이 한 번이라도 재생됐는가" 는 M9-4 부터 `playback.hasStartedPlaying`
+  이다 (이전에는 코디네이터의 지역 변수). 쓰는 곳은 여전히 코디네이터뿐이고,
+  파생값 `isPositionReliable` 을 Moment 저장 버튼과 `capturePosition()` 이 함께
+  본다 — 전환 직후의 가짜 0초를 막는다 (ADR 0021 결정 3).
 
 의존 방향:
 

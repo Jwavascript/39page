@@ -385,7 +385,8 @@ describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
 
-    expect(wide).toContain("'playlist mascot .'")
+    // 4 행 3 열은 M9-4 부터 Moments 다. 플레이리스트는 그대로 1 열이다.
+    expect(wide).toContain("'playlist mascot moments'")
     expect(wide).toContain('minmax(var(--size-drawer-width), 0.55fr)')
   })
 

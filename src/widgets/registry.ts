@@ -17,6 +17,7 @@ import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/sh
 import DeckWidget from '@/features/deck/DeckWidget.vue'
 import PlaylistWidget from '@/features/library/PlaylistWidget.vue'
 import MascotPanel from '@/features/mascot/MascotPanel.vue'
+import MomentsWidget from '@/features/moments/MomentsWidget.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import ClockWidget from '@/widgets/clock/ClockWidget.vue'
 import WeatherWidget from '@/widgets/weather/WeatherWidget.vue'
@@ -110,6 +111,18 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
      */
     component: PlaylistWidget,
     defaultArea: 'playlist',
+    ...NOT_EDITABLE,
+  },
+  moments: {
+    type: 'moments',
+    title: 'Music Moments',
+    /*
+     * M9-4 에서 추가했다. 정보 열의 빈자리(넓은 화면) · 플레이어 바로 아래
+     * 행(좁은 화면)에 선다. 플레이어를 품지 않으므로 `persistent` 가 아니다 —
+     * 시점을 읽고 재생을 요청하는 일은 Playback Coordinator 를 거친다.
+     */
+    component: MomentsWidget,
+    defaultArea: 'moments',
     ...NOT_EDITABLE,
   },
   player: {

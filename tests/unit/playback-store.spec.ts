@@ -120,6 +120,66 @@ describe('Playback Store — 기본 불변조건', () => {
     expect(playback.statusMessage).toBe('')
   })
 
+  it('reset 이 재생 시작 표시도 되돌린다 (M9-4)', () => {
+    const playback = usePlaybackStore()
+    playback.setQueue(TRACKS, 0)
+    playback.setHasStartedPlaying(true)
+
+    playback.reset()
+
+    // 이전 큐의 늦은 ENDED 와 이전 영상의 위치를 함께 막는다.
+    expect(playback.hasStartedPlaying).toBe(false)
+    expect(playback.isPositionReliable).toBe(false)
+  })
+
+  describe('위치 신뢰 판정 (M9-4)', () => {
+    it('현재 트랙과 재생 시작이 모두 있어야 믿는다', () => {
+      const playback = usePlaybackStore()
+
+      expect(playback.isPositionReliable).toBe(false)
+
+      playback.setQueue(TRACKS, 0)
+      playback.setPlayerState('playing')
+      // 명령 뒤 아직 playing 을 받지 않았다.
+      expect(playback.isPositionReliable).toBe(false)
+
+      playback.setHasStartedPlaying(true)
+      expect(playback.isPositionReliable).toBe(true)
+    })
+
+    it.each(['playing', 'paused', 'loading', 'ended'] as const)(
+      '재생이 시작된 뒤의 %s 는 믿는다',
+      (state) => {
+        const playback = usePlaybackStore()
+        playback.setQueue(TRACKS, 0)
+        playback.setHasStartedPlaying(true)
+        playback.setPlayerState(state)
+
+        expect(playback.isPositionReliable).toBe(true)
+      },
+    )
+
+    it.each(['idle', 'error'] as const)('재생이 시작됐어도 %s 는 믿지 않는다', (state) => {
+      const playback = usePlaybackStore()
+      playback.setQueue(TRACKS, 0)
+      playback.setHasStartedPlaying(true)
+      playback.setPlayerState(state)
+
+      expect(playback.isPositionReliable).toBe(false)
+    })
+
+    it('큐가 비면 믿지 않는다', () => {
+      const playback = usePlaybackStore()
+      playback.setQueue(TRACKS, 0)
+      playback.setHasStartedPlaying(true)
+      playback.setPlayerState('playing')
+
+      playback.setQueue([], 0)
+
+      expect(playback.isPositionReliable).toBe(false)
+    })
+  })
+
   it('상태 메시지의 어조를 구분한다', () => {
     const playback = usePlaybackStore()
 

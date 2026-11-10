@@ -47,6 +47,7 @@
 | [0018](0018-json-backup-restore.md)           | JSON 백업 파일은 저장 봉투를 품고, 가져오기는 승인 전까지 읽기 전용이다              | 채택 (설계)       |
 | [0019](0019-music-moments-domain.md)          | Moment 는 영상을 가리키고 자기 저장 키에 담긴다                                      | 채택 (M9-2 구현)  |
 | [0020](0020-player-position-and-seek.md)      | 재생 시점 조회와 이동은 어댑터 계약에 더하고, 코디네이터가 중계한다                  | 채택 (M9-3 구현)  |
+| [0021](0021-music-moments-ui.md)              | Music Moments UI — 정보 열의 빈자리에 두고, 재생이 실제로 시작된 뒤에만 저장한다     | 채택 (M9-4 구현)  |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

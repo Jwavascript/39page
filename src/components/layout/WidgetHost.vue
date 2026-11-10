@@ -92,12 +92,13 @@ const placed = computed<PlacedWidget[]>(() =>
   grid-template-areas:
     'deck player clock'
     'deck player weather'
-    'deck player .'
-    'playlist mascot .';
+    'deck player moments'
+    'playlist mascot moments';
   /*
    * 1·2 행은 **콘텐츠 높이**(`auto`)다. 그래야 시계와 날씨가 서로 붙는다.
    * 3 행이 `1fr` 로 남은 높이를 모두 먹으므로 정보 열의 빈자리가 **아래**에
-   * 모인다 — 다른 위젯을 더할 자리다 (M7 요청 4).
+   * 모인다 — 다른 위젯을 더할 자리다 (M7 요청 4). M9-4 에서 그 자리(3·4 행)를
+   * Music Moments 가 쓴다.
    *
    * 이전에는 행이 둘뿐이어서 행 높이를 데크·플레이어가 지배했고, 시계가
    * 1 행 위쪽에 붙은 뒤 **아래로 빈 공간이 생긴 다음** 날씨가 2 행 시작에
@@ -141,6 +142,24 @@ const placed = computed<PlacedWidget[]>(() =>
  * 가려지지 않는다.** 오버레이에서 한 목록을 편집하면서 다른 목록으로 건너갈
  * 수 있다.
  */
+
+/*
+ * Music Moments 의 자리 (M9-4). 정보 열의 빈자리 — 3·4 행을 그대로 채운다.
+ *
+ * ⚠ **이 위젯은 행 높이를 정하지 않는다.** `contain: size` 로 자기 내용이 트랙
+ * 크기 계산에 끼어들지 않게 하고, 늘이기로 남은 칸을 채운다. 행 높이는 여전히
+ * 데크·플레이어(1~3 행)와 플레이리스트·마스코트(4 행)가 정한다.
+ *
+ * 그래서 메모 폼을 열거나 순간이 늘어나도 **다른 위젯이 밀리지 않는다** — 내용은
+ * 위젯 안에서 스크롤한다. 이 칸은 실측으로 1280×800 에서 274px, 1920×1080 에서
+ * 419px 이다 (ADR 0021). 늘이기만 하고 `contain` 을 빼면, 폼을 여는 순간 3 행이
+ * 커져 플레이리스트·마스코트가 아래로 밀린다.
+ */
+.widget-host > [data-widget='moments'] {
+  min-height: 0;
+  align-self: stretch;
+  contain: size;
+}
 
 /*
  * 정보 열 구분선 (M5). 승인된 디자인의 `.info { border-left }` 다.
@@ -191,10 +210,23 @@ const placed = computed<PlacedWidget[]>(() =>
     grid-template-areas:
       'deck playlist'
       'player player'
+      'moments moments'
       'clock weather'
       'mascot mascot';
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
+  }
+
+  /*
+   * Music Moments 는 **플레이어 바로 아래** 한 행이다 (M9-4, ADR 0021).
+   *
+   * "지금 이 순간 저장" 은 영상을 보다가 누르는 버튼이라 영상 가까이 있어야
+   * 한다. 시계·날씨는 그 아래로 한 칸 내려간다. 여기서는 자기 행을 가지므로
+   * 내용 높이를 그대로 쓴다 — `contain` 을 풀지 않으면 행이 0 이 된다.
+   */
+  .widget-host > [data-widget='moments'] {
+    align-self: start;
+    contain: none;
   }
 
   /*

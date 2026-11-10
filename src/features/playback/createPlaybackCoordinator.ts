@@ -149,16 +149,18 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
    */
   let bottomObstruction = 0
 
-  /**
-   * 지금 트랙이 **한 번이라도 재생됐는지.**
+  /*
+   * "지금 트랙이 한 번이라도 재생됐는가" 는 `playback.hasStartedPlaying` 이다.
    *
    * `ENDED` 를 받아도 이것이 `false` 면 다음 곡으로 넘기지 않는다.
    * 사용자가 곡을 빠르게 연달아 고르면, 바꾸기 직전 트랙의 `ENDED` 가
    * 새 트랙을 적재한 **뒤에** 도착할 수 있다. 그 신호를 그대로 믿으면
    * 사용자가 고른 곡을 건너뛰고 그 다음 곡이 나온다.
    * 재생된 적 없는 트랙은 끝날 수도 없다.
+   *
+   * M9-3 까지 이 함수의 지역 변수였다. M9-4 에서 store 로 옮겼다 — 화면이
+   * 같은 사실로 Moment 저장 버튼을 켜고 꺼야 한다. 쓰는 곳은 여전히 여기뿐이다.
    */
-  let hasStartedPlaying = false
 
   /**
    * 사용자의 명시적인 다음 동작을 기다리는 중인지.
@@ -242,7 +244,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     const track = playback.currentTrack
     if (track === null) return
 
-    hasStartedPlaying = false
+    playback.setHasStartedPlaying(false)
     // 어댑터가 API·플레이어 준비 전 요청을 보류했다가 한 번만 실행한다
     // (ADR 0008). 여기서 준비 여부를 따로 따지지 않는다.
     adapter?.load(track.videoId, { autoplay: true, startSeconds })
@@ -368,7 +370,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
   function handleEnded(): void {
     // 재생된 적 없는 트랙의 ENDED 는 이전 트랙의 늦은 신호다.
-    if (!hasStartedPlaying) return
+    if (!playback.hasStartedPlaying) return
     // 오류 뒤에는 사용자의 다음 동작을 기다린다.
     if (awaitingUserAction) return
 
@@ -410,6 +412,16 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   function capturePosition(): MomentCapture | null {
     const track = playback.currentTrack
     if (track === null || adapter === null) return null
+
+    /*
+     * 마지막 명령 이후 **실제로 재생이 시작된 뒤의** 위치만 믿는다 (M9-4).
+     *
+     * 새 영상을 적재하면 플레이어는 지정 시점으로 가기 전 약 200ms 동안 `0` 을
+     * 보고한다 (M9-3 실측). 그 `0` 은 **영상은 맞고 시간만 틀리다** — 어댑터의
+     * 영상 식별 판정을 통과한다. 그대로 찍으면 0초짜리 Moment 가 생긴다.
+     * 저장 버튼의 활성 상태도 같은 판정(`isPositionReliable`)을 쓴다.
+     */
+    if (!playback.isPositionReliable) return null
 
     const raw = adapter.position()
     // 어댑터가 이미 가리지만 다른 구현체를 믿지 않는다 — 한 번 더 본다.
@@ -516,7 +528,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
          * 도착할 수 있다. 그것을 믿으면 사용자가 고른 순간을 건너뛰고 다음
          * 곡이 나온다. `load` 경로가 쓰는 것과 같은 규칙이다.
          */
-        hasStartedPlaying = false
+        playback.setHasStartedPlaying(false)
         adapter.seek(atSeconds)
         // YouTube 는 일시정지 중의 seek 에서 멈춘 채로 남는다. 재생을 보장한다.
         adapter.play()
@@ -554,7 +566,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       playback.setPlayerState(state)
 
       if (state === 'playing') {
-        hasStartedPlaying = true
+        playback.setHasStartedPlaying(true)
         clearStatus()
         return
       }
@@ -626,8 +638,8 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   function libraryReplaced(): void {
     adapter?.pause()
 
+    // `reset()` 이 `hasStartedPlaying` 도 되돌린다 — 이전 큐의 늦은 ENDED 를 막는다.
     playback.reset()
-    hasStartedPlaying = false
     awaitingUserAction = false
     visibilityNotice = false
 

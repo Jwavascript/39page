@@ -134,6 +134,7 @@ describe('B. 정보 열 구분선', () => {
       'weather-main',
       'player-main',
       'playlist-main',
+      'moments-main',
     ]) {
       const widget = wrapper.get(`[data-instance-id="${id}"]`).element
       expect(widget.parentElement).toBe(host)
@@ -144,8 +145,8 @@ describe('B. 정보 열 구분선', () => {
     const { wrapper } = mountApp()
     const host = wrapper.getComponent(WidgetHost).get('.widget-host').element
 
-    // 위젯 6개뿐이다. 의사 요소는 요소 노드가 아니다.
-    expect(host.children).toHaveLength(6)
+    // 위젯 7개뿐이다 (M9-4 에서 Moments 가 더해졌다). 의사 요소는 요소 노드가 아니다.
+    expect(host.children).toHaveLength(7)
   })
 
   it('간격의 절반만큼 왼쪽으로 나간다', () => {
@@ -211,7 +212,8 @@ describe('B. 정보 열 구분선', () => {
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
     const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
 
-    expect(wide).toContain("'playlist mascot .'")
+    // 4 행 3 열은 M9-4 부터 Moments 다. 플레이리스트·마스코트 자리는 그대로다.
+    expect(wide).toContain("'playlist mascot moments'")
     // 세로에서는 데크 옆(이전의 시계·날씨 자리)이다 (요청 5).
     expect(compact).toContain("'deck playlist'")
     expect(compact).toContain("'clock weather'")
@@ -230,8 +232,16 @@ describe('B. 정보 열 구분선', () => {
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
 
     expect(wide).toContain('grid-template-rows: auto auto 1fr auto')
-    // 3 행의 정보 열은 비어 있다.
-    expect(wide).toContain("'deck player .'")
+    /*
+     * 그 빈자리(3·4 행)를 M9-4 부터 Music Moments 가 쓴다. 빈자리가 **아래에
+     * 모인다**는 성질은 그대로다 — Moments 는 행 높이를 정하지 않는다
+     * (`contain: size`). 정하면 시계·날씨가 다시 벌어지거나 아래 행이 밀린다.
+     */
+    expect(wide).toContain("'deck player moments'")
+    expect(wide).toContain("'playlist mascot moments'")
+    expect(source).toMatch(
+      /\[data-widget='moments'\]\s*\{[^}]*align-self: stretch;[^}]*contain: size;/,
+    )
   })
 
   it('플레이어 열의 최소 폭이 16:9 를 지킬 수 있는 값이다', () => {
