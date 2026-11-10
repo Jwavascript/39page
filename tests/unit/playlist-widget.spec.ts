@@ -367,6 +367,20 @@ describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
     expect(drawer).toContain('TrackList')
   })
 
+  /*
+   * M9-6 — 360·390px 에서 데크 옆 반 칸(144·159px)이 `PLAYLISTS` + `＋ 새 목록`
+   * 보다 좁아 버튼이 위젯 밖으로 나갔다. 실제 브라우저에서 잰 넘침이고, jsdom 은
+   * 레이아웃을 하지 않으므로 여기서는 그 해법의 두 조건을 고정한다:
+   * 줄을 나눌 수 있어야 하고, 글 상자의 기준 폭이 0 이어야 정말 좁을 때만 나뉜다.
+   */
+  it('좁은 칸에서 머리말의 버튼이 위젯 밖으로 나가지 않고 아래로 내려간다', () => {
+    const source = readSource('src/features/library/PlaylistWidget.vue')
+
+    expect(source).toMatch(/\.widget-head \{[^}]*flex-wrap: wrap/)
+    expect(source).toMatch(/\.head-text \{[^}]*flex: 1 1 0/)
+    expect(source).toContain('<div class="head-text">')
+  })
+
   it('타일 격자가 폭에 따라 칸 수를 바꾼다', () => {
     const source = readSource('src/features/library/PlaylistWidget.vue')
 

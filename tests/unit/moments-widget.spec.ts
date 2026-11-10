@@ -1184,4 +1184,17 @@ describe('G. 없는 기능 · 소스 수준 보장', () => {
     expect(wide).toContain('overflow-y: auto')
     expect(wide).toMatch(/\.expand-toggle\s*\{\s*display: none;/)
   })
+
+  /*
+   * M9-6 성능 — 스크롤바가 폭을 차지하는 환경에서 `overflow-y: auto` 목록은
+   * 한 줄만 바뀌어도 전체를 다시 배치했다(1000개에서 550~700ms). 자리를 고정해
+   * 두면 10ms 다. jsdom 은 레이아웃을 하지 않으므로 그 조건을 고정한다.
+   */
+  it('목록 스크롤 상자가 스크롤바 자리를 고정해 둔다 (큰 목록의 재배치 비용)', () => {
+    const source = readSource('src/features/moments/MomentsWidget.vue')
+    const block = /\.list-scroll \{[^}]*\}/.exec(source)?.[0] ?? ''
+
+    expect(block).toContain('overflow-y: auto')
+    expect(block).toContain('scrollbar-gutter: stable')
+  })
 })

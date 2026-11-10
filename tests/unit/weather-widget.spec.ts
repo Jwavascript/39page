@@ -421,6 +421,24 @@ describe('D. 상태', () => {
     expect(readSource('src/widgets/weather/WeatherWidget.vue')).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   })
 
+  /*
+   * M9-6 — 360px 에서 시계 옆 반 칸(144px)에 아이콘·기온·최고·최저가 한 줄로
+   * 들어가지 않아 최고·최저가 위젯 밖으로 12px 나갔다. 실제 브라우저에서 잰
+   * 넘침이다. jsdom 은 레이아웃을 하지 않으므로 해법의 조건을 고정한다 —
+   * 좁은 화면에서만 줄을 나누고, 설명의 기준 폭이 0 이어야 정말 좁을 때만 나뉜다.
+   */
+  it('좁은 칸에서 최고·최저가 위젯 밖으로 나가지 않고 다음 줄로 내려간다', () => {
+    const source = readSource('src/widgets/weather/WeatherWidget.vue')
+    const narrow = source.slice(source.indexOf('@media (max-width: 650px)'))
+
+    expect(narrow).toMatch(/\.weather \{[^}]*flex-wrap: wrap/)
+    expect(narrow).toMatch(/\.desc \{[^}]*flex: 1 1 0/)
+    // 설명이 몇 px 로 눌려 말줄임표 조각만 남지 않게 한다.
+    expect(narrow).toMatch(/\.desc \{[^}]*min-width: 2\.5em/)
+    // 넓은 화면의 승인된 한 줄 배치는 그대로다.
+    expect(source.slice(0, source.indexOf('@media (max-width: 650px)'))).not.toContain('flex-wrap')
+  })
+
   it('store 를 읽지 않는다', () => {
     const source = readSource('src/widgets/weather/WeatherWidget.vue')
 

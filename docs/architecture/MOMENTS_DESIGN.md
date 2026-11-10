@@ -13,7 +13,8 @@
 > | §9 UI            | **구현** — `src/features/moments/` (M9-4, ADR 0021)                                             |
 >
 > M9-5 에서 백업에 들어갔다. M9-4 의 배포 보류 사유(백업이 Moment 를 빠뜨림)는
-> 해소됐고, 배포 판단은 M9-6 통합 검증 뒤에 한다.
+> 해소됐고, M9-6 통합 검증을 마쳤다 (`IMPLEMENTATION_PLAN.md` M9-6). 배포는
+> `DEPLOYMENT.md` §4 와 실기기 확인 뒤다.
 >
 > 기능 명세: [`../product/MUSIC_MOMENTS.md`](../product/MUSIC_MOMENTS.md)
 > 결정: **ADR 0019** (도메인·저장) · **ADR 0020** (시점 조회·이동)

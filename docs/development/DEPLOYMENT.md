@@ -261,6 +261,22 @@ curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" http://39page.com
 `https` 에서 내보내고 `http` 에서 가져오면 서로 다른 저장소를 보게 된다.
 두 주소는 사용자에게 같은 사이트로 보이므로, 사용자는 원인을 알 수 없다.
 
+### 재확인 (2026-11-10, M9 배포 전 · 읽기만)
+
+M9(Music Moments)는 **아직 배포하지 않았다.** 운영은 M8 그대로다. Cloudflare
+설정은 바꾸지 않았고 `curl` 과 DoH 조회로만 봤다.
+
+| 확인                 | 결과                                                          |
+| -------------------- | ------------------------------------------------------------- |
+| `https://39page.com` | 200 · `server: cloudflare` · **HSTS 헤더 없음**               |
+| 운영 번들            | `index-_5ud30QU.js` — M8 (`8377c83`) 그대로                   |
+| `http://39page.com`  | **200, 리다이렉트 없음** — §4 그대로                          |
+| `www.39page.com`     | **NXDOMAIN** (`cloudflare-dns.com` DoH, Status 3) — §4 그대로 |
+
+**M9 를 배포하면 §4 의 영향이 한 겹 더 커진다.** `http` 와 `https` 는 서로 다른
+`localStorage` 이므로 플레이리스트·테마에 더해 **Moments 도 둘로 갈린다.** M9
+배포 전에 §4 를 먼저 수행하는 것을 권한다.
+
 ## 6. 다음에 할 일
 
 | 순서 | 할 일                                               | 막는 것           |

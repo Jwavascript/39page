@@ -206,6 +206,15 @@ function requestRemove(trackId: string): void {
  */
 .track-list {
   display: grid;
+  /*
+   * 열 하나를 **목록 폭에 묶는다** (M9-6).
+   *
+   * 암묵적 열은 `auto` 라 최소 크기가 행의 최소 내용 폭이 된다. 제목은 `nowrap`
+   * 이므로 그것은 제목 전체 폭이고, 긴 제목 하나가 열을 드로어보다 넓혀
+   * `.drawer-body` 에 가로 스크롤바를 세웠다 (M9-6 실측: 100자 제목에서 +441px).
+   * `minmax(0, 1fr)` 이면 행이 목록 폭을 넘지 않고 제목이 말줄임된다.
+   */
+  grid-template-columns: minmax(0, 1fr);
   container-type: inline-size;
   gap: 5px;
 }

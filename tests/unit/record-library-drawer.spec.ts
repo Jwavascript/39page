@@ -792,3 +792,31 @@ describe('E. 좁은 드로어에서의 트랙 행 폭 (2026-11-06 운영 검증�
     )
   })
 })
+
+describe('F. 긴 이름·긴 제목이 드로어를 넓히지 않는다 (M9-6 실측에서 발견)', () => {
+  /**
+   * 플레이리스트 이름과 트랙 제목은 `nowrap` + 말줄임이다. 말줄임은 상자가
+   * **줄어들 수 있을 때만** 일어난다. 390px 에서 60자 이름을 열면 머리말이
+   * 드로어 밖으로 늘어나 닫기(×)가 화면 밖 638px 에 섰고, 100자 제목 하나가
+   * `.drawer-body` 에 +441px 가로 스크롤을 만들었다. 공백이 있는 이름도 같다.
+   *
+   * jsdom 은 레이아웃을 하지 않으므로 보장을 이루는 조각을 모두 고정한다.
+   */
+  const drawer = () => readFileSync('src/features/library/RecordLibraryDrawer.vue', 'utf8')
+  const list = () => readFileSync('src/features/library/TrackList.vue', 'utf8')
+
+  it('머리말의 글 상자가 줄어들 수 있고, 닫기 버튼은 줄지 않는다', () => {
+    expect(drawer()).toContain('<div class="head-text">')
+    expect(drawer()).toMatch(/\.head-text \{[^}]*min-width: 0/)
+    expect(drawer()).toMatch(/\.close \{[^}]*flex: none/)
+    // 줄어든 자리에서 제목은 말줄임된다.
+    expect(drawer()).toMatch(/\.drawer-title \{[^}]*text-overflow: ellipsis/)
+  })
+
+  it('트랙 목록의 열이 목록 폭에 묶여 있다', () => {
+    const block = /\.track-list\s*\{[^}]*\}/.exec(list())?.[0] ?? ''
+
+    expect(block).toContain('grid-template-columns: minmax(0, 1fr)')
+    expect(list()).toMatch(/\.track-name \{[^}]*min-width: 0/)
+  })
+})

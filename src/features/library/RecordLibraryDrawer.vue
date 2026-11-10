@@ -362,7 +362,7 @@ watch(
   -->
   <aside :id="drawerId" class="drawer" :hidden="!open" aria-labelledby="record-library-title">
     <div class="drawer-head">
-      <div>
+      <div class="head-text">
         <!--
           머리말이 **무엇을 편집하는지** 말한다. `이름 수정` 이 이 옆에 있으므로
           무엇의 이름인지 자명하다 (보고 6b).
@@ -562,6 +562,19 @@ watch(
   gap: 10px;
 }
 
+/*
+ * 글 상자가 줄어들 수 있어야 제목의 말줄임이 실제로 일어난다 (M9-6).
+ *
+ * 제목은 `nowrap` 이라 최소 내용 폭이 이름 전체다. 이 상자에 `min-width: 0`
+ * 이 없으면 플렉스 항목의 자동 최소 폭이 그 이름 전체가 되어, 이름이 드로어보다
+ * 길면 머리말이 드로어 밖으로 늘어났다 — 390px 에서 60자 이름일 때 닫기(×)가
+ * 화면 밖 638px 에 섰다. 공백이 있는 이름도 `nowrap` 이므로 똑같다.
+ * M9-6 실측에서 찾았고, M9 이전 빌드부터 있던 결함이다.
+ */
+.head-text {
+  min-width: 0;
+}
+
 .drawer-title {
   margin: 0;
   overflow: hidden;
@@ -582,6 +595,7 @@ watch(
 .close {
   width: 34px;
   height: 34px;
+  flex: none;
   border: 0;
   background: transparent;
   color: var(--close-button-text-color);

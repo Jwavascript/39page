@@ -158,7 +158,7 @@ function openPlaylist(id: string): void {
     aria-labelledby="playlist-widget-title"
   >
     <div class="widget-head">
-      <div>
+      <div class="head-text">
         <h2 id="playlist-widget-title" class="widget-title">PLAYLISTS</h2>
         <!-- 무엇을 누르면 무슨 일이 일어나는지 화면에 적는다 (보고 6a). -->
         <p class="widget-sub">누르면 트랙 편집 · ▶ 로 전체 재생</p>
@@ -226,11 +226,29 @@ function openPlaylist(id: string): void {
   gap: 10px;
 }
 
+/*
+ * 칸이 좁으면 버튼이 제목 **아래로** 내려간다 (M9-6).
+ *
+ * 1100px 이하에서 이 위젯은 데크 옆 반 칸이다. 360px 에서 그 칸은 144px 인데
+ * 줄바꿈할 수 없는 `PLAYLISTS`(약 82px) + 간격 + `＋ 새 목록`(81px) 이 그보다
+ * 넓어 버튼이 위젯 밖으로 29px(390px 에서 14px) 나갔다 — M9-4 측정에서 찾았고
+ * 기준 빌드에서도 같았다.
+ *
+ * 글 상자의 기준 폭을 0 으로 두는 것이 요점이다. 그러면 줄을 나눌지 정할 때
+ * 글 상자의 크기가 **최소 내용 폭**(`PLAYLISTS`)으로 계산되므로, 둘이 정말로
+ * 한 줄에 들어가지 않을 때만 내려간다. 넓은 칸에서는 글 상자가 남은 폭을 모두
+ * 먹어 버튼이 이전과 똑같이 오른쪽 끝에 선다.
+ */
 .widget-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.head-text {
+  flex: 1 1 0;
 }
 
 /* 드로어의 `.drawer-title` 과 같은 조판이다. 같은 물건의 다른 표면이다. */

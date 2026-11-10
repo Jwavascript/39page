@@ -460,6 +460,21 @@ const emptyMessage = computed<string>(() => {
   min-height: 0;
   max-height: var(--size-playlist-collapsed-max-height);
   overflow-y: auto;
+  /*
+   * 스크롤바 자리를 **늘 비워 둔다** (M9-6 성능).
+   *
+   * 스크롤바가 폭을 차지하는 환경(Windows·Linux 데스크톱 Chrome 등)에서
+   * `overflow-y: auto` 는 내용이 바뀔 때마다 "스크롤바가 필요한가" 를 정하려고
+   * 목록 전체를 다시 배치한다. 1000개에서 한 줄만 바뀌어도 레이아웃이
+   * 550~700ms 걸렸고(M9-6 실측, 1440px), 저장·삭제 확인·메모 수정을 열 때마다
+   * 그만큼 멈췄다. 자리를 고정하면 폭이 바뀔 일이 없어 바뀐 줄만 다시
+   * 배치한다 — 같은 조건에서 10ms.
+   *
+   * 스크롤바가 내용 위에 겹치는 환경(Android·iOS·macOS 기본)에서는 아무 효과가
+   * 없다. 그런 환경인 390px 모바일 에뮬레이션에서는 처음부터 이 비용이 없었다
+   * (8ms). 실기기로는 재지 않았다.
+   */
+  scrollbar-gutter: stable;
 }
 
 .moments-widget:not(.is-collapsed) .list-scroll {
