@@ -1,6 +1,6 @@
 # 0020. 재생 시점 조회와 이동은 어댑터 계약에 더하고, 코디네이터가 중계한다
 
-- 상태: 채택 (설계)
+- 상태: 채택 — **M9-3 에서 구현·실측 (2026-11-10)**
 - 날짜: 2026-11-07
 - 관련: **ADR 0006** (어댑터 소유권), **ADR 0008** (어댑터 이벤트 계약),
   **ADR 0009** (Playback Coordinator), **ADR 0011** (가시성 가드),
@@ -173,6 +173,108 @@ createMoment({ videoId, atSeconds, note, title, now, id }): Moment
   새 정책이 없으므로 새 구멍도 없다.
 - `PlayerSurface` 와 iframe 은 전혀 바뀌지 않는다. `seek` 도 `startSeconds`
   도 **적재된 플레이어에 보내는 명령**이지 재생성이 아니다 (ADR 0002).
+
+## 구현 기록 (M9-3, 2026-11-10)
+
+결정 1~6 이 코드로 들어갔다. `PlayerAdapter` · `YouTubeIFramePlayerAdapter` ·
+`FakePlayerAdapter` · `playbackCoordinator.ts` · `createPlaybackCoordinator.ts`.
+구현하면서 **설계가 답하지 않았던 것**을 아래처럼 정했다.
+
+### 7. `position()` 은 플레이어가 보고하는 영상이 마지막으로 적재한 영상일 때만 숫자다
+
+IFrame API 는 사건에 적재 식별자를 주지 않는다 (ADR 0012 의 한계). 그래서
+`loadVideoById(B)` 직후 `getCurrentTime()` 은 **A 의 값**일 수 있다. 어댑터는
+`getVideoUrl()` 로 플레이어가 지금 어느 영상을 보고하는지 읽고, 자기가 마지막으로
+적재를 명령한 영상과 다르면 `null` 을 준다. 두 값은 같은 캐시에서 나오므로
+같은 순간에 읽으면 같은 영상의 값이다.
+
+실측 (Chromium 155 headless, 실제 IFrame API): `loadVideoById(B)` 직후 캐시가
+**비워져** `getVideoUrl()` 이 `undefined` 가 되고 → `position()` 은 `null`. 그
+뒤 B 의 보고가 오면 숫자. 전환 창에서 A 의 위치가 B 의 것으로 나가는 길이 없다.
+
+### 8. 같은 영상이라도 플레이어가 위치를 모르거나 오류면 `seek` 하지 않고 시점을 실어 다시 적재한다
+
+준비 전의 `seek` 은 버려지고(결정 2 — 보류 큐를 두지 않는다) `play` 만 보류되어
+**처음부터** 재생된다. 오류 상태의 플레이어에 보내는 `seek` 도 아무 일을 하지
+않는다 (`togglePlay` 가 오류에서 다시 적재하는 것과 같은 사정). 두 경우는
+`load(videoId, { autoplay: true, startSeconds })` 로 간다. 재적재가 일어나지만
+그 플레이어에는 아직 재생 중인 것이 없으므로 끊기는 것도 없다.
+
+### 9. 현재 큐 안의 영상이면 큐를 **유지**하고 자리만 옮긴다
+
+M9-1 §4-2 는 라이브러리만 봤다 (선택 목록 → 다른 목록 → 단일 곡). 그대로 두면
+듣고 있던 큐 안의 영상인데도 **선택 목록이 바뀌었다는 이유로 큐를 갈아치운다**
+— 사용자가 듣던 순서가 예고 없이 바뀐다. 큐는 재생 시작 시점의 스냅샷이고 그
+성질을 지킨다. 그래서 라이브러리를 보기 **전에** 현재 큐를 본다.
+
+### 10. `seek` 뒤 재생이 시작되기 전의 `ENDED` 는 그 명령보다 오래된 신호다
+
+끝나 가던 영상에서 시점을 되돌리는 순간, 끝 신호가 뒤늦게 도착할 수 있다. 그것을
+믿으면 사용자가 고른 순간을 건너뛰고 다음 곡이 나온다. `load` 경로가 쓰는
+`hasStartedPlaying` 규칙을 `seek` 경로에도 적용한다 — `PLAYING` 이 온 뒤의
+`ENDED` 만 자동 전환한다.
+
+### 11. `seek` 뒤에는 `play` 를 이어 보낸다
+
+YouTube 의 `seekTo` 는 **일시정지 중이면 멈춘 채 남고**, 그 밖의 상태에서는
+재생을 시작한다. 실측으로 확인했다 — paused 에서 `seekTo(10)` 뒤 상태 변화
+없이 `paused` 유지, 위치만 10. Moment 재생은 "그 지점부터 **듣는다**" 이므로
+`play()` 를 이어 보내 재생을 보장한다. 이미 재생 중이면 무해하다.
+
+### 12. 첫 영상의 시점은 `start` 파라미터로 싣는다
+
+플레이어가 아직 없을 때 들어온 `load(A, { startSeconds })` 는 생성자에 A 를
+넘기므로 `loadVideoById` 를 쓸 수 없다. 공식 플레이어 파라미터 `start`(정수)를
+쓴다. `onReady` 뒤 `seekTo` 로 옮기는 대안은 cued 상태의 플레이어를 **재생시켜
+버린다** (결정 11 의 동작) — 대기(autoplay 없음)로 적재한 영상이 혼자 재생된다.
+실측: `start: 12` 로 만든 플레이어가 ready 시점에 `getCurrentTime() = 12` 를
+보고하고, `playVideo()` 뒤 12 초부터 재생됐다.
+
+### 13. `playMoment` 의 결과는 `PlayRequestResult` 의 **상위 집합**이다
+
+설계는 `PlayRequestResult` 를 그대로 쓰기로 했다. 구현하면서 둘이 더 필요했다 —
+`invalid-moment`(저장소에서 온 값도 믿지 않는다)와 `player-unavailable`(명령을
+받을 플레이어가 없으면 **성공으로 돌려주지 않는다**). 기존 유니온에 더하면 세
+UI 의 `Record<PlayRequestFailure, string>` 이 받을 수 없는 이유의 문구를 들고
+있어야 한다. 그래서 `MomentPlayFailure = PlayRequestFailure | …` 로 **포함**만
+한다. `player-hidden` 은 같은 값이라 UI 가 같은 문구를 쓴다.
+
+> `playPlaylist` · `playTrack` 은 어댑터가 없어도 `ok: true` 를 돌려준다
+> (M3-2 부터). 앱에서는 `PlayerSurface` 가 항상 어댑터를 등록하므로 닿지 않는
+> 경로다. M9-3 은 그 둘을 바꾸지 않았다 — 바꾸면 세 UI 의 문구 표가 함께
+> 바뀌어야 하고, 이번 범위가 아니다. **TODO** 로 남긴다.
+
+### 14. `MomentTarget.title`
+
+라이브러리 어디에도 없는 영상을 **단일 곡**으로 재생할 때 데크에 보일 이름이
+필요하다. 설계의 `{ videoId, atSeconds }` 에 선택 `title` 을 더했다 — Moment 의
+스냅샷 제목이다. 라이브러리에 있으면 그쪽 제목이 쓰이므로 무시되고, 없으면
+트랙과 같은 대체 표기 `YouTube · <videoId>` 다.
+
+### 실측 요약 (Chromium 155 headless · 실제 YouTube IFrame API · 2026-11-10)
+
+| 확인한 것                                             | 결과                                                     |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| 준비 전 `position()`                                  | `null`. ready 직후 cued 영상은 `0` (`null` 과 구분됨)    |
+| 재생 중 `getCurrentTime()`                            | 소수 (`1.775084…`) — 어댑터가 그대로 전함                |
+| `seek(14)` (재생 중)                                  | 30ms 뒤 BUFFERING(14.0) → PLAYING(14.08). 재적재 없음    |
+| `seek(10)` (일시정지 중)                              | 상태 변화 없이 `paused` 유지, 위치 10 → `play()` 로 재생 |
+| `load(B, { startSeconds: 60 })`                       | 직후 `position()=null` → B 보고 → **60.06 에서 PLAYING** |
+| 첫 `load(A, { startSeconds: 12 })` (`start` 파라미터) | ready 에 12 보고, `playVideo()` 뒤 12.03 에서 PLAYING    |
+| `seek(NaN)` · `seek(-5)`                              | `seekTo` 미호출. 재생이 흔들리지 않음 (62.0 → 62.6)      |
+| iframe                                                | 전 과정에서 `YT.Player` 1개, iframe 1개                  |
+
+**실제 `PLAYING` 을 관측했다.** 다만 `--autoplay-policy=no-user-gesture-required`
+와 `--mute-audio` 를 준 헤드리스다. 운영 사이트의 자동재생 정책에서는 사용자
+제스처가 필요하고, Moment 누름은 제스처이므로 보통 닿지 않는다. 운영 사이트에서는
+검증하지 않았다 (배포하지 않았다).
+
+하나 더 보였다 — `loadVideoById({ startSeconds })` 와 `start` 파라미터 모두,
+플레이어가 새 영상을 **`0` 으로 한 번 보고한 뒤**(~200ms) 지정 시점으로 간다.
+그 창에서 `position()` 은 영상은 맞고 시간만 `0` 인 값을 준다. 이전 영상의 값은
+아니므로 결정 7 의 보호 대상이 아니고, 사람이 200ms 안에 저장 버튼을 누를 수는
+없다. **M9-4 가 저장 버튼을 만들 때 `playing` 이후에만 활성화하는 것을 검토한다**
+(아래 TODO).
 
 TODO: `position()` 을 Moments UI 가 얼마나 자주 읽을지는 M9-4 에서 정한다.
 저장 버튼의 활성/비활성만 필요하다면 상태 변화에 맞춰 읽는 것으로 충분하고,

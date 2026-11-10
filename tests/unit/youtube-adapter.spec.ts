@@ -14,24 +14,44 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import type { PlayerAdapterEvents, PlayerErrorInfo } from '@/features/playback/PlayerAdapter'
 import type { YouTubeIFramePlayerAdapter } from '@/features/playback/YouTubeIFramePlayerAdapter'
-import type { YouTubePlayer, YouTubePlayerOptions } from '@/features/playback/youtubeIframeApi'
+import type {
+  YouTubePlayer,
+  YouTubePlayerOptions,
+  YouTubeVideoRequest,
+} from '@/features/playback/youtubeIframeApi'
 import type { PlayerState } from '@/shared/types'
 
 const API_SRC = 'https://www.youtube.com/iframe_api'
 
-/** 가짜 `YT.Player`. 실제 API 처럼 넘겨받은 요소를 iframe 으로 교체한다. */
+/**
+ * 가짜 `YT.Player`. 실제 API 처럼 넘겨받은 요소를 iframe 으로 교체한다.
+ *
+ * M9-3 부터 **위치 질의**도 재현한다. 실제 부모 창의 `YT.Player` 는 iframe 이
+ * 보내온 값을 캐시해 돌려주므로, `loadVideoById(B)` 를 받아도 `getVideoUrl()`
+ * 과 `getCurrentTime()` 은 **다음 보고가 오기 전까지 A 의 값**이다. 그 틈을
+ * 재현하려고 명령이 보고값을 바꾸지 않게 하고, 테스트가 `deliver()` 로
+ * "iframe 이 보고했다" 를 흘려보낸다.
+ */
 class FakeYtPlayer implements YouTubePlayer {
   static instances: FakeYtPlayer[] = []
 
   readonly options: YouTubePlayerOptions
   readonly iframe: HTMLElement
-  readonly loadCalls: string[] = []
-  readonly cueCalls: string[] = []
+  readonly loadCalls: Array<string | YouTubeVideoRequest> = []
+  readonly cueCalls: Array<string | YouTubeVideoRequest> = []
+  readonly seekCalls: Array<{ seconds: number; allowSeekAhead: boolean }> = []
   playCalls = 0
   pauseCalls = 0
   destroyCalls = 0
+
+  /** iframe 이 마지막으로 보고한 영상과 시간. 명령으로는 바뀌지 않는다. */
+  reportedVideoId: string | null = null
+  reportedTime: number | undefined = undefined
+  /** 질의에 던지는 플레이어를 재현한다 (파괴 중 등). */
+  throwOnQuery = false
 
   constructor(host: HTMLElement, options: YouTubePlayerOptions) {
     this.options = options
@@ -42,12 +62,34 @@ class FakeYtPlayer implements YouTubePlayer {
     this.iframe = iframe
   }
 
-  loadVideoById(videoId: string): void {
-    this.loadCalls.push(videoId)
+  loadVideoById(request: string | YouTubeVideoRequest): void {
+    this.loadCalls.push(request)
   }
 
-  cueVideoById(videoId: string): void {
-    this.cueCalls.push(videoId)
+  cueVideoById(request: string | YouTubeVideoRequest): void {
+    this.cueCalls.push(request)
+  }
+
+  seekTo(seconds: number, allowSeekAhead: boolean): void {
+    this.seekCalls.push({ seconds, allowSeekAhead })
+  }
+
+  getCurrentTime(): number | undefined {
+    if (this.throwOnQuery) throw new Error('player gone')
+    return this.reportedTime
+  }
+
+  getVideoUrl(): string | undefined {
+    if (this.throwOnQuery) throw new Error('player gone')
+    // 아직 적재된 영상이 없으면 실제 API 도 `v=` 없는 주소를 준다.
+    if (this.reportedVideoId === null) return 'https://www.youtube.com/watch'
+    return `https://www.youtube.com/watch?t=${String(Math.floor(this.reportedTime ?? 0))}&v=${this.reportedVideoId}`
+  }
+
+  /** iframe 이 현재 영상과 시간을 보고했다 (infoDelivery). */
+  deliver(videoId: string | null, time: number | undefined): void {
+    this.reportedVideoId = videoId
+    this.reportedTime = time
   }
 
   playVideo(): void {
@@ -950,5 +992,522 @@ describe('G. playerVars 와 origin', () => {
 
     expect(options.width).toBe('100%')
     expect(options.height).toBe('100%')
+  })
+})
+
+/* ================================================================== *
+ * H. 시점 조회와 이동 (M9-3, ADR 0020)
+ * ================================================================== */
+
+describe('H. position() · seek() · load({ startSeconds })', () => {
+  /** 마운트 → load → API 도착 → onReady 까지 한 번에. */
+  async function readyAdapter(videoId = 'aaaaaaaaaaa') {
+    const adapter = new AdapterClass()
+    adapter.mount(makeContainer())
+    adapter.load(videoId)
+    await arriveApi()
+    const player = lastPlayer()
+    player.fireReady()
+    return { adapter, player }
+  }
+
+  describe('position()', () => {
+    it('마운트만 한 어댑터는 null 이다 — 0 이 아니다', () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+
+      expect(adapter.position()).toBeNull()
+    })
+
+    it('API 가 오기 전에는 null 이다', () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+
+      expect(adapter.position()).toBeNull()
+    })
+
+    it('플레이어가 생겼지만 onReady 전이면 null 이다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+      // 플레이어가 이미 값을 보고하고 있어도 준비 전에는 믿지 않는다.
+      lastPlayer().deliver('aaaaaaaaaaa', 12)
+
+      expect(adapter.position()).toBeNull()
+    })
+
+    it('준비된 뒤 플레이어가 0 을 보고하면 0 이다 — null 과 구분된다', async () => {
+      const { adapter, player } = await readyAdapter()
+      player.deliver('aaaaaaaaaaa', 0)
+
+      expect(adapter.position()).toBe(0)
+    })
+
+    it('소수 초를 그대로 전한다 — 내림은 도메인의 일이다', async () => {
+      const { adapter, player } = await readyAdapter()
+      player.deliver('aaaaaaaaaaa', 83.4)
+
+      expect(adapter.position()).toBe(83.4)
+    })
+
+    it.each([
+      ['undefined', undefined],
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['음수', -1],
+    ])('플레이어가 %s 를 주면 null 이다', async (_label, time) => {
+      const { adapter, player } = await readyAdapter()
+      player.deliver('aaaaaaaaaaa', time)
+
+      expect(adapter.position()).toBeNull()
+    })
+
+    it('플레이어가 아직 이전 영상을 보고하면 null 이다 — 전환 직후의 창', async () => {
+      const { adapter, player } = await readyAdapter('aaaaaaaaaaa')
+      player.deliver('aaaaaaaaaaa', 83)
+      expect(adapter.position()).toBe(83)
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true })
+
+      // 캐시는 아직 A 의 83초다. 그것을 B 의 위치로 내보내지 않는다.
+      expect(adapter.position()).toBeNull()
+
+      player.deliver('bbbbbbbbbbb', 0)
+      expect(adapter.position()).toBe(0)
+    })
+
+    it('cue 로 바꾼 영상도 같은 규칙이다', async () => {
+      const { adapter, player } = await readyAdapter('aaaaaaaaaaa')
+      player.deliver('aaaaaaaaaaa', 40)
+
+      adapter.load('bbbbbbbbbbb')
+
+      expect(adapter.position()).toBeNull()
+      player.deliver('bbbbbbbbbbb', 5)
+      expect(adapter.position()).toBe(5)
+    })
+
+    it('적재된 영상이 없다고 보고하면 null 이다', async () => {
+      const { adapter, player } = await readyAdapter()
+      player.deliver(null, 0)
+
+      expect(adapter.position()).toBeNull()
+    })
+
+    it('플레이어가 질의에 던지면 null 이다', async () => {
+      const { adapter, player } = await readyAdapter()
+      player.deliver('aaaaaaaaaaa', 10)
+      player.throwOnQuery = true
+
+      expect(adapter.position()).toBeNull()
+    })
+
+    it('destroy 뒤에는 null 이다', async () => {
+      const { adapter, player } = await readyAdapter()
+      player.deliver('aaaaaaaaaaa', 10)
+
+      adapter.destroy()
+
+      expect(adapter.position()).toBeNull()
+    })
+  })
+
+  describe('seek()', () => {
+    it('준비된 플레이어에 seekTo(초, true) 를 보낸다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.seek(83)
+
+      expect(player.seekCalls).toEqual([{ seconds: 83, allowSeekAhead: true }])
+    })
+
+    it('0 초로도 간다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.seek(0)
+
+      expect(player.seekCalls).toEqual([{ seconds: 0, allowSeekAhead: true }])
+    })
+
+    it('소수 초를 그대로 보낸다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.seek(12.5)
+
+      expect(player.seekCalls[0]?.seconds).toBe(12.5)
+    })
+
+    it.each([
+      ['음수', -1],
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+    ])('%s 는 조용히 적용하지 않는다', async (_label, seconds) => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.seek(seconds)
+
+      expect(player.seekCalls).toEqual([])
+    })
+
+    it('준비 전 seek 은 버린다 — 보류하지 않는다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+      const player = lastPlayer()
+
+      adapter.seek(30)
+      player.fireReady()
+
+      // 준비된 뒤에도 보류했던 seek 이 튀어나오지 않는다.
+      expect(player.seekCalls).toEqual([])
+    })
+
+    it('마운트되지 않은 어댑터의 seek 은 던지지 않고 무시한다', () => {
+      const adapter = new AdapterClass()
+
+      expect(() => adapter.seek(10)).not.toThrow()
+    })
+
+    it('seek 은 플레이어도 iframe 도 다시 만들지 않는다 (ADR 0002)', async () => {
+      const { adapter, player } = await readyAdapter()
+      const iframe = player.iframe
+
+      adapter.seek(10)
+      adapter.seek(20)
+      adapter.seek(30)
+
+      expect(FakeYtPlayer.instances).toHaveLength(1)
+      expect(player.iframe).toBe(iframe)
+      expect(iframe.isConnected).toBe(true)
+      expect(player.destroyCalls).toBe(0)
+    })
+
+    it('seek 뒤의 재생 상태는 플레이어가 정한다 — 어댑터가 꾸미지 않는다', async () => {
+      const { adapter, player } = await readyAdapter()
+      player.fireStateChange(2) // PAUSED
+
+      adapter.seek(10)
+
+      // seekTo 만 보낸다. 상태는 YouTube 가 알려줄 때까지 그대로다.
+      expect(adapter.state()).toBe('paused')
+      expect(player.playCalls).toBe(0)
+    })
+
+    it('destroy 뒤의 seek 은 무시한다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.destroy()
+      adapter.seek(10)
+
+      expect(player.seekCalls).toEqual([])
+    })
+  })
+
+  describe('load({ startSeconds })', () => {
+    it('준비된 플레이어에는 객체 인자로 시점을 싣는다 — 별도 seek 이 없다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 83 })
+
+      expect(player.loadCalls).toEqual([{ videoId: 'bbbbbbbbbbb', startSeconds: 83 }])
+      expect(player.seekCalls).toEqual([])
+    })
+
+    it('cue 에도 시점을 싣는다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.load('bbbbbbbbbbb', { startSeconds: 45 })
+
+      expect(player.cueCalls).toEqual([{ videoId: 'bbbbbbbbbbb', startSeconds: 45 }])
+    })
+
+    it('0 초도 싣는다 — 없는 것과 다르다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 0 })
+
+      expect(player.loadCalls).toEqual([{ videoId: 'bbbbbbbbbbb', startSeconds: 0 }])
+    })
+
+    it('시점이 없으면 M3-1 과 같은 문자열 인자다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true })
+
+      expect(player.loadCalls).toEqual(['bbbbbbbbbbb'])
+    })
+
+    it.each([
+      ['음수', -5],
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+    ])('유효하지 않은 시점(%s)은 없는 것으로 보고 처음부터 적재한다', async (_label, start) => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: start })
+
+      expect(player.loadCalls).toEqual(['bbbbbbbbbbb'])
+    })
+
+    it('API 도착 전 요청의 시점은 첫 플레이어의 start 파라미터로 보존된다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+
+      adapter.load('aaaaaaaaaaa', { autoplay: true, startSeconds: 83.9 })
+      await arriveApi()
+
+      const player = lastPlayer()
+      expect(player.options.videoId).toBe('aaaaaaaaaaa')
+      // 공식 파라미터는 정수다.
+      expect(player.options.playerVars?.start).toBe(83)
+
+      player.fireReady()
+      // 첫 영상은 생성자가 이미 적재했다. 재생만 보내고 다시 적재하지 않는다.
+      expect(player.playCalls).toBe(1)
+      expect(player.loadCalls).toEqual([])
+      expect(player.seekCalls).toEqual([])
+    })
+
+    it('시점 없는 첫 요청에는 start 파라미터가 없다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+
+      expect(lastPlayer().options.playerVars).not.toHaveProperty('start')
+    })
+
+    it('플레이어 생성 후 onReady 전 요청의 시점은 onReady 에서 함께 간다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+      const player = lastPlayer()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 30 })
+      expect(player.loadCalls).toEqual([])
+
+      player.fireReady()
+
+      expect(player.loadCalls).toEqual([{ videoId: 'bbbbbbbbbbb', startSeconds: 30 }])
+      expect(player.seekCalls).toEqual([])
+    })
+
+    it('준비 전 연속 요청은 마지막 요청의 시점만 남긴다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+      const player = lastPlayer()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 30 })
+      adapter.load('ccccccccccc', { autoplay: true })
+
+      player.fireReady()
+
+      // B 의 30초가 C 에 묻어가지 않는다.
+      expect(player.loadCalls).toEqual(['ccccccccccc'])
+    })
+
+    it('준비 전 요청을 pause 로 취소해도 시점은 cue 에 남는다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+      const player = lastPlayer()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 30 })
+      adapter.pause()
+      player.fireReady()
+
+      // 재생 의도만 취소된다. 어느 영상의 어느 시점인지는 그대로다.
+      expect(player.cueCalls).toEqual([{ videoId: 'bbbbbbbbbbb', startSeconds: 30 }])
+      expect(player.playCalls).toBe(0)
+    })
+
+    it('빠른 연속 load 와 seek 은 순서대로 플레이어에 간다', async () => {
+      const { adapter, player } = await readyAdapter()
+
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 10 })
+      adapter.seek(20)
+      adapter.load('ccccccccccc', { autoplay: true, startSeconds: 30 })
+
+      expect(player.loadCalls).toEqual([
+        { videoId: 'bbbbbbbbbbb', startSeconds: 10 },
+        { videoId: 'ccccccccccc', startSeconds: 30 },
+      ])
+      expect(player.seekCalls).toEqual([{ seconds: 20, allowSeekAhead: true }])
+      expect(FakeYtPlayer.instances).toHaveLength(1)
+    })
+
+    it('destroy 뒤에 도착한 onReady 는 보류한 시점을 흘려보내지 않는다', async () => {
+      const adapter = new AdapterClass()
+      adapter.mount(makeContainer())
+      adapter.load('aaaaaaaaaaa')
+      await arriveApi()
+      const player = lastPlayer()
+      adapter.load('bbbbbbbbbbb', { autoplay: true, startSeconds: 30 })
+
+      adapter.destroy()
+      player.fireReady()
+
+      expect(player.loadCalls).toEqual([])
+      expect(player.playCalls).toBe(0)
+    })
+  })
+})
+
+/* ================================================================== *
+ * I. Fake 와 실제 어댑터의 계약 일치 (M9-3)
+ * ================================================================== */
+
+describe('I. FakePlayerAdapter 와 같은 관찰 결과를 낸다', () => {
+  it('둘 다 준비 전 position() 은 null 이다', async () => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+    fake.load('aaaaaaaaaaa')
+
+    expect(real.position()).toBeNull()
+    expect(fake.position()).toBeNull()
+  })
+
+  it('둘 다 준비된 뒤 보고가 와야 숫자를 준다', async () => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+    const player = lastPlayer()
+    player.fireReady()
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+    fake.load('aaaaaaaaaaa')
+    fake.emitReady()
+
+    // 준비됐지만 아직 보고가 없다.
+    expect(real.position()).toBeNull()
+    expect(fake.position()).toBeNull()
+
+    player.deliver('aaaaaaaaaaa', 42.5)
+    fake.emitPosition(42.5)
+
+    expect(real.position()).toBe(42.5)
+    expect(fake.position()).toBe(42.5)
+  })
+
+  it('둘 다 새 영상을 적재하면 보고가 올 때까지 위치를 모른다', async () => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+    const player = lastPlayer()
+    player.fireReady()
+    player.deliver('aaaaaaaaaaa', 42)
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+    fake.load('aaaaaaaaaaa')
+    fake.emitReady()
+    fake.emitPosition(42)
+
+    real.load('bbbbbbbbbbb', { autoplay: true })
+    fake.load('bbbbbbbbbbb', { autoplay: true })
+
+    expect(real.position()).toBeNull()
+    expect(fake.position()).toBeNull()
+  })
+
+  it.each([
+    ['음수', -1],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('둘 다 %s seek 을 적용하지 않는다', async (_label, seconds) => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+    const player = lastPlayer()
+    player.fireReady()
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+    fake.load('aaaaaaaaaaa')
+    fake.emitReady()
+
+    real.seek(seconds)
+    fake.seek(seconds)
+
+    expect(player.seekCalls).toEqual([])
+    expect(fake.calls.seek).toEqual([])
+    expect(fake.calls.seekDropped).toEqual([seconds])
+  })
+
+  it('둘 다 준비 전 seek 을 버린다', async () => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+    const player = lastPlayer()
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+    fake.load('aaaaaaaaaaa')
+
+    real.seek(10)
+    fake.seek(10)
+    player.fireReady()
+    fake.emitReady()
+
+    expect(player.seekCalls).toEqual([])
+    expect(fake.calls.seek).toEqual([])
+  })
+
+  it('둘 다 유효하지 않은 startSeconds 를 시점 없는 적재로 보낸다', async () => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+    const player = lastPlayer()
+    player.fireReady()
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+
+    real.load('bbbbbbbbbbb', { autoplay: true, startSeconds: -3 })
+    fake.load('bbbbbbbbbbb', { autoplay: true, startSeconds: -3 })
+
+    expect(player.loadCalls).toEqual(['bbbbbbbbbbb'])
+    expect(fake.calls.load).toEqual([{ videoId: 'bbbbbbbbbbb', autoplay: true }])
+    expect(fake.calls.load[0]).not.toHaveProperty('startSeconds')
+  })
+
+  it('둘 다 seek 만으로 재생 상태를 꾸미지 않는다', async () => {
+    const real = new AdapterClass()
+    real.mount(makeContainer())
+    real.load('aaaaaaaaaaa')
+    await arriveApi()
+    const player = lastPlayer()
+    player.fireReady()
+    player.fireStateChange(2)
+
+    const fake = new FakePlayerAdapter()
+    fake.mount(makeContainer())
+    fake.load('aaaaaaaaaaa')
+    fake.emitReady()
+    fake.emitStateChange('paused')
+
+    real.seek(10)
+    fake.seek(10)
+
+    expect(real.state()).toBe('paused')
+    expect(fake.state()).toBe('paused')
   })
 })

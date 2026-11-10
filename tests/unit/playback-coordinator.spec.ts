@@ -9,12 +9,17 @@
  *   `library` 는 읽기만 · `playback` 에만 쓰기 · 두 store 는 서로를 모른다
  *   어댑터는 빌려 쓸 뿐 만들거나 없애지 않는다
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createPlaybackCoordinator } from '@/features/playback/createPlaybackCoordinator'
 import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import type { PlaybackCoordinator } from '@/features/playback/playbackCoordinator'
+import type { PlayerAdapter } from '@/features/playback/PlayerAdapter'
+import type { PlayerPresence } from '@/features/playback/playerVisibility'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 
@@ -523,5 +528,694 @@ describe('F. 어댑터 등록과 소유권', () => {
     expect(serialized).not.toContain('fakePlayerHost')
     expect(serialized).not.toContain('hostNode')
     expect(Object.keys(pinia.state.value).sort()).toEqual(['library', 'playback'])
+  })
+})
+
+/* ================================================================== *
+ * G. Music Moments (M9-3, ADR 0020)
+ * ================================================================== */
+
+describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
+  /** 라이브러리 어디에도 없는 영상. */
+  const ORPHAN = 'zzzzzzzzzzz'
+
+  function readSource(relative: string): string {
+    return readFileSync(resolve(process.cwd(), relative), 'utf8')
+  }
+
+  function stripComments(code: string): string {
+    return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+  }
+
+  /** 항상 가려져 있다고 재는 플레이어 영역. */
+  function hiddenPresence(): PlayerPresence {
+    return {
+      measure: () => ({ ok: false, reason: 'covered' }),
+      reveal: () => {},
+    }
+  }
+
+  /** 재생 중 83.7초. 캡처가 성립하는 가장 평범한 상태다. */
+  function playingAt(seconds: number) {
+    const context = setup()
+    context.coordinator.playPlaylist(context.playlistId)
+    context.fake.emitReady()
+    context.fake.emitStateChange('playing')
+    context.fake.emitPosition(seconds)
+    return context
+  }
+
+  describe('capturePosition()', () => {
+    it('정상 재생 중 현재 영상·시점·제목을 찍는다', () => {
+      const { coordinator } = playingAt(83.7)
+
+      expect(coordinator.capturePosition()).toEqual({
+        videoId: VIDEO[0],
+        atSeconds: 83,
+        title: 'Track 1',
+      })
+    })
+
+    it('소수 초를 내림한다 — 0.9 는 0 이다', () => {
+      const { coordinator, fake } = playingAt(0.9)
+
+      expect(coordinator.capturePosition()?.atSeconds).toBe(0)
+
+      fake.emitPosition(119.999)
+      expect(coordinator.capturePosition()?.atSeconds).toBe(119)
+    })
+
+    it('0 초는 유효한 캡처다', () => {
+      const { coordinator } = playingAt(0)
+
+      expect(coordinator.capturePosition()).toMatchObject({ atSeconds: 0 })
+    })
+
+    it('현재 트랙이 없으면 null 이다', () => {
+      const { coordinator, fake } = setup()
+      fake.emitReady()
+      fake.emitPosition(10)
+
+      expect(coordinator.capturePosition()).toBeNull()
+    })
+
+    it('재생 준비 전에는 null 이다 — 0 으로 대체하지 않는다', () => {
+      const { coordinator, playlistId } = setup()
+      coordinator.playPlaylist(playlistId)
+
+      expect(coordinator.capturePosition()).toBeNull()
+    })
+
+    it('플레이어가 아직 보고하지 않았으면 null 이다', () => {
+      const { coordinator, fake, playlistId } = setup()
+      coordinator.playPlaylist(playlistId)
+      fake.emitReady()
+
+      expect(coordinator.capturePosition()).toBeNull()
+    })
+
+    it.each([
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['음수', -3],
+    ])('플레이어가 %s 를 주면 null 이다', (_label, seconds) => {
+      const { coordinator } = playingAt(seconds)
+
+      expect(coordinator.capturePosition()).toBeNull()
+    })
+
+    it('플레이어가 등록돼 있지 않으면 null 이다', () => {
+      const library = useLibraryStore()
+      const created = library.createPlaylist('P')
+      const playlistId = created.ok ? created.playlistId : ''
+      library.addTrack(playlistId, { videoId: VIDEO[0] })
+      const coordinator = createPlaybackCoordinator()
+      coordinator.playPlaylist(playlistId)
+
+      expect(coordinator.capturePosition()).toBeNull()
+    })
+
+    /*
+     * 어댑터 계약은 유효하지 않은 값을 `null` 로 가리지만, 코디네이터는 다른
+     * 구현체의 성실함에 기대지 않는다. 계약을 어기는 어댑터로 직접 확인한다.
+     */
+    it.each([
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['음수', -7],
+    ])(
+      '계약을 어기고 %s 를 돌려주는 어댑터라도 0 으로 대체하지 않고 null 이다',
+      (_label, value) => {
+        const { coordinator, playlistId } = setup()
+        const misbehaving: PlayerAdapter = {
+          mount: () => {},
+          destroy: () => {},
+          load: () => {},
+          play: () => {},
+          pause: () => {},
+          state: () => 'playing',
+          position: () => value,
+          seek: () => {},
+        }
+        coordinator.attachAdapter(misbehaving)
+        coordinator.playPlaylist(playlistId)
+
+        expect(coordinator.capturePosition()).toBeNull()
+      },
+    )
+
+    it('영상 전환 직후 이전 영상의 위치를 새 영상의 것으로 찍지 않는다', () => {
+      const { coordinator, fake, library, playlistId } = playingAt(83)
+      const ids = trackIds(library, playlistId)
+      expect(coordinator.capturePosition()?.videoId).toBe(VIDEO[0])
+
+      // 사용자가 Track 2 를 고른다. 플레이어는 아직 Track 1 의 83초를 들고 있다.
+      coordinator.playTrack(playlistId, ids[1] ?? '')
+
+      expect(coordinator.capturePosition()).toBeNull()
+
+      // Track 2 가 보고를 시작하면 그때부터 Track 2 의 값이다.
+      fake.emitPosition(0)
+      expect(coordinator.capturePosition()).toEqual({
+        videoId: VIDEO[1],
+        atSeconds: 0,
+        title: 'Track 2',
+      })
+    })
+
+    it('일시정지 중에도 찍을 수 있다 — 재생 상태가 조건이 아니다', () => {
+      const { coordinator, fake } = playingAt(40)
+      fake.emitStateChange('paused')
+
+      expect(coordinator.capturePosition()?.atSeconds).toBe(40)
+    })
+
+    it('캡처는 저장하지 않는다 — Moments 저장소에 아무것도 쓰지 않는다', () => {
+      const { coordinator } = playingAt(40)
+
+      coordinator.capturePosition()
+
+      expect(globalThis.localStorage.getItem('39page.moments')).toBeNull()
+    })
+  })
+
+  describe('playMoment() — 같은 영상', () => {
+    it('지금 영상이면 다시 적재하지 않고 seek 과 play 만 보낸다', () => {
+      const { coordinator, fake, playback } = playingAt(10)
+      const queueBefore = playback.queue.map((track) => track.id)
+
+      const result = coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
+
+      expect(result).toEqual({ ok: true })
+      expect(fake.calls.seek).toEqual([83])
+      expect(fake.calls.play).toBe(1)
+      // 적재는 처음 playPlaylist 의 한 번뿐이다.
+      expect(fake.calls.load).toHaveLength(1)
+      expect(playback.queue.map((track) => track.id)).toEqual(queueBefore)
+      expect(playback.queueIndex).toBe(0)
+    })
+
+    it('0 초 Moment 로도 seek 한다', () => {
+      const { coordinator, fake } = playingAt(50)
+
+      expect(coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 0 })).toEqual({ ok: true })
+
+      expect(fake.calls.seek).toEqual([0])
+    })
+
+    it('일시정지 중이면 seek 뒤에 play 로 재생을 보장한다', () => {
+      const { coordinator, fake } = playingAt(10)
+      fake.emitStateChange('paused')
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 30 })
+
+      // YouTube 는 일시정지 중의 seekTo 에서 멈춘 채 남는다.
+      expect(fake.calls.seek).toEqual([30])
+      expect(fake.calls.play).toBe(1)
+    })
+
+    it('준비 전이면 seek 대신 시점을 실어 다시 적재한다', () => {
+      const { coordinator, fake, playlistId } = setup()
+      coordinator.playPlaylist(playlistId)
+
+      const result = coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
+
+      expect(result).toEqual({ ok: true })
+      // 준비 전 seek 은 버려지고 play 만 남아 처음부터 재생된다. 그 길로 가지 않는다.
+      expect(fake.calls.seek).toEqual([])
+      expect(fake.calls.load).toEqual([
+        { videoId: VIDEO[0], autoplay: true },
+        { videoId: VIDEO[0], autoplay: true, startSeconds: 83 },
+      ])
+    })
+
+    it('오류 상태면 다시 적재한다 — 실패한 플레이어에 seek 을 보내지 않는다', () => {
+      const { coordinator, fake, playback } = playingAt(10)
+      fake.emitError({ kind: 'embed-not-allowed', code: 101 })
+      expect(playback.statusMessage).toContain('오류 101')
+
+      const result = coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
+
+      expect(result).toEqual({ ok: true })
+      expect(fake.calls.seek).toEqual([])
+      expect(fake.calls.load[1]).toEqual({ videoId: VIDEO[0], autoplay: true, startSeconds: 83 })
+      // 사용자의 새 요청이 앞선 안내를 지운다 (다른 요청과 같다).
+      expect(playback.statusMessage).toBe('')
+    })
+
+    it('seek 뒤 재생이 시작되기 전에 온 ENDED 는 오래된 신호로 보고 넘기지 않는다', () => {
+      const { coordinator, fake, playback } = playingAt(170)
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
+      // 끝나 가던 영상의 ENDED 가 seek 뒤에 도착한다.
+      fake.emitStateChange('ended')
+
+      expect(playback.queueIndex).toBe(0)
+      expect(fake.calls.load).toHaveLength(1)
+    })
+
+    it('seek 뒤 실제로 재생된 다음의 ENDED 는 평소처럼 다음 곡으로 간다', () => {
+      const { coordinator, fake, playback } = playingAt(170)
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
+      fake.emitStateChange('loading')
+      fake.emitStateChange('playing')
+      fake.emitStateChange('ended')
+
+      expect(playback.queueIndex).toBe(1)
+      expect(fake.calls.load).toHaveLength(2)
+      // 다음 곡은 처음부터다. Moment 의 시점이 묻어가지 않는다.
+      expect(fake.calls.load[1]).toEqual({ videoId: VIDEO[1], autoplay: true })
+    })
+
+    it('같은 영상이 큐에 두 번 있어도 지금 자리를 지킨다', () => {
+      const { library, playlistId, coordinator, fake, playback } = setup(0)
+      // 같은 영상 둘.
+      library.addTrack(playlistId, { videoId: VIDEO[0], title: 'first' })
+      library.addTrack(playlistId, { videoId: VIDEO[0], title: 'second' })
+      const ids = trackIds(library, playlistId)
+      coordinator.playTrack(playlistId, ids[1] ?? '')
+      fake.emitReady()
+      fake.emitStateChange('playing')
+      fake.emitPosition(5)
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 40 })
+
+      expect(playback.queueIndex).toBe(1)
+      expect(fake.calls.seek).toEqual([40])
+    })
+  })
+
+  describe('playMoment() — 다른 영상', () => {
+    it('현재 큐 안의 영상이면 큐를 바꾸지 않고 자리만 옮긴다', () => {
+      const { coordinator, fake, playback } = playingAt(10)
+      const queueBefore = playback.queue.map((track) => track.id)
+
+      const result = coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
+
+      expect(result).toEqual({ ok: true })
+      expect(playback.queue.map((track) => track.id)).toEqual(queueBefore)
+      expect(playback.queueIndex).toBe(1)
+      expect(playback.currentTrack?.title).toBe('Track 2')
+      expect(fake.calls.load[1]).toEqual({ videoId: VIDEO[1], autoplay: true, startSeconds: 30 })
+      // 다른 영상으로는 seek 을 보내지 않는다 — 경쟁이 생긴다.
+      expect(fake.calls.seek).toEqual([])
+    })
+
+    it('큐가 있어도 선택 목록이 바뀌었다는 이유로 큐를 갈아치우지 않는다', () => {
+      const { coordinator, library, playback } = playingAt(10)
+      // 사용자가 듣는 중에 다른 목록을 만들어 선택한다. 그 목록에도 같은 영상이 있다.
+      const other = library.createPlaylist('OTHER')
+      const otherId = other.ok ? other.playlistId : ''
+      library.addTrack(otherId, { videoId: VIDEO[1], title: 'elsewhere' })
+      expect(library.selectedPlaylistId).toBe(otherId)
+      const queueBefore = playback.queue.map((track) => track.id)
+
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
+
+      expect(playback.queue.map((track) => track.id)).toEqual(queueBefore)
+      expect(playback.currentTrack?.title).toBe('Track 2')
+    })
+
+    it('큐에 없으면 선택된 플레이리스트에서 찾아 그 목록을 큐로 만든다', () => {
+      const { coordinator, library, playback, fake } = setup()
+      const other = library.createPlaylist('OTHER')
+      const otherId = other.ok ? other.playlistId : ''
+      library.addTrack(otherId, { videoId: ORPHAN, title: 'Orphan in OTHER' })
+      library.addTrack(otherId, { videoId: VIDEO[2], title: 'Tail' })
+      expect(playback.queue).toEqual([])
+
+      const result = coordinator.playMoment({ videoId: ORPHAN, atSeconds: 5 })
+
+      expect(result).toEqual({ ok: true })
+      expect(playback.queue.map((track) => track.title)).toEqual(['Orphan in OTHER', 'Tail'])
+      expect(playback.queueIndex).toBe(0)
+      expect(fake.calls.load).toEqual([{ videoId: ORPHAN, autoplay: true, startSeconds: 5 }])
+    })
+
+    it('선택 목록에 없으면 다른 목록 중 처음 발견한 것을 큐로 만든다', () => {
+      const { coordinator, library, playback, playlistId } = setup()
+      const selected = library.createPlaylist('SELECTED (없음)')
+      expect(selected.ok && library.selectedPlaylistId).toBe(
+        selected.ok ? selected.playlistId : null,
+      )
+
+      // PLAYLIST A 에만 VIDEO[1] 이 있다.
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 7 })
+
+      expect(playback.queue.map((track) => track.title)).toEqual(['Track 1', 'Track 2', 'Track 3'])
+      expect(playback.queueIndex).toBe(1)
+      expect(library.getPlaylist(playlistId)?.name).toBe('PLAYLIST A')
+    })
+
+    it('선택 목록과 다른 목록에 모두 있으면 선택 목록이 이긴다', () => {
+      const { coordinator, library, playback } = setup()
+      const other = library.createPlaylist('SELECTED B')
+      const otherId = other.ok ? other.playlistId : ''
+      library.addTrack(otherId, { videoId: VIDEO[1], title: 'B has it too' })
+
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 7 })
+
+      expect(playback.queue.map((track) => track.title)).toEqual(['B has it too'])
+    })
+
+    it('큐는 라이브러리의 스냅샷이다 — 이후 편집에 흔들리지 않는다', () => {
+      const { coordinator, library, playback, playlistId } = setup()
+      const ids = trackIds(library, playlistId)
+
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 7 })
+      library.removeTrack(playlistId, ids[2] ?? '')
+      library.renameTrack(playlistId, ids[1] ?? '', 'RENAMED')
+
+      expect(playback.queue).toHaveLength(3)
+      expect(playback.currentTrack?.title).toBe('Track 2')
+    })
+
+    it('라이브러리에서 지운 영상의 Moment 는 그 한 곡만으로 재생한다', () => {
+      const { coordinator, library, playback, fake, playlistId } = setup()
+      const ids = trackIds(library, playlistId)
+      // Track 2 를 지운다. Moment 는 videoId 를 가리키므로 남아 있다.
+      library.removeTrack(playlistId, ids[1] ?? '')
+      // 다른 트랙도 같은 영상을 쓰지 않게 한다 (VIDEO[1] 은 Track 2 만 썼다).
+      expect(library.getPlaylist(playlistId)?.tracks.some((t) => t.videoId === VIDEO[1])).toBe(
+        false,
+      )
+
+      const result = coordinator.playMoment({
+        videoId: VIDEO[1],
+        atSeconds: 42,
+        title: '지운 곡의 스냅샷 제목',
+      })
+
+      expect(result).toEqual({ ok: true })
+      expect(playback.queue).toHaveLength(1)
+      expect(playback.currentTrack).toMatchObject({
+        source: 'youtube',
+        videoId: VIDEO[1],
+        title: '지운 곡의 스냅샷 제목',
+      })
+      expect(fake.calls.load).toEqual([{ videoId: VIDEO[1], autoplay: true, startSeconds: 42 }])
+    })
+
+    it('단일 곡 큐에서 이전·다음은 움직이지 않는다', () => {
+      const { coordinator, playback, fake } = setup(0)
+
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
+
+      expect(coordinator.next()).toBe(false)
+      expect(coordinator.previous()).toBe(false)
+      expect(playback.queueIndex).toBe(0)
+      expect(fake.calls.load).toHaveLength(1)
+    })
+
+    it('단일 곡의 ENDED 는 큐 끝 안내로 끝난다', () => {
+      const { coordinator, playback, fake } = setup(0)
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
+
+      fake.emitStateChange('playing')
+      fake.emitStateChange('ended')
+
+      expect(playback.statusMessage).toContain('마지막 곡')
+      expect(fake.calls.load).toHaveLength(1)
+    })
+
+    it('제목이 없으면 트랙과 같은 대체 표기를 쓴다', () => {
+      const { coordinator, playback } = setup(0)
+
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
+
+      expect(playback.currentTrack?.title).toBe(`YouTube · ${ORPHAN}`)
+    })
+
+    it('단일 곡의 id 는 라이브러리 트랙 id 와 겹치지 않아 trackRemoved 에 걸리지 않는다', () => {
+      const { coordinator, playback, fake, library, playlistId } = setup()
+      const ids = trackIds(library, playlistId)
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
+      const current = playback.currentTrack
+
+      // 라이브러리의 어떤 트랙을 지워도 단일 곡 재생은 멈추지 않는다.
+      for (const id of ids) coordinator.trackRemoved(id)
+
+      expect(fake.calls.pause).toBe(0)
+      expect(playback.currentTrack).toBe(current)
+      expect(ids).not.toContain(current?.id)
+    })
+
+    it('0 초 Moment 는 startSeconds 0 으로 적재한다 — 생략과 다르다', () => {
+      const { coordinator, fake } = setup()
+
+      coordinator.playMoment({ videoId: VIDEO[2], atSeconds: 0 })
+
+      expect(fake.calls.load).toEqual([{ videoId: VIDEO[2], autoplay: true, startSeconds: 0 }])
+    })
+
+    it('Moment 로 시작한 큐도 다음·이전이 평소처럼 처음부터 재생한다', () => {
+      const { coordinator, playback, fake } = setup()
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
+
+      expect(coordinator.next()).toBe(true)
+      expect(playback.queueIndex).toBe(2)
+      expect(fake.calls.load[1]).toEqual({ videoId: VIDEO[2], autoplay: true })
+
+      expect(coordinator.previous()).toBe(true)
+      expect(fake.calls.load[2]).toEqual({ videoId: VIDEO[1], autoplay: true })
+      expect(fake.calls.load[2]).not.toHaveProperty('startSeconds')
+    })
+
+    it('Moment 로 시작한 재생도 ENDED 에서 자동으로 다음 곡으로 간다', () => {
+      const { coordinator, playback, fake } = setup()
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 30 })
+
+      fake.emitStateChange('playing')
+      fake.emitStateChange('ended')
+
+      expect(playback.queueIndex).toBe(1)
+      expect(fake.calls.load[1]).toEqual({ videoId: VIDEO[1], autoplay: true })
+    })
+  })
+
+  describe('playMoment() — 거절과 실패', () => {
+    it.each([
+      ['10자 videoId', { videoId: 'abcdefghij', atSeconds: 10 }],
+      ['빈 videoId', { videoId: '', atSeconds: 10 }],
+      ['음수 시점', { videoId: 'aaaaaaaaaaa', atSeconds: -1 }],
+      ['소수 시점', { videoId: 'aaaaaaaaaaa', atSeconds: 1.5 }],
+      ['NaN 시점', { videoId: 'aaaaaaaaaaa', atSeconds: Number.NaN }],
+      ['Infinity 시점', { videoId: 'aaaaaaaaaaa', atSeconds: Number.POSITIVE_INFINITY }],
+    ])('잘못된 Moment (%s) 를 거부하고 아무것도 바꾸지 않는다', (_label, target) => {
+      const { coordinator, playback, fake } = playingAt(10)
+      const queueBefore = playback.queue.map((track) => track.id)
+
+      expect(coordinator.playMoment(target)).toEqual({ ok: false, reason: 'invalid-moment' })
+
+      expect(playback.queue.map((track) => track.id)).toEqual(queueBefore)
+      expect(playback.queueIndex).toBe(0)
+      expect(fake.calls.load).toHaveLength(1)
+      expect(fake.calls.seek).toEqual([])
+    })
+
+    it('플레이어가 등록돼 있지 않으면 성공으로 돌려주지 않는다', () => {
+      useLibraryStore().createPlaylist('P')
+      const coordinator = createPlaybackCoordinator()
+      const playback = usePlaybackStore()
+
+      expect(coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })).toEqual({
+        ok: false,
+        reason: 'player-unavailable',
+      })
+      expect(playback.queue).toEqual([])
+    })
+
+    it('연결이 끊긴 뒤에는 성공으로 돌려주지 않는다', () => {
+      const { coordinator, attachment, fake } = setup()
+      attachment.detach()
+
+      expect(coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })).toEqual({
+        ok: false,
+        reason: 'player-unavailable',
+      })
+      expect(fake.calls.load).toEqual([])
+    })
+
+    it('플레이어가 가려져 있으면 다른 재생과 같은 이유로 거절하고 큐를 바꾸지 않는다', () => {
+      const { coordinator, playback, fake } = setup()
+      // 가려진 영역을 등록한다.
+      const hidden = new FakePlayerAdapter()
+      const attachment = coordinator.attachAdapter(hidden, hiddenPresence())
+      hidden.mount(document.createElement('div'), attachment.events)
+
+      const result = coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
+
+      expect(result).toEqual({ ok: false, reason: 'player-hidden' })
+      expect(playback.queue).toEqual([])
+      expect(hidden.calls.load).toEqual([])
+      expect(hidden.calls.seek).toEqual([])
+      expect(fake.calls.load).toEqual([])
+      expect(playback.statusTone).toBe('warning')
+      expect(playback.statusMessage).toContain('재생할 수 없어요')
+    })
+
+    it('가려진 플레이어에서는 같은 영상의 seek 도 거절한다', () => {
+      const { coordinator, playback, fake, playlistId } = playingAt(10)
+      // 같은 어댑터를 가려진 영역과 함께 다시 등록한다.
+      const attachment = coordinator.attachAdapter(fake, hiddenPresence())
+      void attachment
+      void playlistId
+
+      const result = coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
+
+      expect(result).toEqual({ ok: false, reason: 'player-hidden' })
+      expect(fake.calls.seek).toEqual([])
+      expect(playback.queueIndex).toBe(0)
+    })
+
+    it('자동재생 차단 안내는 다른 재생과 같고 자동 전환을 멈춘다', () => {
+      const { coordinator, playback, fake } = setup()
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 30 })
+
+      fake.emitAutoplayBlocked()
+      fake.emitStateChange('ended')
+
+      expect(playback.statusMessage).toContain('자동재생')
+      expect(playback.queueIndex).toBe(0)
+      expect(fake.calls.load).toHaveLength(1)
+    })
+
+    it('임베드 불가 영상의 Moment 는 기존 오류 안내가 뜨고 다음 곡으로 넘기지 않는다', () => {
+      const { coordinator, playback, fake } = setup(0)
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 30, title: '막힌 영상' })
+
+      fake.emitError({ kind: 'embed-not-allowed', code: 150 })
+      expect(playback.playerState).toBe('error')
+      expect(playback.statusTone).toBe('warning')
+      fake.emitStateChange('ended')
+
+      // 오류 안내가 남고, 사용자의 다음 동작을 기다린다 (M3-0.7).
+      expect(playback.statusMessage).toContain('오류 150')
+      expect(playback.currentTrack?.title).toBe('막힌 영상')
+      expect(fake.calls.load).toHaveLength(1)
+    })
+
+    it('재생할 수 없는 영상이라도 Moments 저장소를 건드리지 않는다', () => {
+      globalThis.localStorage.setItem(
+        '39page.moments',
+        JSON.stringify({ version: 1, data: [{ id: 'm', videoId: ORPHAN, atSeconds: 30 }] }),
+      )
+      const raw = globalThis.localStorage.getItem('39page.moments')
+      const { coordinator, fake } = setup(0)
+
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 30 })
+      fake.emitError({ kind: 'not-found', code: 100 })
+
+      // 삭제도 수정도 없다. 지우는 것은 사용자만 한다 (`MUSIC_MOMENTS.md` 3-5).
+      expect(globalThis.localStorage.getItem('39page.moments')).toBe(raw)
+    })
+  })
+
+  describe('빠른 연속 요청과 늦은 사건', () => {
+    it('연달아 누르면 마지막 Moment 가 이긴다', () => {
+      const { coordinator, playback, fake } = setup()
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
+      coordinator.playMoment({ videoId: VIDEO[2], atSeconds: 20 })
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
+
+      expect(playback.queueIndex).toBe(1)
+      expect(fake.calls.load.map((call) => call.startSeconds)).toEqual([10, 20, 30])
+      expect(fake.calls.load[2]?.videoId).toBe(VIDEO[1])
+    })
+
+    it('같은 영상에서 연달아 seek 하면 순서대로 간다', () => {
+      const { coordinator, fake } = playingAt(5)
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 50 })
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 20 })
+
+      expect(fake.calls.seek).toEqual([10, 50, 20])
+      expect(fake.calls.load).toHaveLength(1)
+    })
+
+    it('다른 영상으로 바꾼 직후 같은 영상의 Moment 를 누르면 재적재에 시점이 실린다', () => {
+      const { coordinator, fake } = playingAt(5)
+
+      // B 로 바꾼다 → 플레이어는 아직 B 의 위치를 모른다.
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
+      // 곧바로 B 의 다른 Moment. seek 은 버려질 것이므로 쓰지 않는다.
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 50 })
+
+      expect(fake.calls.seek).toEqual([])
+      expect(fake.calls.load.slice(1)).toEqual([
+        { videoId: VIDEO[1], autoplay: true, startSeconds: 10 },
+        { videoId: VIDEO[1], autoplay: true, startSeconds: 50 },
+      ])
+    })
+
+    it('바꾸기 직전 영상의 ENDED 가 Moment 로 고른 곡을 건너뛰지 않는다', () => {
+      const { coordinator, playback, fake } = playingAt(170)
+
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
+      // Track 1 의 ENDED 가 뒤늦게 도착한다.
+      fake.emitStateChange('ended')
+
+      expect(playback.queueIndex).toBe(1)
+      expect(fake.calls.load).toHaveLength(2)
+    })
+
+    it('새 Moment 요청은 앞선 오류 안내를 지운다', () => {
+      const { coordinator, playback, fake, playlistId } = setup()
+      coordinator.playPlaylist(playlistId)
+      fake.emitError({ kind: 'not-found', code: 100 })
+      expect(playback.statusMessage).not.toBe('')
+
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
+
+      expect(playback.statusMessage).toBe('')
+    })
+  })
+
+  describe('경계', () => {
+    it('playMoment 전후로 어댑터의 DOM 노드가 같다 — 재생성이 없다', () => {
+      const { coordinator, fake } = playingAt(5)
+      const host = fake.hostNode
+
+      coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
+      coordinator.playMoment({ videoId: ORPHAN, atSeconds: 10 })
+
+      expect(fake.hostNode).toBe(host)
+      expect(fake.calls.mount).toBe(1)
+      expect(fake.calls.destroy).toBe(0)
+    })
+
+    it('코디네이터는 Moments store 를 만들지 않는다 — Pinia 에 moments 가 없다', () => {
+      const { coordinator } = playingAt(5)
+      coordinator.capturePosition()
+      coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
+
+      expect(Object.keys(pinia.state.value).sort()).toEqual(['library', 'playback'])
+    })
+
+    it('코디네이터 소스가 Moments 저장에 손대지 않는다', () => {
+      const code = stripComments(readSource('src/features/playback/createPlaybackCoordinator.ts'))
+
+      expect(code).not.toContain('useMomentsStore')
+      expect(code).not.toContain('momentsStorage')
+      expect(code).not.toContain('localStorage')
+      // 검증 함수 하나만 빌려 쓴다. 한 벌이어야 갈라지지 않는다.
+      expect(code).toContain('isValidAtSeconds')
+    })
+
+    it('일반 트랙 재생에는 startSeconds 가 섞이지 않는다', () => {
+      const { coordinator, fake, playlistId, library } = setup()
+      const ids = trackIds(library, playlistId)
+
+      coordinator.playPlaylist(playlistId)
+      coordinator.playTrack(playlistId, ids[2] ?? '')
+      coordinator.next()
+      coordinator.previous()
+
+      for (const call of fake.calls.load) expect(call).not.toHaveProperty('startSeconds')
+    })
   })
 })

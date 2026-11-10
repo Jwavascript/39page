@@ -15,6 +15,7 @@ import App from './app/App.vue'
 import { PLAYER_ADAPTER_FACTORY } from './features/playback/PlayerAdapter'
 import { YouTubeIFramePlayerAdapter } from './features/playback/YouTubeIFramePlayerAdapter'
 import { useLibraryStore } from './stores/library'
+import { useMomentsStore } from './stores/moments'
 import { useThemeStore } from './stores/theme'
 
 /** 최초 실행에서만 만드는 기본 플레이리스트 (`MVP_SPEC.md` F4). */
@@ -50,5 +51,14 @@ useThemeStore(pinia).restore()
 const library = useLibraryStore(pinia)
 library.restore()
 library.seedFirstRunPlaylist(DEFAULT_PLAYLIST_NAME)
+
+/*
+ * Music Moments 도 마운트 전에 복원한다 (M9-3). **읽기만 한다.**
+ *
+ * 키가 없으면 빈 목록이고 쓰지 않는다 — 기본값을 심는 액션이 없다. 손상·미래
+ * 버전 원본은 `protected` 로 남고, 라이브러리의 복원 결과와 서로 영향을
+ * 주지 않는다 (ADR 0019 결정 3). 화면에 보여주는 것은 M9-4 다.
+ */
+useMomentsStore(pinia).restore()
 
 app.mount('#app')

@@ -15,15 +15,52 @@
  * (`AGENTS.md` 규칙 8).
  */
 
+/**
+ * `loadVideoById` · `cueVideoById` 의 객체 인자 (M9-3).
+ *
+ * 공식 문서의 객체 문법이다. `startSeconds` 를 실어 보내는 유일한 방법이고,
+ * 적재와 시점 지정이 **한 명령**이라 둘 사이에 경쟁이 없다 (ADR 0020).
+ */
+export interface YouTubeVideoRequest {
+  videoId: string
+  startSeconds?: number
+}
+
 /** 우리가 호출하는 `YT.Player` 메서드만 선언한다. */
 export interface YouTubePlayer {
-  /** 즉시 재생하며 교체한다. */
-  loadVideoById(videoId: string): void
+  /** 즉시 재생하며 교체한다. 객체 인자는 시작 시점을 함께 싣는다 (M9-3). */
+  loadVideoById(request: string | YouTubeVideoRequest): void
   /** 적재만 하고 기다린다. */
-  cueVideoById(videoId: string): void
+  cueVideoById(request: string | YouTubeVideoRequest): void
   playVideo(): void
   pauseVideo(): void
   destroy(): void
+
+  /**
+   * 지정한 초로 이동한다 (M9-3).
+   *
+   * `allowSeekAhead` 가 `true` 면 아직 받지 않은 구간으로도 간다 — 사용자가
+   * 명시적으로 고른 시점이므로 항상 `true` 로 보낸다.
+   */
+  seekTo(seconds: number, allowSeekAhead: boolean): void
+
+  /**
+   * 현재 재생 위치(초). 소수다 (M9-3).
+   *
+   * 부모 창의 `YT.Player` 는 iframe 이 보내온 값을 **캐시**해 돌려준다.
+   * 준비 전에는 `0` 이나 `undefined` 를 줄 수 있어, 어댑터가 `null` 로
+   * 바꿔 전한다.
+   */
+  getCurrentTime(): number | undefined
+
+  /**
+   * 지금 적재된 영상의 youtube.com 주소 (M9-3).
+   *
+   * `getCurrentTime()` 과 **같은 캐시**에서 나온다. 그래서 둘을 같은 순간에
+   * 읽으면 서로 같은 영상의 값이고, 어댑터는 이것으로 "그 위치가 어느 영상의
+   * 것인가" 를 가린다. 아직 아무것도 적재되지 않았으면 `v=` 가 없다.
+   */
+  getVideoUrl(): string | undefined
 }
 
 export interface YouTubePlayerEvent {

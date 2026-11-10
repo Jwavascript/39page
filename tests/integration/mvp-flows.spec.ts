@@ -18,6 +18,7 @@ import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import { PLAYER_ADAPTER_FACTORY } from '@/features/playback/PlayerAdapter'
 import { STORAGE_KEYS } from '@/shared/storage'
 import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
+import { useMomentsStore } from '@/stores/moments'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
@@ -57,6 +58,8 @@ function boot() {
   const library = useLibraryStore()
   library.restore()
   library.seedFirstRunPlaylist(DEFAULT_PLAYLIST_NAME)
+  // M9-3: Moments 도 마운트 전에 복원한다. 읽기만 한다.
+  useMomentsStore().restore()
 
   const fake = new FakePlayerAdapter()
   const wrapper = mount(App, {

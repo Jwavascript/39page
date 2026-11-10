@@ -219,7 +219,7 @@ M3-0 에서 위 조건을 그대로 확정했다. **200×200 은 공식 요구�
 
 복귀는 **수동**이다. 다시 보이게 되어도 자동으로 재생하지 않는다.
 
-### 4.6 플레이어 어댑터 — 구현 완료 (M1-5 계약 · M3-1 YouTube 구현)
+### 4.6 플레이어 어댑터 — 구현 완료 (M1-5 계약 · M3-1 YouTube 구현 · M9-3 시점 조회·이동)
 
 계약은 `src/features/playback/PlayerAdapter.ts`에 있다.
 
@@ -231,6 +231,8 @@ interface PlayerAdapter {
   play(): void
   pause(): void
   state(): PlayerState // YouTube 숫자값을 노출하지 않는다
+  position(): number | null // M9-3. 준비 전 · 영상 전환 직후 · 유효하지 않으면 null (0 과 다르다)
+  seek(seconds: number): void // M9-3. 적재된 같은 영상 안에서만. 준비 전·잘못된 값은 버린다
 }
 
 interface PlayerAdapterEvents {
@@ -242,6 +244,7 @@ interface PlayerAdapterEvents {
 
 interface PlayerLoadOptions {
   autoplay?: boolean // true → loadVideoById, 생략 → cueVideoById
+  startSeconds?: number // M9-3. 이 초부터. YouTube 의 공식 인자에 실린다 — 뒤따르는 seek 이 없다
 }
 
 interface PlayerErrorInfo {
@@ -255,6 +258,13 @@ const PLAYER_ADAPTER_FACTORY: InjectionKey<PlayerAdapterFactory>
 
 두 번째 인자 둘은 **M3-1 에서 더했다** (ADR 0008). 모두 선택이라 이벤트를 쓰지
 않는 호출부는 그대로다.
+
+`position()` · `seek()` · `startSeconds` 는 **M9-3 에서 더했다** (ADR 0020).
+두 메서드는 **필수**다 — 선택이면 두 구현체가 조용히 갈라진다. `position()` 은
+플레이어가 보고하는 영상이 마지막으로 적재한 영상과 다르면 `null` 을 준다
+(`getVideoUrl()` 로 가린다) — 전환 직후 이전 영상의 위치가 새 영상의 것으로
+나가지 않는다. Playback Coordinator 는 그 위에 `PlaybackMoments`
+(`capturePosition()` · `playMoment()`) 를 얹는다 (`MOMENTS_DESIGN.md` §4).
 
 초안과 달라진 점:
 
@@ -651,7 +661,7 @@ TODO: 각 store의 액션 시그니처 확정
 
 ```
 shared/storage/
-  STORAGE_KEYS = { library: '39page.library', theme: '39page.theme' }
+  STORAGE_KEYS = { library: '39page.library', theme: '39page.theme', moments: '39page.moments' } // moments 는 M9-2
 
   defineStorage<T>({ key, version, fallback, validate, migrate? }): TypedStorage<T>
     read(): { value: T; outcome: ReadOutcome }
@@ -662,7 +672,7 @@ shared/storage/
 
 | 항목              | 결정                                                                                 | 근거                                                                                                    |
 | ----------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| 저장 키           | `39page.library`, `39page.theme`                                                     | 키에 버전을 넣지 않는다. 키가 버전과 함께 바뀌면 이전 데이터를 찾을 수 없어 마이그레이션이 불가능해진다 |
+| 저장 키           | `39page.library`, `39page.theme`, `39page.moments` (M9-2)                            | 키에 버전을 넣지 않는다. 키가 버전과 함께 바뀌면 이전 데이터를 찾을 수 없어 마이그레이션이 불가능해진다 |
 | 스키마 버전       | 봉투의 `version` 필드                                                                |                                                                                                         |
 | `fallback`        | 값이 아니라 **팩토리** `() => T`                                                     | 값으로 받으면 모든 읽기가 같은 객체를 돌려주고, 호출자가 변형하면 이후 기본값이 오염된다                |
 | `validate`        | **필수**. `(value: unknown) => T \| null`                                            | 타입 가드가 아닌 이유는 정규화가 필요해서다 (불량 항목 제거, 깨진 `selected` 보정 — `MVP_SPEC.md` F9)   |
@@ -675,8 +685,8 @@ shared/storage/
 `invalid` · `version-mismatch` · `migration-failed`.
 `stored`와 `migrated`만 저장된 데이터를 쓴 경우다.
 
-구체 저장 인스턴스는 각 store와 함께 만든다: 테마는 M1-3, 라이브러리는 M2.
-M1-1은 `defineStorage`와 키 상수만 제공한다.
+구체 저장 인스턴스는 각 store와 함께 만든다: 테마는 M1-3, 라이브러리는 M2,
+Moments 는 M9-2 (`MOMENTS_DESIGN.md` §3). M1-1은 `defineStorage`와 키 상수만 제공한다.
 
 TODO: 저장 실패 시 사용자 안내 방식 (`MVP_SPEC.md` F9)
 TODO: 레이아웃·스킨 저장을 스키마에 미리 비워둘지 결정

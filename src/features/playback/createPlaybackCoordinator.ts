@@ -37,9 +37,17 @@
  * `B` 의 첫 상태가 오기 전에 도착한 `A` 의 오류는 `B` 의 것으로 보인다.
  * 이 창은 수 밀리초이고, `B` 가 실제로 재생되면 `stateChange('playing')` 이
  * 안내를 지워 저절로 바로잡힌다. 더 좁히려면 API 쪽 지원이 필요하다.
+ *
+ * Music Moments (M9-3, ADR 0020): `capturePosition()` 과 `playMoment()` 을
+ * 더했다. 둘 다 **재생만** 안다 — Moment 를 저장하거나 읽지 않는다. 저장은
+ * Moments store 의 일이고 그 둘을 잇는 것은 UI 다 (`MOMENTS_DESIGN.md` §4).
+ * 시점 이동도 **적재된 플레이어에 보내는 명령**이라 iframe 은 바뀌지 않는다
+ * (ADR 0002).
  */
 import type { Track } from '@/shared/types'
-import { useLibraryStore } from '@/stores/library'
+import { isYouTubeVideoId } from '@/shared/utils/youtube'
+import { defaultTrackTitle, useLibraryStore } from '@/stores/library'
+import { isValidAtSeconds } from '@/stores/moments'
 import { usePlaybackStore } from '@/stores/playback'
 
 import type {
@@ -49,6 +57,9 @@ import type {
   PlayerErrorKind,
 } from './PlayerAdapter'
 import type {
+  MomentCapture,
+  MomentPlayResult,
+  MomentTarget,
   PlaybackCoordinator,
   PlayerAttachment,
   PlayRequestResult,
@@ -220,15 +231,21 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     playback.setStatus(message)
   }
 
-  /** 현재 트랙을 어댑터에 보낸다. 사용자 요청이므로 즉시 재생이다. */
-  function commandCurrentTrack(): void {
+  /**
+   * 현재 트랙을 어댑터에 보낸다. 사용자 요청이므로 즉시 재생이다.
+   *
+   * `startSeconds` 는 Moment 재생이 넘긴다 (M9-3). 일반 트랙 재생은 넘기지
+   * 않으므로 **처음부터** 다. 시점은 `load` 의 인자로 함께 실려 가고 뒤따르는
+   * `seek` 이 없다 — 준비 전 보류에도 시점이 함께 남는다 (ADR 0020).
+   */
+  function commandCurrentTrack(startSeconds?: number): void {
     const track = playback.currentTrack
     if (track === null) return
 
     hasStartedPlaying = false
     // 어댑터가 API·플레이어 준비 전 요청을 보류했다가 한 번만 실행한다
     // (ADR 0008). 여기서 준비 여부를 따로 따지지 않는다.
-    adapter?.load(track.videoId, { autoplay: true })
+    adapter?.load(track.videoId, { autoplay: true, startSeconds })
   }
 
   /**
@@ -369,6 +386,162 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     }
 
     commandCurrentTrack()
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Music Moments (M9-3, ADR 0020)
+   * ---------------------------------------------------------------- */
+
+  /**
+   * 지금 재생 중인 영상의 시점을 찍는다.
+   *
+   * **같은 순간에 같은 영상의 값**임을 이렇게 보장한다. `currentTrack` 은
+   * 어댑터에 적재를 명령하기 **직전에** 동기적으로 바뀌고(`setQueue` ·
+   * `setQueueIndex` → `commandCurrentTrack`), 어댑터의 `position()` 은
+   * 플레이어가 **마지막으로 명령받은 영상**을 보고할 때만 숫자를 준다
+   * (계약). 둘을 한 호출 안에서 읽으므로 사이에 끼어들 명령이 없다. 전환
+   * 직후 플레이어가 아직 이전 영상을 보고하는 창에서는 `null` 이다 —
+   * 오래된 위치가 새 영상의 Moment 로 저장되는 길이 없다.
+   *
+   * 내림은 여기서 한다. 어댑터는 플레이어의 실수를 그대로 전하고, "정수 초"
+   * 는 도메인 규칙이다 (`MOMENTS_DESIGN.md` §4). 유효하지 않은 값은 0 으로
+   * 바꾸지 않고 `null` 이다.
+   */
+  function capturePosition(): MomentCapture | null {
+    const track = playback.currentTrack
+    if (track === null || adapter === null) return null
+
+    const raw = adapter.position()
+    // 어댑터가 이미 가리지만 다른 구현체를 믿지 않는다 — 한 번 더 본다.
+    if (raw === null || !Number.isFinite(raw) || raw < 0) return null
+
+    return { videoId: track.videoId, atSeconds: Math.floor(raw), title: track.title }
+  }
+
+  /**
+   * 지금 적재된 영상 안에서 `seek` 으로 옮길 수 있는가.
+   *
+   * 플레이어가 그 영상의 위치를 알고 있어야 한다 — 준비 전이면 `seek` 은
+   * 버려지고 `play` 만 보류되어 **처음부터** 재생된다. 오류 상태의 플레이어에
+   * 보내는 `seek` 도 아무 일을 하지 않는다 (`togglePlay` 가 오류에서 다시
+   * 적재하는 것과 같은 이유). 두 경우는 시점을 실어 다시 적재한다.
+   */
+  function canSeekInPlace(): boolean {
+    return adapter?.position() !== null && playback.playerState !== 'error'
+  }
+
+  /**
+   * 그 영상을 라이브러리에서 찾는다 (`MOMENTS_DESIGN.md` §4-2).
+   * **선택된 플레이리스트**를 먼저, 그다음 라이브러리 순서다. 같은 영상이
+   * 한 목록에 여러 번 있으면 처음 것부터다.
+   */
+  function locateInLibrary(videoId: string): { tracks: readonly Track[]; index: number } | null {
+    const selected = library.selectedPlaylist
+    const ordered =
+      selected === null
+        ? library.playlists
+        : [selected, ...library.playlists.filter((playlist) => playlist.id !== selected.id)]
+
+    for (const playlist of ordered) {
+      const index = playlist.tracks.findIndex((track) => track.videoId === videoId)
+      if (index !== -1) return { tracks: playlist.tracks, index }
+    }
+    return null
+  }
+
+  /**
+   * 라이브러리 어디에도 없는 영상을 위한 **단일 곡**.
+   *
+   * "트랙을 지워도 Moment 는 산다" 를 실제 동작으로 만드는 자리다. id 는
+   * 라이브러리의 UUID 와 겹칠 수 없는 모양이라 `trackRemoved(id)` 가 이것을
+   * 집지 못한다. 제목은 Moment 의 스냅샷을 쓰고, 없으면 트랙과 같은 대체
+   * 표기다 — 새 규칙을 만들지 않는다.
+   */
+  function standaloneTrack(videoId: string, title: string | undefined): Track {
+    const trimmed = title?.trim() ?? ''
+    return {
+      id: `moment:${videoId}`,
+      source: 'youtube',
+      videoId,
+      title: trimmed === '' ? defaultTrackTitle(videoId) : trimmed,
+    }
+  }
+
+  /**
+   * Moment 가 가리키는 지점부터 재생한다.
+   *
+   * 영상 선택과 큐 규칙 — 위에서부터 **처음 맞는 줄**이다.
+   *
+   * | 그 `videoId` 가 있는 곳   | 큐                                | 명령                            |
+   * | ------------------------- | --------------------------------- | ------------------------------- |
+   * | **지금 영상**, 위치를 안다 | 그대로                            | `seek` + `play` — 재적재 없음   |
+   * | 지금 영상, 준비 전·오류    | 그대로                            | 같은 영상을 시점과 함께 재적재  |
+   * | **현재 큐**의 다른 자리    | **그대로**, 위치만 옮김           | `load(videoId, { startSeconds })` |
+   * | 선택된 플레이리스트        | 그 목록, 그 트랙부터              | 같음                            |
+   * | 다른 플레이리스트          | 처음 발견한 목록                  | 같음                            |
+   * | 어디에도 없다              | **그 한 곡** — 이전·다음 비활성   | 같음                            |
+   *
+   * 셋째 줄은 M9-1 §4-2 에 없던 것을 M9-3 이 더했다. 듣고 있던 큐 안의 영상인데
+   * 선택 목록이 바뀌었다는 이유로 큐를 갈아치우면, 사용자가 듣던 순서가
+   * 예고 없이 바뀐다. 큐는 재생 시작 시점의 스냅샷이고 그 성질을 지킨다.
+   *
+   * 가시성 가드는 **다른 재생 요청과 같다** (ADR 0011). 가려져 있으면 큐도
+   * 바꾸지 않고 `player-hidden` 으로 거절한다. 거절 문구도 같은 자리에 뜬다.
+   *
+   * 시점은 **정확히 그 초**다. 앞당기지 않는다 (ADR 0020 결정 5).
+   */
+  function playMoment(target: MomentTarget): MomentPlayResult {
+    // 저장소에서 온 값이라도 믿지 않는다. 재생 전에 한 번 더 본다.
+    if (!isYouTubeVideoId(target.videoId) || !isValidAtSeconds(target.atSeconds)) {
+      return { ok: false, reason: 'invalid-moment' }
+    }
+    // 명령을 받을 플레이어가 없으면 시작할 수 없다. 성공으로 돌려주지 않는다.
+    if (adapter === null) return { ok: false, reason: 'player-unavailable' }
+
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return { ok: false, reason: 'player-hidden' }
+    }
+
+    const { videoId, atSeconds } = target
+    const current = playback.currentTrack
+
+    if (current !== null && current.videoId === videoId) {
+      if (canSeekInPlace()) {
+        clearStatus()
+        /*
+         * 이 명령의 재생이 시작되기 전에 오는 `ENDED` 는 그 명령보다 오래된
+         * 신호다 — 끝나 가던 영상에서 시점을 되돌리는 순간 끝 신호가 뒤늦게
+         * 도착할 수 있다. 그것을 믿으면 사용자가 고른 순간을 건너뛰고 다음
+         * 곡이 나온다. `load` 경로가 쓰는 것과 같은 규칙이다.
+         */
+        hasStartedPlaying = false
+        adapter.seek(atSeconds)
+        // YouTube 는 일시정지 중의 seek 에서 멈춘 채로 남는다. 재생을 보장한다.
+        adapter.play()
+        return { ok: true }
+      }
+
+      // 준비 전이거나 오류다. 큐는 그대로 두고 시점을 실어 다시 적재한다.
+      clearStatus()
+      commandCurrentTrack(atSeconds)
+      return { ok: true }
+    }
+
+    const inQueue = playback.queue.findIndex((track) => track.videoId === videoId)
+    if (inQueue !== -1) {
+      // 듣고 있던 큐 안이다. 큐를 바꾸지 않고 자리만 옮긴다.
+      playback.setQueueIndex(inQueue)
+    } else {
+      const located = locateInLibrary(videoId)
+      if (located !== null) playback.setQueue(snapshot(located.tracks), located.index)
+      else playback.setQueue([standaloneTrack(videoId, target.title)], 0)
+    }
+
+    clearStatus()
+    commandCurrentTrack(atSeconds)
+    return { ok: true }
   }
 
   /**
@@ -571,5 +744,9 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     revalidatePlayerVisibility,
     setBottomObstruction,
     attachAdapter,
+
+    // Music Moments (M9-3). 재생만 안다 — 저장은 Moments store 의 일이다.
+    capturePosition,
+    playMoment,
   }
 }

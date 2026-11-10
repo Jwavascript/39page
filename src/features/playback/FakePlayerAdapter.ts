@@ -18,14 +18,22 @@
  * 예외는 `load()` 다. 실제 어댑터는 `YT.Player` 를 만들면서 `loading` 을
  * 알리므로, Fake 도 그 자리에서 알린다. 이 한 가지가 어긋나면 "재생을
  * 눌렀는데 버튼이 아직 ▶ 다" 같은 차이가 테스트에만 생긴다.
+ *
+ * **위치도 명령의 결과가 아니다** (M9-3). `seek()` 은 호출만 기록하고
+ * `position()` 을 바꾸지 않는다. 실제 플레이어도 `seekTo` 뒤에 iframe 이
+ * 새 값을 보내오기 전까지는 옛 값을 돌려준다. 위치는 테스트가
+ * `emitPosition()` 으로 "플레이어가 보고했다" 를 재현할 때만 생긴다.
+ * 실제 어댑터의 세 규칙을 그대로 따른다 — 준비 전엔 `null`, 적재 명령 뒤
+ * 새 보고가 오기 전엔 `null`, 유효하지 않은 보고는 `null`.
  */
 import type { PlayerState } from '@/shared/types'
 
-import type {
-  PlayerAdapter,
-  PlayerAdapterEvents,
-  PlayerErrorInfo,
-  PlayerLoadOptions,
+import {
+  isValidPlayerSeconds,
+  type PlayerAdapter,
+  type PlayerAdapterEvents,
+  type PlayerErrorInfo,
+  type PlayerLoadOptions,
 } from './PlayerAdapter'
 
 /** `load()` 에 들어온 한 번의 요청. */
@@ -33,6 +41,12 @@ export interface FakeLoadCall {
   videoId: string
   /** `load()` 가 받은 자동재생 의도. 생략됐으면 `false` 다. */
   autoplay: boolean
+  /**
+   * `load()` 가 받은 **유효한** 시작 시점 (M9-3). 없거나 유효하지 않으면
+   * 이 키 자체가 없다 — 실제 어댑터가 그 요청을 시점 없는 적재로 보내는 것과
+   * 같다.
+   */
+  startSeconds?: number
 }
 
 /** 어댑터에 들어온 호출 기록. */
@@ -45,6 +59,13 @@ export interface FakePlayerAdapterCalls {
   load: FakeLoadCall[]
   play: number
   pause: number
+  /** 플레이어에 **실제로 전달된** `seek()` 의 초 (M9-3). */
+  seek: number[]
+  /**
+   * 버린 `seek()` 의 초 (M9-3). 유효하지 않은 값이거나 준비 전이었다 —
+   * 실제 어댑터가 `seekTo` 를 부르지 않는 바로 그 경우다.
+   */
+  seekDropped: number[]
 }
 
 export class FakePlayerAdapter implements PlayerAdapter {
@@ -54,6 +75,8 @@ export class FakePlayerAdapter implements PlayerAdapter {
     load: [],
     play: 0,
     pause: 0,
+    seek: [],
+    seekDropped: [],
   }
 
   /** `mount()`에 들어온 컨테이너. 같은 호스트를 쓰는지 검증한다. */
@@ -66,6 +89,20 @@ export class FakePlayerAdapter implements PlayerAdapter {
   events: PlayerAdapterEvents | null = null
 
   private currentState: PlayerState = 'idle'
+
+  /**
+   * 외부 플레이어가 준비됐다고 알린 뒤인지 (M9-3). `emitReady()` 가 세운다.
+   * 실제 어댑터의 `playerReady` 와 같은 뜻이다 — 준비 전 `seek()` 은 버리고
+   * `position()` 은 `null` 이다.
+   */
+  private ready = false
+
+  /**
+   * 외부 플레이어가 **마지막으로 보고한** 위치 (M9-3). `emitPosition()` 이
+   * 세우고, `load()` 가 비운다 — 새 영상을 명령한 뒤 그 영상의 보고가 오기
+   * 전까지는 모른다 (실제 어댑터의 영상 식별 판정과 같은 결과).
+   */
+  private reportedPosition: number | null = null
 
   mount(container: HTMLElement, events?: PlayerAdapterEvents): void {
     this.calls.mount += 1
@@ -93,10 +130,17 @@ export class FakePlayerAdapter implements PlayerAdapter {
     this.container = null
     this.events = null
     this.currentState = 'idle'
+    this.ready = false
+    this.reportedPosition = null
   }
 
   load(videoId: string, options?: PlayerLoadOptions): void {
-    this.calls.load.push({ videoId, autoplay: options?.autoplay === true })
+    const call: FakeLoadCall = { videoId, autoplay: options?.autoplay === true }
+    if (isValidPlayerSeconds(options?.startSeconds)) call.startSeconds = options.startSeconds
+    this.calls.load.push(call)
+
+    // 새 영상을 명령했다. 그 영상의 보고가 오기 전까지 위치는 모른다.
+    this.reportedPosition = null
     // 실제 어댑터가 플레이어를 만들며 알리는 것과 같다.
     this.emitStateChange('loading')
   }
@@ -113,6 +157,24 @@ export class FakePlayerAdapter implements PlayerAdapter {
     return this.currentState
   }
 
+  position(): number | null {
+    if (this.hostNode === null || !this.ready) return null
+    return isValidPlayerSeconds(this.reportedPosition) ? this.reportedPosition : null
+  }
+
+  seek(seconds: number): void {
+    if (this.hostNode === null) return
+
+    // 실제 어댑터와 같은 두 조건에서 버린다. 보류하지 않는다.
+    if (!isValidPlayerSeconds(seconds) || !this.ready) {
+      this.calls.seekDropped.push(seconds)
+      return
+    }
+
+    this.calls.seek.push(seconds)
+    // 위치를 바꾸지 않는다. 실제 플레이어도 보고가 와야 바뀐다.
+  }
+
   /** 마운트되어 있는지. 테스트 가독성을 위한 편의 속성이다. */
   get isMounted(): boolean {
     return this.hostNode !== null
@@ -121,7 +183,18 @@ export class FakePlayerAdapter implements PlayerAdapter {
   // ── 테스트가 외부 플레이어 역할을 하도록 하는 함수들 ──────────────────
 
   emitReady(): void {
+    this.ready = true
     this.events?.ready?.()
+  }
+
+  /**
+   * 외부 플레이어가 **지금 적재된 영상의** 위치를 보고했다 (M9-3).
+   *
+   * `null` 은 "보고를 거뒀다" 다. 실제 플레이어의 `getCurrentTime()` 처럼
+   * 소수를 그대로 받는다. 유효하지 않은 값은 `position()` 이 `null` 로 가린다.
+   */
+  emitPosition(seconds: number | null): void {
+    this.reportedPosition = seconds
   }
 
   /** 상태를 바꾸고 알린다. 바뀌지 않으면 알리지 않는다 (실제 어댑터와 같다). */

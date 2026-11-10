@@ -13,20 +13,31 @@
  * 4. **같은 스크립트를 두 번 받으면 안 된다.** 로더가 싱글턴으로 막는다.
  * 5. **스크립트 로드가 실패할 수 있다.** 실패를 전달하고 **재시도를 열어둔다**
  *    (M3-5). 로더가 실패한 시도를 버리므로 다음 `load()` 가 새 요청이 된다.
+ * 6. **위치는 캐시다** (M9-3). 부모 창의 `YT.Player` 는 iframe 이 보내온
+ *    값을 들고 있다가 돌려준다. `loadVideoById(B)` 직후에는 아직 `A` 의
+ *    값이다 — 그래서 `position()` 은 플레이어가 보고하는 영상이 우리가
+ *    마지막으로 적재한 영상일 때만 숫자를 준다 (ADR 0020).
  *
  * store 를 import 하지 않는다. 사건은 `mount()` 에서 받은 핸들러로 올려보내고,
  * store 반영은 `PlayerSurface` 가 한다 (ADR 0006 의 단방향).
  */
 import type { PlayerState } from '@/shared/types'
+import { parseYouTubeVideoId } from '@/shared/utils/youtube'
 
-import type {
-  PlayerAdapter,
-  PlayerAdapterEvents,
-  PlayerErrorInfo,
-  PlayerErrorKind,
-  PlayerLoadOptions,
+import {
+  isValidPlayerSeconds,
+  type PlayerAdapter,
+  type PlayerAdapterEvents,
+  type PlayerErrorInfo,
+  type PlayerErrorKind,
+  type PlayerLoadOptions,
 } from './PlayerAdapter'
-import { loadYouTubeIframeApi, type YouTubeApi, type YouTubePlayer } from './youtubeIframeApi'
+import {
+  loadYouTubeIframeApi,
+  type YouTubeApi,
+  type YouTubePlayer,
+  type YouTubeVideoRequest,
+} from './youtubeIframeApi'
 
 /**
  * YouTube 숫자 상태값 → 도메인 상태.
@@ -66,6 +77,27 @@ function pageOrigin(): string | undefined {
   return undefined
 }
 
+/**
+ * `getVideoUrl()` 이 돌려준 주소에서 영상 ID 를 꺼낸다 (M9-3).
+ *
+ * 기존 `parseYouTubeVideoId` 를 그대로 쓴다 — `/watch?v=` 형식이고, 아직
+ * 적재된 영상이 없으면 `v=` 가 없어 실패한다. 주소를 직접 파싱하는 두 번째
+ * 규칙을 만들지 않는다.
+ */
+function reportedVideoId(url: unknown): string | null {
+  if (typeof url !== 'string') return null
+  const parsed = parseYouTubeVideoId(url)
+  return parsed.ok ? parsed.videoId : null
+}
+
+/**
+ * `startSeconds` 를 **유효할 때만** 싣는다. 아니면 문자열 인자 그대로다 —
+ * 시점 없는 적재는 M3-1 과 완전히 같은 명령이어야 한다.
+ */
+function videoRequest(videoId: string, startSeconds: number | null): string | YouTubeVideoRequest {
+  return startSeconds === null ? videoId : { videoId, startSeconds }
+}
+
 export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
   /** Vue 가 소유하는 래퍼. 우리가 바꾸지 않는다. */
   private container: HTMLElement | null = null
@@ -88,6 +120,20 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
 
   /** `onReady` 전에 들어온 적재 요청. 마지막 것만 남는다. */
   private pendingVideoId: string | null = null
+
+  /**
+   * 보류한 적재 요청의 시작 시점 (M9-3). `pendingVideoId` 와 **함께** 남고
+   * 함께 비워진다. 요청이 바뀌면 시점도 그 요청의 것으로 바뀐다.
+   */
+  private pendingStartSeconds: number | null = null
+
+  /**
+   * 플레이어에 **마지막으로 적재를 명령한** 영상 (M9-3).
+   *
+   * 생성자 · `loadVideoById` · `cueVideoById` 가 갱신한다. `position()` 은
+   * 플레이어가 보고하는 영상이 이것과 같을 때만 숫자를 준다.
+   */
+  private loadedVideoId: string | null = null
 
   /** `onReady` 전에 들어온 재생 요청. */
   private wantsPlay = false
@@ -143,6 +189,8 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
     this.events = null
     this.api = null
     this.pendingVideoId = null
+    this.pendingStartSeconds = null
+    this.loadedVideoId = null
     this.wantsPlay = false
     this.playerReady = false
     this.apiRequested = false
@@ -153,18 +201,22 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
     if (this.hostNode === null) return
 
     const autoplay = options?.autoplay === true
+    // 유효하지 않은 시점은 없는 것으로 본다 — 처음부터 적재한다 (계약).
+    const startSeconds = isValidPlayerSeconds(options?.startSeconds) ? options.startSeconds : null
     const player = this.player
 
     if (player !== null && this.playerReady) {
       this.pendingVideoId = null
+      this.pendingStartSeconds = null
       this.wantsPlay = false
-      if (autoplay) player.loadVideoById(videoId)
-      else player.cueVideoById(videoId)
+      this.sendLoad(player, videoId, autoplay, startSeconds)
       return
     }
 
     // 아직 준비되지 않았다. 보류했다가 `onReady` 에서 한 번만 흘려보낸다.
+    // 시점도 함께 보류한다 — 요청과 시점은 한 묶음이다.
     this.pendingVideoId = videoId
+    this.pendingStartSeconds = startSeconds
     this.wantsPlay = autoplay
     this.ensureApi()
   }
@@ -197,6 +249,61 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
 
   state(): PlayerState {
     return this.currentState
+  }
+
+  position(): number | null {
+    const player = this.player
+    if (this.hostNode === null || player === null || !this.playerReady) return null
+
+    const expected = this.loadedVideoId
+    if (expected === null) return null
+
+    let url: unknown
+    let time: unknown
+    try {
+      url = player.getVideoUrl()
+      time = player.getCurrentTime()
+    } catch {
+      // 플레이어가 질의에 던지는 상태다. 숫자를 지어내지 않는다.
+      return null
+    }
+
+    /*
+     * 두 값은 같은 캐시에서 나온다. 플레이어가 아직 **이전 영상**을 보고하고
+     * 있으면 그 시간도 이전 영상의 것이다 — 전환 직후의 창이다. 그 숫자를
+     * 새 영상의 위치로 내보내지 않는다 (ADR 0020).
+     */
+    if (reportedVideoId(url) !== expected) return null
+
+    return isValidPlayerSeconds(time) ? time : null
+  }
+
+  seek(seconds: number): void {
+    if (this.hostNode === null) return
+    // 잘못된 값은 조용히 적용하지 않는다. 다른 시점으로 가는 것보다 낫다.
+    if (!isValidPlayerSeconds(seconds)) return
+
+    const player = this.player
+    // 준비 전에는 보류하지 않고 버린다 — 다른 영상의 시점은 `load()` 가 싣는다.
+    if (player === null || !this.playerReady) return
+
+    player.seekTo(seconds, true)
+  }
+
+  /**
+   * 적재 명령을 플레이어에 보낸다. `loadedVideoId` 를 **명령과 함께** 갱신한다.
+   * 이 둘이 따로 움직이면 `position()` 의 판정이 어긋난다.
+   */
+  private sendLoad(
+    player: YouTubePlayer,
+    videoId: string,
+    autoplay: boolean,
+    startSeconds: number | null,
+  ): void {
+    this.loadedVideoId = videoId
+    const request = videoRequest(videoId, startSeconds)
+    if (autoplay) player.loadVideoById(request)
+    else player.cueVideoById(request)
   }
 
   /** API 를 확보한다. 이미 있으면 바로 플레이어를 만든다. */
@@ -244,6 +351,9 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
     // 생성자에 넘기므로 보류 목록에서 뺀다. 재생 의도(`wantsPlay`)는
     // `onReady` 가 쓰므로 남겨둔다.
     this.pendingVideoId = null
+    const startSeconds = this.pendingStartSeconds
+    this.pendingStartSeconds = null
+    this.loadedVideoId = videoId
 
     const playerVars: Record<string, string | number> = {
       controls: 1,
@@ -253,6 +363,13 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
     }
     const origin = pageOrigin()
     if (origin !== undefined) playerVars.origin = origin
+    /*
+     * 생성자에 넘기는 첫 영상의 시작 시점은 `start` 파라미터로 싣는다 (M9-3).
+     * 공식 플레이어 파라미터이고 **정수**여야 한다. 적재와 시점이 한 명령에
+     * 실리므로 `onReady` 뒤에 따로 `seekTo` 를 보낼 필요가 없다 — 그 경로는
+     * cued 상태의 플레이어를 재생시켜 버린다 (seekTo 의 공식 동작).
+     */
+    if (startSeconds !== null) playerVars.start = Math.floor(startSeconds)
 
     // 교체당할 자식. `hostNode` 자체는 남는다.
     const target = host.ownerDocument.createElement('div')
@@ -292,14 +409,15 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
     this.playerReady = true
 
     const videoId = this.pendingVideoId
+    const startSeconds = this.pendingStartSeconds
     const autoplay = this.wantsPlay
     this.pendingVideoId = null
+    this.pendingStartSeconds = null
     this.wantsPlay = false
 
     if (videoId !== null) {
-      // 생성자에 넘긴 영상과 다른 영상이 그 사이에 요청됐다.
-      if (autoplay) player.loadVideoById(videoId)
-      else player.cueVideoById(videoId)
+      // 생성자에 넘긴 영상과 다른 영상이 그 사이에 요청됐다. 시점도 함께 간다.
+      this.sendLoad(player, videoId, autoplay, startSeconds)
     } else if (autoplay) {
       player.playVideo()
     }

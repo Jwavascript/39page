@@ -31,6 +31,19 @@ const VIDEO_A = 'aaaaaaaaaaa'
 const VIDEO_B = 'bbbbbbbbbbb'
 
 class FakeYtPlayer implements YouTubePlayer {
+  // M9-3 에서 계약에 더해진 질의. 이 테스트는 위치를 보지 않으므로 최소 구현이다.
+  seekTo(): void {
+    /* 이 테스트에서는 보지 않는다 */
+  }
+
+  getCurrentTime(): number | undefined {
+    return undefined
+  }
+
+  getVideoUrl(): string | undefined {
+    return undefined
+  }
+
   static instances: FakeYtPlayer[] = []
 
   readonly options: YouTubePlayerOptions

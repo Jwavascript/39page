@@ -16,6 +16,7 @@
  *   `PlayerTransport`     → `PlaybackTransport` (버튼 3개)
  *   `PlayerSurface`       → `attachAdapter` (플레이어·가시성 연결만)
  *   `DashboardShell`      → `PlaybackVisibility` (가리기 전 통지)
+ *   Moments UI (M9-4)     → `PlaybackMoments` (시점 캡처 · Moment 재생)
  */
 import type { InjectionKey } from 'vue'
 
@@ -39,6 +40,78 @@ export type PlayRequestFailure =
   | 'player-hidden'
 
 export type PlayRequestResult = { ok: true } | { ok: false; reason: PlayRequestFailure }
+
+/**
+ * Moment 재생이 거절된 이유 (M9-3, ADR 0020).
+ *
+ * 기존 `PlayRequestFailure` 를 **포함한다** — `player-hidden` 은 다른 재생
+ * 요청과 같은 가시성 가드에서 같은 이유로 나온다. 둘이 더 있다.
+ */
+export type MomentPlayFailure =
+  | PlayRequestFailure
+  /** `videoId` 가 11자 형식이 아니거나 `atSeconds` 가 0 이상 정수가 아니다 */
+  | 'invalid-moment'
+  /**
+   * 등록된 플레이어가 없다. 명령을 받을 곳이 없으므로 **성공으로 돌려주지
+   * 않는다** — 재생을 시작할 수 없으면 `ok: true` 가 아니다.
+   */
+  | 'player-unavailable'
+
+export type MomentPlayResult = { ok: true } | { ok: false; reason: MomentPlayFailure }
+
+/**
+ * `capturePosition()` 이 찍어 주는 값 (M9-3). Moment 를 만들 재료다.
+ *
+ * 저장은 하지 않는다. Moments store 에 넣는 것은 UI 의 일이다 — 코디네이터는
+ * 재생을 알고 저장을 모른다 (`MOMENTS_DESIGN.md` §4).
+ */
+export interface MomentCapture {
+  videoId: string
+  /** `position()` 의 실수를 **내림한 정수**. 도메인 규칙은 여기서 적용한다. */
+  atSeconds: number
+  /** 지금 화면에 보이는 제목. 그대로 Moment 의 스냅샷이 된다. */
+  title: string
+}
+
+/** `playMoment()` 의 대상. 저장된 `Moment` 에서 필요한 것만 뗀 모양이다. */
+export interface MomentTarget {
+  videoId: string
+  atSeconds: number
+  /**
+   * 그 영상이 **라이브러리 어디에도 없을 때** 단일 곡 큐의 표시 이름으로 쓴다.
+   * 라이브러리에 있으면 그쪽 제목이 쓰이므로 무시된다. 생략하면
+   * `YouTube · <videoId>` 다.
+   */
+  title?: string
+}
+
+/**
+ * Music Moments 명령 (M9-3, ADR 0020). Moments UI 가 쓰는 부분이다.
+ *
+ * UI 는 어댑터도 YouTube API 도 모른 채 이 둘만 부른다.
+ */
+export interface PlaybackMoments {
+  /**
+   * 지금 재생 중인 영상의 시점을 찍는다.
+   *
+   * 다음은 전부 **`null`** 이다 — 숫자를 지어내지 않고 0초로 대체하지 않는다.
+   * - 현재 트랙이 없다 · 플레이어가 등록돼 있지 않다
+   * - 플레이어가 아직 시점을 모른다 (준비 전 · 영상 전환 직후)
+   * - 플레이어의 값이 유한한 0 이상의 수가 아니다
+   *
+   * `null` 이면 저장 버튼은 **비활성**이어야 한다.
+   */
+  capturePosition(): MomentCapture | null
+
+  /**
+   * Moment 가 가리키는 지점부터 재생한다.
+   *
+   * 다른 재생 요청과 **같은 가시성 가드**를 지난다 (ADR 0011) — 가려져 있으면
+   * `player-hidden` 으로 거절되고 큐는 바뀌지 않는다. 영상·시점 이동 정책과
+   * 큐 규칙은 `createPlaybackCoordinator.ts` 의 `playMoment` 에 있다.
+   */
+  playMoment(target: MomentTarget): MomentPlayResult
+}
 
 /**
  * `player-hidden` 으로 거절됐을 때 **누른 자리**에 띄울 안내 (M7-1).
@@ -185,7 +258,12 @@ export interface PlayerAttachment {
 }
 
 export interface PlaybackCoordinator
-  extends PlaybackRequests, PlaybackTransport, PlaybackLibraryNotices, PlaybackVisibility {
+  extends
+    PlaybackRequests,
+    PlaybackTransport,
+    PlaybackLibraryNotices,
+    PlaybackVisibility,
+    PlaybackMoments {
   /**
    * 플레이어 어댑터를 등록한다.
    *

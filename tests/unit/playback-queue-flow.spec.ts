@@ -28,6 +28,19 @@ const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
 /** 가짜 `YT.Player`. 실제 API 처럼 넘겨받은 요소를 iframe 으로 교체한다. */
 class FakeYtPlayer implements YouTubePlayer {
+  // M9-3 에서 계약에 더해진 질의. 이 테스트는 위치를 보지 않으므로 최소 구현이다.
+  seekTo(): void {
+    /* 이 테스트에서는 보지 않는다 */
+  }
+
+  getCurrentTime(): number | undefined {
+    return undefined
+  }
+
+  getVideoUrl(): string | undefined {
+    return undefined
+  }
+
   static instances: FakeYtPlayer[] = []
 
   readonly options: YouTubePlayerOptions
