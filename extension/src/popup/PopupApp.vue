@@ -15,6 +15,7 @@ import { errorCopy, LOADING_COPY, UNSUPPORTED_COPY } from './copy'
 import { useActiveVideo } from './useActiveVideo'
 import { useMomentCapture } from './useMomentCapture'
 import { useQuickAdd } from './useQuickAdd'
+import { useShortcuts } from './useShortcuts'
 
 const bridge = inject(BRIDGE_KEY)
 if (bridge === undefined) throw new Error('PopupBridge 가 제공되지 않았다')
@@ -22,6 +23,7 @@ if (bridge === undefined) throw new Error('PopupBridge 가 제공되지 않았�
 const { view, retry, currentTabId } = useActiveVideo(bridge)
 const quickAdd = useQuickAdd(bridge, { view, currentTabId, refresh: retry })
 const moment = useMomentCapture(bridge, { view, currentTabId, refresh: retry })
+const { shortcuts, openSettings } = useShortcuts(bridge)
 </script>
 
 <template>
@@ -36,12 +38,20 @@ const moment = useMomentCapture(bridge, { view, currentTabId, refresh: retry })
 
     <template v-else-if="view.phase === 'video'">
       <VideoCard :video-id="view.videoId" :page-kind="view.pageKind" :title="view.title" />
-      <QuickAddPanel :state="quickAdd.state.value" @add="quickAdd.add" />
+      <QuickAddPanel
+        :state="quickAdd.state.value"
+        :shortcut="shortcuts?.['quick-add']"
+        @add="quickAdd.add"
+      />
       <MomentCapturePanel
         :state="moment.state.value"
         :disabled-reason="moment.disabledReason.value"
+        :shortcut="shortcuts?.['capture-moment']"
         @capture="moment.capture"
       />
+      <button v-if="shortcuts !== null" type="button" class="settings" @click="openSettings">
+        단축키 바꾸기
+      </button>
     </template>
 
     <StatusNotice
@@ -67,6 +77,23 @@ const moment = useMomentCapture(bridge, { view, currentTabId, refresh: retry })
   display: grid;
   gap: 10px;
   padding: 14px 16px 16px;
+}
+
+/* 보조 링크 모양의 버튼 — 단축키 설정 화면을 연다 (M10-5). */
+.settings {
+  justify-self: start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim-color);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.settings:hover {
+  color: var(--text-muted-color);
 }
 
 /* 웹앱의 quiet-btn 과 같은 토큰. */

@@ -8,9 +8,10 @@
 import { computed } from 'vue'
 
 import { QUICK_ADD_COPY, quickAddMessage } from '../copy'
+import ShortcutHint from './ShortcutHint.vue'
 import type { QuickAddState } from '../useQuickAdd'
 
-const props = defineProps<{ state: QuickAddState }>()
+const props = defineProps<{ state: QuickAddState; shortcut?: string }>()
 const emit = defineEmits<{ add: [] }>()
 
 const message = computed(() => quickAddMessage(props.state))
@@ -24,6 +25,7 @@ const busy = computed(() => props.state.kind === 'busy')
       {{ busy ? QUICK_ADD_COPY.busy : QUICK_ADD_COPY.button }}
     </button>
     <p class="quick-add-help">{{ QUICK_ADD_COPY.help }}</p>
+    <ShortcutHint :shortcut="shortcut" />
     <p
       v-if="message !== null"
       class="quick-add-message"

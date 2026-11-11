@@ -1,17 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { fakeEvent } from './support/fakeEvent'
+import { fakeEvent, type FakeEvent } from './support/fakeEvent'
 
 const EXTENSION_ID = 'abcdefghijklmnopabcdefghijklmnop'
 const ORIGIN = `chrome-extension://${EXTENSION_ID}/`
 
 type Listener = (message: unknown, sender: unknown, sendResponse: (r: unknown) => void) => unknown
 
+type CommandListener = (command: string, tab?: { id?: number }) => void
+
+let lastWorker: {
+  onCommand: FakeEvent<CommandListener>
+  action: Record<'setBadgeText' | 'setBadgeBackgroundColor' | 'setTitle', ReturnType<typeof vi.fn>>
+} | null = null
+
 /** 워커 시작 = 모듈을 처음부터 실행. 실제로 서비스 워커가 다시 깨어날 때와 같다. */
 async function startWorker() {
   const onMessage = fakeEvent<Listener>()
+  const onCommand = fakeEvent<CommandListener>()
+  const action = {
+    setBadgeText: vi.fn<() => Promise<void>>(async () => {}),
+    setBadgeBackgroundColor: vi.fn<() => Promise<void>>(async () => {}),
+    setTitle: vi.fn<() => Promise<void>>(async () => {}),
+  }
+  lastWorker = { onCommand, action }
   vi.stubGlobal('chrome', {
     runtime: { id: EXTENSION_ID, getURL: (path: string) => `${ORIGIN}${path}`, onMessage },
+    commands: { onCommand },
+    action,
     tabs: {
       get: vi
         .fn<(id: number) => Promise<object>>()
@@ -38,6 +54,19 @@ describe('Background 진입점', () => {
   it('불러오는 즉시 리스너 하나를 동기로 건다', async () => {
     const onMessage = await startWorker()
     expect(onMessage.listeners).toHaveLength(1)
+  })
+
+  it('단축키 리스너도 동기로 건다 — 다른 사이트에서 누르면 그 탭 아이콘에 이유를 단다 (M10-5)', async () => {
+    await startWorker()
+    expect(lastWorker?.onCommand.listeners).toHaveLength(1)
+    lastWorker?.onCommand.listeners[0]?.('quick-add', { id: 1 })
+    await vi.waitFor(() =>
+      expect(lastWorker?.action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '!' }),
+    )
+    expect(lastWorker?.action.setTitle).toHaveBeenCalledWith({
+      tabId: 1,
+      title: '39page — YouTube 영상 페이지에서 단축키를 눌러 주세요.',
+    })
   })
 
   it('비동기로 답한다 (true 를 돌려주고 sendResponse 를 나중에 부른다)', async () => {

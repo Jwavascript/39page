@@ -103,6 +103,30 @@ if (manifest !== null) {
   }
 
   expectFile('action.default_popup', manifest.action?.default_popup)
+
+  // 단축키 (M10-5) — 공식 commands 규칙: 제안은 최대 4개, Ctrl 또는 Alt 를 포함, Ctrl+Alt 금지.
+  const commands = manifest.commands ?? {}
+  if (typeof commands !== 'object' || Array.isArray(commands)) fail('commands 가 객체가 아니다')
+  else {
+    const suggested = Object.entries(commands).flatMap(([name, command]) =>
+      Object.values(command?.suggested_key ?? {}).map((key) => [name, String(key)]),
+    )
+    const distinctCommands = new Set(suggested.map(([name]) => name))
+    if (distinctCommands.size > 4) fail(`제안 단축키가 4개를 넘는다 — ${distinctCommands.size}`)
+    for (const [name, key] of suggested) {
+      const parts = key.split('+')
+      if (!parts.some((part) => ['Ctrl', 'Alt', 'Command', 'MacCtrl'].includes(part))) {
+        fail(`단축키 ${name} 에 Ctrl 또는 Alt 가 없다 — ${key}`)
+      }
+      if (parts.includes('Ctrl') && parts.includes('Alt'))
+        fail(`단축키 ${name} 이 Ctrl+Alt 다 — ${key}`)
+    }
+    for (const [name, command] of Object.entries(commands)) {
+      if (typeof command?.description !== 'string' || command.description === '') {
+        fail(`단축키 ${name} 에 설명이 없다`)
+      }
+    }
+  }
 }
 
 // content script 는 executeScript({ files }) 로 주입하는 고전 스크립트여야 한다.
@@ -161,5 +185,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `manifest 검사 통과 — MV3 · 권한 [${(manifest?.permissions ?? []).join(', ')}] · 금지 키 없음 · 참조 파일 존재`,
+  `manifest 검사 통과 — MV3 · 권한 [${(manifest?.permissions ?? []).join(', ')}] · 금지 키 없음 · 단축키 ${Object.keys(manifest?.commands ?? {}).length}개 · 참조 파일 존재`,
 )

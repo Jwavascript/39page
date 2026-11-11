@@ -12,10 +12,12 @@ import type { CaptureRefusal } from '@/shared/messages'
 
 import { CAPTURE_REFUSAL_COPY, MOMENT_COPY, momentCaptureMessage } from '../copy'
 import type { MomentCaptureState } from '../useMomentCapture'
+import ShortcutHint from './ShortcutHint.vue'
 
 const props = defineProps<{
   state: MomentCaptureState
   disabledReason: CaptureRefusal | null
+  shortcut?: string
 }>()
 const emit = defineEmits<{ capture: [] }>()
 
@@ -41,6 +43,7 @@ const isProblem = computed(() => props.state.kind === 'error' || props.state.kin
       {{ CAPTURE_REFUSAL_COPY[disabledReason] }}
     </p>
     <p v-else id="moment-help" class="moment-help">{{ MOMENT_COPY.help }}</p>
+    <ShortcutHint :shortcut="shortcut" />
     <p
       v-if="message !== null"
       class="moment-message"

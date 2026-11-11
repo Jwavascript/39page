@@ -35,11 +35,23 @@ export interface PopupBridge {
   collect(tabId: number, videoId: string): Promise<Result<CollectOpened>>
   /** Moment 캡처 — 누른 순간의 재생 시점으로 수집 화면을 연다 (M10-4). */
   captureMoment(tabId: number, videoId: string): Promise<Result<MomentCaptured>>
+  /**
+   * 지금 지정된 단축키 (M10-5). 사용자가 바꿨거나 다른 단축키와 겹쳐 지정되지 않았으면
+   * 빈 문자열 — `chrome.commands.getAll()` 그대로.
+   */
+  shortcuts(): Promise<Partial<Record<ShortcutCommand, string>>>
+  /** 단축키를 바꾸는 Chrome 화면을 연다. */
+  openShortcutSettings(): Promise<void>
   /** 구독을 끊는 함수를 돌려준다. */
   subscribe(listener: (event: TabEvent) => void): () => void
 }
 
 export const BRIDGE_KEY: InjectionKey<PopupBridge> = Symbol('popup-bridge')
+
+/** manifest `commands` 의 이름 (M10-5). */
+export type ShortcutCommand = 'quick-add' | 'capture-moment'
+const SHORTCUT_COMMANDS: readonly ShortcutCommand[] = ['quick-add', 'capture-moment']
+export const SHORTCUT_SETTINGS_URL = 'chrome://extensions/shortcuts'
 
 /** Background 가 content 주입·재시도(3초 × 2)까지 마치기에 넉넉한 한도. */
 export const INSPECT_TIMEOUT_MS = 10_000
@@ -84,6 +96,24 @@ export function createChromeBridge(timeoutMs = INSPECT_TIMEOUT_MS): PopupBridge 
     },
     collect(tabId, videoId) {
       return send({ v: PROTOCOL_VERSION, type: 'collect/open', tabId, videoId }, parseCollectOpened)
+    },
+
+    async shortcuts() {
+      try {
+        const commands = await chrome.commands.getAll()
+        const found: Partial<Record<ShortcutCommand, string>> = {}
+        for (const command of commands) {
+          const name = command.name as ShortcutCommand
+          if (SHORTCUT_COMMANDS.includes(name)) found[name] = command.shortcut ?? ''
+        }
+        return found
+      } catch {
+        return {}
+      }
+    },
+
+    async openShortcutSettings() {
+      await chrome.tabs.create({ url: SHORTCUT_SETTINGS_URL })
     },
 
     subscribe(listener) {

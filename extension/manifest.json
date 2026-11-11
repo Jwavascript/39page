@@ -11,5 +11,19 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting"]
+  "permissions": ["activeTab", "scripting"],
+  "commands": {
+    "quick-add": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y"
+      },
+      "description": "지금 YouTube 영상을 39page 플레이리스트에 담기 (수집 화면 열기)"
+    },
+    "capture-moment": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "지금 재생 시점을 39page Moment 로 고정 (수집 화면 열기)"
+    }
+  }
 }

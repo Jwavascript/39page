@@ -386,3 +386,59 @@ describe('E. 같은 시점', () => {
     wrapper.unmount()
   })
 })
+
+describe('F. 쓰던 메모를 조용히 잃지 않는다 (M10-5)', () => {
+  function leave(): boolean {
+    const event = new Event('beforeunload', { cancelable: true })
+    globalThis.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+
+  it('메모를 쓰는 중에 떠나려 하면 브라우저가 묻는다 — 비었거나 저장했으면 묻지 않는다', async () => {
+    const { wrapper } = boot()
+    expect(leave()).toBe(false)
+
+    await wrapper.get('#collect-moment-note').setValue('쓰는 중')
+    expect(leave()).toBe(true)
+
+    await save(wrapper)
+    expect(wrapper.find('.collect-notice--success').exists()).toBe(true)
+    expect(leave()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('저장이 거절돼 메모가 남아 있으면 계속 묻는다', async () => {
+    const { wrapper } = boot()
+    await wrapper.get('#collect-moment-note').setValue('남은 메모')
+    await otherTab().add({ videoId: 'M7lc1UVf-VE', atSeconds: 1 })
+    await save(wrapper)
+
+    expect(wrapper.get('.failure').text()).toContain('다른 탭에서 Moments 가 바뀌어')
+    expect(leave()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('화면을 닫으면(마운트 해제) 더는 묻지 않는다', async () => {
+    const { wrapper } = boot()
+    await wrapper.get('#collect-moment-note').setValue('쓰는 중')
+    wrapper.unmount()
+    expect(leave()).toBe(false)
+  })
+
+  it('같은 탭의 주소 조각이 다른 요청으로 바뀌어도 화면과 쓰던 메모를 바꾸지 않는다', async () => {
+    const { wrapper } = boot()
+    await wrapper.get('#collect-moment-note').setValue('지킬 메모')
+
+    globalThis.location.hash = momentHash({ atSeconds: '5', req: 'another_request_1234' }).slice(1)
+    globalThis.dispatchEvent(new HashChangeEvent('hashchange'))
+    await nextTick()
+
+    expect(wrapper.get('.moment-time').text()).toBe('1:23 지점')
+    expect((wrapper.get('#collect-moment-note').element as HTMLTextAreaElement).value).toBe(
+      '지킬 메모',
+    )
+    expect(realLocalStorage.getItem(KEY)).toBeNull()
+    globalThis.location.hash = ''
+    wrapper.unmount()
+  })
+})

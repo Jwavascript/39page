@@ -71,6 +71,7 @@ describe('팝업', () => {
     expect(buttons.map((button) => button.text())).toEqual([
       '플레이리스트에 추가',
       '현재 Moment 저장',
+      '단축키 바꾸기',
     ])
     expect(wrapper.find('.quick-add').text()).toContain('이 버튼만으로는 저장되지 않습니다')
     expect(wrapper.find('.moment').text()).toContain('이 버튼만으로는 저장되지 않습니다')
@@ -359,5 +360,48 @@ describe('팝업 — 현재 Moment 저장 (M10-4)', () => {
 
     expect(fake.bridge.inspect).toHaveBeenCalledTimes(2)
     expect(wrapper.get('.moment-message').text()).toContain('그 사이 영상이 바뀌었습니다')
+  })
+})
+
+describe('팝업 — 단축키 (M10-5)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('지금 지정된 단축키를 각 동작 아래에 보이고, 바꾸는 화면을 열 수 있다', async () => {
+    const { wrapper, fake } = mountPopup()
+    await settle()
+    fake.pending[0]!.resolve(ok(VIDEO))
+    await settle()
+
+    expect(wrapper.get('.quick-add .shortcut').text()).toBe('단축키 Alt+Shift+Y')
+    expect(wrapper.get('.moment .shortcut').text()).toBe('단축키 Alt+Shift+M')
+    await wrapper.get('button.settings').trigger('click')
+    expect(fake.bridge.openShortcutSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('지정되지 않았으면(바꿨거나 겹침) 그렇다고 적는다', async () => {
+    const fake = fakeBridge()
+    fake.bridge.shortcuts.mockResolvedValue({ 'quick-add': '', 'capture-moment': 'Alt+Shift+M' })
+    const { wrapper } = mountPopup(fake)
+    await settle()
+    fake.pending[0]!.resolve(ok(VIDEO))
+    await settle()
+
+    expect(wrapper.get('.quick-add .shortcut').text()).toBe('단축키 지정되지 않음')
+  })
+
+  it('키보드만으로 — 초점이 가는 것은 버튼 셋뿐이고 화면 순서와 같다', async () => {
+    const { wrapper, fake } = mountPopup()
+    await settle()
+    fake.pending[0]!.resolve(ok(VIDEO))
+    await settle()
+
+    const focusables = wrapper.findAll('button, a[href], input, textarea, select, [tabindex]')
+    expect(focusables.map((node) => node.element.tagName)).toEqual(['BUTTON', 'BUTTON', 'BUTTON'])
+    expect(focusables.map((node) => node.text())).toEqual([
+      '플레이리스트에 추가',
+      '현재 Moment 저장',
+      '단축키 바꾸기',
+    ])
   })
 })

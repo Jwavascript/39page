@@ -39,6 +39,11 @@ export function fakeBridge(initialTabId: number | null = 1) {
           captures.push({ tabId, videoId, resolve })
         }),
     ),
+    shortcuts: vi.fn<PopupBridge['shortcuts']>(async () => ({
+      'quick-add': 'Alt+Shift+Y',
+      'capture-moment': 'Alt+Shift+M',
+    })),
+    openShortcutSettings: vi.fn<PopupBridge['openShortcutSettings']>(async () => {}),
     subscribe: vi.fn<PopupBridge['subscribe']>((listener: (event: TabEvent) => void) => {
       listeners.push(listener)
       return () => {

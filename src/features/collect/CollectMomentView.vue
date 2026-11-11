@@ -22,6 +22,7 @@ import {
 import type { CollectMomentRequest } from './collectRequest'
 import type { CollectOptions } from './useCollect'
 import { useCollectMoment } from './useCollectMoment'
+import { useUnsavedGuard } from './useUnsavedGuard'
 
 const props = defineProps<{
   request: CollectMomentRequest
@@ -30,6 +31,9 @@ const props = defineProps<{
 
 const moment = useCollectMoment(props.request, props.options)
 const { phase, note, noteLength, isNoteTooLong, sameMoments, saving, canSave } = moment
+
+// 쓰던 메모가 있으면 탭을 닫거나 새로고침하기 전에 묻는다 (M10-5). 저장했으면 묻지 않는다.
+useUnsavedGuard(() => phase.value.kind !== 'saved' && note.value.trim() !== '')
 
 const timeText = formatTimestamp(props.request.atSeconds)
 const titleText = props.request.title ?? defaultTrackTitle(props.request.videoId)

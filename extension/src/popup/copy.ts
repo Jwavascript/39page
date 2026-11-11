@@ -1,7 +1,8 @@
 /** 팝업의 문구. 컴포넌트는 이 표를 그리기만 한다. */
 import { formatTimestamp } from '@web/shared/utils/time'
 
-import type { CaptureRefusal, ErrorCode, PageKind, UnsupportedReason } from '@/shared/messages'
+import { CAPTURE_REFUSAL_COPY } from '@/shared/feedbackCopy'
+import type { ErrorCode, PageKind, UnsupportedReason } from '@/shared/messages'
 
 import type { MomentCaptureState } from './useMomentCapture'
 import type { QuickAddState } from './useQuickAdd'
@@ -97,15 +98,8 @@ export const MOMENT_COPY = {
   help: '누른 순간의 재생 시점을 고정합니다. 메모는 39page 에서 쓰고 저장합니다. 이 버튼만으로는 저장되지 않습니다.',
 } as const
 
-export const CAPTURE_REFUSAL_COPY: Readonly<Record<CaptureRefusal, string>> = {
-  shorts: 'Shorts 는 아직 Moment 를 저장할 수 없습니다.',
-  live: '라이브 방송은 아직 Moment 를 저장할 수 없습니다.',
-  ad: '광고가 재생 중입니다. 광고가 끝난 뒤 다시 눌러 주세요.',
-  'not-started': '재생 위치가 아직 정해지지 않았습니다. 영상을 재생한 뒤 다시 눌러 주세요.',
-  unreadable:
-    '재생 위치를 읽지 못했습니다. 영상을 재생하거나 페이지를 새로 고친 뒤 다시 눌러 주세요.',
-  'not-watch': 'YouTube 영상 페이지(youtube.com/watch)에서만 Moment 를 저장할 수 있습니다.',
-}
+/** 거절 이유 문구 — 단축키와 함께 쓴다 (`@/shared/feedbackCopy`). */
+export { CAPTURE_REFUSAL_COPY }
 
 /** Moment 캡처 결과 문구. 아직 누르지 않았으면 `null`. */
 export function momentCaptureMessage(state: MomentCaptureState): string | null {
