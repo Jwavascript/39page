@@ -73,6 +73,23 @@ describe('createChromeBridge', () => {
     expect(!result.ok && result.error.code).toBe('timeout')
   })
 
+  it('collect — 계약 v1 요청을 보내고 결과를 검증한다 (M10-3)', async () => {
+    stubChrome(async (message) => {
+      expect(message).toEqual({ v: 1, type: 'collect/open', tabId: 7, videoId: ID })
+      return ok({ status: 'opened', tabId: 70 })
+    })
+    expect(await createChromeBridge().collect(7, ID)).toEqual(ok({ status: 'opened', tabId: 70 }))
+  })
+
+  it('collect — 모양이 틀린 결과 · page-changed 를 그대로 다룬다', async () => {
+    stubChrome(async () => ok({ status: 'maybe', tabId: 70 }))
+    const bad = await createChromeBridge().collect(7, ID)
+    expect(!bad.ok && bad.error.code).toBe('internal')
+
+    stubChrome(async () => fail('page-changed', 'x'))
+    expect(await createChromeBridge().collect(7, ID)).toEqual(fail('page-changed', 'x'))
+  })
+
   it('주소 · 제목 · 로드 완료만 알리고, 구독을 끊으면 리스너를 뗀다', () => {
     const { onUpdated, onActivated } = stubChrome(async () => undefined)
     const events: unknown[] = []

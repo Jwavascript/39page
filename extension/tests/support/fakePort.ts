@@ -30,12 +30,12 @@ export function fakePort(options: {
   sendError?: PortError
   players?: unknown
   playersError?: PortError
+  /** 살아 있는 탭 id — focusTab 이 true 를 돌려준다. 기본은 모두 살아 있다. */
+  aliveTabs?: number[]
 }) {
-  const state = { contentInstalled: options.contentInstalled ?? true }
+  const state = { contentInstalled: options.contentInstalled ?? true, created: 0 }
   const tab =
-    options.tab === undefined
-      ? { id: 1, url: WATCH_URL, title: 'Tab Title - YouTube' }
-      : options.tab
+    options.tab === undefined ? { id: 1, url: WATCH_URL, index: 3, windowId: 9 } : options.tab
   const port = {
     getTab: vi.fn<TabsPort['getTab']>(async () => tab),
     sendToContent: vi.fn<TabsPort['sendToContent']>(async () => {
@@ -52,6 +52,10 @@ export function fakePort(options: {
       if (options.playersError) throw options.playersError
       return options.players === undefined ? PLAYERS : options.players
     }),
+    createTab: vi.fn<TabsPort['createTab']>(async () => ({ id: 100 + state.created++ })),
+    focusTab: vi.fn<TabsPort['focusTab']>(
+      async (tabId) => options.aliveTabs === undefined || options.aliveTabs.includes(tabId),
+    ),
   } satisfies TabsPort
   return { port, state }
 }

@@ -1,13 +1,18 @@
 import { vi } from 'vitest'
 
 import type { PopupBridge, TabEvent } from '@/popup/bridge'
-import type { PageInspection, Result } from '@/shared/messages'
+import type { CollectOpened, PageInspection, Result } from '@/shared/messages'
 
 /** 응답을 테스트가 손으로 풀어 주는 가짜 bridge. */
 export function fakeBridge(initialTabId: number | null = 1) {
   let activeTab = initialTabId
   const listeners: ((event: TabEvent) => void)[] = []
   const pending: { tabId: number; resolve: (r: Result<PageInspection>) => void }[] = []
+  const collects: {
+    tabId: number
+    videoId: string
+    resolve: (r: Result<CollectOpened>) => void
+  }[] = []
 
   const bridge = {
     activeTabId: vi.fn<PopupBridge['activeTabId']>(async () => activeTab),
@@ -15,6 +20,12 @@ export function fakeBridge(initialTabId: number | null = 1) {
       (tabId: number) =>
         new Promise<Result<PageInspection>>((resolve) => {
           pending.push({ tabId, resolve })
+        }),
+    ),
+    collect: vi.fn<PopupBridge['collect']>(
+      (tabId: number, videoId: string) =>
+        new Promise<Result<CollectOpened>>((resolve) => {
+          collects.push({ tabId, videoId, resolve })
         }),
     ),
     subscribe: vi.fn<PopupBridge['subscribe']>((listener: (event: TabEvent) => void) => {
@@ -29,6 +40,7 @@ export function fakeBridge(initialTabId: number | null = 1) {
   return {
     bridge,
     pending,
+    collects,
     listeners,
     setActiveTab(id: number | null) {
       activeTab = id

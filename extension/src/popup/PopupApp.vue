@@ -6,17 +6,19 @@
 import { inject } from 'vue'
 
 import BrandHeader from './components/BrandHeader.vue'
-import QuickAddPending from './components/QuickAddPending.vue'
+import QuickAddPanel from './components/QuickAddPanel.vue'
 import StatusNotice from './components/StatusNotice.vue'
 import VideoCard from './components/VideoCard.vue'
 import { BRIDGE_KEY } from './bridge'
 import { errorCopy, LOADING_COPY, UNSUPPORTED_COPY } from './copy'
 import { useActiveVideo } from './useActiveVideo'
+import { useQuickAdd } from './useQuickAdd'
 
 const bridge = inject(BRIDGE_KEY)
 if (bridge === undefined) throw new Error('PopupBridge 가 제공되지 않았다')
 
-const { view, retry } = useActiveVideo(bridge)
+const { view, retry, currentTabId } = useActiveVideo(bridge)
+const quickAdd = useQuickAdd(bridge, { view, currentTabId, refresh: retry })
 </script>
 
 <template>
@@ -31,7 +33,7 @@ const { view, retry } = useActiveVideo(bridge)
 
     <template v-else-if="view.phase === 'video'">
       <VideoCard :video-id="view.videoId" :page-kind="view.pageKind" :title="view.title" />
-      <QuickAddPending />
+      <QuickAddPanel :state="quickAdd.state.value" @add="quickAdd.add" />
     </template>
 
     <StatusNotice

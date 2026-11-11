@@ -10,6 +10,17 @@ export interface TabInfo {
   readonly id: number
   /** `activeTab` 이나 호스트 권한이 없으면 `undefined` (공식 tabs 레퍼런스). */
   readonly url: string | undefined
+  /** 창 안의 순서 · 창 — 수집 탭을 바로 옆에 열 때 쓴다 (권한 없이 보인다). */
+  readonly index: number
+  readonly windowId: number
+}
+
+export interface CreateTabOptions {
+  readonly url: string
+  /** 이 탭을 연 탭(YouTube). 수집 탭을 닫으면 Chrome 이 그 탭으로 돌아간다. */
+  readonly openerTabId: number
+  readonly index: number
+  readonly windowId: number
 }
 
 export type PortFailure =
@@ -44,4 +55,8 @@ export interface TabsPort {
    * **검증하지 않은 채** 돌려준다. 실패는 `PortError` 로 거절한다.
    */
   readPlayers(tabId: number): Promise<unknown>
+  /** 새 탭을 앞으로 열고 id 를 돌려준다 (M10-3). 권한이 필요 없다. */
+  createTab(options: CreateTabOptions): Promise<{ readonly id: number }>
+  /** 탭과 그 창을 앞으로 가져온다. 탭이 없으면 `false` (M10-3). */
+  focusTab(tabId: number): Promise<boolean>
 }

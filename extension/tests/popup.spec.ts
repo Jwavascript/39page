@@ -61,14 +61,15 @@ describe('팝업', () => {
     expect(wrapper.find('.video-id').text()).toBe(ID)
   })
 
-  it('Quick Add 자리는 준비 중이고, 누를 수 있는 것이 하나도 없다', async () => {
+  it('Quick Add — 영상이면 "39page 에 추가" 버튼 하나, 저장하지 않는다고 적는다 (M10-3)', async () => {
     const { wrapper, fake } = mountPopup()
     await settle()
     fake.pending[0]!.resolve(ok(VIDEO))
     await settle()
 
-    expect(wrapper.find('.quick-add').text()).toContain('준비 중')
-    expect(wrapper.findAll('button')).toHaveLength(0)
+    const buttons = wrapper.findAll('button')
+    expect(buttons.map((button) => button.text())).toEqual(['39page 에 추가'])
+    expect(wrapper.find('.quick-add').text()).toContain('이 버튼만으로는 저장되지 않습니다')
     expect(wrapper.findAll('a, input, select, textarea, [role="button"], [tabindex]')).toHaveLength(
       0,
     )
@@ -205,5 +206,73 @@ describe('팝업', () => {
     expect(fake.listeners).toHaveLength(1)
     wrapper.unmount()
     expect(fake.listeners).toHaveLength(0)
+  })
+})
+
+describe('Quick Add (M10-3)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  async function readyPopup() {
+    const mounted = mountPopup()
+    await settle()
+    mounted.fake.pending[0]!.resolve(ok(VIDEO))
+    await settle()
+    return mounted
+  }
+
+  it('누르면 지금 탭과 보여 준 영상 ID 로 수집 화면을 연다', async () => {
+    const { wrapper, fake } = await readyPopup()
+    await wrapper.get('button.add').trigger('click')
+    await settle()
+
+    expect(fake.bridge.collect).toHaveBeenCalledWith(1, ID)
+    fake.collects[0]!.resolve(ok({ status: 'opened', tabId: 77 }))
+    await settle()
+    expect(wrapper.get('.quick-add-message').text()).toContain('수집 화면을 열었습니다')
+  })
+
+  it('기다리는 동안 다시 눌러도 요청은 하나다', async () => {
+    const { wrapper, fake } = await readyPopup()
+    const button = wrapper.get('button.add')
+    await button.trigger('click')
+    await button.trigger('click')
+    await button.trigger('click')
+    await settle()
+
+    expect(fake.bridge.collect).toHaveBeenCalledTimes(1)
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(button.text()).toBe('여는 중…')
+  })
+
+  it('이미 열어 둔 수집 탭이면 그리로 옮겼다고 말한다', async () => {
+    const { wrapper, fake } = await readyPopup()
+    await wrapper.get('button.add').trigger('click')
+    fake.collects[0]!.resolve(ok({ status: 'focused', tabId: 77 }))
+    await settle()
+    expect(wrapper.get('.quick-add-message').text()).toContain('이미 열어 둔')
+  })
+
+  it('그 사이 영상이 바뀌었으면 거절을 알리고 지금 영상을 다시 보여 준다', async () => {
+    const { wrapper, fake } = await readyPopup()
+    await wrapper.get('button.add').trigger('click')
+    fake.collects[0]!.resolve(fail('page-changed', 'x'))
+    await settle()
+
+    expect(fake.bridge.inspect).toHaveBeenCalledTimes(2)
+    fake.pending[1]!.resolve(ok({ ...VIDEO, videoId: 'aaaaaaaaaaa', title: '다음 영상' }))
+    await settle()
+    expect(wrapper.find('.video-id').text()).toBe('aaaaaaaaaaa')
+    expect(wrapper.get('[role="alert"]').text()).toContain('그 사이 영상이 바뀌었습니다')
+    expect(wrapper.get('button.add').attributes('disabled')).toBeUndefined()
+  })
+
+  it('지원하지 않는 페이지에는 버튼이 없다', async () => {
+    const { wrapper, fake } = mountPopup()
+    await settle()
+    fake.pending[0]!.resolve(ok({ status: 'unsupported', reason: 'not-youtube' }))
+    await settle()
+    expect(wrapper.find('button.add').exists()).toBe(false)
+    expect(fake.bridge.collect).not.toHaveBeenCalled()
   })
 })

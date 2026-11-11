@@ -10,6 +10,7 @@
 import { fail, parseExtensionRequest, type Result } from '@/shared/messages'
 
 import { inspectTab } from './inspectTab'
+import { openCollect, type CollectDeduper } from './openCollect'
 import type { TabsPort } from './tabsPort'
 
 /** `chrome.runtime.MessageSender` 중 라우터가 보는 부분. */
@@ -23,6 +24,13 @@ export interface RouterDeps {
   readonly extensionId: string
   /** `chrome.runtime.getURL('')` — `chrome-extension://<id>/`. */
   readonly extensionOrigin: string
+  /** Quick Add (M10-3). */
+  readonly collect: {
+    readonly origin: string
+    readonly deduper: CollectDeduper
+    readonly newRequestId: () => string
+    readonly now: () => number
+  }
 }
 
 export function isTrustedSender(sender: SenderLike, deps: RouterDeps): boolean {
@@ -46,6 +54,12 @@ export function createBackgroundRouter(deps: RouterDeps) {
       switch (parsed.value.type) {
         case 'tab/inspect':
           return await inspectTab(deps.port, parsed.value.tabId)
+        case 'collect/open':
+          return await openCollect(
+            { port: deps.port, ...deps.collect },
+            parsed.value.tabId,
+            parsed.value.videoId,
+          )
       }
     } catch {
       return fail('internal', '확장 내부 오류')

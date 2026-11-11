@@ -52,7 +52,12 @@ export const TITLE_RECHECK_LIMIT = 2
 export function useActiveVideo(
   bridge: PopupBridge,
   options: { readonly debounceMs?: number } = {},
-): { view: Ref<PopupView>; retry: () => Promise<void> } {
+): {
+  view: Ref<PopupView>
+  retry: () => Promise<void>
+  /** 지금 보고 있는 탭 — Quick Add 가 쓴다 (M10-3). */
+  currentTabId: () => number | null
+} {
   const debounceMs = options.debounceMs ?? EVENT_DEBOUNCE_MS
   const view = ref<PopupView>({ phase: 'loading' })
 
@@ -146,5 +151,6 @@ export function useActiveVideo(
       view.value = { phase: 'loading' }
       return refresh(true)
     },
+    currentTabId: () => tabId,
   }
 }

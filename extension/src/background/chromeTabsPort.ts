@@ -35,7 +35,7 @@ export function createChromeTabsPort(options: { readonly contentTimeoutMs: numbe
     async getTab(tabId) {
       try {
         const tab = await chrome.tabs.get(tabId)
-        return { id: tab.id ?? tabId, url: tab.url }
+        return { id: tab.id ?? tabId, url: tab.url, index: tab.index, windowId: tab.windowId }
       } catch {
         return null
       }
@@ -74,6 +74,23 @@ export function createChromeTabsPort(options: { readonly contentTimeoutMs: numbe
         return first?.result ?? null
       } catch (error) {
         throw toPortError(error)
+      }
+    },
+
+    async createTab({ url, openerTabId, index, windowId }) {
+      const tab = await chrome.tabs.create({ url, openerTabId, index, windowId, active: true })
+      if (tab.id === undefined) throw new PortError('other', '새 탭의 id 가 없다')
+      return { id: tab.id }
+    },
+
+    async focusTab(tabId) {
+      try {
+        const tab = await chrome.tabs.update(tabId, { active: true })
+        if (tab?.windowId !== undefined)
+          await chrome.windows.update(tab.windowId, { focused: true })
+        return true
+      } catch {
+        return false
       }
     },
   }

@@ -1,0 +1,157 @@
+{
+  "$comment": "수집 URL 계약 v1 (ADR 0023, EXTENSION_DESIGN.md §5-1). 웹앱 tests/unit/collect-request.spec.ts 와 확장 extension/tests/collectUrl.spec.ts 가 함께 읽는다. build: 확장이 input 으로 만드는 조각 = hash, 웹앱이 hash 를 읽으면 input 과 같은 필드. reject: 웹앱이 거절하는 조각과 이유.",
+  "origin": "https://39page.com",
+  "build": [
+    {
+      "input": {
+        "videoId": "jNQXAC9IVRw",
+        "title": "Me at the zoo",
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&title=Me+at+the+zoo&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    },
+    {
+      "input": {
+        "videoId": "M7lc1UVf-VE",
+        "title": null,
+        "requestId": "a1B2c3D4e5F6g7H8"
+      },
+      "hash": "#collect?v=1&kind=track&videoId=M7lc1UVf-VE&req=a1B2c3D4e5F6g7H8"
+    },
+    {
+      "input": {
+        "videoId": "dQw4w9WgXcQ",
+        "title": "노래 & 제목 #1 / 100% + \"따옴표\" ?=",
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=track&videoId=dQw4w9WgXcQ&title=%EB%85%B8%EB%9E%98+%26+%EC%A0%9C%EB%AA%A9+%231+%2F+100%25+%2B+%22%EB%94%B0%EC%98%B4%ED%91%9C%22+%3F%3D&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    },
+    {
+      "input": {
+        "videoId": "ynLrFpVkvc0",
+        "title": "🎵 Lo-fi — 공부할 때 (عربي)",
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=track&videoId=ynLrFpVkvc0&title=%F0%9F%8E%B5+Lo-fi+%E2%80%94+%EA%B3%B5%EB%B6%80%ED%95%A0+%EB%95%8C+%28%D8%B9%D8%B1%D8%A8%D9%8A%29&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    },
+    {
+      "input": {
+        "videoId": "xUEvQyZ1m9Q",
+        "title": "<script>alert(1)</script><img src=x onerror=alert(2)>",
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=track&videoId=xUEvQyZ1m9Q&title=%3Cscript%3Ealert%281%29%3C%2Fscript%3E%3Cimg+src%3Dx+onerror%3Dalert%282%29%3E&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    },
+    {
+      "input": {
+        "videoId": "TDcKozRHlKs",
+        "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=track&videoId=TDcKozRHlKs&title=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    }
+  ],
+  "reject": [
+    {
+      "hash": "#collection",
+      "reason": "not-collect"
+    },
+    {
+      "hash": "#/collect?v=1",
+      "reason": "not-collect"
+    },
+    {
+      "hash": "#collect",
+      "reason": "missing-version"
+    },
+    {
+      "hash": "#collect?",
+      "reason": "missing-version"
+    },
+    {
+      "hash": "#collect?kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "missing-version"
+    },
+    {
+      "hash": "#collect?v=2&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "unsupported-version"
+    },
+    {
+      "hash": "#collect?v=1.0&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "unsupported-version"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&v=1",
+      "reason": "duplicate-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&videoId=dQw4w9WgXcQ",
+      "reason": "duplicate-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "unsupported-kind"
+    },
+    {
+      "hash": "#collect?v=1&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "unsupported-kind"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=short&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "invalid-video-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVR%3E&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "invalid-video-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "invalid-video-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=short",
+      "reason": "invalid-request-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw",
+      "reason": "invalid-request-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=has space 0123456789",
+      "reason": "invalid-request-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "reason": "invalid-title"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=bad%00nul",
+      "reason": "invalid-title"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=safe%E2%80%AEgnp.exe",
+      "reason": "invalid-title"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "reason": "too-long"
+    }
+  ],
+  "acceptExtra": [
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&utm_source=x&unknown=1",
+      "videoId": "jNQXAC9IVRw",
+      "title": null
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=++%20+",
+      "videoId": "jNQXAC9IVRw",
+      "title": null
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=+%20spaced%20+",
+      "videoId": "jNQXAC9IVRw",
+      "title": "spaced"
+    }
+  ]
+}

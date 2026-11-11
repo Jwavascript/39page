@@ -1,4 +1,5 @@
 dist
+dist-dev
 coverage
 node_modules
 *.log

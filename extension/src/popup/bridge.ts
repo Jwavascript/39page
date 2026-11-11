@@ -8,9 +8,11 @@ import type { InjectionKey } from 'vue'
 
 import {
   fail,
+  parseCollectOpened,
   parsePageInspection,
   parseResult,
   PROTOCOL_VERSION,
+  type CollectOpened,
   type ExtensionRequest,
   type PageInspection,
   type Result,
@@ -27,6 +29,8 @@ export interface PopupBridge {
   /** 이 팝업이 속한 창의 활성 탭. 없으면 `null`. */
   activeTabId(): Promise<number | null>
   inspect(tabId: number): Promise<Result<PageInspection>>
+  /** Quick Add — 사용자가 본 영상(`videoId`)으로 수집 화면을 연다 (M10-3). */
+  collect(tabId: number, videoId: string): Promise<Result<CollectOpened>>
   /** 구독을 끊는 함수를 돌려준다. */
   subscribe(listener: (event: TabEvent) => void): () => void
 }
@@ -39,26 +43,37 @@ export const INSPECT_TIMEOUT_MS = 10_000
 class TimeoutError extends Error {}
 
 export function createChromeBridge(timeoutMs = INSPECT_TIMEOUT_MS): PopupBridge {
+  /** Background 에 묻고 응답을 계약대로 검증한다. 실패는 결과로 돌려준다. */
+  async function send<T>(
+    request: ExtensionRequest,
+    parseData: (data: unknown) => T | null,
+  ): Promise<Result<T>> {
+    try {
+      const reply: unknown = await withTimeout(
+        chrome.runtime.sendMessage(request),
+        timeoutMs,
+        () => new TimeoutError(),
+      )
+      return parseResult(reply, parseData)
+    } catch (error) {
+      return error instanceof TimeoutError
+        ? fail('timeout', '확장이 제때 답하지 않았다')
+        : fail('internal', '확장과 연결하지 못했다')
+    }
+  }
+
   return {
     async activeTabId() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       return tab?.id ?? null
     },
 
-    async inspect(tabId) {
-      const request: ExtensionRequest = { v: PROTOCOL_VERSION, type: 'tab/inspect', tabId }
-      try {
-        const reply: unknown = await withTimeout(
-          chrome.runtime.sendMessage(request),
-          timeoutMs,
-          () => new TimeoutError(),
-        )
-        return parseResult(reply, parsePageInspection)
-      } catch (error) {
-        return error instanceof TimeoutError
-          ? fail('timeout', '확장이 제때 답하지 않았다')
-          : fail('internal', '확장과 연결하지 못했다')
-      }
+    inspect(tabId) {
+      return send({ v: PROTOCOL_VERSION, type: 'tab/inspect', tabId }, parsePageInspection)
+    },
+
+    collect(tabId, videoId) {
+      return send({ v: PROTOCOL_VERSION, type: 'collect/open', tabId, videoId }, parseCollectOpened)
     },
 
     subscribe(listener) {

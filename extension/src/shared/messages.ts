@@ -28,6 +28,11 @@ export type ErrorCode =
   | 'timeout'
   /** 예상하지 못한 예외. 메시지에 내부 정보를 싣지 않는다. */
   | 'internal'
+  /**
+   * 사용자가 본 영상과 지금 탭의 영상이 다르다 (M10-3). 자동 재생·SPA 이동으로
+   * 그 사이 바뀌었다. 다른 영상을 담지 않도록 거절하고 다시 보여 준다.
+   */
+  | 'page-changed'
 
 export const ERROR_CODES: readonly ErrorCode[] = [
   'bad-request',
@@ -38,6 +43,7 @@ export const ERROR_CODES: readonly ErrorCode[] = [
   'no-receiver',
   'timeout',
   'internal',
+  'page-changed',
 ]
 
 export interface ErrorBody {
@@ -62,11 +68,22 @@ export function fail(code: ErrorCode, message: string): Result<never> {
  * ------------------------------------------------------------------ */
 
 /** Popup → Background. M10-3 의 `collect/open` 은 그때 더한다. */
-export type ExtensionRequest = {
-  readonly v: typeof PROTOCOL_VERSION
-  readonly type: 'tab/inspect'
-  readonly tabId: number
-}
+export type ExtensionRequest =
+  | {
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'tab/inspect'
+      readonly tabId: number
+    }
+  | {
+      /**
+       * Quick Add (M10-3) — 수집 화면을 연다. `videoId` 는 **사용자가 팝업에서 본**
+       * 영상이다. Background 가 탭을 다시 확인해 다르면 `page-changed` 로 거절한다.
+       */
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'collect/open'
+      readonly tabId: number
+      readonly videoId: string
+    }
 
 /** Background → Content. M10-4 의 `player/position` 은 그때 더한다. */
 export type ContentRequest = {
@@ -100,6 +117,9 @@ function readEnvelope(
   return { ok: true, value: { type: value.type, body: value } }
 }
 
+/** YouTube 영상 ID 형식 — 웹앱 `isYouTubeVideoId` 와 같은 규칙 (호환성 테스트). */
+const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
+
 function isTabId(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
@@ -112,6 +132,16 @@ export function parseExtensionRequest(value: unknown): ParseOutcome<ExtensionReq
   if (type === 'tab/inspect') {
     if (!isTabId(body.tabId)) return rejected('bad-request', 'tabId 가 0 이상의 정수가 아니다')
     return { ok: true, value: { v: PROTOCOL_VERSION, type, tabId: body.tabId } }
+  }
+  if (type === 'collect/open') {
+    if (!isTabId(body.tabId)) return rejected('bad-request', 'tabId 가 0 이상의 정수가 아니다')
+    if (typeof body.videoId !== 'string' || !VIDEO_ID.test(body.videoId)) {
+      return rejected('bad-request', 'videoId 가 11자 영상 ID 가 아니다')
+    }
+    return {
+      ok: true,
+      value: { v: PROTOCOL_VERSION, type, tabId: body.tabId, videoId: body.videoId },
+    }
   }
   return rejected('unsupported-type', '모르는 요청')
 }
@@ -231,7 +261,6 @@ export type PageInspection =
 
 const PAGE_KINDS: readonly PageKind[] = ['watch', 'shorts', 'live', 'embed']
 const TITLE_SOURCES: readonly TitleSource[] = ['player', 'heading']
-const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
 /** Background 의 응답 `data` 를 Popup 이 확인한다. */
 export function parsePageInspection(value: unknown): PageInspection | null {
@@ -286,4 +315,17 @@ export function parseResult<T>(value: unknown, parseData: (data: unknown) => T |
     return fail('internal', '오류 응답 형식이 아니다')
   }
   return fail(error.code as ErrorCode, error.message.slice(0, 300))
+}
+
+/** `collect/open` 의 결과. `focused` 는 방금 연 같은 요청의 탭을 다시 앞으로 가져왔다는 뜻. */
+export interface CollectOpened {
+  readonly status: 'opened' | 'focused'
+  readonly tabId: number
+}
+
+export function parseCollectOpened(value: unknown): CollectOpened | null {
+  if (!isRecord(value)) return null
+  if (value.status !== 'opened' && value.status !== 'focused') return null
+  if (!isTabId(value.tabId)) return null
+  return { status: value.status, tabId: value.tabId }
 }

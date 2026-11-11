@@ -38,7 +38,7 @@ describe('메시지 계약 v1 — 요청 검증', () => {
     ['버전이 문자열', { v: '1', type: 'tab/inspect', tabId: 1 }, 'bad-request'],
     ['다른 버전', { v: 2, type: 'tab/inspect', tabId: 1 }, 'unsupported-version'],
     ['종류 없음', { v: 1, tabId: 1 }, 'bad-request'],
-    ['모르는 종류', { v: 1, type: 'collect/open' }, 'unsupported-type'],
+    ['모르는 종류', { v: 1, type: 'player/position' }, 'unsupported-type'],
     ['tabId 없음', { v: 1, type: 'tab/inspect' }, 'bad-request'],
     ['tabId 문자열', { v: 1, type: 'tab/inspect', tabId: '7' }, 'bad-request'],
     ['tabId 음수', { v: 1, type: 'tab/inspect', tabId: -1 }, 'bad-request'],
@@ -46,6 +46,25 @@ describe('메시지 계약 v1 — 요청 검증', () => {
     ['tabId NaN', { v: 1, type: 'tab/inspect', tabId: Number.NaN }, 'bad-request'],
   ])('%s → %s', (_label, input, code) => {
     expect(parseExtensionRequest(input)).toMatchObject({ ok: false, error: { code } })
+  })
+
+  it('collect/open — tabId 와 사용자가 본 videoId 를 받는다 (M10-3)', () => {
+    expect(parseExtensionRequest({ v: 1, type: 'collect/open', tabId: 4, videoId: ID })).toEqual({
+      ok: true,
+      value: { v: 1, type: 'collect/open', tabId: 4, videoId: ID },
+    })
+  })
+
+  it.each([
+    ['videoId 없음', { v: 1, type: 'collect/open', tabId: 4 }],
+    ['videoId 형식 아님', { v: 1, type: 'collect/open', tabId: 4, videoId: 'short' }],
+    ['videoId 에 다른 글자', { v: 1, type: 'collect/open', tabId: 4, videoId: 'dQw4w9WgXc<' }],
+    ['tabId 없음', { v: 1, type: 'collect/open', videoId: ID }],
+  ])('collect/open 거절 — %s', (_label, input) => {
+    expect(parseExtensionRequest(input)).toMatchObject({
+      ok: false,
+      error: { code: 'bad-request' },
+    })
   })
 
   it('버전이 다르면 종류를 보지 않는다', () => {
@@ -188,7 +207,7 @@ describe('메시지 계약 v1 — 응답 검증', () => {
     expect(!long.ok && long.error.message.length).toBe(300)
   })
 
-  it('오류 코드는 설계 문서의 8개다', () => {
+  it('오류 코드는 설계 문서의 9개다 (M10-3 에 page-changed)', () => {
     expect([...ERROR_CODES].sort()).toEqual(
       [
         'bad-request',
@@ -196,6 +215,7 @@ describe('메시지 계약 v1 — 응답 검증', () => {
         'internal',
         'no-receiver',
         'no-tab',
+        'page-changed',
         'timeout',
         'unsupported-type',
         'unsupported-version',

@@ -7,6 +7,7 @@
   "scripts": {
     "build": "npm run type-check && npm run build-only && npm run check:manifest",
     "build-only": "vite build && vite build --config vite.content.config.ts",
+    "build:dev": "vite build --mode development --outDir dist-dev && vite build --config vite.content.config.ts --mode development --outDir dist-dev",
     "type-check": "vue-tsc --build",
     "test": "vitest run",
     "test:unit": "vitest",

@@ -8,6 +8,7 @@
 import { fail } from '@/shared/messages'
 
 import { createChromeTabsPort } from './chromeTabsPort'
+import { createCollectDeduper } from './openCollect'
 import { createBackgroundRouter } from './router'
 
 /** content script 질의 한도. 주입·재시도까지 합쳐도 Popup 의 10초 안에 끝난다. */
@@ -17,6 +18,13 @@ const router = createBackgroundRouter({
   port: createChromeTabsPort({ contentTimeoutMs: CONTENT_TIMEOUT_MS }),
   extensionId: chrome.runtime.id,
   extensionOrigin: chrome.runtime.getURL(''),
+  collect: {
+    // 빌드 때 정해진다 — 운영은 https://39page.com 고정 (collectOrigin.ts).
+    origin: __COLLECT_ORIGIN__,
+    deduper: createCollectDeduper(),
+    newRequestId: () => crypto.randomUUID(),
+    now: () => Date.now(),
+  },
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

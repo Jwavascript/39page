@@ -121,14 +121,16 @@ describe('inspectTab', () => {
   })
 
   it('주소가 보이지 않으면(권한 없음) no-access — 페이지에 손대지 않는다', async () => {
-    const { port } = fakePort({ tab: { id: 1, url: undefined } })
+    const { port } = fakePort({ tab: { id: 1, url: undefined, index: 0, windowId: 1 } })
     expect(await inspectTab(port, 1)).toEqual(ok({ status: 'unsupported', reason: 'no-access' }))
     expect(port.sendToContent).not.toHaveBeenCalled()
     expect(port.readPlayers).not.toHaveBeenCalled()
   })
 
   it('지원하지 않는 페이지는 정상 결과이고 아무것도 주입·실행하지 않는다', async () => {
-    const { port } = fakePort({ tab: { id: 1, url: 'https://example.com/' } })
+    const { port } = fakePort({
+      tab: { id: 1, url: 'https://example.com/', index: 0, windowId: 1 },
+    })
     expect(await inspectTab(port, 1)).toEqual(ok({ status: 'unsupported', reason: 'not-youtube' }))
     expect(port.sendToContent).not.toHaveBeenCalled()
     expect(port.injectContent).not.toHaveBeenCalled()

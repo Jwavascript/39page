@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { createCollectDeduper } from '@/background/openCollect'
 import { createBackgroundRouter } from '@/background/router'
 import { fail } from '@/shared/messages'
 
@@ -10,7 +11,17 @@ const ORIGIN = `chrome-extension://${EXTENSION_ID}/`
 const POPUP = { id: EXTENSION_ID, url: `${ORIGIN}src/popup/index.html` }
 
 function router(port = fakePort({}).port) {
-  return createBackgroundRouter({ port, extensionId: EXTENSION_ID, extensionOrigin: ORIGIN })
+  return createBackgroundRouter({
+    port,
+    extensionId: EXTENSION_ID,
+    extensionOrigin: ORIGIN,
+    collect: {
+      origin: 'https://39page.com',
+      deduper: createCollectDeduper(),
+      newRequestId: () => '3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f',
+      now: () => 0,
+    },
+  })
 }
 
 describe('Background 라우터', () => {
@@ -46,6 +57,26 @@ describe('Background 라우터', () => {
   ])('요청 거절 %j → %s', async (message, code) => {
     const result = await router().handle(message, POPUP)
     expect(!result.ok && result.error.code).toBe(code)
+  })
+
+  it('collect/open 을 처리한다 (M10-3)', async () => {
+    const { port } = fakePort({})
+    const result = await router(port).handle(
+      { v: 1, type: 'collect/open', tabId: 1, videoId: ID },
+      POPUP,
+    )
+    expect(result).toMatchObject({ ok: true, data: { status: 'opened' } })
+    expect(port.createTab).toHaveBeenCalledTimes(1)
+  })
+
+  it('content script 가 보낸 collect/open 은 탭을 열지 않는다', async () => {
+    const { port } = fakePort({})
+    const result = await router(port).handle(
+      { v: 1, type: 'collect/open', tabId: 1, videoId: ID },
+      { id: EXTENSION_ID, url: 'https://www.youtube.com/watch?v=x' },
+    )
+    expect(!result.ok && result.error.code).toBe('forbidden-sender')
+    expect(port.createTab).not.toHaveBeenCalled()
   })
 
   it('처리 중 예외는 internal 로 바꾸고 내부 문구를 싣지 않는다', async () => {

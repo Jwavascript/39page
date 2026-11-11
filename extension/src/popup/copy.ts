@@ -1,6 +1,8 @@
 /** 팝업의 문구. 컴포넌트는 이 표를 그리기만 한다. */
 import type { ErrorCode, PageKind, UnsupportedReason } from '@/shared/messages'
 
+import type { QuickAddState } from './useQuickAdd'
+
 export interface NoticeCopy {
   readonly title: string
   readonly body: string
@@ -56,8 +58,29 @@ export function errorCopy(code: ErrorCode): NoticeCopy {
 
 export const QUICK_ADD_COPY = {
   title: '플레이리스트에 담기',
-  status: '준비 중',
-  body: '다음 단계(M10-3)에서 이 자리에 들어옵니다. 지금은 아무것도 저장하지 않습니다.',
+  button: '39page 에 추가',
+  busy: '여는 중…',
+  help: '39page 에서 플레이리스트를 고른 뒤 저장합니다. 이 버튼만으로는 저장되지 않습니다.',
 } as const
+
+/** Quick Add 결과 문구. 아직 누르지 않았으면 `null`. */
+export function quickAddMessage(state: QuickAddState): string | null {
+  switch (state.kind) {
+    case 'idle':
+    case 'busy':
+      return null
+    case 'done':
+      return state.status === 'focused'
+        ? '이미 열어 둔 39page 수집 화면으로 옮겼습니다.'
+        : '39page 수집 화면을 열었습니다. 그 탭에서 플레이리스트를 골라 저장하세요.'
+    case 'error':
+      if (state.code === 'page-changed') {
+        return '그 사이 영상이 바뀌었습니다. 지금 영상을 다시 보여 드렸으니 확인 후 다시 눌러 주세요.'
+      }
+      if (state.code === 'no-tab') return '탭을 찾을 수 없습니다. 다시 시도해 주세요.'
+      if (state.code === 'timeout') return '확장이 제때 답하지 않았습니다. 다시 시도해 주세요.'
+      return `수집 화면을 열지 못했습니다. 다시 시도해 주세요. (코드: ${state.code})`
+  }
+}
 
 export const UNKNOWN_TITLE = '제목을 읽지 못했습니다'

@@ -114,6 +114,19 @@ else {
   if (/\bimport\s*\(/.test(content)) fail('content.js 에 동적 import 가 있다')
 }
 
+// 운영 빌드의 수집 origin 은 https://39page.com 하나다 (M10-3, collectOrigin.ts).
+const backgroundPath = join(dist, 'background.js')
+if (existsSync(backgroundPath)) {
+  const bundled = listFiles(dist)
+    .filter((file) => file.endsWith('.js'))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n')
+  if (!bundled.includes('https://39page.com'))
+    fail('운영 수집 origin(https://39page.com)이 번들에 없다')
+  if (/localhost|127\.0\.0\.1/.test(bundled))
+    fail('운영 번들에 개발용 수집 origin(localhost)이 들어 있다')
+}
+
 if (existsSync(dist)) {
   const files = listFiles(dist)
   for (const file of files) {
