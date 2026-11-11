@@ -18,7 +18,7 @@ import { createBackgroundRouter } from './router'
 /** content script 질의 한도. 주입·재시도까지 합쳐도 Popup 의 10초 안에 끝난다. */
 const CONTENT_TIMEOUT_MS = 3_000
 /** manifest `action.default_title` 과 같다 — 배지를 지울 때 툴팁을 되돌린다. */
-const DEFAULT_TITLE = '39page — 이 영상 보기'
+const DEFAULT_TITLE = '39page — YouTube 에서 담기'
 
 const port = createChromeTabsPort({ contentTimeoutMs: CONTENT_TIMEOUT_MS })
 // 팝업과 단축키가 같은 중복 기록을 쓴다 — 어느 쪽으로 눌러도 5초 안 같은 요청은 한 탭.

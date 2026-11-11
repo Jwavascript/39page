@@ -104,6 +104,37 @@ if (manifest !== null) {
 
   expectFile('action.default_popup', manifest.action?.default_popup)
 
+  // 아이콘 (M10-6) — 스토어는 128×128 PNG 를 요구한다. 가리키는 파일이 PNG 이고 크기가 이름과 같은지 본다.
+  if (manifest.minimum_chrome_version !== '102') fail('minimum_chrome_version 이 102 가 아니다')
+  if (typeof manifest.description !== 'string' || manifest.description.length > 132) {
+    fail('description 이 없거나 132자를 넘는다')
+  }
+  if (!('128' in (manifest.icons ?? {}))) fail('icons 에 128 이 없다')
+  // 두 목록을 따로 본다 — 합치면 같은 크기 키가 겹칠 때 한쪽의 잘못된 경로가 가려진다.
+  const iconEntries = [
+    ...Object.entries(manifest.icons ?? {}).map(([size, path]) => [`icons.${size}`, size, path]),
+    ...Object.entries(manifest.action?.default_icon ?? {}).map(([size, path]) => [
+      `action.default_icon.${size}`,
+      size,
+      path,
+    ]),
+  ]
+  for (const [label, size, path] of iconEntries) {
+    expectFile(label, path)
+    const full = join(dist, String(path))
+    if (!existsSync(full)) continue
+    const png = readFileSync(full)
+    const signature = png.subarray(0, 8).toString('hex')
+    if (signature !== '89504e470d0a1a0a') fail(`${label}: PNG 가 아니다`)
+    else {
+      const width = png.readUInt32BE(16)
+      const height = png.readUInt32BE(20)
+      if (width !== Number(size) || height !== Number(size)) {
+        fail(`${label}: 크기가 ${String(width)}×${String(height)} 다`)
+      }
+    }
+  }
+
   // 단축키 (M10-5) — 공식 commands 규칙: 제안은 최대 4개, Ctrl 또는 Alt 를 포함, Ctrl+Alt 금지.
   const commands = manifest.commands ?? {}
   if (typeof commands !== 'object' || Array.isArray(commands)) fail('commands 가 객체가 아니다')
@@ -185,5 +216,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `manifest 검사 통과 — MV3 · 권한 [${(manifest?.permissions ?? []).join(', ')}] · 금지 키 없음 · 단축키 ${Object.keys(manifest?.commands ?? {}).length}개 · 참조 파일 존재`,
+  `manifest 검사 통과 — MV3 · 권한 [${(manifest?.permissions ?? []).join(', ')}] · 금지 키 없음 · 단축키 ${Object.keys(manifest?.commands ?? {}).length}개 · 아이콘 ${Object.keys(manifest?.icons ?? {}).length}개 · Chrome ${manifest?.minimum_chrome_version} 이상 · 참조 파일 존재`,
 )

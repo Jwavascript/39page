@@ -1,2 +1,4 @@
 # 개발 빌드 산출물 (npm run build:dev) — 운영 dist 는 루트 .gitignore 가 막는다.
 dist-dev/
+# 출시 패키지 (npm run package) — 저장소에 넣지 않는다.
+release/

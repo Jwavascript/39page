@@ -536,3 +536,10 @@ YouTube 영상 → 확장 아이콘 → **현재 Moment 저장** → 39page 수�
 **키보드 · 접근성** — 팝업의 초점은 버튼 셋(플레이리스트에 추가 · 현재 Moment 저장 · 단축키
 바꾸기)뿐이고 화면 순서와 같다. 꺼진 버튼은 이유를 `aria-describedby` 로 잇는다. 결과는
 `status` · 실패는 `alert`. 초점 링은 `:focus-visible` (웹앱과 같은 토큰).
+
+## 15. 출시 준비 — M10-6
+
+manifest 1.0.0 · `minimum_chrome_version` 102 · 아이콘 16/32/48/128(`extension/icons/`, 빌드가
+manifest 와 함께 내보낸다 — 정적 폴더를 쓰지 않는 원칙 그대로) · 단축키 2개. `npm run package` 가
+검사한 뒤 재현 가능한 ZIP 을 만든다. 출시 순서 · 보안 검토 · 브라우저 범위 · 통합 시나리오는
+[`../development/EXTENSION_RELEASE.md`](../development/EXTENSION_RELEASE.md).

@@ -1,6 +1,6 @@
 {
   "name": "39page-extension",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "39page Chrome 확장 — YouTube 에서 39page 로 담기 (M10). 웹앱과 독립된 프로젝트다 (ADR 0022).",
@@ -14,7 +14,8 @@
     "lint": "oxlint . --fix && eslint . --fix --cache",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:manifest": "node scripts/check-manifest.mjs"
+    "check:manifest": "node scripts/check-manifest.mjs",
+    "package": "npm run build && node scripts/package.mjs"
   },
   "dependencies": {
     "vue": "^3.5.42"

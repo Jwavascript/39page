@@ -14,7 +14,13 @@ import { resolveCollectOrigin } from './src/shared/collectOrigin'
  * 비우고, content 빌드는 비우지 않는다.
  */
 
-/** 원본 `manifest.json` 을 그대로 내보낸다. 깨진 JSON 이면 빌드를 멈춘다. */
+/** 아이콘 크기 (M10-6). manifest 가 가리키는 파일과 같아야 한다 — 검사기가 확인한다. */
+const ICON_SIZES = [16, 32, 48, 128] as const
+
+/**
+ * 원본 `manifest.json` 과 아이콘(`icons/icon-<크기>.png`)을 그대로 내보낸다. 깨진 JSON 이면
+ * 빌드를 멈춘다. 정적 폴더(publicDir)를 쓰지 않으므로 dist 에 들어가는 것은 이 목록뿐이다.
+ */
 function emitManifest(): Plugin {
   return {
     name: '39page-emit-manifest',
@@ -22,6 +28,14 @@ function emitManifest(): Plugin {
       const source = readFileSync(new URL('./manifest.json', import.meta.url), 'utf8')
       JSON.parse(source)
       this.emitFile({ type: 'asset', fileName: 'manifest.json', source })
+      for (const size of ICON_SIZES) {
+        const fileName = `icons/icon-${String(size)}.png`
+        this.emitFile({
+          type: 'asset',
+          fileName,
+          source: readFileSync(new URL(`./${fileName}`, import.meta.url)),
+        })
+      }
     },
   }
 }

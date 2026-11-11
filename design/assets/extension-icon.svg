@@ -1,0 +1,19 @@
+<!--
+  39page 확장 아이콘 — 초안 (M10-6). 사용자 승인 전이다.
+  128×128 캔버스, 그림 96×96(16..112) + 사방 16px 투명 여백 (Chrome 웹 스토어 아이콘 규격).
+  색은 mono-vinyl 테마 토큰: 바탕 #171614 · 홈 #2c2822 · 라벨 #d5cab9 · 글자 #171614.
+  레코드판(LP) — 39page 의 "RECORD LIBRARY" 와 같은 상징. 다른 제품의 로고를 본뜨지 않았다.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <circle cx="64" cy="64" r="48" fill="#171614" />
+  <g fill="none" stroke="#2c2822" stroke-width="1.5">
+    <circle cx="64" cy="64" r="43" />
+    <circle cx="64" cy="64" r="38" />
+    <circle cx="64" cy="64" r="33" />
+    <circle cx="64" cy="64" r="28" />
+  </g>
+  <path d="M 30 50 A 38 38 0 0 1 50 30" fill="none" stroke="#3a352d" stroke-width="2" stroke-linecap="round" />
+  <circle cx="64" cy="64" r="20" fill="#d5cab9" />
+  <text x="64" y="69" text-anchor="middle" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="14" font-weight="700" fill="#171614">39</text>
+  <circle cx="64" cy="64" r="2" fill="#171614" />
+</svg>

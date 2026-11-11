@@ -1,11 +1,23 @@
 {
   "manifest_version": 3,
   "name": "39page",
-  "version": "0.1.0",
-  "description": "YouTube 에서 보고 있는 영상을 39page 로 담기 위한 도구 (개발 중 — 아직 저장하지 않습니다)",
+  "version": "1.0.0",
+  "description": "YouTube 에서 보고 있는 영상과 지금 이 순간을 39page 로 담습니다. 저장은 39page 화면에서 직접 확인하고 합니다.",
+  "minimum_chrome_version": "102",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "39page — 이 영상 보기",
-    "default_popup": "src/popup/index.html"
+    "default_title": "39page — YouTube 에서 담기",
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
   },
   "background": {
     "service_worker": "background.js",
