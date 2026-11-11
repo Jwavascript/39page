@@ -9,6 +9,9 @@
 1. **하나의 `src`를 기준으로 개발한다.**
    소스는 `src/` 한 곳에만 둔다. 별도의 `app/`, `client/`, `frontend/` 같은
    두 번째 소스 루트를 만들지 않는다.
+   예외: Chrome 확장은 웹앱과 다른 배포물이므로 독립 프로젝트 `extension/` 에
+   둔다 (ADR 0022). 확장은 웹앱 `src/` 의 순수 모듈만 가져오고, 웹앱은
+   `extension/` 을 가져오지 않는다.
 
 2. **기능별로 모듈을 분리한다.**
    재생·라이브러리·마스코트 등 도메인 기능은 `src/features/<feature>/` 안에서
@@ -50,25 +53,26 @@
 
 ## 디렉터리 규약
 
-| 경로                                         | 용도                                  |
-| -------------------------------------------- | ------------------------------------- |
-| `src/app/`                                   | 앱 루트 컴포넌트, 앱 전역 조립        |
-| `src/components/layout/`                     | 화면 골격(그리드, 영역 배치)          |
-| `src/components/ui/`                         | 테마와 무관한 재사용 UI 프리미티브    |
-| `src/features/playback/`                     | 재생 제어 로직 (플레이어 어댑터, 큐)  |
-| `src/features/library/`                      | Record Library / 플레이리스트 관리    |
-| `src/features/mascot/`                       | 도트 마스코트                         |
-| `src/themes/<theme>/`                        | 테마별 외형 컴포넌트와 토큰           |
-| `src/widgets/clock/`, `src/widgets/weather/` | 독립 위젯                             |
-| `src/stores/`                                | Pinia store (기능 간 공용 상태 경계)  |
-| `src/shared/types/`                          | 공용 타입                             |
-| `src/shared/utils/`                          | 순수 유틸리티                         |
-| `src/shared/storage/`                        | 로컬 저장 추상화                      |
-| `src/styles/`                                | 전역 스타일, CSS 변수 토큰            |
-| `tests/unit/`, `tests/integration/`          | 테스트                                |
-| `design/references/`                         | 확정 HTML 디자인 참고자료 (수정 금지) |
-| `design/assets/`                             | 디자인 원본 에셋                      |
-| `docs/`                                      | 제품·아키텍처·결정·개발 문서          |
+| 경로                                         | 용도                                       |
+| -------------------------------------------- | ------------------------------------------ |
+| `src/app/`                                   | 앱 루트 컴포넌트, 앱 전역 조립             |
+| `src/components/layout/`                     | 화면 골격(그리드, 영역 배치)               |
+| `src/components/ui/`                         | 테마와 무관한 재사용 UI 프리미티브         |
+| `src/features/playback/`                     | 재생 제어 로직 (플레이어 어댑터, 큐)       |
+| `src/features/library/`                      | Record Library / 플레이리스트 관리         |
+| `src/features/mascot/`                       | 도트 마스코트                              |
+| `src/themes/<theme>/`                        | 테마별 외형 컴포넌트와 토큰                |
+| `src/widgets/clock/`, `src/widgets/weather/` | 독립 위젯                                  |
+| `src/stores/`                                | Pinia store (기능 간 공용 상태 경계)       |
+| `src/shared/types/`                          | 공용 타입                                  |
+| `src/shared/utils/`                          | 순수 유틸리티                              |
+| `src/shared/storage/`                        | 로컬 저장 추상화                           |
+| `src/styles/`                                | 전역 스타일, CSS 변수 토큰                 |
+| `tests/unit/`, `tests/integration/`          | 테스트                                     |
+| `design/references/`                         | 확정 HTML 디자인 참고자료 (수정 금지)      |
+| `design/assets/`                             | 디자인 원본 에셋                           |
+| `docs/`                                      | 제품·아키텍처·결정·개발 문서               |
+| `extension/`                                 | Chrome 확장 — 독립 npm 프로젝트 (ADR 0022) |
 
 소스코드와 디자인 참고자료는 섞지 않는다. `design/`은 빌드 대상이 아니다.
 

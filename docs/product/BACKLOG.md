@@ -47,6 +47,12 @@ TODO: 위젯 스킨 패키지 형식
 
 ## 3. Chrome 확장 프로그램
 
+> **M10 으로 옮겼다 (2026-11-11).** 먼저 만드는 것은 39page 를 띄우는 확장이
+> 아니라 **YouTube 에서 39page 로 담는 수집 도구**(팝업)다 —
+> [`../architecture/EXTENSION_DESIGN.md`](../architecture/EXTENSION_DESIGN.md),
+> ADR 0022 · 0023. 아래 TODO 는 "39page 를 확장 안에서 띄우는" 안에 대한 것이고
+> 그대로 백로그에 남는다.
+
 브라우저 새 탭 또는 팝업으로 39page를 띄우는 확장.
 
 TODO: 형태 확정 (새 탭 대체 / 팝업 / 사이드 패널)

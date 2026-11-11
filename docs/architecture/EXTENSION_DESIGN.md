@@ -1,0 +1,357 @@
+# Chrome 확장 설계 (M10)
+
+> 상태: **M10-1 설계 확정 (2026-11-11).** M10-2 에서 골격을 구현한다.
+> 결정 기록: [ADR 0022](../decisions/0022-extension-repository-and-build.md) (저장소·빌드),
+> [ADR 0023](../decisions/0023-extension-webapp-communication.md) (웹앱 통신·권한·보안)
+> 작업 분해: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md) M10
+
+## 0. 풀려는 문제
+
+YouTube 에서 음악을 찾으면 지금은 링크를 복사해 39page 드로어에 붙여 넣어야
+한다. M10 의 첫 목표는 **Quick Add** 다.
+
+```
+YouTube 영상 → 확장 아이콘 → 플레이리스트 선택 → 39page 에 추가
+```
+
+두 번째는 **Moment 캡처**(M10-4) — 지금 보는 영상의 시점과 메모를 Moment 로
+남긴다. 데이터 모델은 M9 가 이미 재사용할 수 있게 만들어 두었다
+(`MOMENTS_DESIGN.md` §6).
+
+범위 밖: 서버 계정 · 클라우드 동기화 · 새 데이터베이스 · Chrome Web Store 게시
+(M10-6 에서 따로) · 39page 자체를 확장 안에서 띄우는 것(`BACKLOG.md` §3 의
+"새 탭 대체" 안 — 다른 문제다).
+
+## 1. 저장소 구조
+
+```
+39page/
+├── src/                  # 웹앱 (그대로)
+├── tests/                # 웹앱 테스트 (그대로)
+├── extension/            # Chrome 확장 — 독립 npm 프로젝트
+│   ├── package.json      # 자체 의존성 · 자체 package-lock.json
+│   ├── manifest.json     # 원본. 빌드가 검증 뒤 dist/ 로 내보낸다
+│   ├── src/
+│   │   ├── popup/        # Vue 3 팝업
+│   │   ├── background/   # 서비스 워커 — 메시지 라우터 · 탭 조작
+│   │   ├── content/      # YouTube 페이지에서 읽기만 하는 스크립트
+│   │   └── shared/       # 메시지 계약 · 검증 · YouTube 페이지 판정
+│   ├── tests/
+│   └── dist/             # 빌드 산출물 (Git 제외) — "압축해제된 확장" 으로 로드
+├── docs/
+└── package.json          # 웹앱 (그대로)
+```
+
+- `extension/` 은 루트 `package.json` 과 **이어지지 않는다.** npm workspaces 를
+  쓰지 않는다 — 루트의 설치·빌드·배포(Workers Builds)가 확장을 전혀 모른다
+  (ADR 0022).
+- **웹앱 코드 재사용은 한 파일**: `src/shared/utils/youtube.ts` 를 별칭
+  `@web/` 으로 직접 가져온다. import 가 하나도 없는 순수 모듈이라 공용 패키지를
+  만들 필요가 없다. 그 밖의 웹앱 코드(Vue 컴포넌트 · store · storage)는
+  가져오지 않는다 — 테스트가 막는다.
+
+## 2. 실행 영역과 책임 (Manifest V3)
+
+| 영역               | 위치              | 맡는 것                                                                       | 하지 않는 것                                               |
+| ------------------ | ----------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Popup**          | `src/popup/`      | 현재 탭의 영상 정보 표시 · 사용자 조작                                        | 탭·페이지 직접 접근 · 저장                                 |
+| **Background**     | `src/background/` | 메시지 라우터 · 탭 조회 · content script 주입과 질의 · (M10-3) 수집 화면 열기 | 사용자 데이터 보관 · 네트워크 요청 · 전역 변수에 상태 두기 |
+| **Content script** | `src/content/`    | YouTube 페이지의 주소·제목 읽기 · (M10-4) 재생 시점 읽기                      | 페이지 수정 · 페이지 스크립트와 통신 · 확장에 먼저 말 걸기 |
+| **Shared**         | `src/shared/`     | 메시지 계약과 검증 · YouTube 페이지 판정 · 제목 정리                          | `chrome.*` 호출                                            |
+
+- **Content script 는 manifest 에 선언하지 않는다.** 사용자가 아이콘을 누른 뒤
+  `scripting.executeScript` 로 그 탭에만 주입한다. 그래서 YouTube 상시 호스트
+  권한이 필요 없다 (§7).
+- **Popup ↔ Content 는 Background 를 거친다.** 같은 조회를 M10-5 의
+  키보드 단축키(팝업 없음)에서도 써야 하므로 탭 조작을 한 곳에 모은다.
+- **Background 는 상태를 메모리에 두지 않는다.** 서비스 워커는 30초 유휴 뒤
+  종료되고 "전역 변수는 잃는다" (공식 수명 주기 문서). 리스너는 최상위에서
+  동기로 등록하고, 필요한 상태(M10-3 의 중복 방지)는 `chrome.storage.session`
+  에 둔다.
+
+```
+[사용자가 아이콘 클릭 — activeTab 부여]
+Popup ── runtime.sendMessage {tab/inspect, tabId} ──▶ Background
+                                                      │ tabs.get(tabId)        → url · title
+                                                      │ tabs.sendMessage {page/read} ──▶ Content
+                                                      │   (수신자 없음 → executeScript 로 주입 → 1회 재시도)
+Popup ◀───────────── Result<PageInspection> ──────────┘
+```
+
+## 3. 지원 범위
+
+| 페이지                                         | 인식 (M10-2)           | Quick Add (M10-3) | Moment 캡처 (M10-4) |
+| ---------------------------------------------- | ---------------------- | ----------------- | ------------------- |
+| `youtube.com/watch?v=` (`www.` · `m.` 포함)    | ✔                      | ✔                 | ✔ 예정              |
+| `youtube.com/shorts/<id>`                      | ✔                      | ✔                 | ✖ 범위 밖           |
+| `youtube.com/live/<id>`                        | ✔                      | ✔                 | M10-4 에서 결정     |
+| `youtube.com/embed/<id>` (탭으로 직접 연 경우) | ✔                      | ✔                 | ✖                   |
+| `music.youtube.com`                            | ✖ "아직 지원하지 않음" | ✖                 | ✖                   |
+| `youtu.be/…` · `youtube-nocookie.com`          | ✖                      | ✖                 | ✖                   |
+| 그 밖 (`chrome://`, 다른 사이트, 새 탭)        | ✖ 안내                 | ✖                 | ✖                   |
+
+- **판정 규칙** = 웹앱 `parseYouTubeVideoId(url)` 가 성공 **그리고** 호스트가
+  `youtube.com` · `www.youtube.com` · `m.youtube.com` 중 하나. 그래서 확장이
+  받아들인 주소는 웹앱도 반드시 받아들이고, 두 쪽의 `videoId` 가 같다 —
+  호환성 테스트가 고정한다.
+- **YouTube Music 을 뺀 이유**: 제목과 DOM 이 일반 YouTube 와 다르고 이
+  환경에서 실측하지 않았다. `activeTab` 방식이라 권한을 바꾸지 않고 나중에
+  넣을 수 있다 (TODO).
+- `youtu.be` 는 열면 `youtube.com/watch` 로 바뀌어 탭 주소로 남지 않는다.
+  `youtube-nocookie.com` 은 다른 사이트의 임베드용이다.
+- **Shorts 를 캡처에서 뺀 이유**: 짧게 반복 재생되는 화면이라 "시점" 의 뜻이
+  약하고, 플레이어 DOM 이 다르다.
+
+### 3-1. YouTube 의 SPA 이동
+
+YouTube 는 문서를 바꾸지 않고 주소만 바꾼다(History API). 따라서
+
+- content script 는 같은 문서에 **남는다** → 결과를 캐시하지 않고 매번 묻는다.
+- 새로고침·교차 문서 이동이면 content script 가 **사라진다** → Background 가
+  "수신자 없음" 을 받고 다시 주입한다.
+- Popup 은 열려 있는 동안 자기 탭의 `tabs.onUpdated`(url · title · 로드 완료)를
+  듣고 다시 조회한다. 다른 탭의 이벤트는 무시한다.
+- 다른 사이트로 이동하면 `activeTab` 이 회수된다 (공식: "navigates to
+  https://chromium.org, access is revoked"). 그때는 "아이콘을 다시 눌러
+  주세요" 로 안내한다. 같은 사이트 안 이동은 권한이 유지된다.
+
+### 3-2. 제목은 신뢰하지 않는 입력이다
+
+웹페이지가 정한 문자열이다. 다음 순서로 고르고 정리한다.
+
+1. 시청 페이지 제목 줄 — `ytd-watch-flexy[video-id]` 가 **주소의 ID 와 같을
+   때만** (SPA 이동 중 이전 영상의 제목을 피한다)
+2. `document.title` — 주소의 ID 가 content script 가 본 주소의 ID 와 같을 때
+3. 탭 제목 — content script 를 주입하지 못했을 때
+
+정리: 앞의 알림 수 `(3) `, 뒤의 ` - YouTube` 를 떼고, 제어 문자를 지우고,
+공백을 하나로 줄이고, **100자**(웹앱 `MAX_TRACK_TITLE_LENGTH`)로 자른다.
+비면 `null` — 화면은 "제목을 읽지 못했습니다" 를 보이고 `videoId` 만 쓴다.
+Popup 은 **텍스트로만** 그린다 (`v-html` 금지).
+
+SPA 이동 직후에는 2·3 번이 잠깐 이전 제목일 수 있다. 제목 변경 이벤트로
+갱신하고, 최종 확인은 웹앱 화면에서 사용자가 한다 (§5).
+
+## 4. 메시지 전달 — 공식 API 의 방향
+
+**같은 역할이라고 가정하지 않는다.** 공식 문서(developer.chrome.com, 2026-11-11
+확인) 기준이다.
+
+| 경로                    | API                                                                            | 방향                     | 근거 (공식 문구)                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Popup ↔ Background      | `runtime.sendMessage` → `runtime.onMessage`                                    | 확장 내부                | `onMessage` 는 확장의 모든 프레임에서 발생한다 (보낸 프레임 제외) — runtime 레퍼런스                            |
+| 확장 → content script   | **`tabs.sendMessage(tabId)`**                                                  | 확장 → 탭                | "extensions cannot send messages to content scripts using this method" (`runtime.sendMessage` 항목)             |
+| content script → 확장   | `runtime.sendMessage`                                                          | 탭 → 확장                | messaging 문서. "Content scripts are less trustworthy" — 입력을 검증하라                                        |
+| content script ↔ 페이지 | `window.postMessage` · DOM                                                     | 같은 창, **격리된 세계** | DOM 은 공유하고 JS 변수는 공유하지 않는다. 받는 쪽은 `event.source !== window` 를 거른다 — content-scripts 문서 |
+| 웹페이지 → 확장         | `externally_connectable` + `runtime.sendMessage(확장ID)` → `onMessageExternal` | **페이지가 시작**        | "This exposes the messaging API to any page that matches" — 확장 ID 가 필요하다                                 |
+| 확장 → 웹페이지         | **없다**                                                                       | —                        | "It is not possible to send a message from an extension to a web page." — messaging 문서                        |
+
+정리하면:
+
+- `externally_connectable` 을 선언하지 않으면 "no web pages can connect" —
+  웹페이지는 확장에 아무것도 보낼 수 없다. 다른 확장은 연결할 수 있지만
+  우리가 `onMessageExternal` 을 등록하지 않으므로 받을 곳이 없다.
+- 확장이 39page 탭에 **먼저** 데이터를 넘기는 길은 (1) 그 탭을 특정 주소로
+  여는 것, (2) 39page 에 content script 를 넣고 `window.postMessage` 로
+  중계하는 것, (3) 페이지가 `externally_connectable` 로 먼저 연결해 둔 포트로
+  답하는 것뿐이다. §5 의 A·B 가 (1)·(2) 다.
+- 비동기 응답은 `sendResponse` + 리스너에서 `true` 반환을 쓴다. 공식 문서는
+  "From Chrome 148" 에 promise 반환을 허용한다고 적고, 지원하지 않는 브라우저를
+  처리하라고 한다 — 그래서 promise 반환에 기대지 않는다.
+
+## 5. 웹앱 통신 방식 — 비교와 결정 (ADR 0023)
+
+| 기준      | **A. 수집 화면을 URL 로 연다**                                                          | B. 열린 39page 탭에 메시지                                                                  | C. 확장이 웹앱 저장소를 직접                                         |
+| --------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 저장 주체 | **웹앱 store** ✔                                                                        | 웹앱 store ✔                                                                                | ✖ 확장이 `localStorage` 를 쓴다 — store 의 검증·보호를 우회          |
+| 보안      | 받는 것은 주소 조각 하나. 어떤 사이트도 같은 링크를 만들 수 있으므로 **웹앱 승인 필수** | 39page 에 content script(호스트 권한 경고) + `postMessage` 중계. 페이지 안 코드는 위조 가능 | 39page 호스트 권한 + 저장 형식 결합. 손상 보호·백업 규칙을 다시 구현 |
+| 권한      | **추가 없음** (`tabs.create` 는 권한이 필요 없다)                                       | `https://39page.com/*` 호스트 권한                                                          | 같음                                                                 |
+| 난이도    | **낮음** — 단방향, 확장 ID 결합 없음                                                    | 중간 — 요청/응답 짝 맞추기, 시간 초과, 탭이 여럿일 때 선택, 탭이 없을 때 대체 경로          | 높음                                                                 |
+| 확장성    | `kind=moment` 로 M10-4 를 같은 길에 얹는다                                              | 팝업 안 플레이리스트 선택 · 탭 전환 없는 추가                                               | —                                                                    |
+| UX        | 탭이 하나 열린다 (재생 중인 39page 탭은 건드리지 않는다)                                | **YouTube 를 떠나지 않는다.** 단, 39page 탭이 열려 있어야 한다                              | —                                                                    |
+
+**결정: MVP 는 A.** B 는 M10-5 에서 A 위에 얹을 수 있는지 다시 본다. C 는
+기각한다 — "웹앱 store 가 저장한다" 원칙에 어긋난다.
+
+- 재생 중인 39page 탭을 그 주소로 **이동시키지 않는다.** 이동은 새로고침이라
+  재생이 끊긴다 (`AGENTS.md` 규칙 5 의 정신). 항상 **새 탭**을 YouTube 탭
+  바로 옆에 연다.
+- 확장은 저장 결과를 돌려받지 않는다. 결과는 웹앱 화면이 사용자에게 직접
+  보인다 — 저장의 주체가 웹앱이기 때문이다.
+
+### 5-1. 수집 URL 계약 v1 (M10-3 에서 구현)
+
+```
+https://39page.com/#collect?v=1&kind=track&videoId=<11자>&title=<선택>&req=<요청 ID>
+```
+
+- **주소 조각(`#`)에 싣는다.** 조각은 서버로 가지 않는다 — 영상 정보가
+  Cloudflare 요청 로그에 남지 않는다. 앱은 라우터를 쓰지 않으므로 경로가
+  아니라 조각으로 구분한다.
+
+| 필드      | 필수  | 규칙 (웹앱이 다시 검증)                                                     | 실패 시                         |
+| --------- | ----- | --------------------------------------------------------------------------- | ------------------------------- |
+| `v`       | ✔     | 정확히 `1`                                                                  | "버전이 맞지 않습니다" · 저장 0 |
+| `kind`    | ✔     | `track` (M10-3) · `moment` (M10-4 예약)                                     | 알 수 없는 요청 · 저장 0        |
+| `videoId` | ✔     | `isYouTubeVideoId` — 웹앱의 기존 함수                                       | 잘못된 요청 · 저장 0            |
+| `title`   | –     | 웹앱 `normalizeTitle` 과 같은 규칙(앞뒤 공백, 100자). 비면 `YouTube · <id>` | 기본 제목                       |
+| `req`     | ✔     | `^[A-Za-z0-9_-]{16,64}$`                                                    | 잘못된 요청 · 저장 0            |
+| `t`       | M10-4 | 초 단위 정수, Moment 도메인 검증과 같은 범위                                | —                               |
+
+- 같은 이름이 두 번 나오면 거부한다(모호함). 모르는 필드는 무시한다.
+- 조각 전체가 2048자를 넘으면 거부한다.
+- 메모(`note`)는 주소에 싣지 않는다 — 웹앱 화면에서 입력한다 (M10-4 에서 확정).
+
+### 5-2. 웹앱이 지킬 것 (M10-3)
+
+1. **명시적 승인 없이 저장하지 않는다.** 수집 화면은 받은 값을 보여 주고,
+   사용자가 플레이리스트를 고르고 "추가" 를 눌러야 `addTrack` 을 부른다.
+   어떤 사이트도 같은 링크를 만들 수 있으므로 이 단계가 위조 방어다.
+2. 제목은 텍스트로만 그린다. 기존 store API 로만 쓴다 (`localStorage` 직접 금지).
+3. 성공하면 `history.replaceState` 로 조각을 지운다 → 새로고침이 다시 묻지
+   않는다. 같은 화면에서의 연속 클릭은 단일 실행으로 막는다.
+4. 수집 화면은 **플레이어를 띄우지 않는다** — 두 번째 iframe·자동 재생이
+   생기지 않게.
+5. **선행 조건 — 탭 간 덮어쓰기.** 실측(코드 확인, 2026-11-11): 라이브러리
+   store 의 `persist()` 는 메모리 상태 전체를 쓴다. 다른 탭의 변경을 확인하지
+   않는다. 그래서 대시보드 탭이 열린 채 수집 탭이 트랙을 추가하면, 대시보드
+   탭의 **다음 변경(플레이리스트 선택 포함)이 그 트랙을 조용히 지운다.**
+   지금도 39page 를 두 탭에 열면 같은 문제가 있다(M9-6 TODO "다른 탭의 변경
+   반영"). Quick Add 는 이 경로를 일상적으로 만들므로 **M10-3 은 이것부터
+   고친다** — `storage` 이벤트로 다시 읽기 또는 쓰기 직전 비교로 막기
+   (방식은 M10-3 에서 결정, §12).
+
+### 5-3. 확장이 지킬 것
+
+- 사용자 데이터를 읽지도 쓰지도 않는다. 39page origin 에 접근 권한이 없다.
+- 수집 URL 은 Background 한 곳에서만 만든다 — `videoId` 를 다시 검증하고
+  `encodeURIComponent` 로 넣는다.
+- 아무 데이터도 외부 서버로 보내지 않는다. 확장 코드에 `fetch` 가 없다.
+
+## 6. 내부 메시지 계약 v1
+
+```ts
+// 요청 — 모두 같은 봉투
+type ExtensionRequest =
+  | { v: 1; type: 'tab/inspect'; tabId: number } // Popup → Background (M10-2)
+  | { v: 1; type: 'collect/open'; …   }          // Popup → Background (M10-3 예약)
+type ContentRequest =
+  | { v: 1; type: 'page/read' }                  // Background → Content (M10-2)
+  | { v: 1; type: 'player/position' }            // Background → Content (M10-4 예약)
+
+// 응답 — 성공과 실패를 같은 모양으로
+type Result<T> =
+  | { v: 1; ok: true; data: T }
+  | { v: 1; ok: false; error: { code: ErrorCode; message: string } }
+```
+
+| `ErrorCode`           | 뜻                                                      |
+| --------------------- | ------------------------------------------------------- |
+| `bad-request`         | 봉투는 맞지만 필드가 틀렸다 (`tabId` 가 정수가 아님 등) |
+| `unsupported-type`    | 모르는 `type`                                           |
+| `unsupported-version` | `v` 가 1 이 아니다                                      |
+| `forbidden-sender`    | 우리 확장의 페이지가 보낸 것이 아니다                   |
+| `no-tab`              | 탭이 닫혔거나 없다                                      |
+| `no-receiver`         | 주입 뒤에도 content script 가 답하지 않는다             |
+| `timeout`             | 정해진 시간 안에 답이 없다                              |
+| `internal`            | 예상하지 못한 예외 — 메시지에 내부 정보를 싣지 않는다   |
+
+- **모든 수신 지점이 검증한다.** 객체인지, `v`, `type`, 필드 타입. 검증 함수는
+  `src/shared/` 에 하나만 둔다.
+- Background 는 `sender.id === chrome.runtime.id` 이고 `sender.url` 이 우리
+  확장 페이지일 때만 `tab/inspect` 를 받는다. content script 가 보낸 메시지는
+  받지 않는다 (content script 는 먼저 말하지 않는다).
+- "지원하지 않는 페이지" 는 **오류가 아니라 정상 결과**다:
+
+```ts
+type PageInspection =
+  | {
+      status: 'video'
+      videoId
+      pageKind: 'watch' | 'shorts' | 'live' | 'embed'
+      title: string | null
+      titleSource: 'heading' | 'document' | 'tab' | null
+    }
+  | {
+      status: 'unsupported'
+      reason: 'not-youtube' | 'not-video-page' | 'youtube-music' | 'no-access' | 'restricted'
+    }
+```
+
+- 시간 초과: content 질의 3초, Popup → Background 10초 (주입 · 재시도 포함).
+
+## 7. 권한과 보안 정책
+
+| 권한        | 단계  | 왜                                                            | 설치 경고   |
+| ----------- | ----- | ------------------------------------------------------------- | ----------- |
+| `activeTab` | M10-2 | 사용자가 누른 그 탭의 주소·제목, 주입 권한 (임시)             | 없음 (공식) |
+| `scripting` | M10-2 | content script 를 그때 주입                                   | —           |
+| `storage`   | M10-3 | `storage.session` 의 중복 방지 기록 (서비스 워커 재시작 대비) | —           |
+
+**요청하지 않는 것**: `host_permissions` (YouTube 상시 접근), `tabs`
+("방문 기록 읽기" 경고), `<all_urls>`, 선언형 `content_scripts`,
+`externally_connectable`, `web_accessible_resources`, `contextMenus`
+(M10-5 에서 필요하면 검토).
+
+정책:
+
+- 기본 CSP 를 느슨하게 하지 않는다. 원격 코드·`eval`·외부 스크립트 없음.
+- API 키·토큰·비밀번호를 번들에 넣지 않는다 (넣을 것도 없다).
+- 페이지에서 온 값(주소·제목)은 신뢰하지 않는 입력으로 처리한다 (§3-2).
+- content script 는 페이지를 바꾸지 않고, 페이지의 `postMessage` 를 듣지
+  않는다.
+- 확장은 네트워크 요청을 하지 않는다.
+
+## 8. 실패 처리
+
+| 상황                                        | 결과                                   | Popup 화면                                |
+| ------------------------------------------- | -------------------------------------- | ----------------------------------------- |
+| YouTube 가 아닌 페이지                      | `unsupported / not-youtube`            | "YouTube 영상 페이지에서 눌러 주세요"     |
+| YouTube 지만 영상이 아님 (홈 · 검색 · 채널) | `unsupported / not-video-page`         | 같은 안내 + "영상을 연 뒤"                |
+| YouTube Music                               | `unsupported / youtube-music`          | "YouTube Music 은 아직 지원하지 않습니다" |
+| `chrome://` 등 제한 페이지                  | `unsupported / restricted`             | "이 페이지에서는 쓸 수 없습니다"          |
+| 주소를 볼 권한이 없음 (activeTab 회수 등)   | `unsupported / no-access`              | "아이콘을 다시 눌러 주세요"               |
+| content script 없음                         | 주입 → 1회 재시도                      | (사용자에게 보이지 않음)                  |
+| 주입 실패 · 재시도 실패                     | 탭 제목으로 대체, `titleSource: 'tab'` | 정보는 보이고 제목 출처가 다르다          |
+| Background 무응답 · 예외                    | `timeout` · `internal`                 | "확장 내부 오류 — 다시 시도"              |
+| 탭이 닫힘                                   | `no-tab`                               | "탭을 찾을 수 없습니다"                   |
+
+## 9. 중복 전송 · 연속 클릭
+
+| 지점                      | 동작                                                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Popup 버튼 (M10-3)        | 첫 클릭에 비활성화, 응답까지 단일 실행                                                                                                                                        |
+| Background `collect/open` | 같은 `kind + videoId` 를 5초 안에 다시 받으면, 열어 둔 탭이 살아 있을 때 **그 탭을 앞으로** 가져온다. 기록은 `storage.session` (워커 재시작 뒤에도 유지)                      |
+| 웹앱 수집 화면            | 추가 버튼 단일 실행. 성공 뒤 조각 삭제. 같은 영상이 이미 그 플레이리스트에 있으면 알린다 — 같은 영상을 여러 번 넣는 것은 기존 허용 동작이므로 막지는 않는다 (M10-3 에서 확정) |
+| 조회 (`tab/inspect`)      | 부작용이 없으므로 중복을 막지 않는다. Popup 은 이벤트를 150ms 로 묶어 한 번만 묻는다                                                                                          |
+
+## 10. 빌드 · 배포 격리 (ADR 0022)
+
+- 확장 빌드는 `extension/` 안에서 `npm run build` — 산출물 `extension/dist/`.
+- 루트의 `npm run build` · Workers Builds(`wrangler.toml` 의 `assets.directory =
+"./dist"`)는 `extension/` 을 읽지 않는다. 루트 `.gitignore` 의 `dist` ·
+  `node_modules` 규칙이 `extension/` 아래에도 걸린다.
+- 루트 린트·포맷(`oxlint .` · `eslint .` · `prettier --check .`)은 저장소 전체를
+  훑으므로 `extension/` 을 제외 목록에 넣는다. 확장은 자기 관문을 갖는다.
+- 검증: M10-2 전후 루트 `dist/` 의 파일별 SHA-256 이 같아야 한다.
+
+## 11. 테스트 전략
+
+| 층            | 무엇을                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| 단위 (Vitest) | 메시지 검증 · 페이지 판정 · 제목 정리 · Background 라우터(가짜 `chrome`) · content 응답 · Popup 상태 화면    |
+| 호환성        | 같은 주소 표를 웹앱 `parseYouTubeVideoId` 와 확장 판정에 넣어, 확장이 받은 것은 웹앱도 같은 ID 로 받는다     |
+| 정적 검사     | manifest 검증 스크립트 — 권한 허용 목록, 파일 존재, CSP, 금지 키                                             |
+| 실제 Chromium | 압축해제 로드 → 팝업 · YouTube 인식 · 지원하지 않는 페이지 · 탭 이동 · 메시지 실패 · 워커 재시작 · 오류 로그 |
+
+헤드리스에서는 **툴바 아이콘을 누를 수 없다** → `activeTab` 부여 자체는
+자동 검증할 수 없다. M10-2 는 이 차이를 보고서에 따로 적는다.
+
+## 12. M10-3 전에 정할 것
+
+- [ ] 탭 간 덮어쓰기 해결 방식 — `storage` 이벤트로 다시 읽기 vs 쓰기 직전
+      비교 (§5-2 의 5)
+- [ ] 수집 화면의 모양 — 대시보드 위 오버레이 vs 별도 화면 (플레이어 없음)
+- [ ] 같은 영상이 이미 있을 때 — 알리기만 vs 확인 한 번 더
+- [ ] 수집 주소의 origin — 운영 `https://39page.com` 고정, 개발 빌드만 바꿀 수 있게
+- [ ] 저장 후 수집 탭 — 닫기 버튼 · 자동 닫기 여부
