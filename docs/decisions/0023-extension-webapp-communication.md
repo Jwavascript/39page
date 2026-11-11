@@ -115,3 +115,15 @@ M10 범위 밖(TODO). Shorts 는 Moment 캡처에서 뺀다. 판정은 웹앱
   M10-3 테스트가 "승인 없이 저장 0" 을 고정해야 한다.
 - 탭이 하나 더 열리는 UX 비용을 받아들인다.
 - M10-4(Moment)는 같은 길에 `kind=moment` 를 더한다.
+
+### 보완 (M10-2 실측, 2026-11-11)
+
+- **제목 출처** — 실제 YouTube 의 SPA 이동에서 `document.title` 은 주소보다
+  약 1초 늦었고, 그 사이 팝업이 새 ID 에 이전 제목을 붙였다. ID 와 제목을 한
+  객체로 주는 플레이어 `getVideoData()` 를 **메인 세계에서** 읽는다
+  (`scripting.executeScript({ world: 'MAIN' })`). 같은 `activeTab` 부여로 되며
+  **권한은 늘지 않았다.** 결과는 신뢰하지 않는 입력으로 다시 검증한다
+  (`EXTENSION_DESIGN.md` §3-2 · §7).
+- **툴바 클릭 검증** — CDP `Extensions.triggerAction` 이 `activeTab` 을 실제로
+  부여해, 운영 manifest 그대로 실제 Chromium 에서 확인했다. 사람의 클릭과
+  실기기는 미검증이다.

@@ -16,7 +16,8 @@ export default defineConfigWithVueTs(
     files: ['**/*.{vue,ts,mts,tsx}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'design/**']),
+  // extension/ 은 독립 프로젝트다 — 자기 eslint 설정으로 검사한다 (ADR 0022).
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'design/**', 'extension/**']),
 
   ...pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,

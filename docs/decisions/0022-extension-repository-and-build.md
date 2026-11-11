@@ -35,6 +35,10 @@ M10 은 YouTube 에서 39page 로 영상을 담는 Chrome 확장을 만든다. �
 - 그 밖의 웹앱 코드(Vue 컴포넌트·store·storage)는 가져오지 않는다. 확장
   테스트가 `@web/` import 를 허용 목록과 대조한다.
 - 같은 계약을 호환성 테스트로도 고정한다 (같은 주소 표를 두 함수에).
+- **보완 (M10-2)** — 디자인 토큰 CSS 두 파일(`src/styles/tokens.css`,
+  `src/themes/mono-vinyl/tokens.css`)도 허용 목록에 넣었다. 변수 선언뿐인 CSS
+  라(`url()`·`@import` 없음) 순수 모듈과 같은 성격이고, 팝업이 Mono Vinyl 값을
+  복사하지 않고 그대로 따라간다. 허용 목록은 세 항목이고 테스트가 고정한다.
 
 ### 3. 도구 — 웹앱과 같은 Vue 3 + Vite + TypeScript
 
@@ -74,13 +78,13 @@ M10 은 YouTube 에서 39page 로 영상을 담는 Chrome 확장을 만든다. �
 
 ### 5. 웹앱 빌드·배포와의 격리
 
-| 경로                                                | 어떻게 막는가                                                                                                 |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 루트 `npm run build`                                | `vue-tsc --build`(루트 tsconfig 의 `include` 는 `src/`) · `vite build`(루트 `index.html`). 확장을 읽지 않는다 |
-| Workers Builds                                      | 루트에서 설치·빌드하고 `assets.directory = "./dist"` 만 올린다. `wrangler.toml` 을 바꾸지 않는다              |
-| Git                                                 | 루트 `.gitignore` 의 `dist` · `node_modules` 가 `extension/` 아래에도 걸린다                                  |
-| 루트 `vitest`                                       | `include` 가 `tests/**` · `src/**/__tests__` 라 `extension/tests` 를 줍지 않는다                              |
-| 루트 `oxlint .` · `eslint .` · `prettier --check .` | 저장소 전체를 훑는다 → `extension/` 을 제외 목록에 넣는다 (M10-2)                                             |
+| 경로                                                | 어떻게 막는가                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 루트 `npm run build`                                | `vue-tsc --build`(루트 tsconfig 의 `include` 는 `src/`) · `vite build`(루트 `index.html`). 확장을 읽지 않는다                                                                                                                                                                                         |
+| Workers Builds                                      | 루트에서 설치·빌드하고 `assets.directory = "./dist"` 만 올린다. `wrangler.toml` 을 바꾸지 않는다                                                                                                                                                                                                      |
+| Git                                                 | 루트 `.gitignore` 의 `dist` · `node_modules` 가 `extension/` 아래에도 걸린다                                                                                                                                                                                                                          |
+| 루트 `vitest`                                       | `include` 가 `tests/**` · `src/**/__tests__` 라 `extension/tests` 를 줍지 않는다                                                                                                                                                                                                                      |
+| 루트 `oxlint .` · `eslint .` · `prettier --check .` | 저장소 전체를 훑는다 → `extension/` 을 뺀다 (M10-2): `eslint.config.ts` 의 `globalIgnores` · `.prettierignore` · `lint:oxlint` 스크립트의 `--ignore-pattern 'extension/**'`. oxlint 는 하위 폴더의 자체 `.oxlintrc.json` 이 루트 설정의 `ignorePatterns` 보다 앞서 설정 파일로는 빠지지 않았다 (실측) |
 
 검증 기준: M10-2 전후로 루트 `npm run build` 산출물의 파일별 SHA-256 이 같다.
 
@@ -94,7 +98,7 @@ M10 은 YouTube 에서 39page 로 영상을 담는 Chrome 확장을 만든다. �
 
 ## 결과
 
-- 루트 설정 변경은 **린트·포맷 제외 목록 세 줄**뿐이다. 웹앱의 소스·빌드
+- 루트 설정 변경은 **린트·포맷 제외 세 곳**(`eslint.config.ts` 한 줄 · `.prettierignore` 한 줄 · `package.json` 의 `lint:oxlint` 플래그)뿐이다. 웹앱의 소스·빌드
   설정·`wrangler.toml` 은 그대로다.
 - 확장을 수정해도 웹앱 운영 배포가 바뀌지 않는다. 다만 `main` 에 확장 코드가
   들어가는 시점은 웹앱 배포와 같은 푸시이므로, M10 커밋은 그 결정 전까지 별도

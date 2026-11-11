@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "39page",
+  "version": "0.1.0",
+  "description": "YouTube 에서 보고 있는 영상을 39page 로 담기 위한 도구 (개발 중 — 아직 저장하지 않습니다)",
+  "action": {
+    "default_title": "39page — 이 영상 보기",
+    "default_popup": "src/popup/index.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting"]
+}

@@ -1,0 +1,26 @@
+/*
+ * 팝업 전역 — Mono Vinyl 디자인 언어 (`src/themes/mono-vinyl/tokens.css` 의 변수).
+ * 폰트는 웹앱과 같은 시스템 글꼴이다. 원격 글꼴을 불러오지 않는다.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  background: var(--surface-base-color);
+  color: var(--text-color);
+  font: 13px/1.45 var(--font-body);
+}
+
+:focus-visible {
+  outline: 2px solid var(--deck-open-focus-ring-color);
+  outline-offset: 2px;
+}

@@ -1,0 +1,47 @@
+{
+  "name": "39page-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "39page Chrome 확장 — YouTube 에서 39page 로 담기 (M10). 웹앱과 독립된 프로젝트다 (ADR 0022).",
+  "scripts": {
+    "build": "npm run type-check && npm run build-only && npm run check:manifest",
+    "build-only": "vite build && vite build --config vite.content.config.ts",
+    "type-check": "vue-tsc --build",
+    "test": "vitest run",
+    "test:unit": "vitest",
+    "lint": "oxlint . --fix && eslint . --fix --cache",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:manifest": "node scripts/check-manifest.mjs"
+  },
+  "dependencies": {
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@tsconfig/node24": "^24.0.5",
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^24.13.4",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vitest/eslint-plugin": "^1.6.27",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/test-utils": "^2.5.0",
+    "@vue/tsconfig": "^0.9.1",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "~1.82.0",
+    "eslint-plugin-vue": "~10.11.0",
+    "jiti": "^2.7.0",
+    "jsdom": "^30.0.1",
+    "oxlint": "~1.82.0",
+    "prettier": "3.9.6",
+    "typescript": "~6.0.0",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^3.3.11"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.12.0"
+  }
+}

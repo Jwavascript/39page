@@ -1,0 +1,18 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+
+    // `@/` 는 확장 자신의 src, `@web/` 은 웹앱 src (허용된 순수 모듈만 — ADR 0022).
+    "paths": {
+      "@/*": ["./src/*"],
+      "@web/*": ["../src/*"]
+    },
+
+    // chrome.* 전역 타입. 그 밖의 @types 는 끌어들이지 않는다.
+    "types": ["chrome"],
+
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
+  }
+}

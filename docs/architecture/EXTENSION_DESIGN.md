@@ -1,6 +1,7 @@
 # Chrome 확장 설계 (M10)
 
-> 상태: **M10-1 설계 확정 (2026-11-11).** M10-2 에서 골격을 구현한다.
+> 상태: **M10-1 설계 확정 (2026-11-11). M10-2 골격 구현·실측 (2026-11-11)** —
+> 실측으로 바꾼 곳은 "(M10-2 실측)" 으로 표시했다 (§2 · §3-2 · §6 · §8 · §11).
 > 결정 기록: [ADR 0022](../decisions/0022-extension-repository-and-build.md) (저장소·빌드),
 > [ADR 0023](../decisions/0023-extension-webapp-communication.md) (웹앱 통신·권한·보안)
 > 작업 분해: [`../development/IMPLEMENTATION_PLAN.md`](../development/IMPLEMENTATION_PLAN.md) M10
@@ -52,12 +53,12 @@ YouTube 영상 → 확장 아이콘 → 플레이리스트 선택 → 39page 에
 
 ## 2. 실행 영역과 책임 (Manifest V3)
 
-| 영역               | 위치              | 맡는 것                                                                       | 하지 않는 것                                               |
-| ------------------ | ----------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| **Popup**          | `src/popup/`      | 현재 탭의 영상 정보 표시 · 사용자 조작                                        | 탭·페이지 직접 접근 · 저장                                 |
-| **Background**     | `src/background/` | 메시지 라우터 · 탭 조회 · content script 주입과 질의 · (M10-3) 수집 화면 열기 | 사용자 데이터 보관 · 네트워크 요청 · 전역 변수에 상태 두기 |
-| **Content script** | `src/content/`    | YouTube 페이지의 주소·제목 읽기 · (M10-4) 재생 시점 읽기                      | 페이지 수정 · 페이지 스크립트와 통신 · 확장에 먼저 말 걸기 |
-| **Shared**         | `src/shared/`     | 메시지 계약과 검증 · YouTube 페이지 판정 · 제목 정리                          | `chrome.*` 호출                                            |
+| 영역               | 위치              | 맡는 것                                                                                                                   | 하지 않는 것                                               |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Popup**          | `src/popup/`      | 현재 탭의 영상 정보 표시 · 사용자 조작                                                                                    | 탭·페이지 직접 접근 · 저장                                 |
+| **Background**     | `src/background/` | 메시지 라우터 · 탭 조회 · content script 주입과 질의 · 플레이어 정보 읽기(메인 세계, M10-2 실측) · (M10-3) 수집 화면 열기 | 사용자 데이터 보관 · 네트워크 요청 · 전역 변수에 상태 두기 |
+| **Content script** | `src/content/`    | YouTube 페이지의 주소·제목 줄 읽기 (격리된 세계) · (M10-4) 재생 시점 읽기                                                 | 페이지 수정 · 페이지 스크립트와 통신 · 확장에 먼저 말 걸기 |
+| **Shared**         | `src/shared/`     | 메시지 계약과 검증 · YouTube 페이지 판정 · 제목 정리                                                                      | `chrome.*` 호출                                            |
 
 - **Content script 는 manifest 에 선언하지 않는다.** 사용자가 아이콘을 누른 뒤
   `scripting.executeScript` 로 그 탭에만 주입한다. 그래서 YouTube 상시 호스트
@@ -72,7 +73,8 @@ YouTube 영상 → 확장 아이콘 → 플레이리스트 선택 → 39page 에
 ```
 [사용자가 아이콘 클릭 — activeTab 부여]
 Popup ── runtime.sendMessage {tab/inspect, tabId} ──▶ Background
-                                                      │ tabs.get(tabId)        → url · title
+                                                      │ tabs.get(tabId)        → url (activeTab 이 없으면 안 보인다)
+                                                      │ executeScript {world: MAIN} → 플레이어 videoId·제목
                                                       │ tabs.sendMessage {page/read} ──▶ Content
                                                       │   (수신자 없음 → executeScript 로 주입 → 1회 재시도)
 Popup ◀───────────── Result<PageInspection> ──────────┘
@@ -115,22 +117,49 @@ YouTube 는 문서를 바꾸지 않고 주소만 바꾼다(History API). 따라�
   https://chromium.org, access is revoked"). 그때는 "아이콘을 다시 눌러
   주세요" 로 안내한다. 같은 사이트 안 이동은 권한이 유지된다.
 
-### 3-2. 제목은 신뢰하지 않는 입력이다
+### 3-2. 제목은 신뢰하지 않는 입력이다 — 출처는 M10-2 실측으로 정했다
 
-웹페이지가 정한 문자열이다. 다음 순서로 고르고 정리한다.
+웹페이지가 정한 문자열이다. M10-1 은 "제목 줄 → `document.title` → 탭 제목"
+순서를 적었는데, **실제 YouTube 에서 이 순서가 틀린 제목을 보였다** — 19초
+영상이 자동 재생으로 다음 영상에 넘어가는 순간 팝업이 새 영상 ID 에 이전 영상의
+제목을 붙였다.
 
-1. 시청 페이지 제목 줄 — `ytd-watch-flexy[video-id]` 가 **주소의 ID 와 같을
-   때만** (SPA 이동 중 이전 영상의 제목을 피한다)
-2. `document.title` — 주소의 ID 가 content script 가 본 주소의 ID 와 같을 때
-3. 탭 제목 — content script 를 주입하지 못했을 때
+실측 (Chromium 155, 실제 YouTube, "다음 영상" SPA 이동 3회, 10ms 간격 표본):
+
+| 이동 뒤 | 주소 | `document.title` | 플레이어 제목 링크      | `getVideoData()`      | flexy `video-id` · 제목 줄 |
+| ------- | ---- | ---------------- | ----------------------- | --------------------- | -------------------------- |
+| ~80ms   | 새   | 이전             | **ID 만 새, 글자 이전** | 이전 (ID·제목 함께)   | 이전                       |
+| ~0.7s   | 새   | 이전             | 새                      | **새 (ID·제목 함께)** | 이전                       |
+| ~1.1s   | 새   | 새               | 새                      | 새                    | 이전                       |
+| ~3.1s   | 새   | 새               | 새                      | 새                    | **새 (같은 순간)**         |
+
+- `document.title`(= 탭 제목)은 주소보다 **약 1초 늦다** → 출처에서 뺐다.
+- 플레이어 제목 링크는 ID 와 글자가 따로 바뀐다 → 쓰지 않는다.
+- **ID 와 제목을 한 객체로 주는 것은 플레이어의 `getVideoData()` 뿐**이었다.
+  페이지 스크립트가 붙인 메서드라 격리된 세계(content script)에서는 보이지
+  않으므로, Background 가 `scripting.executeScript({ world: 'MAIN', func })` 로
+  읽는다. 같은 `activeTab` 부여로 되고 권한이 늘지 않는다. Shorts 는
+  `#shorts-player` 가 같은 메서드를 준다 (실측).
+
+그래서:
+
+1. 플레이어(`#movie_player` · `#shorts-player`)의 `getVideoData()` 가 **주소의
+   영상**일 때 그 제목
+2. `ytd-watch-flexy[video-id]` 가 주소의 영상일 때 시청 페이지 제목 줄 — 실측에서
+   둘은 같은 순간에 바뀌었다
+3. 그 밖에는 **`null`** — 틀린 제목보다 빈 제목이 낫다
+
+제목이 비면 Popup 이 1.5초 간격으로 **두 번까지** 다시 묻는다 (이동 직후 제목
+줄이 바뀌는 순간에는 탭 이벤트가 오지 않는다).
 
 정리: 앞의 알림 수 `(3) `, 뒤의 ` - YouTube` 를 떼고, 제어 문자를 지우고,
 공백을 하나로 줄이고, **100자**(웹앱 `MAX_TRACK_TITLE_LENGTH`)로 자른다.
 비면 `null` — 화면은 "제목을 읽지 못했습니다" 를 보이고 `videoId` 만 쓴다.
 Popup 은 **텍스트로만** 그린다 (`v-html` 금지).
 
-SPA 이동 직후에는 2·3 번이 잠깐 이전 제목일 수 있다. 제목 변경 이벤트로
-갱신하고, 최종 확인은 웹앱 화면에서 사용자가 한다 (§5).
+메인 세계의 함수는 페이지가 바꿔치기할 수 있다 — 반환값은 문자열·`null` 만
+받고 Background 가 같은 검증을 다시 한다. 확장 API 는 메인 세계에 노출되지
+않는다 (§7). 최종 확인은 웹앱 화면에서 사용자가 한다 (§5).
 
 ## 4. 메시지 전달 — 공식 API 의 방향
 
@@ -270,7 +299,7 @@ type PageInspection =
       videoId
       pageKind: 'watch' | 'shorts' | 'live' | 'embed'
       title: string | null
-      titleSource: 'heading' | 'document' | 'tab' | null
+      titleSource: 'player' | 'heading' | null // M10-2 실측 (§3-2)
     }
   | {
       status: 'unsupported'
@@ -298,23 +327,26 @@ type PageInspection =
 - 기본 CSP 를 느슨하게 하지 않는다. 원격 코드·`eval`·외부 스크립트 없음.
 - API 키·토큰·비밀번호를 번들에 넣지 않는다 (넣을 것도 없다).
 - 페이지에서 온 값(주소·제목)은 신뢰하지 않는 입력으로 처리한다 (§3-2).
+- 메인 세계 실행(`world: 'MAIN'`)은 **플레이어 정보 읽기 하나**뿐이다 (§3-2).
+  함수는 자기 완결이고 문자열·`null` 만 돌려주며, 결과는 Background 가 다시
+  검증한다. 페이지가 그 함수의 결과를 조작할 수 있다는 것을 전제로 한다.
 - content script 는 페이지를 바꾸지 않고, 페이지의 `postMessage` 를 듣지
   않는다.
 - 확장은 네트워크 요청을 하지 않는다.
 
 ## 8. 실패 처리
 
-| 상황                                        | 결과                                   | Popup 화면                                |
-| ------------------------------------------- | -------------------------------------- | ----------------------------------------- |
-| YouTube 가 아닌 페이지                      | `unsupported / not-youtube`            | "YouTube 영상 페이지에서 눌러 주세요"     |
-| YouTube 지만 영상이 아님 (홈 · 검색 · 채널) | `unsupported / not-video-page`         | 같은 안내 + "영상을 연 뒤"                |
-| YouTube Music                               | `unsupported / youtube-music`          | "YouTube Music 은 아직 지원하지 않습니다" |
-| `chrome://` 등 제한 페이지                  | `unsupported / restricted`             | "이 페이지에서는 쓸 수 없습니다"          |
-| 주소를 볼 권한이 없음 (activeTab 회수 등)   | `unsupported / no-access`              | "아이콘을 다시 눌러 주세요"               |
-| content script 없음                         | 주입 → 1회 재시도                      | (사용자에게 보이지 않음)                  |
-| 주입 실패 · 재시도 실패                     | 탭 제목으로 대체, `titleSource: 'tab'` | 정보는 보이고 제목 출처가 다르다          |
-| Background 무응답 · 예외                    | `timeout` · `internal`                 | "확장 내부 오류 — 다시 시도"              |
-| 탭이 닫힘                                   | `no-tab`                               | "탭을 찾을 수 없습니다"                   |
+| 상황                                           | 결과                                                                                                                   | Popup 화면                                                        |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| YouTube 가 아닌 페이지                         | `unsupported / not-youtube`                                                                                            | "YouTube 영상 페이지에서 눌러 주세요"                             |
+| YouTube 지만 영상이 아님 (홈 · 검색 · 채널)    | `unsupported / not-video-page`                                                                                         | 같은 안내 + "영상을 연 뒤"                                        |
+| YouTube Music                                  | `unsupported / youtube-music`                                                                                          | "YouTube Music 은 아직 지원하지 않습니다"                         |
+| `chrome://` 등 제한 페이지                     | `unsupported / no-access` — activeTab 이 부여되지 않아 주소가 안 보인다 (M10-2 실측). `restricted` 는 주소가 보일 때만 | "이 페이지를 읽을 수 없습니다"                                    |
+| 주소를 볼 권한이 없음 (activeTab 회수 등)      | `unsupported / no-access`                                                                                              | "아이콘을 다시 눌러 주세요"                                       |
+| content script 없음                            | 주입 → 1회 재시도                                                                                                      | (사용자에게 보이지 않음)                                          |
+| 주입 실패 · 플레이어 읽기 실패 · SPA 이동 직후 | 제목 `null` — 이전 영상의 제목을 붙이지 않는다 (M10-2 실측)                                                            | ID 는 보이고 "제목을 읽지 못했습니다". 1.5초 간격 2번 다시 묻는다 |
+| Background 무응답 · 예외                       | `timeout` · `internal`                                                                                                 | "확장 내부 오류 — 다시 시도"                                      |
+| 탭이 닫힘                                      | `no-tab`                                                                                                               | "탭을 찾을 수 없습니다"                                           |
 
 ## 9. 중복 전송 · 연속 클릭
 
@@ -332,7 +364,10 @@ type PageInspection =
 "./dist"`)는 `extension/` 을 읽지 않는다. 루트 `.gitignore` 의 `dist` ·
   `node_modules` 규칙이 `extension/` 아래에도 걸린다.
 - 루트 린트·포맷(`oxlint .` · `eslint .` · `prettier --check .`)은 저장소 전체를
-  훑으므로 `extension/` 을 제외 목록에 넣는다. 확장은 자기 관문을 갖는다.
+  훑으므로 `extension/` 을 뺀다 — ESLint `globalIgnores` · `.prettierignore` ·
+  oxlint 는 `--ignore-pattern` (설정 파일의 `ignorePatterns` 는 하위 폴더의 자체
+  설정에 막혀 듣지 않았다, M10-2 실측). 확장은 자기 관문을 갖는다.
+- 실측 (M10-2): 루트 `dist/` 의 파일별 SHA-256 이 M9(`8d8a7d5`) 빌드와 **같다**.
 - 검증: M10-2 전후 루트 `dist/` 의 파일별 SHA-256 이 같아야 한다.
 
 ## 11. 테스트 전략
@@ -344,8 +379,16 @@ type PageInspection =
 | 정적 검사     | manifest 검증 스크립트 — 권한 허용 목록, 파일 존재, CSP, 금지 키                                             |
 | 실제 Chromium | 압축해제 로드 → 팝업 · YouTube 인식 · 지원하지 않는 페이지 · 탭 이동 · 메시지 실패 · 워커 재시작 · 오류 로그 |
 
-헤드리스에서는 **툴바 아이콘을 누를 수 없다** → `activeTab` 부여 자체는
-자동 검증할 수 없다. M10-2 는 이 차이를 보고서에 따로 적는다.
+**툴바 클릭 (M10-2 실측으로 정정)** — M10-1 은 "헤드리스에서는 아이콘을 누를
+수 없다" 고 적었다. Chromium 155 의 CDP `Extensions.triggerAction(id, 탭 대상)`
+이 기본 동작(팝업)을 실행하고 **`activeTab` 을 실제로 부여했다** — 호스트
+권한이 없는 운영 manifest 그대로 주소가 보였다. 그래서 테스트 전용 manifest 를
+만들지 않았다.
+
+하네스 관찰: 탭을 만들거나 이동한 **직후 약 2초 안**의 `triggerAction` 은
+`activeTab` 을 부여하지 않았다 (같은 탭에서 2–3초 뒤에는 부여). 실제 클릭에도
+있는 지연인지는 **확인하지 못했다** — 그때 팝업은 "읽을 수 없습니다 — 다시
+눌러 주세요" 로 안전하게 실패한다. 실제 Chrome 의 사람 클릭은 미검증이다.
 
 ## 12. M10-3 전에 정할 것
 

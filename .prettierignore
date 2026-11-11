@@ -1,6 +1,9 @@
 # Confirmed design references are preserved verbatim (AGENTS.md rule 6).
 design/
 
+# Chrome extension is an independent project with its own format gate (ADR 0022).
+extension/
+
 dist
 coverage
 node_modules
