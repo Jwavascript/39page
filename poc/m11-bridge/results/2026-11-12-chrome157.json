@@ -1,0 +1,415 @@
+{
+  "note": "M11-1 저장 브리지 PoC 실측 기록. Chrome for Testing 157 (Windows 11, headless, 새 임시 프로필), 실제 YouTube, 39page PoC 빌드 http://127.0.0.1:4173. 운영 사이트 접속 없음.",
+  "final": {
+    "env": {
+      "browser": "Chrome/157.0.8103.50",
+      "video": "dQw4w9WgXcQ",
+      "startedAt": "2026-11-11T23:37:27.582Z"
+    },
+    "results": [
+      {
+        "id": "P0a",
+        "title": "offscreen 문서 안 39page iframe — 최상위 저장소·잠금 공유 (호스트 권한 있음)",
+        "pass": true,
+        "ms": 97,
+        "details": {
+          "pass": true,
+          "marker": "first-party-1794440247864",
+          "locksIncludeHold": true,
+          "ancestors": ["chrome-extension://pkagnijdhfmkodpdfgdehfdghcgbfpoa"],
+          "libraryLength": 174
+        }
+      },
+      {
+        "id": "P0b",
+        "title": "확장 탭 페이지 안 39page iframe — 저장소·잠금·storage 이벤트 공유",
+        "pass": true,
+        "ms": 259,
+        "details": {
+          "pass": true,
+          "marker": "first-party-1794440247864",
+          "locksIncludeHold": true,
+          "storageEventDelivered": true,
+          "reverseWriteSeenByTopLevel": "from-frame"
+        }
+      },
+      {
+        "id": "Y0",
+        "title": "실제 YouTube 재생 → 일시정지",
+        "pass": true,
+        "ms": 5757,
+        "details": {
+          "pass": true,
+          "pausedAt": 44.10091,
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)"
+        }
+      },
+      {
+        "id": "S1",
+        "title": "39page 탭이 열린 상태 — 패널에서 플레이리스트 목록 조회",
+        "pass": true,
+        "ms": 420,
+        "details": {
+          "pass": true,
+          "names": ["MY RECORDS"],
+          "expected": ["MY RECORDS"],
+          "video": {
+            "ok": true,
+            "videoId": "dQw4w9WgXcQ",
+            "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+            "atSeconds": 44,
+            "state": 2,
+            "ad": false
+          },
+          "openToListMs": 420,
+          "log": ["23:37:34.474 library/list ok 4ms"]
+        }
+      },
+      {
+        "id": "S3",
+        "title": "새 플레이리스트 만들고 담기 (실제 마우스 · 키 입력) → 대시보드에 바로 보임",
+        "pass": true,
+        "ms": 189,
+        "details": {
+          "pass": true,
+          "result": "‘PoC 즉석 목록’ 1번째에 담았어요.\n\n새 플레이리스트를 만들었어요. 39page 에서 바로 보입니다.",
+          "createdTracks": [
+            {
+              "id": "a82fc99a-e6ff-4a0f-8ad1-09cb4b009d8c",
+              "source": "youtube",
+              "videoId": "dQw4w9WgXcQ",
+              "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)"
+            }
+          ],
+          "dashboardShowsWithoutReload": true,
+          "selectedChangedTo": "new playlist",
+          "selectedBefore": "1ccfcce7-c0b1-4364-8509-c59a0c1f0e9a"
+        }
+      },
+      {
+        "id": "S3b",
+        "title": "기존 목록에 담기 · 같은 영상 안내 · 한 번 더 추가",
+        "pass": true,
+        "ms": 260,
+        "details": {
+          "pass": true,
+          "dupHint": "이미 1번째",
+          "r1": "‘MY RECORDS’ 1번째에 담았어요.\n\n39page 에서 바로 보입니다.",
+          "r2": "‘MY RECORDS’ 2번째에 담았어요.\n\n39page 에서 바로 보입니다.",
+          "copies": 2
+        }
+      },
+      {
+        "id": "S4",
+        "title": "Moment 저장 (실제 마우스 · 키 입력) → 대시보드 Moments 에 바로 보임",
+        "pass": true,
+        "ms": 309,
+        "details": {
+          "pass": true,
+          "playerPausedAt": 44.10091,
+          "frozenAt": 44,
+          "stored": {
+            "id": "26dc480f-72c9-4df0-9a39-36a1d8949039",
+            "source": "youtube",
+            "videoId": "dQw4w9WgXcQ",
+            "atSeconds": 44,
+            "note": "후렴 직전 4984",
+            "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+            "createdAt": "2026-11-11T23:37:35.166Z",
+            "updatedAt": "2026-11-11T23:37:35.166Z"
+          },
+          "result": "0:44 Moment 를 저장했어요.\n\n39page Moments 에서 바로 보입니다.\n\n이 곡을 플레이리스트에도 담기",
+          "dashboardShowsWithoutReload": true
+        }
+      },
+      {
+        "id": "S5-dup",
+        "title": "중복 요청 — 같은 ID 동시 2회 + 재전송 1회 → 1건 · 다른 내용의 같은 ID 거절",
+        "pass": true,
+        "ms": 10,
+        "details": {
+          "pass": true,
+          "copies": 1,
+          "sameMomentIdInAllThree": [
+            "c2272ace-ae73-46d8-ac09-c3f62732ff09",
+            "c2272ace-ae73-46d8-ac09-c3f62732ff09",
+            "c2272ace-ae73-46d8-ac09-c3f62732ff09"
+          ],
+          "reusedWithOtherPayload": "id-reused"
+        }
+      },
+      {
+        "id": "S5-dblclick",
+        "title": "UI 연속 클릭 (실제 마우스 2회) → 1건",
+        "pass": true,
+        "ms": 639,
+        "details": {
+          "pass": true,
+          "copies": 1
+        }
+      },
+      {
+        "id": "S5-partial",
+        "title": "부분 성공 — 목록 생성 O · 곡 추가 X → 전체 성공으로 보이지 않고 그 목록에 다시 담기",
+        "pass": true,
+        "ms": 266,
+        "details": {
+          "pass": true,
+          "firstResult": "‘PoC 부분 성공’ 목록은 만들었지만 곡은 담지 못했어요.\n\n다른 39page 탭이 저장하는 중이에요. 잠시 뒤 다시 해 주세요.\n\n‘PoC 부분 성공’에 다시 담기",
+          "retryResult": "‘PoC 부분 성공’ 1번째에 담았어요.\n\n39page 에서 바로 보입니다.",
+          "playlistsWithThatName": 1,
+          "tracks": 1
+        }
+      },
+      {
+        "id": "S5-drop",
+        "title": "응답 중단 — 저장 뒤 응답을 버림 → 시간 초과 → 저장 여부 조회로 \"저장됨\" 확인 · 1건",
+        "pass": true,
+        "ms": 16143,
+        "details": {
+          "pass": true,
+          "result": "응답은 끊겼지만 0:44 Moment 가 저장된 것을 확인했어요.",
+          "msToVerdict": 15108,
+          "copies": 1,
+          "log": [
+            "23:37:35.972 library/list ok 2ms",
+            "23:37:36.095 track/add ok 2ms",
+            "23:37:36.097 library/list ok 2ms",
+            "23:37:36.228 moment/list-for-video ok 3ms",
+            "23:37:52.258 moment/add transport timeout 15009ms",
+            "23:37:52.264 moment/find ok 6ms"
+          ]
+        }
+      },
+      {
+        "id": "S5-delay",
+        "title": "지연 2.5초 — 시간 초과 없이 저장됨",
+        "pass": true,
+        "ms": 5136,
+        "details": {
+          "pass": true,
+          "ms": 5130,
+          "result": "0:44 Moment 를 저장했어요.\n\n39page Moments 에서 바로 보입니다.\n\n이 곡을 플레이리스트에도 담기"
+        }
+      },
+      {
+        "id": "S5-sw",
+        "title": "서비스 워커 재시작 (요청 중) → 패널은 \"확인 중\" → 저장 여부 조회 → 1건",
+        "pass": true,
+        "ms": 3775,
+        "details": {
+          "pass": true,
+          "stoppedWith": "Target.closeTarget",
+          "workerRestarted": true,
+          "offscreenSurvived": true,
+          "result": "응답은 끊겼지만 0:44 Moment 가 저장된 것을 확인했어요.",
+          "log": [
+            "23:37:52.258 moment/add transport timeout 15009ms",
+            "23:37:52.264 moment/find ok 6ms",
+            "23:37:54.875 moment/add ok 2515ms",
+            "23:37:57.391 moment/list-for-video ok 2515ms",
+            "23:37:58.215 moment/add worker-gone Error: A listener indicated an asynchronous response by returning true, but the ",
+            "23:38:01.228 moment/find ok 3013ms"
+          ]
+        }
+      },
+      {
+        "id": "S5-race",
+        "title": "다른 39page 문맥과 동시 저장 — offscreen 브리지 ↔ 39page 탭 브리지가 같은 순간 저장 → 조용한 손실 0 (전파 뒤 확인)",
+        "pass": true,
+        "ms": 349,
+        "details": {
+          "pass": true,
+          "pairs": 30,
+          "okResponses": 60,
+          "savedImmediately": 60,
+          "savedSettled": 60,
+          "seenByTabBridge": 60,
+          "missing": [],
+          "silentLoss": 0,
+          "nonOk": []
+        }
+      },
+      {
+        "id": "S5-protected",
+        "title": "손상된 Moments — 브리지가 저장하지 않고 원본 보존 · 패널은 보호 상태 안내",
+        "pass": true,
+        "ms": 767,
+        "details": {
+          "pass": true,
+          "result": "39page Moments 데이터가 보호 상태예요 (손상 · 새 버전). 덮어쓰지 않으려고 저장하지 않았어요. 39page 에서 확인해 주세요.\n\n39page 수집 화면으로 열기",
+          "rawUnchanged": true,
+          "statusAfterRestore": "ready"
+        }
+      },
+      {
+        "id": "S5-lib-protected",
+        "title": "상위 버전 라이브러리 — 곡 담기 거절 · 원본 보존",
+        "pass": true,
+        "ms": 635,
+        "details": {
+          "pass": true,
+          "code": "blocked",
+          "detail": {
+            "store": "library",
+            "status": "protected",
+            "protectedReason": "version-mismatch"
+          }
+        }
+      },
+      {
+        "id": "S5-forged",
+        "title": "위조 — YouTube 페이지가 브리지를 직접 띄우고 쓰기 요청 · 확장 메시징 시도",
+        "pass": true,
+        "ms": 1603,
+        "details": {
+          "pass": true,
+          "forgedBridgeState": "refused",
+          "youtubeToExtension": "no chrome.runtime",
+          "momentsUnchanged": true,
+          "dashboardConnect": "disconnected by extension"
+        }
+      },
+      {
+        "id": "P0c",
+        "title": "YouTube 위 확장 iframe 안의 39page — 분할된 저장소 (브리지가 거절해야 하는 이유)",
+        "pass": true,
+        "ms": 1627,
+        "details": {
+          "pass": true,
+          "partitioned": true,
+          "markerSeen": null,
+          "locksIncludeHold": false,
+          "ancestors": [
+            "chrome-extension://pkagnijdhfmkodpdfgdehfdghcgbfpoa",
+            "https://www.youtube.com"
+          ],
+          "nestedBridge": "refused"
+        }
+      },
+      {
+        "id": "S5-fallback",
+        "title": "대체 경로 — \"39page 수집 화면으로 열기\" → M10 수집 화면 탭",
+        "pass": true,
+        "ms": 140,
+        "details": {
+          "url": "http://127.0.0.1:4173/#collect?v=1&kind=track&videoId=dQw4w9WgXcQ&req=…",
+          "text": "39page\nYOUTUBE 에서 담기\n\n담을 영상\n\n제목 없음 — “YouTube · dQw4w9WgXcQ” 로 저장됩니다\n\ndQw4w9WgXcQ\nYouTube 에서 보기 ↗\n\n플레이리스트\nMY RECORDS\n2곡\nPoC 즉석 목록\n1곡\nPoC 부분 성공\n1곡\n\n이 플레이리스트에 이미 "
+        }
+      },
+      {
+        "id": "A1",
+        "title": "후보 A — 39page 탭이 연결해 둔 포트로 조회 · 워커 재시작 뒤 재연결 · 탭을 닫으면 실패",
+        "pass": true,
+        "ms": 1658,
+        "details": {
+          "pass": true,
+          "first": "ok 1ms",
+          "pageSawDisconnect": "1",
+          "afterRestart": "ok 4ms",
+          "afterTabClosed": "no-bridge-tab"
+        }
+      },
+      {
+        "id": "S2",
+        "title": "39page 탭 없음 — offscreen 새로 띄워 조회 · Moment 저장 → 나중에 연 대시보드에 있음",
+        "pass": true,
+        "ms": 1602,
+        "details": {
+          "pass": true,
+          "open39pageTabsBefore": 0,
+          "open39pageTabsDuring": [],
+          "coldOpenToListMs": 437,
+          "result": "0:44 Moment 를 저장했어요.\n\n39page Moments 에서 바로 보입니다.\n\n이 곡을 플레이리스트에도 담기",
+          "foundInDashboardLater": true
+        }
+      },
+      {
+        "id": "S5-down",
+        "title": "39page 서버 중단 (offscreen 새로 띄움) → \"연결하지 못함\" + 대체 경로 안내",
+        "pass": true,
+        "ms": 13504,
+        "details": {
+          "pass": true,
+          "msToUnavailable": 12677,
+          "listText": "39page 에 연결하지 못했어요. 아래 \"수집 화면으로 열기\" 를 쓸 수 있어요."
+        }
+      },
+      {
+        "id": "P0d",
+        "title": "호스트 권한이 없으면 확장 페이지 안 39page iframe 은 분할된다",
+        "pass": true,
+        "ms": 1499,
+        "details": {
+          "pass": true,
+          "markerSeen": null,
+          "partitioned": true
+        }
+      }
+    ]
+  },
+  "raceReruns": {
+    "why": "최종 직전 실행에서 S5-race 가 20 성공 응답 중 19 건으로 읽혔다. 다른 렌더러의 쓰기가 대시보드 탭에 도착하기 전에 읽은 측정 결함인지 확인하려고 30쌍씩 3회, 바로 읽은 값과 전파 뒤 값을 나눠 쟀다.",
+    "runs": [
+      {
+        "file": "run-2026-11-11T23-34-44-872Z.json",
+        "pass": true,
+        "pairs": 30,
+        "okResponses": 60,
+        "savedImmediately": 60,
+        "savedSettled": 60,
+        "seenByTabBridge": 60,
+        "missing": [],
+        "silentLoss": 0,
+        "nonOk": []
+      },
+      {
+        "file": "run-2026-11-11T23-35-34-121Z.json",
+        "pass": true,
+        "pairs": 30,
+        "okResponses": 60,
+        "savedImmediately": 59,
+        "savedSettled": 60,
+        "seenByTabBridge": 60,
+        "missing": [],
+        "silentLoss": 0,
+        "nonOk": []
+      },
+      {
+        "file": "run-2026-11-11T23-36-23-422Z.json",
+        "pass": true,
+        "pairs": 30,
+        "okResponses": 60,
+        "savedImmediately": 58,
+        "savedSettled": 60,
+        "seenByTabBridge": 60,
+        "missing": [],
+        "silentLoss": 0,
+        "nonOk": []
+      }
+    ]
+  },
+  "discardedRuns": [
+    {
+      "when": "2026-11-11T23:17Z",
+      "result": "15/23",
+      "why": "하네스 결함(위조·중첩 브리지 대상 오인, 결함 주입 대상 오인, 비활성 탭 툴바 클릭) + 실제 결함 2건(패널 선택 초기화, 워커 중복 방지의 내용 비교 누락) — 모두 고쳤다"
+    },
+    {
+      "when": "2026-11-11T23:25Z",
+      "result": "11/23",
+      "why": "무효 — 앞 실행의 Chrome 이 Windows 에서 child.kill() 로 끝나지 않아 같은 포트의 옛 브라우저(옛 데이터)에 붙었다. 포트 0 + DevToolsActivePort + taskkill /T 로 고쳤다"
+    },
+    {
+      "when": "2026-11-11T23:29Z",
+      "result": "22/23",
+      "why": "S5-drop 의 하네스 판정(잠깐 보이는 확인 중 상태를 놓침). 동작은 맞았다 — 최종 문구로 판정하게 고쳤다"
+    },
+    {
+      "when": "2026-11-11T23:31Z",
+      "result": "22/23",
+      "why": "S5-race 19/20 — 위 raceReruns 로 전파 전 읽기임을 확인(전파 뒤 60/60 × 3). 하네스가 전파 뒤 값을 기다리게 고쳤다"
+    }
+  ]
+}

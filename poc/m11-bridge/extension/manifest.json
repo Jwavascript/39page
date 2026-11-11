@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "39page bridge PoC (DEV ONLY — M11-1)",
+  "version": "0.0.1",
+  "description": "M11-1 기술 검증용 실험 확장. 배포하지 않는다. 로컬 127.0.0.1:4173 의 39page 빌드에만 연결한다.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtQtVG8fSbzjMJlJ+HsQt5JoeKTPG6TNMcRmi8Nl9T8ZsAxp+HK53clyX0UGJ6T1C60b3w6guWkMnZAqZA+Yf4AigQtAyvH63zakQbva9y0FYYF+4aLOhGNSxyJ4CgLisk/sD15icEQA0+1gab2v5/HfjHDHEopyakn7kvE96wTsXTt0W2673CPpv+da9Lw8gNpQ/A2WHSspw7a1ahx6RQpNh3yl4BSgKJKB9gkB9mb3zFiu2fx/1ZVtRsQ8sjvj2yS7LdEdtVSsWBNUw0PQIYGW+e2lhtuwx8OUIkFTT54xdMghk4vxRYOx8kfpngaW9+U4ikolhmDIlGZ5jGYQcHQIDAQAB",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "39page bridge PoC"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting", "offscreen"],
+  "host_permissions": ["http://127.0.0.1:4173/*"],
+  "externally_connectable": {
+    "matches": ["http://127.0.0.1:4173/*"]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["panel.html", "panel.js", "panel.css", "protocol.js"],
+      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"]
+    }
+  ]
+}

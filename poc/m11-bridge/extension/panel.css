@@ -1,0 +1,237 @@
+/* M11-1 PoC 패널 — Mono Vinyl 토큰 값을 옮겨 쓴다 (src/themes/mono-vinyl/tokens.css). 실험용. */
+:root {
+  color-scheme: dark;
+  --page: #171614;
+  --raised: #211f1b;
+  --text: #e9e2d7;
+  --muted: #bcb4a6;
+  --dim: #8f887b;
+  --line: #504a41;
+  --accent: #d5cab9;
+  --accent-text: #28221c;
+  --row: #25221e;
+  --row-selected: #393329;
+  --row-selected-border: #c5b7a3;
+  --field: #161411;
+  --field-border: #71685b;
+  --warn: #e7c5a8;
+  --error: #edb99b;
+  --ok: #b9d8b0;
+  --focus: #f0e2c8;
+  --mono: ui-monospace, 'IBM Plex Mono', Consolas, monospace;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--page);
+  color: var(--text);
+  font: 13px/1.45 system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 100vh;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand {
+  font: 600 12px var(--mono);
+  letter-spacing: 0.12em;
+}
+.poc-tag {
+  font: 10px var(--mono);
+  border: 1px dashed var(--warn);
+  color: var(--warn);
+  padding: 0 5px;
+  border-radius: 3px;
+}
+.icon {
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  font-size: 20px;
+  cursor: pointer;
+}
+.video-title {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.video-meta,
+.hint {
+  margin: 2px 0 0;
+  color: var(--dim);
+  font: 11px var(--mono);
+}
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tabs button {
+  min-height: 40px;
+  background: var(--raised);
+  border: 0;
+  cursor: pointer;
+}
+.tabs button[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.lists {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lists legend {
+  font: 11px var(--mono);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.list-scroll {
+  max-height: 168px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px;
+  background: var(--row);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.row:has(input:checked) {
+  background: var(--row-selected);
+  border-color: var(--row-selected-border);
+}
+.row .name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.row .meta {
+  font: 11px var(--mono);
+  color: var(--dim);
+}
+.row .dup {
+  font: 11px var(--mono);
+  color: var(--warn);
+}
+.field {
+  width: 100%;
+  background: var(--field);
+  border: 1px solid var(--field-border);
+  border-radius: 2px;
+  padding: 8px;
+}
+textarea.field {
+  resize: vertical;
+}
+.primary {
+  min-height: 44px;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: 0;
+  border-radius: 3px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ghost {
+  min-height: 36px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+.frozen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.time {
+  font: 600 20px var(--mono);
+}
+.note-label {
+  font: 11px var(--mono);
+  color: var(--muted);
+}
+.result:empty {
+  display: none;
+}
+.result {
+  border-left: 3px solid var(--line);
+  padding: 6px 10px;
+  background: var(--raised);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.result[data-state='saved'] {
+  border-color: var(--ok);
+}
+.result[data-state='partial'],
+.result[data-state='unknown'],
+.result[data-state='retry'] {
+  border-color: var(--warn);
+}
+.result[data-state='failed'],
+.result[data-state='blocked'] {
+  border-color: var(--error);
+}
+.result p {
+  margin: 0;
+}
+.foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.debug {
+  font: 11px var(--mono);
+  color: var(--dim);
+}
+.debug pre {
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow: auto;
+}
+#probe-slot iframe {
+  width: 1px;
+  height: 1px;
+  border: 0;
+}

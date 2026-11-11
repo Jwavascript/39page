@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>39page</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="head">
+      <span class="brand">39page</span>
+      <span class="poc-tag" title="M11-1 기술 검증용 — 정식 기능 아님">PoC</span>
+      <button type="button" id="close" class="icon" aria-label="패널 닫기">×</button>
+    </header>
+
+    <section class="video" aria-live="polite">
+      <p id="video-title" class="video-title">영상을 읽는 중…</p>
+      <p id="video-meta" class="video-meta"></p>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="담을 것">
+      <button type="button" role="tab" id="tab-track" aria-selected="true" aria-controls="pane-track">
+        음악 담기
+      </button>
+      <button type="button" role="tab" id="tab-moment" aria-selected="false" aria-controls="pane-moment">
+        Moment 저장
+      </button>
+    </div>
+
+    <section id="pane-track" role="tabpanel" aria-labelledby="tab-track">
+      <fieldset class="lists">
+        <legend>플레이리스트</legend>
+        <div id="lists" class="list-scroll"><p class="hint">목록을 불러오는 중…</p></div>
+        <label class="row new-row">
+          <input type="radio" name="target" value="__new__" id="target-new" />
+          <span>새 플레이리스트</span>
+        </label>
+        <input id="new-name" class="field" type="text" maxlength="60" placeholder="새 목록 이름" disabled />
+      </fieldset>
+      <button type="button" id="add-track" class="primary" disabled>플레이리스트에 담기</button>
+    </section>
+
+    <section id="pane-moment" role="tabpanel" aria-labelledby="tab-moment" hidden>
+      <div class="frozen">
+        <span id="frozen-time" class="time">—</span>
+        <button type="button" id="refreeze" class="ghost">지금 시점으로 다시</button>
+      </div>
+      <label class="note-label" for="note">메모 (선택 · 500자)</label>
+      <textarea id="note" class="field" maxlength="500" rows="3"></textarea>
+      <p id="video-moments" class="hint"></p>
+      <button type="button" id="save-moment" class="primary" disabled>Moment 저장</button>
+    </section>
+
+    <section id="result" class="result" role="status" data-state="idle"></section>
+
+    <footer class="foot">
+      <button type="button" id="fallback" class="ghost">39page 수집 화면으로 열기</button>
+      <details class="debug">
+        <summary>PoC 설정</summary>
+        <label>경로
+          <select id="route">
+            <option value="offscreen">offscreen (후보 B)</option>
+            <option value="tab-port">39page 탭 포트 (후보 A)</option>
+          </select>
+        </label>
+        <pre id="debug"></pre>
+      </details>
+    </footer>
+    <div id="probe-slot"></div>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>
