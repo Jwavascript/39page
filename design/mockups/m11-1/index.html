@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="ko" data-theme="mono-vinyl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>M11-1 화면 구조 비교 시안</title>
+    <!--
+      M11-1 비교 시안 (정적 HTML) — 실제 구현이 아니다.
+      - 빌드 대상이 아니다 (design/ 는 빌드하지 않는다).
+      - 승인된 레퍼런스(design/references/)를 대신하지 않는다. 토큰 값만 src/themes/*/tokens.css 에서 옮겼다.
+      - 설계 문서: docs/product/M11_UX_DESIGN.md
+    -->
+    <style>
+      :root,
+      [data-theme='mono-vinyl'] {
+        --page: #11110f;
+        --surface: #171614;
+        --raised: #211f1b;
+        --overlay: #2b2823;
+        --text: #e9e2d7;
+        --muted: #bcb4a6;
+        --dim: #8f887b;
+        --line: #504a41;
+        --accent: #d5cab9;
+        --accent-text: #28221c;
+        --pill: #28251f;
+        --pill-border: #635b4e;
+        --drawer: #1d1b18;
+        --drawer-border: #686053;
+        --row: #25221e;
+        --row-selected: #393329;
+        --row-selected-border: #c5b7a3;
+        --field: #161411;
+        --field-border: #71685b;
+        --warn: #e7c5a8;
+        --workspace: radial-gradient(ellipse at 45% 30%, #25221e, #171614 67%, #131210);
+        --workspace-border: #38332c;
+        --deck-a: #0f0e0c;
+        --deck-b: #3b362f;
+      }
+      [data-theme='kawaii-synth-cassette'] {
+        --page: #081825;
+        --surface: #10202c;
+        --raised: #172b3b;
+        --overlay: #1e3e51;
+        --text: #e2fff6;
+        --muted: #b2d7d5;
+        --dim: #769dac;
+        --line: #3f7480;
+        --accent: #ff9bc5;
+        --accent-text: #3f2340;
+        --pill: #214052;
+        --pill-border: #5d9096;
+        --drawer: #132b3a;
+        --drawer-border: #5d98a2;
+        --row: #21394a;
+        --row-selected: #2c5663;
+        --row-selected-border: #92ead9;
+        --field: #0e2a39;
+        --field-border: #6aada8;
+        --warn: #e7c5a8;
+        --workspace: radial-gradient(ellipse at 40% 25%, #1e3e51, #10202c 70%);
+        --workspace-border: #5b9e9f;
+        --deck-a: #ff9bc5;
+        --deck-b: #5b9e9f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font: 14px/1.5 system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      }
+      .mono {
+        font-family: ui-monospace, 'IBM Plex Mono', Consolas, monospace;
+      }
+      .banner {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: repeating-linear-gradient(-45deg, #4a3a10, #4a3a10 12px, #3a2e0c 12px, #3a2e0c 24px);
+        color: #ffe9a8;
+        padding: 8px 16px;
+        font: 600 13px ui-monospace, Consolas, monospace;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+      }
+      .banner button {
+        margin-left: auto;
+        background: #ffe9a8;
+        color: #2a2006;
+        border: 0;
+        border-radius: 3px;
+        padding: 6px 10px;
+        font: inherit;
+        cursor: pointer;
+        min-height: 36px;
+      }
+      main {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 16px 0 4px;
+      }
+      h2 {
+        font-size: 16px;
+        margin: 32px 0 8px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      h3 {
+        font-size: 14px;
+        margin: 0 0 6px;
+      }
+      p.note {
+        color: var(--muted);
+        margin: 4px 0 12px;
+        max-width: 80ch;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr));
+        gap: 20px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+        gap: 20px;
+      }
+      figure {
+        margin: 0;
+      }
+      figcaption {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      .tag {
+        display: inline-block;
+        font: 11px ui-monospace, monospace;
+        padding: 1px 6px;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        color: var(--muted);
+      }
+      .tag.rec {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      /* ── 축소 화면 ── */
+      .screen {
+        background: var(--surface);
+        border: 1px solid var(--workspace-border);
+        border-radius: 6px;
+        overflow: hidden;
+        font-size: 11px;
+      }
+      .desk {
+        aspect-ratio: 16 / 9;
+        display: flex;
+        flex-direction: column;
+      }
+      .phone {
+        width: 100%;
+        max-width: 260px;
+        aspect-ratio: 9 / 19;
+        display: flex;
+        flex-direction: column;
+        margin: 0 auto;
+      }
+      .hdr {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+        flex-wrap: wrap;
+      }
+      .hdr .brand {
+        font: 600 10px ui-monospace, monospace;
+        letter-spacing: 0.1em;
+      }
+      .hdr .nav {
+        display: flex;
+        gap: 4px;
+      }
+      .hdr .nav span,
+      .pill {
+        background: var(--pill);
+        border: 1px solid var(--pill-border);
+        border-radius: 999px;
+        padding: 1px 7px;
+        font-size: 10px;
+        white-space: nowrap;
+      }
+      .hdr .nav span.on {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .hdr .theme {
+        margin-left: auto;
+        color: var(--dim);
+        font: 9px ui-monospace, monospace;
+      }
+      .ws {
+        flex: 1;
+        background: var(--workspace);
+        display: grid;
+        gap: 6px;
+        padding: 8px;
+        min-height: 0;
+      }
+      .box {
+        background: rgb(255 255 255 / 4%);
+        border: 1px dashed var(--line);
+        border-radius: 4px;
+        padding: 4px 6px;
+        overflow: hidden;
+        min-height: 0;
+        position: relative;
+      }
+      .box b {
+        display: block;
+        font: 600 9px ui-monospace, monospace;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .box.player {
+        background: #000;
+        border: 1px solid var(--line);
+        color: #aaa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .box.deck {
+        background: radial-gradient(circle at 50% 50%, var(--deck-b) 0 12%, var(--deck-a) 13% 48%, transparent 49%);
+      }
+      .box.drawer {
+        background: var(--drawer);
+        border: 1px solid var(--drawer-border);
+        border-style: solid;
+      }
+      .box.hidden {
+        opacity: 0.18;
+      }
+      .line {
+        height: 6px;
+        background: var(--row);
+        border-radius: 2px;
+        margin: 3px 0;
+      }
+      .line.sel {
+        background: var(--row-selected);
+        outline: 1px solid var(--row-selected-border);
+      }
+      .line.w60 {
+        width: 60%;
+      }
+      .line.w80 {
+        width: 80%;
+      }
+      .warnbox {
+        position: absolute;
+        inset: auto 4px 4px 4px;
+        background: #5a1f1f;
+        color: #ffd6d6;
+        font-size: 9px;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+      /* 평가표 */
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--raised);
+      }
+      td.good {
+        color: #b9d8b0;
+      }
+      td.bad {
+        color: var(--warn);
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      /* 실제 크기 부분 시안 */
+      .panel {
+        width: 360px;
+        max-width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 10px 36px rgb(0 0 0 / 50%);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+      }
+      .panel .row,
+      .arch .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 4px 8px;
+        background: var(--row);
+        border: 1px solid transparent;
+        border-radius: 3px;
+      }
+      .panel .row.sel {
+        background: var(--row-selected);
+        border-color: var(--row-selected-border);
+      }
+      .grow {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .small {
+        font: 11px ui-monospace, monospace;
+        color: var(--dim);
+      }
+      .dup {
+        font: 11px ui-monospace, monospace;
+        color: var(--warn);
+      }
+      .btn {
+        min-height: 44px;
+        background: var(--accent);
+        color: var(--accent-text);
+        border: 0;
+        border-radius: 3px;
+        font: 600 13px inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .ghost {
+        min-height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .tabs span {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--raised);
+      }
+      .tabs span.on {
+        background: var(--accent);
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+      .result {
+        border-left: 3px solid #b9d8b0;
+        background: var(--raised);
+        padding: 6px 10px;
+      }
+      .result.partial {
+        border-color: var(--warn);
+      }
+      .field {
+        background: var(--field);
+        border: 1px solid var(--field-border);
+        border-radius: 2px;
+        padding: 8px;
+        color: var(--muted);
+      }
+      .arch {
+        background: var(--drawer);
+        border: 1px solid var(--drawer-border);
+        border-radius: 6px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+        max-width: 720px;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chips span {
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 12px;
+        border: 1px solid var(--pill-border);
+        background: var(--pill);
+        border-radius: 999px;
+      }
+      .chips span.on {
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      .group {
+        border-top: 1px solid var(--line);
+        padding-top: 6px;
+      }
+      .group-head {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        min-height: 44px;
+      }
+      .play {
+        min-width: 64px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--pill);
+        border: 1px solid var(--pill-border);
+        border-radius: 3px;
+        font: 12px ui-monospace, monospace;
+      }
+      .more {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dialog {
+        background: var(--overlay);
+        border: 1px solid var(--drawer-border);
+        border-radius: 6px;
+        padding: 14px;
+        max-width: 420px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-size: 13px;
+      }
+      .ok {
+        color: #b9d8b0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner" role="note">
+      <span>⚠ M11-1 비교 시안 — 실제 구현이 아닙니다</span>
+      <span>정적 와이어프레임 · 토큰 값만 실제 테마에서 옮김 · 승인 레퍼런스 아님</span>
+      <button type="button" id="theme">테마 바꾸기 (지금: Mono Vinyl)</button>
+    </div>
+    <main>
+      <h1>39page M11 — 화면 구조 대안 비교</h1>
+      <p class="note">
+        설계 근거와 평가는 <span class="mono">docs/product/M11_UX_DESIGN.md</span> §4. 아래 축소 화면은 영역 배치만 보인다
+        (데스크톱 1440×810 비율 · 모바일 390 폭). 빨간 띠는 플레이어가 가려져 재생이 멈추는 위험(ADR 0011)이다.
+      </p>
+
+      <h2>1. 지금 (M10)</h2>
+      <div class="grid2">
+        <figure>
+          <div class="screen desk">
+            <div class="hdr"><span class="brand">39PAGE</span><span class="theme">01 / MONO VINYL · 02 / SYNTH CASSETTE</span></div>
+            <div class="ws" style="grid-template-columns: 0.9fr 0.95fr 0.55fr; grid-template-rows: auto auto 1fr auto">
+              <div class="box deck" style="grid-row: 1 / 4"><b>DECK</b></div>
+              <div class="box player" style="grid-row: 1 / 4">▶ PLAYER</div>
+              <div class="box"><b>CLOCK</b></div>
+              <div class="box" style="grid-column: 3; grid-row: 2"><b>WEATHER</b></div>
+              <div class="box" style="grid-column: 3; grid-row: 3 / 5"><b>MOMENTS</b><div class="line"></div><div class="line w60"></div><span class="small">≈106px 목록</span></div>
+              <div class="box"><b>PLAYLISTS</b><div class="line sel w60"></div></div>
+              <div class="box"><b>MASCOT</b></div>
+            </div>
+          </div>
+          <figcaption>백업은 플레이리스트 편집 드로어 맨 아래에만. 헤더에는 이름 있는 입구가 없다.</figcaption>
+        </figure>
+      </div>
+
+      <h2>2. 세 가지 안 — 데스크톱 (보관함/관리 화면이 열린 상태)</h2>
+      <div class="grid3">
+        <figure>
+          <div class="screen desk">
+            <div class="hdr"><span class="brand">39PAGE</span><span class="nav"><span>♪ 음악</span><span class="on">◆ Moments</span><span>⇩ 데이터</span></span></div>
+            <div class="ws" style="grid-template-columns: 0.9fr 0.95fr 0.55fr">
+              <div class="box deck"><b>DECK</b></div>
+              <div class="box player">▶ PLAYER</div>
+              <div class="box drawer"><b>MOMENTS 서랍 340px</b><div class="line"></div><div class="line w80"></div><div class="line w60"></div></div>
+            </div>
+          </div>
+          <figcaption><span class="tag">A</span> 기능별 서랍 — 변경이 가장 작지만 340px 폭에 검색·묶음이 비좁다. 서랍 셋의 열림 규칙이 얽힌다.</figcaption>
+        </figure>
+        <figure>
+          <div class="screen desk">
+            <div class="hdr"><span class="brand">39PAGE</span><span class="nav"><span>대시보드</span><span class="on">Moments 화면</span><span>데이터</span></span></div>
+            <div class="ws" style="grid-template-columns: 1fr">
+              <div class="box drawer"><b>MOMENTS 전체 화면</b><div class="line"></div><div class="line w80"></div><div class="line"></div><div class="line w60"></div>
+                <div class="warnbox">플레이어가 화면에 없음 → 가시성 가드가 재생을 멈춤. 미니 플레이어(≥200×200) 필요</div></div>
+            </div>
+          </div>
+          <figcaption><span class="tag">B</span> 별도 관리 화면 — 넓고 이름이 분명하지만 감상을 끊는다.</figcaption>
+        </figure>
+        <figure>
+          <div class="screen desk">
+            <div class="hdr"><span class="brand">39PAGE</span><span class="nav"><span>♪ 음악</span><span class="on">◆ Moments</span><span>⇩ 데이터</span></span></div>
+            <div class="ws" style="grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr)">
+              <div class="box player">▶ PLAYER (≥360px, 노드 그대로)</div>
+              <div class="box drawer"><b>보관함 — [음악 | MOMENTS]</b><div class="line"></div><div class="line w80"></div><div class="line"></div><div class="line w60"></div><div class="line w80"></div></div>
+            </div>
+          </div>
+          <figcaption><span class="tag rec">C · 추천</span> 통합 보관함 — 열린 동안 그리드만 바꿔(데크·마스코트·정보 열은 CSS 로 접음) 플레이어를 남기고 보관함을 넓힌다.</figcaption>
+        </figure>
+      </div>
+
+      <h2>3. 세 가지 안 — 모바일 (390 폭, 세로)</h2>
+      <div class="grid3">
+        <figure>
+          <div class="screen phone">
+            <div class="hdr"><span class="brand">39PAGE</span></div>
+            <div class="ws" style="grid-template-columns: 1fr 1fr; grid-auto-rows: min-content">
+              <div class="box deck" style="height: 70px"><b>DECK</b></div>
+              <div class="box" style="height: 70px"><b>LISTS</b></div>
+              <div class="box player" style="grid-column: span 2; height: 90px">▶</div>
+              <div class="box drawer" style="grid-column: span 2; height: 200px; margin-top: -60px"><b>시트 66vh</b><div class="line"></div><div class="line w60"></div>
+                <div class="warnbox">시트가 플레이어를 덮으면 멈춤</div></div>
+            </div>
+          </div>
+          <figcaption><span class="tag">A</span> 2열 유지 + 아래 시트 (지금과 같은 위험).</figcaption>
+        </figure>
+        <figure>
+          <div class="screen phone">
+            <div class="hdr"><span class="brand">39PAGE</span></div>
+            <div class="ws" style="grid-template-columns: 1fr; grid-template-rows: 1fr auto">
+              <div class="box drawer"><b>MOMENTS 화면</b><div class="line"></div><div class="line w80"></div><div class="line"></div>
+                <div class="warnbox">플레이어 없음 → 멈춤</div></div>
+              <div class="box" style="display: flex; justify-content: space-around"><span>홈</span><span>음악</span><span>Moments</span><span>데이터</span></div>
+            </div>
+          </div>
+          <figcaption><span class="tag">B</span> 아래 탭 막대 + 화면 전환.</figcaption>
+        </figure>
+        <figure>
+          <div class="screen phone">
+            <div class="hdr"><span class="brand">39PAGE</span><span class="nav"><span>♪</span><span class="on">◆ Moments</span><span>⇩ 데이터</span></span></div>
+            <div class="ws" style="grid-template-columns: 1fr; grid-template-rows: auto 1fr">
+              <div class="box player" style="aspect-ratio: 16 / 9">▶ 16:9 · 360폭 = 202px ≥ 200</div>
+              <div class="box drawer"><b>보관함 시트 (플레이어 아래만)</b><div class="chips" style="margin: 4px 0"><span class="pill">전체</span><span class="pill">최근</span><span class="pill">이 곡</span></div><div class="line"></div><div class="line w80"></div><div class="line"></div><div class="line w60"></div></div>
+            </div>
+          </div>
+          <figcaption><span class="tag rec">C · 추천</span> 1열 대시보드. 보관함은 플레이어를 위에 남기고 그 아래를 채운다 (실기기 확인 필요).</figcaption>
+        </figure>
+      </div>
+
+      <h2>4. 평가</h2>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>기준</th><th>A 기능별 서랍</th><th>B 별도 화면</th><th>C 통합 보관함 (추천)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>첫 방문 발견성</td><td>중</td><td class="good">상</td><td class="good">상</td></tr>
+            <tr><td>감상 중 간섭</td><td>중</td><td class="bad">하 — 재생 멈춤</td><td class="good">상</td></tr>
+            <tr><td>정보 밀도</td><td class="bad">하 (340px)</td><td class="good">상</td><td class="good">상 (약 700px)</td></tr>
+            <tr><td>모바일 조작</td><td>중</td><td class="good">상</td><td class="good">상</td></tr>
+            <tr><td>Moments 5,000개</td><td class="bad">하</td><td class="good">상</td><td class="good">상</td></tr>
+            <tr><td>코드 변경 범위</td><td class="good">작음</td><td class="bad">큼</td><td>중간</td></tr>
+            <tr><td>두 테마 조화</td><td class="good">상</td><td>중</td><td class="good">상</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>5. 추천안의 부분 시안 (실제 크기)</h2>
+      <div class="grid2">
+        <figure>
+          <div class="arch">
+            <div class="tabs"><span>♪ 음악</span><span class="on">◆ Moments 128</span></div>
+            <div class="field">검색: 제목 · 메모</div>
+            <div class="chips"><span class="on">전체</span><span>최근</span><span>이 곡</span></div>
+            <div class="group">
+              <div class="group-head"><span>▾</span><span class="grow"><b>Never Gonna Give You Up</b> <span class="small">· 4개 · 재생 중</span><br /><span class="small">목록: MY RECORDS, 드라이브</span></span></div>
+              <div class="row"><span class="play">▶ 0:43</span><span class="grow">후렴 직전 — 베이스가 들어오는 곳</span><span class="more" aria-label="더 보기">⋯</span></div>
+              <div class="row"><span class="play">▶ 1:52</span><span class="grow">브릿지. 메모가 길면 두 줄까지 보이고 펼치면 전부 보입니다 — 내부 스크롤 없이 행이 자랍니다</span><span class="more">⋯</span></div>
+            </div>
+            <div class="group">
+              <div class="group-head"><span>▸</span><span class="grow"><b>Me at the zoo</b> <span class="small">· 1개</span><br /><span class="small">목록에 없음 · 목록에 담기</span></span></div>
+            </div>
+            <p class="small">묶음 30개 표시 · 아래로 더 불러오기 (점진 표시)</p>
+          </div>
+          <figcaption>보관함 · Moments 탭 — 음악별 묶음, 검색, 전체/최근/이 곡, 줄의 수정·삭제는 ⋯ 메뉴로 분리, 44px 터치.</figcaption>
+        </figure>
+        <figure>
+          <div class="dialog">
+            <h3>데이터</h3>
+            <p class="small">라이브러리 <span class="ok">정상</span> · Moments <span class="ok">정상</span></p>
+            <p>플레이리스트 3개 · 곡 41개 · Moments 128개 · 테마</p>
+            <div class="btn">JSON 백업 내보내기</div>
+            <div class="ghost">JSON 백업 가져오기…</div>
+            <p class="small">백업은 이 브라우저의 39page 데이터 전부입니다. 다른 브라우저로 옮길 때 씁니다.</p>
+          </div>
+          <figcaption>헤더 "⇩ 데이터" → 대화상자. 내보내기까지 2번. BackupPanel 을 옮겨 붙일 뿐 로직은 그대로.</figcaption>
+        </figure>
+      </div>
+
+      <h2>6. 확장 — YouTube 위 플로팅 패널</h2>
+      <div class="grid2">
+        <figure>
+          <div class="panel">
+            <div style="display: flex; align-items: center; gap: 8px"><b class="mono">39page</b><span class="grow"></span><span class="more">×</span></div>
+            <div><b>Never Gonna Give You Up</b><div class="small">dQw4w9WgXcQ · 0:43</div></div>
+            <div class="tabs"><span class="on">음악 담기</span><span>Moment 저장</span></div>
+            <div class="row"><span>○</span><span class="grow">MY RECORDS</span><span class="small">12곡</span><span class="dup">이미 3번째</span></div>
+            <div class="row sel"><span>●</span><span class="grow">드라이브</span><span class="small">4곡</span></div>
+            <div class="row"><span>○</span><span class="grow">새 플레이리스트</span></div>
+            <div class="btn">플레이리스트에 담기</div>
+            <div class="result">‘드라이브’ 5번째에 담았어요 · 저장 확인됨</div>
+            <span class="ghost">이 순간도 Moment 로 저장</span>
+            <span class="small">39page 수집 화면으로 열기</span>
+          </div>
+          <figcaption>저장 확인(저장소를 다시 읽음) 뒤에만 성공 표시. 패널은 확장 페이지 iframe — YouTube 가 안을 읽지 못한다.</figcaption>
+        </figure>
+        <figure>
+          <div class="panel">
+            <div class="tabs"><span class="on">음악 담기</span><span>Moment 저장</span></div>
+            <div class="row sel"><span>●</span><span class="grow">새 플레이리스트</span></div>
+            <div class="field">드라이브</div>
+            <div class="result partial">‘드라이브’ 목록은 만들었지만 곡은 담지 못했어요.<br /><span class="small">다른 39page 탭이 저장하는 중이에요.</span></div>
+            <span class="ghost">‘드라이브’에 다시 담기</span>
+          </div>
+          <figcaption>부분 성공 — 전체 성공으로 보이지 않고, 다시 만들지 않고 <b>만든 목록에</b> 담는다 (PoC S5-partial 로 확인).</figcaption>
+        </figure>
+      </div>
+    </main>
+    <script>
+      const button = document.getElementById('theme')
+      button.addEventListener('click', () => {
+        const root = document.documentElement
+        const next = root.dataset.theme === 'mono-vinyl' ? 'kawaii-synth-cassette' : 'mono-vinyl'
+        root.dataset.theme = next
+        button.textContent = `테마 바꾸기 (지금: ${next === 'mono-vinyl' ? 'Mono Vinyl' : 'Synth Cassette'})`
+      })
+    </script>
+  </body>
+</html>
