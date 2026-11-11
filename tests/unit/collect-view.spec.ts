@@ -332,6 +332,25 @@ describe('보호 · 저장 실패 · 다른 탭', () => {
     wrapper.unmount()
   })
 
+  it('저장한 곡이 다른 탭의 저장으로 없어지면 "추가했습니다" 를 남기지 않고 되돌린다 (M10-3C)', async () => {
+    seedLibrary(TWO_LISTS)
+    const { wrapper } = boot()
+    await clickAdd(wrapper)
+    expect(wrapper.text()).toContain('추가했습니다')
+
+    // 다른 탭이 이 곡을 모른 채 쓴 값(동시 저장) — 또는 다른 탭에서 지운 경우와 같다
+    seedLibrary(TWO_LISTS)
+    globalThis.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+    await nextTick()
+
+    expect(wrapper.text()).not.toContain('추가했습니다')
+    expect(wrapper.get('.failure').text()).toContain('방금 추가한 곡이 목록에서 없어졌습니다')
+    await clickAdd(wrapper)
+    expect(titlesIn('p2')).toEqual(['Me at the zoo'])
+    expect(wrapper.text()).toContain('추가했습니다')
+    wrapper.unmount()
+  })
+
   it('목록이 하나도 없으면 안내하고 추가할 수 없다', () => {
     seedLibrary({ playlists: [], selectedPlaylistId: null })
     const { wrapper } = boot()

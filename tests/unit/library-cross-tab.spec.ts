@@ -10,11 +10,15 @@
  * (IMPLEMENTATION_PLAN.md M10-3).
  */
 import { createPinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { STORAGE_KEYS } from '@/shared/storage'
 import type { LibraryData } from '@/shared/types'
-import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
+import {
+  CONCURRENT_WRITE_WINDOW_MS,
+  LIBRARY_STORAGE_VERSION,
+  useLibraryStore,
+} from '@/stores/library'
 
 const KEY = STORAGE_KEYS.library
 const A_VIDEO = 'dQw4w9WgXcQ'
@@ -133,7 +137,11 @@ describe('시나리오 — 다른 탭이 추가한 트랙이 사라지지 않는
     deliverStorageEvent()
 
     expect(titles(tabA)).toEqual(['B 곡'])
-    expect(tabA.externalChange).toEqual({ sequence: 1, discardedUnsaved: false })
+    expect(tabA.externalChange).toEqual({
+      sequence: 1,
+      discardedUnsaved: false,
+      possiblyOverwritten: false,
+    })
     expect(tabA.addTrack(firstId(tabA), { videoId: A_VIDEO, title: 'A 곡' })).toMatchObject({
       ok: true,
       persisted: true,
@@ -209,7 +217,11 @@ describe('저장 실패 · 손상 · 미지원 버전', () => {
 
     expect(titles(tabA)).toEqual(['B 곡'])
     expect(tabA.lastWriteFailure).toBeNull()
-    expect(tabA.externalChange).toEqual({ sequence: 1, discardedUnsaved: true })
+    expect(tabA.externalChange).toEqual({
+      sequence: 1,
+      discardedUnsaved: true,
+      possiblyOverwritten: false,
+    })
 
     // 다음 저장이 성공하면 "사라졌다" 안내는 내려간다.
     tabA.addTrack(id, { videoId: A_VIDEO, title: 'A 곡' })
@@ -443,5 +455,75 @@ describe('저장소에 접근할 수 없게 된 것은 다른 탭의 변경이 �
     })
     expect(titles(tab)).toEqual(['저장된 곡', '메모리 곡'])
     expect(tab.externalChange).toBeNull()
+  })
+})
+
+describe('동시 저장 — 막지 못한 덮어쓰기를 성공처럼 남기지 않는다 (M10-3C)', () => {
+  /**
+   * 실제 두 탭의 경합: 두 탭이 서로의 쓰기를 받기 전에 쓰면 나중 쓰기가 앞의 것을
+   * 덮는다 (실측 — IMPLEMENTATION_PLAN M10-3C). 여기서는 "B 가 A 의 쓰기를 모른 채
+   * 쓴 값" 을 저장소에 직접 넣고, 그 변화가 A 에 도착하는 이벤트(oldValue = A 의 값)를 쏜다.
+   */
+  function staleOverwrite(oldValue: string | null): void {
+    const stale: LibraryData = {
+      playlists: [{ id: 'other', name: 'B 의 상태', tracks: [] }],
+      selectedPlaylistId: 'other',
+    }
+    realLocalStorage.setItem(KEY, JSON.stringify({ version: LIBRARY_STORAGE_VERSION, data: stale }))
+    globalThis.dispatchEvent(new StorageEvent('storage', { key: KEY, oldValue }))
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('방금 쓴 값이 바로 덮이면 "덮였을 수 있다" 로 표시한다', () => {
+    const tab = openTab()
+    const stop = tab.watchExternalChanges()
+    tab.addTrack(firstId(tab), { videoId: A_VIDEO, title: 'A 곡' })
+    const mine = raw()
+
+    staleOverwrite(mine)
+
+    expect(tab.externalChange?.possiblyOverwritten).toBe(true)
+    expect(titles(tab)).toEqual([]) // 최신(덮은 값)을 보여 준다 — 숨기지 않는다
+    stop()
+  })
+
+  it('시간이 지난 뒤의 덮어쓰기는 동시 저장이 아니다 (다른 탭이 보고 나서 고친 것)', () => {
+    vi.useFakeTimers()
+    const tab = openTab()
+    const stop = tab.watchExternalChanges()
+    tab.addTrack(firstId(tab), { videoId: A_VIDEO, title: 'A 곡' })
+    const mine = raw()
+
+    vi.advanceTimersByTime(CONCURRENT_WRITE_WINDOW_MS + 1)
+    staleOverwrite(mine)
+
+    expect(tab.externalChange?.possiblyOverwritten).toBe(false)
+    stop()
+  })
+
+  it('이 탭의 값이 아닌 것을 덮은 변경은 표시하지 않는다', () => {
+    const tab = openTab()
+    const stop = tab.watchExternalChanges()
+    tab.addTrack(firstId(tab), { videoId: A_VIDEO, title: 'A 곡' })
+
+    staleOverwrite('{"something":"else"}')
+
+    expect(tab.externalChange?.possiblyOverwritten).toBe(false)
+    stop()
+  })
+
+  it('다음 저장이 성공하면 표시를 내린다', () => {
+    const tab = openTab()
+    const stop = tab.watchExternalChanges()
+    tab.addTrack(firstId(tab), { videoId: A_VIDEO, title: 'A 곡' })
+    staleOverwrite(raw())
+    expect(tab.externalChange?.possiblyOverwritten).toBe(true)
+
+    tab.addTrack('other', { videoId: A_VIDEO, title: '다시' })
+    expect(tab.externalChange?.possiblyOverwritten).toBe(false)
+    stop()
   })
 })

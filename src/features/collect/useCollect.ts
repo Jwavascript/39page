@@ -28,6 +28,11 @@ export type CollectFailure =
   | 'write-failed'
   /** 계약을 통과한 ID 를 라이브러리가 거절했다 — 일어나면 안 되는 경로. */
   | 'invalid-video-id'
+  /**
+   * 저장했던 곡이 목록에서 없어졌다 (M10-3C) — 다른 탭에서 지웠거나, 거의 같은
+   * 순간 다른 탭의 저장에 덮였다. 다시 추가할 수 있게 되돌린다.
+   */
+  | 'lost'
 
 export type CollectPhase =
   /** 요청을 열 수 없다. 아무것도 하지 않는다. */
@@ -74,7 +79,7 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
   const request = parsed.ok ? parsed.request : null
 
   const failure = ref<CollectFailure | null>(null)
-  const saved = ref<{ playlistName: string; trackTitle: string } | null>(null)
+  const saved = ref<{ playlistName: string; trackTitle: string; trackId: string } | null>(null)
 
   const choices = computed<PlaylistChoice[]>(() =>
     library.playlists.map((playlist) => ({
@@ -94,6 +99,26 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
   // 수집 화면에서의 선택은 이 화면의 상태다 — 라이브러리의 선택(저장되는 값)을 바꾸지 않는다.
   const selectedId = ref<string | null>(defaultSelection())
 
+  /*
+   * 저장한 곡이 아직 있는지 지켜본다 (M10-3C). 두 탭이 거의 같은 순간(실측 8–19ms
+   * 안) 저장하면 이 탭의 곡이 다른 탭의 저장에 덮일 수 있다 (ADR 0024 "한계").
+   * 그때 "추가했습니다" 를 남겨 두지 않고 되돌린다.
+   */
+  watch(
+    () => library.playlists,
+    () => {
+      const current = saved.value
+      if (current === null) return
+      const present = library.playlists.some((playlist) =>
+        playlist.tracks.some((track) => track.id === current.trackId),
+      )
+      if (!present) {
+        saved.value = null
+        failure.value = 'lost'
+      }
+    },
+  )
+
   // 다른 탭에서 목록이 지워지면 고른 것을 다시 맞춘다.
   watch(choices, () => {
     if (!choices.value.some((choice) => choice.id === selectedId.value)) {
@@ -112,7 +137,13 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
 
   const phase = computed<CollectPhase>(() => {
     if (!parsed.ok) return { kind: 'rejected', reason: parsed.reason }
-    if (saved.value !== null) return { kind: 'saved', ...saved.value }
+    if (saved.value !== null) {
+      return {
+        kind: 'saved',
+        playlistName: saved.value.playlistName,
+        trackTitle: saved.value.trackTitle,
+      }
+    }
     if (library.status !== 'ready') return { kind: 'blocked', status: library.status }
     return { kind: 'choosing', failure: failure.value }
   })
@@ -150,7 +181,11 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
     const playlist = library.getPlaylist(target)
     const track = playlist?.tracks.find((item) => item.id === result.trackId)
     failure.value = null
-    saved.value = { playlistName: playlist?.name ?? '', trackTitle: track?.title ?? '' }
+    saved.value = {
+      playlistName: playlist?.name ?? '',
+      trackTitle: track?.title ?? '',
+      trackId: result.trackId ?? '',
+    }
     clearRequest()
   }
 

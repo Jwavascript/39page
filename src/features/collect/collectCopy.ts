@@ -28,6 +28,7 @@ export const FAILURE_DETAIL: Readonly<Record<CollectFailure, string>> = {
   'write-failed':
     '저장하지 못했습니다 (브라우저 저장 공간 부족 등). 라이브러리는 바뀌지 않았습니다.',
   'invalid-video-id': 'YouTube 영상 ID 가 올바르지 않아 추가하지 않았습니다.',
+  lost: '방금 추가한 곡이 목록에서 없어졌습니다 — 다른 탭에서 지웠거나, 거의 같은 순간 다른 탭의 저장에 덮였습니다. 다시 추가할 수 있습니다.',
 }
 
 export const NOTHING_SAVED = '아무것도 저장하지 않았습니다.'

@@ -259,7 +259,23 @@ function failure(reason: LibraryMutationFailure): LibraryMutationResult {
 export interface LibraryExternalChange {
   readonly sequence: number
   readonly discardedUnsaved: boolean
+  /**
+   * 이 탭이 **방금(1초 안) 쓴 값**을 다른 탭의 저장이 덮었다 (M10-3C).
+   *
+   * 두 탭이 서로의 쓰기를 받기 전(실측 8–19ms)에 각각 쓰면 쓰기 직전 비교로도
+   * 막을 수 없다 (ADR 0024 "한계"). 막지는 못해도 **성공처럼 남겨 두지 않는다** —
+   * 이 탭의 마지막 변경이 사라졌을 수 있다고 알린다.
+   */
+  readonly possiblyOverwritten: boolean
 }
+
+/**
+ * 다른 탭의 저장이 이 탭의 쓰기를 덮었을 때 "동시 저장" 으로 볼 시간 (M10-3C).
+ *
+ * 다른 탭이 이 탭의 쓰기를 **보고 나서** 사람이 거기서 조작하기까지는 이보다 길다.
+ * 그 안에 덮였다면 다른 탭은 이 탭의 쓰기를 모른 채 썼을 가능성이 크다.
+ */
+export const CONCURRENT_WRITE_WINDOW_MS = 1_000
 
 /** 다른 탭의 `storage` 이벤트를 받을 대상. 테스트가 바꿔 낄 수 있게 좁힌다. */
 export interface StorageEventTarget {
@@ -357,6 +373,8 @@ export const useLibraryStore = defineStore('library', () => {
    */
   let baselineRaw: string | null = null
   let dirty = false
+  /** 이 탭이 마지막으로 쓴 원문과 시각 — 동시 저장으로 덮였는지 판단한다 (M10-3C). */
+  let lastOwnWrite: { readonly raw: string | null; readonly at: number } | null = null
 
   /** 수정이 저장소에 반영될 수 있는 상태인지. */
   const canPersist = computed<boolean>(() => status.value === 'ready')
@@ -407,6 +425,7 @@ export const useLibraryStore = defineStore('library', () => {
     externalChange.value = {
       sequence: (externalChange.value?.sequence ?? 0) + 1,
       discardedUnsaved,
+      possiblyOverwritten: false,
     }
   }
 
@@ -458,9 +477,14 @@ export const useLibraryStore = defineStore('library', () => {
 
     baselineRaw = libraryStorage.raw()
     dirty = false
-    // 저장에 성공했다 — "저장하지 못한 변경이 사라졌다" 안내는 할 일을 다 했다.
-    if (externalChange.value?.discardedUnsaved) {
-      externalChange.value = { ...externalChange.value, discardedUnsaved: false }
+    lastOwnWrite = { raw: baselineRaw, at: Date.now() }
+    // 저장에 성공했다 — "사라졌다 / 덮였을 수 있다" 안내는 할 일을 다 했다.
+    if (externalChange.value?.discardedUnsaved || externalChange.value?.possiblyOverwritten) {
+      externalChange.value = {
+        ...externalChange.value,
+        discardedUnsaved: false,
+        possiblyOverwritten: false,
+      }
     }
     return 'written'
   }
@@ -768,6 +792,7 @@ export const useLibraryStore = defineStore('library', () => {
     // 가져오기 경로가 따로 한다 (ADR 0018) — 여기서는 덮어쓰기를 막지 않는다.
     baselineRaw = libraryStorage.raw()
     dirty = false
+    lastOwnWrite = { raw: baselineRaw, at: Date.now() }
 
     /*
      * 사용자가 원본을 버리기로 **결정했고** 그 결정이 저장됐다. 보호할
@@ -841,7 +866,18 @@ export const useLibraryStore = defineStore('library', () => {
       if (event.key !== null && event.key !== libraryStorage.key) return
       if (status.value === 'unavailable' || !libraryStorage.available()) return
       if (libraryStorage.raw() === baselineRaw) return
+
+      // 덮인 것이 이 탭이 방금 쓴 값이면, 다른 탭은 그것을 모르고 썼을 수 있다.
+      const overwroteOwn =
+        lastOwnWrite !== null &&
+        event.oldValue === lastOwnWrite.raw &&
+        Date.now() - lastOwnWrite.at <= CONCURRENT_WRITE_WINDOW_MS
+      lastOwnWrite = null
+
       reload()
+      if (overwroteOwn && externalChange.value !== null) {
+        externalChange.value = { ...externalChange.value, possiblyOverwritten: true }
+      }
     }
     target.addEventListener('storage', onStorage)
     return () => target.removeEventListener('storage', onStorage)

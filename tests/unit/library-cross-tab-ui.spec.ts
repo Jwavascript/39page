@@ -192,6 +192,28 @@ describe('저장하지 못한 변경이 다시 읽기로 사라지면 알린다'
   })
 })
 
+describe('동시 저장으로 덮였을 수 있으면 알린다 (M10-3C)', () => {
+  it('방금 저장한 값이 바로 다른 탭의 값으로 바뀌면 배너가 확인을 권한다', async () => {
+    const { wrapper, library } = boot()
+    library.addTrack(library.playlists[0]?.id as string, {
+      videoId: 'dQw4w9WgXcQ',
+      title: '이 탭 곡',
+    })
+    const mine = realLocalStorage.getItem(KEY)
+
+    realLocalStorage.setItem(
+      KEY,
+      JSON.stringify({ version: 1, data: { playlists: [], selectedPlaylistId: null } }),
+    )
+    globalThis.dispatchEvent(new StorageEvent('storage', { key: KEY, oldValue: mine }))
+    await nextTick()
+
+    expect(wrapper.text()).toContain('다른 탭과 거의 동시에 저장했습니다')
+    expect(wrapper.text()).toContain('덮였을 수 있습니다')
+    wrapper.unmount()
+  })
+})
+
 describe('조립', () => {
   it('main.ts 가 복원 뒤 다른 탭의 저장을 듣기 시작한다', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/main.ts'), 'utf8')

@@ -45,6 +45,15 @@ const notice = computed<Notice | null>(() => {
     }
   }
 
+  if (library.externalChange?.possiblyOverwritten) {
+    return {
+      tone: 'warning',
+      title: '다른 탭과 거의 동시에 저장했습니다',
+      detail:
+        '이 탭의 마지막 변경이 다른 탭의 저장에 덮였을 수 있습니다. 목록을 확인하고 필요하면 다시 해 주세요.',
+    }
+  }
+
   if (library.externalChange?.discardedUnsaved) {
     return {
       tone: 'info',
