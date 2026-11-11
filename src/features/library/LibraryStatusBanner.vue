@@ -45,6 +45,15 @@ const notice = computed<Notice | null>(() => {
     }
   }
 
+  if (library.externalChange?.discardedUnsaved) {
+    return {
+      tone: 'info',
+      title: '다른 탭의 변경을 불러왔습니다',
+      detail:
+        '다른 탭에서 라이브러리가 바뀌어 최신 내용으로 맞췄습니다. 이 탭에서 저장하지 못했던 변경은 반영되지 않았습니다.',
+    }
+  }
+
   if (library.lastWriteFailure !== null) {
     return {
       tone: 'warning',

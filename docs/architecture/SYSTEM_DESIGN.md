@@ -790,6 +790,16 @@ moveTrack(playlistId, trackId, 'up' | 'down'): LibraryMutationResult
 
 `main.ts` 가 마운트 전에 `restore()` → `seedFirstRunPlaylist()` 순으로 부른다.
 
+**탭 간 정합성** (M10-3A, ADR 0024)
+
+store 는 마지막으로 읽거나 쓴 저장소 원문(기준)을 기억하고, 모든 변경 액션의 첫 줄과
+`persist()` 직전에 지금 원문과 비교한다. 다르면 **쓰지 않고** 최신을 다시 읽은 뒤
+`conflict` 로 거절한다 — 다른 탭의 변경을 낡은 메모리로 덮지 않는다. 다시 읽기는
+`restore()` 를 그대로 써서 ADR 0007 의 보호 정책이 다른 탭이 쓴 값에도 적용된다.
+`main.ts` 가 `watchExternalChanges()` 로 `storage` 이벤트를 들어 화면을 최신으로 맞춘다.
+`localStorage` 에 탭 간 트랜잭션이 없어 **원자적이지 않다** — 서로의 쓰기를 받기 전
+동시 쓰기는 남는 한계다 (ADR 0024 "한계").
+
 ### 7.3 테마 저장 — 구현 완료 (M1-3)
 
 ```

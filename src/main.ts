@@ -51,6 +51,8 @@ useThemeStore(pinia).restore()
 const library = useLibraryStore(pinia)
 library.restore()
 library.seedFirstRunPlaylist(DEFAULT_PLAYLIST_NAME)
+// 다른 탭의 저장을 이 탭에 반영한다 (M10-3, ADR 0024). 앱 수명 동안 듣는다.
+library.watchExternalChanges()
 
 /*
  * Music Moments 도 마운트 전에 복원한다 (M9-3). **읽기만 한다.**

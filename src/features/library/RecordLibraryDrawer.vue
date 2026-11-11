@@ -49,6 +49,7 @@ import {
   type PlayRequestResult,
 } from '@/features/playback/playbackCoordinator'
 import { parseYouTubeVideoId } from '@/shared/utils/youtube'
+import { LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import { MAX_PLAYLIST_NAME_LENGTH, MAX_TRACK_TITLE_LENGTH, useLibraryStore } from '@/stores/library'
 
 const props = defineProps<{ open: boolean; drawerId: string }>()
@@ -166,10 +167,13 @@ function submitLink(): void {
   })
 
   if (!result.ok) {
+    // 실패해도 입력값을 지우지 않는다 — 충돌이면 최신 목록을 보고 그대로 다시 누를 수 있다.
     linkError.value =
       result.reason === 'invalid-video-id'
         ? '올바른 YouTube 영상 링크를 입력해주세요.'
-        : '해당 플레이리스트를 찾을 수 없습니다.'
+        : result.reason === 'conflict'
+          ? LIBRARY_CONFLICT_MESSAGE
+          : '해당 플레이리스트를 찾을 수 없습니다.'
     return
   }
 
@@ -229,6 +233,7 @@ const FAILURE_MESSAGE: Record<string, string> = {
   'not-found': '대상을 찾을 수 없습니다.',
   'invalid-video-id': '올바른 YouTube 영상 링크를 입력해주세요.',
   'out-of-range': '더 이상 옮길 수 없습니다.',
+  conflict: LIBRARY_CONFLICT_MESSAGE,
 }
 
 /** 액션 결과를 화면 안내로 옮긴다. */

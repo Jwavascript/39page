@@ -107,6 +107,10 @@ describe('A. 오류 코드별 안내', () => {
     first.fake.emitError({ kind: 'embed-not-allowed', code: 101 })
     const message101 = first.playback.statusMessage
 
+    // 두 설정을 서로 독립시킨다 (beforeEach 와 같은 격리). M10-3 부터 복원하지 않은
+    // store 가 남이 쓴 저장소에 덮어쓰지 않으므로, 같은 저장소를 두면 둘째 설정의
+    // 목록 생성이 충돌로 거절된다 (ADR 0024).
+    globalThis.localStorage.clear()
     setActivePinia(createPinia())
     const second = setup()
     second.coordinator.playPlaylist(second.playlistId)

@@ -24,6 +24,7 @@ import { computed, inject, nextTick, ref } from 'vue'
 
 import PlaylistTile from '@/features/library/PlaylistTile.vue'
 import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import { LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
 import {
   PLAYBACK_COORDINATOR,
@@ -62,6 +63,16 @@ const notice = ref('')
 const FAILURE_MESSAGE: Record<string, string> = {
   'empty-name': '이름을 입력해주세요.',
   'not-found': '대상을 찾을 수 없습니다.',
+  conflict: LIBRARY_CONFLICT_MESSAGE,
+}
+
+/**
+ * 선택도 저장되는 변경이다. 다른 탭이 먼저 바꿨으면 거절되고 최신 내용이
+ * 다시 읽힌다 (M10-3) — 그 사실을 알린다. 재생 요청은 선택과 별개로 진행한다.
+ */
+function select(id: string): void {
+  const result = library.selectPlaylist(id)
+  if (!result.ok && result.reason === 'conflict') notice.value = LIBRARY_CONFLICT_MESSAGE
 }
 
 /**
@@ -134,7 +145,7 @@ function report(result: PlayRequestResult | undefined): void {
  */
 function playPlaylist(id: string): void {
   notice.value = ''
-  if (id !== library.selectedPlaylistId) library.selectPlaylist(id)
+  if (id !== library.selectedPlaylistId) select(id)
 
   void (async () => {
     await drawer?.stepAside()
@@ -145,7 +156,7 @@ function playPlaylist(id: string): void {
 /** `⋯` 누름 — 그 목록을 선택하고 편집 오버레이를 연다. */
 function openPlaylist(id: string): void {
   notice.value = ''
-  library.selectPlaylist(id)
+  select(id)
   drawer?.open()
 }
 </script>

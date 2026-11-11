@@ -225,6 +225,13 @@ export type LibraryMutationFailure =
   | 'invalid-video-id'
   /** 목록 경계라 더 옮길 수 없다. */
   | 'out-of-range'
+  /**
+   * 다른 탭이 저장소의 라이브러리를 바꿨다 (M10-3, ADR 0024).
+   *
+   * 이 탭의 상태가 낡았으므로 **쓰지 않았다.** 최신 원본을 다시 읽었고 이번
+   * 변경은 적용하지 않았다 — 사용자가 확인하고 다시 시도한다.
+   */
+  | 'conflict'
 
 export type LibraryMutationResult =
   | {
@@ -240,6 +247,24 @@ export type LibraryMutationResult =
 
 function failure(reason: LibraryMutationFailure): LibraryMutationResult {
   return { ok: false, reason }
+}
+
+/**
+ * 다른 탭의 변경을 이 탭에 다시 읽어 들였다는 기록 (M10-3, ADR 0024).
+ *
+ * `sequence` 는 다시 읽을 때마다 하나씩 는다 — 화면이 "또 바뀌었다" 를 알 수 있다.
+ * `discardedUnsaved` 는 그때 **이 탭에서 저장하지 못한 변경**(쓰기 실패 ·
+ * 보호 상태의 세션 전용 변경)이 있었고 그것이 사라졌다는 뜻이다.
+ */
+export interface LibraryExternalChange {
+  readonly sequence: number
+  readonly discardedUnsaved: boolean
+}
+
+/** 다른 탭의 `storage` 이벤트를 받을 대상. 테스트가 바꿔 낄 수 있게 좁힌다. */
+export interface StorageEventTarget {
+  addEventListener(type: 'storage', listener: (event: StorageEvent) => void): void
+  removeEventListener(type: 'storage', listener: (event: StorageEvent) => void): void
 }
 
 /**
@@ -316,6 +341,22 @@ export const useLibraryStore = defineStore('library', () => {
   const protectedReason = ref<LibraryProtectedReason | null>(null)
   const restoreOutcome = ref<ReadOutcome | null>(null)
   const lastWriteFailure = ref<WriteFailureReason | null>(null)
+  const externalChange = ref<LibraryExternalChange | null>(null)
+
+  /*
+   * 탭 간 정합성 (M10-3, ADR 0024).
+   *
+   * `baselineRaw` — 이 탭이 **마지막으로 읽거나 쓴 저장소 원문**. 다음에 쓰기
+   * 직전에 지금 원문과 비교한다. 다르면 다른 탭이 그 사이에 썼다는 뜻이고,
+   * 이 탭의 메모리 상태로 쓰면 그 변경을 지운다 — 그래서 쓰지 않는다.
+   *
+   * `dirty` — 메모리에만 있고 저장되지 않은 변경이 있다 (쓰기 실패 · 보호 상태).
+   * 다시 읽을 때 그것이 사라진다는 것을 알리기 위해 센다.
+   *
+   * 화면에 그릴 것이 아니라 비교용이므로 ref 가 아니다.
+   */
+  let baselineRaw: string | null = null
+  let dirty = false
 
   /** 수정이 저장소에 반영될 수 있는 상태인지. */
   const canPersist = computed<boolean>(() => status.value === 'ready')
@@ -330,24 +371,104 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /**
+   * 다른 탭이 이 탭의 기준 원문 이후에 저장소를 바꿨는지 (`ready` 일 때만 뜻이 있다).
+   *
+   * 저장소에 **접근할 수 없게 된** 경우는 다른 탭의 변경이 아니다 — `raw()` 의
+   * `null` 이 "비었다" 인지 "못 읽는다" 인지 먼저 가른다. 못 읽으면 메모리를 지키고
+   * 쓰기가 실패하게 둔다 (기존 동작, ADR 0007).
+   */
+  function hasExternalChange(): boolean {
+    return (
+      status.value === 'ready' && libraryStorage.available() && libraryStorage.raw() !== baselineRaw
+    )
+  }
+
+  /**
+   * 저장소의 최신 원본을 다시 읽는다 (M10-3). **읽기만 한다.**
+   *
+   * `restore()` 를 그대로 쓴다 — 손상·미지원 버전이면 `protected` 로 바뀌어 이후
+   * 쓰기를 막는다 (ADR 0007 이 다른 탭이 쓴 값에도 그대로 적용된다).
+   *
+   * **선택은 이 탭의 것을 지킨다** — 그 목록이 아직 있으면. 선택은 탭마다의 화면
+   * 상태에 가깝고, 다른 탭이 목록을 고를 때마다 이 탭의 드로어가 바뀌면 놀랍다.
+   * 다음 쓰기 때 이 탭의 선택이 저장되지만 데이터를 잃지는 않는다.
+   */
+  function reload(): void {
+    const keepSelection = selectedId.value
+    const discardedUnsaved = dirty
+
+    restore()
+
+    if (keepSelection !== null && items.value.some((playlist) => playlist.id === keepSelection)) {
+      selectedId.value = keepSelection
+    }
+    // 메모리가 저장소와 같아졌다 — 저장 실패 안내는 더 이상 사실이 아니다.
+    lastWriteFailure.value = null
+    externalChange.value = {
+      sequence: (externalChange.value?.sequence ?? 0) + 1,
+      discardedUnsaved,
+    }
+  }
+
+  /**
+   * 변경 액션의 첫 줄 — 낡은 상태에서 시작하지 않게 한다 (M10-3).
+   *
+   * 다른 탭이 바꿨으면 최신을 다시 읽고 `conflict` 로 거절한다. 이 탭의 메모리로
+   * 쓰지 않으므로 다른 탭의 변경이 남는다.
+   */
+  function staleGuard(): LibraryMutationResult | null {
+    if (!hasExternalChange()) return null
+    reload()
+    return failure('conflict')
+  }
+
+  type PersistOutcome = 'written' | 'skipped' | 'failed' | 'conflict'
+
+  /**
    * 현재 상태를 저장한다.
    *
    * `protected` / `unavailable` 상태에서는 쓰지 않는다. 저장 실패는
    * 예외로 전파하지 않고 결과로 알린다.
+   *
+   * 쓰기 **직전에** 저장소 원문을 기준 원문과 다시 비교한다 (M10-3). 액션 첫 줄의
+   * `staleGuard` 와 같은 동기 실행 안이라 보통은 겹치지만, 새 액션이 가드를
+   * 빠뜨려도 여기서 막힌다. 다르면 메모리의 이번 변경을 버리고 최신을 다시 읽는다.
    */
-  function persist(): boolean {
-    if (!canPersist.value) return false
+  function persist(): PersistOutcome {
+    if (!canPersist.value) {
+      dirty = true
+      return 'skipped'
+    }
+
+    if (libraryStorage.available() && libraryStorage.raw() !== baselineRaw) {
+      reload()
+      return 'conflict'
+    }
 
     const result = libraryStorage.write({
       playlists: items.value,
       selectedPlaylistId: selectedId.value,
     })
     lastWriteFailure.value = result.ok ? null : result.reason
-    return result.ok
+
+    if (!result.ok) {
+      dirty = true
+      return 'failed'
+    }
+
+    baselineRaw = libraryStorage.raw()
+    dirty = false
+    // 저장에 성공했다 — "저장하지 못한 변경이 사라졌다" 안내는 할 일을 다 했다.
+    if (externalChange.value?.discardedUnsaved) {
+      externalChange.value = { ...externalChange.value, discardedUnsaved: false }
+    }
+    return 'written'
   }
 
   function success(playlistId: string, trackId?: string): LibraryMutationResult {
-    return { ok: true, playlistId, trackId, persisted: persist() }
+    const outcome = persist()
+    if (outcome === 'conflict') return failure('conflict')
+    return { ok: true, playlistId, trackId, persisted: outcome === 'written' }
   }
 
   /**
@@ -370,6 +491,9 @@ export const useLibraryStore = defineStore('library', () => {
    */
   function restore(): ReadOutcome {
     lastReport = null
+    // 같은 동기 실행 안에서 읽으므로 이 원문이 아래 read() 가 해석한 원문이다.
+    baselineRaw = libraryStorage.raw()
+    dirty = false
     const { value, outcome } = libraryStorage.read()
     const report = takeNormalizationReport()
 
@@ -406,6 +530,9 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** 새 플레이리스트를 만들고 선택한다. 트랙은 비어 있다. */
   function createPlaylist(name: string): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const normalized = normalizeName(name)
     if (normalized === null) return failure('empty-name')
 
@@ -418,6 +545,9 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** 이름만 바꾼다. id 와 트랙은 그대로 둔다. */
   function renamePlaylist(id: string, name: string): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const index = items.value.findIndex((playlist) => playlist.id === id)
     if (index === -1) return failure('not-found')
 
@@ -442,6 +572,9 @@ export const useLibraryStore = defineStore('library', () => {
    * 항목을 쓰고, 마지막이었다면 그 앞을 쓴다. 남은 목록이 없으면 `null`.
    */
   function deletePlaylist(id: string): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const index = items.value.findIndex((playlist) => playlist.id === id)
     if (index === -1) return failure('not-found')
 
@@ -470,6 +603,9 @@ export const useLibraryStore = defineStore('library', () => {
     playlistId: string,
     input: { videoId: string; title?: string },
   ): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const index = items.value.findIndex((playlist) => playlist.id === playlistId)
     if (index === -1) return failure('not-found')
 
@@ -491,6 +627,9 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** 트랙 하나를 뺀다. 나머지 트랙의 id 와 순서는 그대로다. */
   function removeTrack(playlistId: string, trackId: string): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const index = items.value.findIndex((playlist) => playlist.id === playlistId)
     if (index === -1) return failure('not-found')
 
@@ -517,6 +656,9 @@ export const useLibraryStore = defineStore('library', () => {
     trackId: string,
     direction: 'up' | 'down',
   ): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const index = items.value.findIndex((playlist) => playlist.id === playlistId)
     if (index === -1) return failure('not-found')
 
@@ -553,6 +695,9 @@ export const useLibraryStore = defineStore('library', () => {
    * 때와 고칠 때 빈 제목의 뜻이 달라지면 사용자가 예측할 수 없다.
    */
   function renameTrack(playlistId: string, trackId: string, title: string): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     const index = items.value.findIndex((playlist) => playlist.id === playlistId)
     if (index === -1) return failure('not-found')
 
@@ -615,8 +760,14 @@ export const useLibraryStore = defineStore('library', () => {
     lastWriteFailure.value = result.ok ? null : result.reason
 
     if (!result.ok) {
+      dirty = true
       return { ok: true, persisted: false, writeFailure: result.reason, verified: false }
     }
+
+    // 다음 쓰기의 비교 기준을 새 원문으로 옮긴다 (M10-3). 가져오기의 신선도 검사는
+    // 가져오기 경로가 따로 한다 (ADR 0018) — 여기서는 덮어쓰기를 막지 않는다.
+    baselineRaw = libraryStorage.raw()
+    dirty = false
 
     /*
      * 사용자가 원본을 버리기로 **결정했고** 그 결정이 저장됐다. 보호할
@@ -666,10 +817,34 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** 존재하는 플레이리스트만 선택한다. 트랙과 재생 상태는 건드리지 않는다. */
   function selectPlaylist(id: string): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
     if (getPlaylist(id) === undefined) return failure('not-found')
 
     selectedId.value = id
     return success(id)
+  }
+
+  /**
+   * 다른 탭의 저장을 듣는다 (M10-3, ADR 0024). 끊는 함수를 돌려준다.
+   *
+   * `storage` 이벤트는 **다른** 탭이 쓸 때만 온다. 라이브러리 키(또는 전체 비우기,
+   * `key === null`)가 바뀌었고 원문이 기준과 다르면 다시 읽는다. 쓰기 직전 비교
+   * (`persist`)가 진짜 방어이고, 이것은 화면을 최신으로 맞추는 일이다 — 이벤트가
+   * 늦게 오거나 오지 않아도 낡은 쓰기는 막힌다.
+   */
+  function watchExternalChanges(
+    target: StorageEventTarget = globalThis as unknown as StorageEventTarget,
+  ): () => void {
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key !== null && event.key !== libraryStorage.key) return
+      if (status.value === 'unavailable' || !libraryStorage.available()) return
+      if (libraryStorage.raw() === baselineRaw) return
+      reload()
+    }
+    target.addEventListener('storage', onStorage)
+    return () => target.removeEventListener('storage', onStorage)
   }
 
   return {
@@ -680,6 +855,7 @@ export const useLibraryStore = defineStore('library', () => {
     protectedReason: readonly(protectedReason),
     restoreOutcome: readonly(restoreOutcome),
     lastWriteFailure: readonly(lastWriteFailure),
+    externalChange: readonly(externalChange),
 
     // 파생
     canPersist,
@@ -690,6 +866,8 @@ export const useLibraryStore = defineStore('library', () => {
 
     // 액션
     restore,
+    reload,
+    watchExternalChanges,
     seedFirstRunPlaylist,
     createPlaylist,
     renamePlaylist,
