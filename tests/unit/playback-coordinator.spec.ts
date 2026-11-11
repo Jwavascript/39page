@@ -38,11 +38,11 @@ afterEach(() => {
 })
 
 /** 트랙 n 개를 담은 플레이리스트 하나와, 어댑터가 붙은 코디네이터. */
-function setup(trackCount = 3) {
+async function setup(trackCount = 3) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('PLAYLIST A')
+  const created = await library.createPlaylist('PLAYLIST A')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
@@ -65,8 +65,8 @@ function trackIds(library: ReturnType<typeof useLibraryStore>, playlistId: strin
 }
 
 describe('A. 재생 요청', () => {
-  it('목록 전체 재생은 목록을 큐로 만들고 처음부터 시작한다', () => {
-    const { playback, coordinator, fake, library, playlistId } = setup()
+  it('목록 전체 재생은 목록을 큐로 만들고 처음부터 시작한다', async () => {
+    const { playback, coordinator, fake, library, playlistId } = await setup()
 
     const result = coordinator.playPlaylist(playlistId)
 
@@ -77,8 +77,8 @@ describe('A. 재생 요청', () => {
     expect(fake.calls.load).toEqual([{ videoId: VIDEO[0], autoplay: true }])
   })
 
-  it('트랙 재생은 목록 전체를 큐로 만들고 그 트랙부터 시작한다', () => {
-    const { playback, coordinator, fake, library, playlistId } = setup()
+  it('트랙 재생은 목록 전체를 큐로 만들고 그 트랙부터 시작한다', async () => {
+    const { playback, coordinator, fake, library, playlistId } = await setup()
     const ids = trackIds(library, playlistId)
 
     const result = coordinator.playTrack(playlistId, ids[1] ?? '')
@@ -91,9 +91,9 @@ describe('A. 재생 요청', () => {
     expect(fake.calls.load).toEqual([{ videoId: VIDEO[1], autoplay: true }])
   })
 
-  it('빈 목록은 재생할 수 없고 큐도 건드리지 않는다', () => {
-    const { library, playback, coordinator, fake } = setup(0)
-    const created = library.createPlaylist('EMPTY')
+  it('빈 목록은 재생할 수 없고 큐도 건드리지 않는다', async () => {
+    const { library, playback, coordinator, fake } = await setup(0)
+    const created = await library.createPlaylist('EMPTY')
     const emptyId = created.ok ? created.playlistId : ''
 
     const result = coordinator.playPlaylist(emptyId)
@@ -104,8 +104,8 @@ describe('A. 재생 요청', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('없는 목록·없는 트랙을 거절한다', () => {
-    const { coordinator, playback, fake, library, playlistId } = setup()
+  it('없는 목록·없는 트랙을 거절한다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup()
     const ids = trackIds(library, playlistId)
 
     expect(coordinator.playPlaylist('nope')).toEqual({
@@ -124,8 +124,8 @@ describe('A. 재생 요청', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('사용자 요청은 autoplay: true 로 간다', () => {
-    const { coordinator, fake, library, playlistId } = setup()
+  it('사용자 요청은 autoplay: true 로 간다', async () => {
+    const { coordinator, fake, library, playlistId } = await setup()
     const ids = trackIds(library, playlistId)
 
     coordinator.playTrack(playlistId, ids[2] ?? '')
@@ -133,10 +133,10 @@ describe('A. 재생 요청', () => {
     expect(fake.calls.load.every((call) => call.autoplay)).toBe(true)
   })
 
-  it('어댑터가 없어도 큐는 만들어지고 던지지 않는다', () => {
+  it('어댑터가 없어도 큐는 만들어지고 던지지 않는다', async () => {
     const library = useLibraryStore()
     const playback = usePlaybackStore()
-    const created = library.createPlaylist('A')
+    const created = await library.createPlaylist('A')
     const id = created.ok ? created.playlistId : ''
     library.addTrack(id, { videoId: VIDEO[0], title: 'One' })
 
@@ -148,8 +148,8 @@ describe('A. 재생 요청', () => {
 })
 
 describe('B. 큐 스냅샷 독립성', () => {
-  it('큐의 트랙은 라이브러리와 다른 객체다', () => {
-    const { library, playback, coordinator, playlistId } = setup()
+  it('큐의 트랙은 라이브러리와 다른 객체다', async () => {
+    const { library, playback, coordinator, playlistId } = await setup()
 
     coordinator.playPlaylist(playlistId)
 
@@ -159,8 +159,8 @@ describe('B. 큐 스냅샷 독립성', () => {
     expect(playback.queue[0]).not.toBe(source[0])
   })
 
-  it('재생 중 트랙을 추가·삭제·이동해도 큐가 그대로다', () => {
-    const { library, playback, coordinator, playlistId } = setup()
+  it('재생 중 트랙을 추가·삭제·이동해도 큐가 그대로다', async () => {
+    const { library, playback, coordinator, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     const before = { queue: [...playback.queue], index: playback.queueIndex }
     const ids = trackIds(library, playlistId)
@@ -173,8 +173,8 @@ describe('B. 큐 스냅샷 독립성', () => {
     expect(playback.queueIndex).toBe(before.index)
   })
 
-  it('재생 중인 목록의 이름을 바꾸거나 지워도 큐가 그대로다', () => {
-    const { library, playback, coordinator, playlistId } = setup()
+  it('재생 중인 목록의 이름을 바꾸거나 지워도 큐가 그대로다', async () => {
+    const { library, playback, coordinator, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     const before = [...playback.queue]
 
@@ -186,20 +186,20 @@ describe('B. 큐 스냅샷 독립성', () => {
     expect(playback.currentTrack).not.toBeNull()
   })
 
-  it('다른 목록을 선택해도 큐가 그대로다', () => {
-    const { library, playback, coordinator, playlistId } = setup()
+  it('다른 목록을 선택해도 큐가 그대로다', async () => {
+    const { library, playback, coordinator, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     const before = [...playback.queue]
 
-    const other = library.createPlaylist('PLAYLIST B')
+    const other = await library.createPlaylist('PLAYLIST B')
     library.selectPlaylist(other.ok ? other.playlistId : '')
 
     expect(playback.queue).toEqual(before)
     expect(playback.queueIndex).toBe(0)
   })
 
-  it('큐를 바꿔도 라이브러리가 그대로다', () => {
-    const { library, playback, coordinator, playlistId } = setup()
+  it('큐를 바꿔도 라이브러리가 그대로다', async () => {
+    const { library, playback, coordinator, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     playback.setQueueIndex(2)
@@ -210,8 +210,8 @@ describe('B. 큐 스냅샷 독립성', () => {
 })
 
 describe('C. 큐 진행', () => {
-  it('재생이 끝나면 다음 트랙으로 넘어간다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('재생이 끝나면 다음 트랙으로 넘어간다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitStateChange('playing')
@@ -225,8 +225,8 @@ describe('C. 큐 진행', () => {
     ])
   })
 
-  it('끝까지 가면 마지막에서 멈춘다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('끝까지 가면 마지막에서 멈춘다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     for (let round = 0; round < 3; round += 1) {
@@ -242,8 +242,8 @@ describe('C. 큐 진행', () => {
     expect(playback.statusTone).toBe('info')
   })
 
-  it('마지막 곡이 끝나도 큐를 비우거나 되감지 않는다', () => {
-    const { playback, coordinator, fake, library, playlistId } = setup(1)
+  it('마지막 곡이 끝나도 큐를 비우거나 되감지 않는다', async () => {
+    const { playback, coordinator, fake, library, playlistId } = await setup(1)
     coordinator.playPlaylist(playlistId)
 
     fake.emitStateChange('playing')
@@ -255,8 +255,8 @@ describe('C. 큐 진행', () => {
     expect(fake.calls.load).toHaveLength(1)
   })
 
-  it('재생된 적 없는 트랙의 ENDED 는 무시한다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('재생된 적 없는 트랙의 ENDED 는 무시한다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     // playing 없이 바로 ended. 이전 트랙의 늦은 신호로 본다.
@@ -266,8 +266,8 @@ describe('C. 큐 진행', () => {
     expect(fake.calls.load).toHaveLength(1)
   })
 
-  it('자동 전환 직후 도착한 ENDED 가 한 곡을 더 건너뛰지 않는다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('자동 전환 직후 도착한 ENDED 가 한 곡을 더 건너뛰지 않는다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitStateChange('playing')
@@ -278,8 +278,8 @@ describe('C. 큐 진행', () => {
     expect(fake.calls.load).toHaveLength(2)
   })
 
-  it('어댑터 상태가 playback store 에 그대로 반영된다', () => {
-    const { playback, fake } = setup()
+  it('어댑터 상태가 playback store 에 그대로 반영된다', async () => {
+    const { playback, fake } = await setup()
 
     for (const state of ['loading', 'playing', 'paused', 'ended'] as const) {
       fake.emitStateChange(state)
@@ -287,8 +287,8 @@ describe('C. 큐 진행', () => {
     }
   })
 
-  it('store 의 advance / back 이 큐 경계를 지킨다', () => {
-    const { playback, coordinator, playlistId } = setup()
+  it('store 의 advance / back 이 큐 경계를 지킨다', async () => {
+    const { playback, coordinator, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     expect(playback.back()).toBe(false)
@@ -301,10 +301,10 @@ describe('C. 큐 진행', () => {
     expect(playback.currentTrack?.title).toBe('Track 2')
   })
 
-  it('코디네이터의 next / previous 가 큐 경계를 넘지 않는다', () => {
+  it('코디네이터의 next / previous 가 큐 경계를 넘지 않는다', async () => {
     // 버튼도 비활성이지만 여기서 한 번 더 막는다. UI 가드가 사라져도
     // 큐가 처음으로 되감기면 안 된다 (M3-0.1).
-    const { playback, coordinator, fake, playlistId } = setup()
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     expect(coordinator.previous()).toBe(false)
@@ -324,8 +324,8 @@ describe('C. 큐 진행', () => {
     expect(playback.queueIndex).toBe(1)
   })
 
-  it('빈 큐에서 코디네이터의 next / previous 가 아무 일도 하지 않는다', () => {
-    const { playback, coordinator, fake } = setup()
+  it('빈 큐에서 코디네이터의 next / previous 가 아무 일도 하지 않는다', async () => {
+    const { playback, coordinator, fake } = await setup()
 
     expect(coordinator.next()).toBe(false)
     expect(coordinator.previous()).toBe(false)
@@ -333,8 +333,8 @@ describe('C. 큐 진행', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('빈 큐에서 advance / back 이 움직이지 않는다', () => {
-    const { playback } = setup()
+  it('빈 큐에서 advance / back 이 움직이지 않는다', async () => {
+    const { playback } = await setup()
 
     expect(playback.advance()).toBe(false)
     expect(playback.back()).toBe(false)
@@ -344,8 +344,8 @@ describe('C. 큐 진행', () => {
 })
 
 describe('D. 오류와 자동재생 차단', () => {
-  it('재생 불가 영상에서 자동으로 다음 곡으로 넘기지 않는다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('재생 불가 영상에서 자동으로 다음 곡으로 넘기지 않는다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitError({ kind: 'embed-not-allowed', code: 101 })
@@ -357,8 +357,8 @@ describe('D. 오류와 자동재생 차단', () => {
     expect(playback.statusMessage).toContain('오류 101')
   })
 
-  it('오류 뒤에 ENDED 가 와도 넘기지 않는다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('오류 뒤에 ENDED 가 와도 넘기지 않는다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitStateChange('playing')
@@ -370,8 +370,8 @@ describe('D. 오류와 자동재생 차단', () => {
     expect(fake.calls.load).toHaveLength(1)
   })
 
-  it('사용자가 다시 요청하면 자동 전환이 되살아난다', () => {
-    const { playback, coordinator, fake, library, playlistId } = setup()
+  it('사용자가 다시 요청하면 자동 전환이 되살아난다', async () => {
+    const { playback, coordinator, fake, library, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitError({ kind: 'embed-not-allowed', code: 150 })
 
@@ -384,8 +384,8 @@ describe('D. 오류와 자동재생 차단', () => {
     expect(playback.statusMessage).toBe('')
   })
 
-  it('API 를 못 불러온 경우를 따로 안내한다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('API 를 못 불러온 경우를 따로 안내한다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitError({ kind: 'api-unavailable', code: null })
@@ -394,8 +394,8 @@ describe('D. 오류와 자동재생 차단', () => {
     expect(playback.statusMessage).not.toContain('null')
   })
 
-  it('자동재생 차단은 오류가 아니지만 자동 전환을 멈춘다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('자동재생 차단은 오류가 아니지만 자동 전환을 멈춘다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitAutoplayBlocked()
@@ -406,8 +406,8 @@ describe('D. 오류와 자동재생 차단', () => {
     expect(playback.statusMessage).toContain('자동재생')
   })
 
-  it('재생된 적 있는 트랙이라도 차단 안내 뒤에는 자동 전환하지 않는다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('재생된 적 있는 트랙이라도 차단 안내 뒤에는 자동 전환하지 않는다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     // "직접 ▶ 를 눌러주세요" 라고 해놓고 큐를 혼자 넘기면 안 된다.
@@ -420,8 +420,8 @@ describe('D. 오류와 자동재생 차단', () => {
     expect(fake.calls.load).toHaveLength(1)
   })
 
-  it('실제로 재생이 시작되면 안내가 사라진다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('실제로 재생이 시작되면 안내가 사라진다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitAutoplayBlocked()
 
@@ -433,8 +433,8 @@ describe('D. 오류와 자동재생 차단', () => {
 })
 
 describe('E. 빠른 연속 요청', () => {
-  it('연달아 고르면 마지막 요청이 이긴다', () => {
-    const { playback, coordinator, fake, library, playlistId } = setup()
+  it('연달아 고르면 마지막 요청이 이긴다', async () => {
+    const { playback, coordinator, fake, library, playlistId } = await setup()
     const ids = trackIds(library, playlistId)
 
     coordinator.playTrack(playlistId, ids[0] ?? '')
@@ -446,8 +446,8 @@ describe('E. 빠른 연속 요청', () => {
     expect(fake.calls.load.map((call) => call.videoId)).toEqual([VIDEO[0], VIDEO[2], VIDEO[1]])
   })
 
-  it('바꾸기 직전 트랙의 ENDED 가 고른 곡을 건너뛰지 않는다', () => {
-    const { playback, coordinator, fake, library, playlistId } = setup()
+  it('바꾸기 직전 트랙의 ENDED 가 고른 곡을 건너뛰지 않는다', async () => {
+    const { playback, coordinator, fake, library, playlistId } = await setup()
     const ids = trackIds(library, playlistId)
 
     coordinator.playTrack(playlistId, ids[0] ?? '')
@@ -462,8 +462,8 @@ describe('E. 빠른 연속 요청', () => {
     expect(fake.calls.load).toHaveLength(2)
   })
 
-  it('새 요청은 앞선 오류 안내를 지운다', () => {
-    const { playback, coordinator, fake, playlistId } = setup()
+  it('새 요청은 앞선 오류 안내를 지운다', async () => {
+    const { playback, coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitError({ kind: 'not-found', code: 100 })
     expect(playback.statusMessage).not.toBe('')
@@ -475,8 +475,8 @@ describe('E. 빠른 연속 요청', () => {
 })
 
 describe('F. 어댑터 등록과 소유권', () => {
-  it('detach 후에는 명령이 어댑터에 가지 않는다', () => {
-    const { coordinator, fake, attachment, playlistId } = setup()
+  it('detach 후에는 명령이 어댑터에 가지 않는다', async () => {
+    const { coordinator, fake, attachment, playlistId } = await setup()
 
     attachment.detach()
     coordinator.playPlaylist(playlistId)
@@ -484,8 +484,8 @@ describe('F. 어댑터 등록과 소유권', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('detach 가 어댑터를 없애지 않는다', () => {
-    const { fake, attachment } = setup()
+  it('detach 가 어댑터를 없애지 않는다', async () => {
+    const { fake, attachment } = await setup()
 
     attachment.detach()
 
@@ -494,8 +494,8 @@ describe('F. 어댑터 등록과 소유권', () => {
     expect(fake.isMounted).toBe(true)
   })
 
-  it('두 번째 어댑터가 등록되면 마지막 것이 이긴다', () => {
-    const { coordinator, fake, playlistId } = setup()
+  it('두 번째 어댑터가 등록되면 마지막 것이 이긴다', async () => {
+    const { coordinator, fake, playlistId } = await setup()
     const second = new FakePlayerAdapter()
     const attachment = coordinator.attachAdapter(second)
     second.mount(document.createElement('div'), attachment.events)
@@ -506,8 +506,8 @@ describe('F. 어댑터 등록과 소유권', () => {
     expect(second.calls.load).toHaveLength(1)
   })
 
-  it('늦게 온 detach 가 새 어댑터의 연결을 끊지 않는다', () => {
-    const { coordinator, fake, attachment, playlistId } = setup()
+  it('늦게 온 detach 가 새 어댑터의 연결을 끊지 않는다', async () => {
+    const { coordinator, fake, attachment, playlistId } = await setup()
     const second = new FakePlayerAdapter()
     const secondAttachment = coordinator.attachAdapter(second)
     second.mount(document.createElement('div'), secondAttachment.events)
@@ -519,8 +519,8 @@ describe('F. 어댑터 등록과 소유권', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('어댑터와 DOM 노드가 Pinia state 에 들어가지 않는다', () => {
-    const { coordinator, playlistId } = setup()
+  it('어댑터와 DOM 노드가 Pinia state 에 들어가지 않는다', async () => {
+    const { coordinator, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     const serialized = JSON.stringify(pinia.state.value)
@@ -556,8 +556,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
   }
 
   /** 재생 중 83.7초. 캡처가 성립하는 가장 평범한 상태다. */
-  function playingAt(seconds: number) {
-    const context = setup()
+  async function playingAt(seconds: number) {
+    const context = await setup()
     context.coordinator.playPlaylist(context.playlistId)
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -566,8 +566,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
   }
 
   describe('capturePosition()', () => {
-    it('정상 재생 중 현재 영상·시점·제목을 찍는다', () => {
-      const { coordinator } = playingAt(83.7)
+    it('정상 재생 중 현재 영상·시점·제목을 찍는다', async () => {
+      const { coordinator } = await playingAt(83.7)
 
       expect(coordinator.capturePosition()).toEqual({
         videoId: VIDEO[0],
@@ -576,8 +576,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       })
     })
 
-    it('소수 초를 내림한다 — 0.9 는 0 이다', () => {
-      const { coordinator, fake } = playingAt(0.9)
+    it('소수 초를 내림한다 — 0.9 는 0 이다', async () => {
+      const { coordinator, fake } = await playingAt(0.9)
 
       expect(coordinator.capturePosition()?.atSeconds).toBe(0)
 
@@ -585,29 +585,29 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(coordinator.capturePosition()?.atSeconds).toBe(119)
     })
 
-    it('0 초는 유효한 캡처다', () => {
-      const { coordinator } = playingAt(0)
+    it('0 초는 유효한 캡처다', async () => {
+      const { coordinator } = await playingAt(0)
 
       expect(coordinator.capturePosition()).toMatchObject({ atSeconds: 0 })
     })
 
-    it('현재 트랙이 없으면 null 이다', () => {
-      const { coordinator, fake } = setup()
+    it('현재 트랙이 없으면 null 이다', async () => {
+      const { coordinator, fake } = await setup()
       fake.emitReady()
       fake.emitPosition(10)
 
       expect(coordinator.capturePosition()).toBeNull()
     })
 
-    it('재생 준비 전에는 null 이다 — 0 으로 대체하지 않는다', () => {
-      const { coordinator, playlistId } = setup()
+    it('재생 준비 전에는 null 이다 — 0 으로 대체하지 않는다', async () => {
+      const { coordinator, playlistId } = await setup()
       coordinator.playPlaylist(playlistId)
 
       expect(coordinator.capturePosition()).toBeNull()
     })
 
-    it('플레이어가 아직 보고하지 않았으면 null 이다', () => {
-      const { coordinator, fake, playlistId } = setup()
+    it('플레이어가 아직 보고하지 않았으면 null 이다', async () => {
+      const { coordinator, fake, playlistId } = await setup()
       coordinator.playPlaylist(playlistId)
       fake.emitReady()
 
@@ -618,15 +618,15 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       ['NaN', Number.NaN],
       ['Infinity', Number.POSITIVE_INFINITY],
       ['음수', -3],
-    ])('플레이어가 %s 를 주면 null 이다', (_label, seconds) => {
-      const { coordinator } = playingAt(seconds)
+    ])('플레이어가 %s 를 주면 null 이다', async (_label, seconds) => {
+      const { coordinator } = await playingAt(seconds)
 
       expect(coordinator.capturePosition()).toBeNull()
     })
 
-    it('플레이어가 등록돼 있지 않으면 null 이다', () => {
+    it('플레이어가 등록돼 있지 않으면 null 이다', async () => {
       const library = useLibraryStore()
-      const created = library.createPlaylist('P')
+      const created = await library.createPlaylist('P')
       const playlistId = created.ok ? created.playlistId : ''
       library.addTrack(playlistId, { videoId: VIDEO[0] })
       const coordinator = createPlaybackCoordinator()
@@ -645,8 +645,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       ['음수', -7],
     ])(
       '계약을 어기고 %s 를 돌려주는 어댑터라도 0 으로 대체하지 않고 null 이다',
-      (_label, value) => {
-        const { coordinator, playlistId } = setup()
+      async (_label, value) => {
+        const { coordinator, playlistId } = await setup()
         const misbehaving: PlayerAdapter = {
           mount: () => {},
           destroy: () => {},
@@ -670,8 +670,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       },
     )
 
-    it('영상 전환 직후 이전 영상의 위치를 새 영상의 것으로 찍지 않는다', () => {
-      const { coordinator, fake, library, playlistId } = playingAt(83)
+    it('영상 전환 직후 이전 영상의 위치를 새 영상의 것으로 찍지 않는다', async () => {
+      const { coordinator, fake, library, playlistId } = await playingAt(83)
       const ids = trackIds(library, playlistId)
       expect(coordinator.capturePosition()?.videoId).toBe(VIDEO[0])
 
@@ -700,8 +700,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       })
     })
 
-    it('시점을 실은 적재 직후의 가짜 0 을 찍지 않는다 — 지정 시점에서 재생된 뒤에 찍는다', () => {
-      const { coordinator, fake } = playingAt(10)
+    it('시점을 실은 적재 직후의 가짜 0 을 찍지 않는다 — 지정 시점에서 재생된 뒤에 찍는다', async () => {
+      const { coordinator, fake } = await playingAt(10)
 
       // 다른 영상의 Moment 로 간다. 플레이어는 60 으로 가기 전에 0 을 먼저 보고한다.
       coordinator.playMoment({ videoId: VIDEO[2], atSeconds: 60 })
@@ -717,8 +717,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(coordinator.capturePosition()).toMatchObject({ videoId: VIDEO[2], atSeconds: 60 })
     })
 
-    it('같은 영상 안에서 시점을 옮긴 직후에도 재생이 다시 시작된 뒤에 찍는다', () => {
-      const { coordinator, fake } = playingAt(10)
+    it('같은 영상 안에서 시점을 옮긴 직후에도 재생이 다시 시작된 뒤에 찍는다', async () => {
+      const { coordinator, fake } = await playingAt(10)
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
       fake.emitStateChange('loading')
@@ -729,17 +729,17 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(coordinator.capturePosition()?.atSeconds).toBe(83)
     })
 
-    it('재생 중 오류가 나면 찍지 않는다 — 그 위치를 믿을 근거가 없다', () => {
-      const { coordinator, fake } = playingAt(40)
+    it('재생 중 오류가 나면 찍지 않는다 — 그 위치를 믿을 근거가 없다', async () => {
+      const { coordinator, fake } = await playingAt(40)
 
       fake.emitError({ kind: 'not-playable', code: 5 })
 
       expect(coordinator.capturePosition()).toBeNull()
     })
 
-    it('재생이 시작된 뒤의 버퍼링·끝 상태에서는 찍는다 — 플레이어가 실제로 있던 자리다', () => {
+    it('재생이 시작된 뒤의 버퍼링·끝 상태에서는 찍는다 — 플레이어가 실제로 있던 자리다', async () => {
       // 한 곡짜리 큐다. 끝나도 다음 곡으로 넘어가지 않아 그 자리에 머문다.
-      const { coordinator, fake, playlistId } = setup(1)
+      const { coordinator, fake, playlistId } = await setup(1)
       coordinator.playPlaylist(playlistId)
       fake.emitReady()
       fake.emitStateChange('playing')
@@ -754,15 +754,15 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(coordinator.capturePosition()?.atSeconds).toBe(212)
     })
 
-    it('일시정지 중에도 찍을 수 있다 — 재생 상태가 조건이 아니다', () => {
-      const { coordinator, fake } = playingAt(40)
+    it('일시정지 중에도 찍을 수 있다 — 재생 상태가 조건이 아니다', async () => {
+      const { coordinator, fake } = await playingAt(40)
       fake.emitStateChange('paused')
 
       expect(coordinator.capturePosition()?.atSeconds).toBe(40)
     })
 
-    it('캡처는 저장하지 않는다 — Moments 저장소에 아무것도 쓰지 않는다', () => {
-      const { coordinator } = playingAt(40)
+    it('캡처는 저장하지 않는다 — Moments 저장소에 아무것도 쓰지 않는다', async () => {
+      const { coordinator } = await playingAt(40)
 
       coordinator.capturePosition()
 
@@ -771,8 +771,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
   })
 
   describe('playMoment() — 같은 영상', () => {
-    it('지금 영상이면 다시 적재하지 않고 seek 과 play 만 보낸다', () => {
-      const { coordinator, fake, playback } = playingAt(10)
+    it('지금 영상이면 다시 적재하지 않고 seek 과 play 만 보낸다', async () => {
+      const { coordinator, fake, playback } = await playingAt(10)
       const queueBefore = playback.queue.map((track) => track.id)
 
       const result = coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
@@ -786,16 +786,16 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.queueIndex).toBe(0)
     })
 
-    it('0 초 Moment 로도 seek 한다', () => {
-      const { coordinator, fake } = playingAt(50)
+    it('0 초 Moment 로도 seek 한다', async () => {
+      const { coordinator, fake } = await playingAt(50)
 
       expect(coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 0 })).toEqual({ ok: true })
 
       expect(fake.calls.seek).toEqual([0])
     })
 
-    it('일시정지 중이면 seek 뒤에 play 로 재생을 보장한다', () => {
-      const { coordinator, fake } = playingAt(10)
+    it('일시정지 중이면 seek 뒤에 play 로 재생을 보장한다', async () => {
+      const { coordinator, fake } = await playingAt(10)
       fake.emitStateChange('paused')
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 30 })
@@ -805,8 +805,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.play).toBe(1)
     })
 
-    it('준비 전이면 seek 대신 시점을 실어 다시 적재한다', () => {
-      const { coordinator, fake, playlistId } = setup()
+    it('준비 전이면 seek 대신 시점을 실어 다시 적재한다', async () => {
+      const { coordinator, fake, playlistId } = await setup()
       coordinator.playPlaylist(playlistId)
 
       const result = coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 83 })
@@ -820,8 +820,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       ])
     })
 
-    it('오류 상태면 다시 적재한다 — 실패한 플레이어에 seek 을 보내지 않는다', () => {
-      const { coordinator, fake, playback } = playingAt(10)
+    it('오류 상태면 다시 적재한다 — 실패한 플레이어에 seek 을 보내지 않는다', async () => {
+      const { coordinator, fake, playback } = await playingAt(10)
       fake.emitError({ kind: 'embed-not-allowed', code: 101 })
       expect(playback.statusMessage).toContain('오류 101')
 
@@ -834,8 +834,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.statusMessage).toBe('')
     })
 
-    it('seek 뒤 재생이 시작되기 전에 온 ENDED 는 오래된 신호로 보고 넘기지 않는다', () => {
-      const { coordinator, fake, playback } = playingAt(170)
+    it('seek 뒤 재생이 시작되기 전에 온 ENDED 는 오래된 신호로 보고 넘기지 않는다', async () => {
+      const { coordinator, fake, playback } = await playingAt(170)
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
       // 끝나 가던 영상의 ENDED 가 seek 뒤에 도착한다.
@@ -845,8 +845,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(1)
     })
 
-    it('seek 뒤 실제로 재생된 다음의 ENDED 는 평소처럼 다음 곡으로 간다', () => {
-      const { coordinator, fake, playback } = playingAt(170)
+    it('seek 뒤 실제로 재생된 다음의 ENDED 는 평소처럼 다음 곡으로 간다', async () => {
+      const { coordinator, fake, playback } = await playingAt(170)
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
       fake.emitStateChange('loading')
@@ -859,8 +859,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load[1]).toEqual({ videoId: VIDEO[1], autoplay: true })
     })
 
-    it('같은 영상이 큐에 두 번 있어도 지금 자리를 지킨다', () => {
-      const { library, playlistId, coordinator, fake, playback } = setup(0)
+    it('같은 영상이 큐에 두 번 있어도 지금 자리를 지킨다', async () => {
+      const { library, playlistId, coordinator, fake, playback } = await setup(0)
       // 같은 영상 둘.
       library.addTrack(playlistId, { videoId: VIDEO[0], title: 'first' })
       library.addTrack(playlistId, { videoId: VIDEO[0], title: 'second' })
@@ -878,8 +878,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
   })
 
   describe('playMoment() — 다른 영상', () => {
-    it('현재 큐 안의 영상이면 큐를 바꾸지 않고 자리만 옮긴다', () => {
-      const { coordinator, fake, playback } = playingAt(10)
+    it('현재 큐 안의 영상이면 큐를 바꾸지 않고 자리만 옮긴다', async () => {
+      const { coordinator, fake, playback } = await playingAt(10)
       const queueBefore = playback.queue.map((track) => track.id)
 
       const result = coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
@@ -893,10 +893,10 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.seek).toEqual([])
     })
 
-    it('큐가 있어도 선택 목록이 바뀌었다는 이유로 큐를 갈아치우지 않는다', () => {
-      const { coordinator, library, playback } = playingAt(10)
+    it('큐가 있어도 선택 목록이 바뀌었다는 이유로 큐를 갈아치우지 않는다', async () => {
+      const { coordinator, library, playback } = await playingAt(10)
       // 사용자가 듣는 중에 다른 목록을 만들어 선택한다. 그 목록에도 같은 영상이 있다.
-      const other = library.createPlaylist('OTHER')
+      const other = await library.createPlaylist('OTHER')
       const otherId = other.ok ? other.playlistId : ''
       library.addTrack(otherId, { videoId: VIDEO[1], title: 'elsewhere' })
       expect(library.selectedPlaylistId).toBe(otherId)
@@ -908,9 +908,9 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.currentTrack?.title).toBe('Track 2')
     })
 
-    it('큐에 없으면 선택된 플레이리스트에서 찾아 그 목록을 큐로 만든다', () => {
-      const { coordinator, library, playback, fake } = setup()
-      const other = library.createPlaylist('OTHER')
+    it('큐에 없으면 선택된 플레이리스트에서 찾아 그 목록을 큐로 만든다', async () => {
+      const { coordinator, library, playback, fake } = await setup()
+      const other = await library.createPlaylist('OTHER')
       const otherId = other.ok ? other.playlistId : ''
       library.addTrack(otherId, { videoId: ORPHAN, title: 'Orphan in OTHER' })
       library.addTrack(otherId, { videoId: VIDEO[2], title: 'Tail' })
@@ -924,9 +924,9 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toEqual([{ videoId: ORPHAN, autoplay: true, startSeconds: 5 }])
     })
 
-    it('선택 목록에 없으면 다른 목록 중 처음 발견한 것을 큐로 만든다', () => {
-      const { coordinator, library, playback, playlistId } = setup()
-      const selected = library.createPlaylist('SELECTED (없음)')
+    it('선택 목록에 없으면 다른 목록 중 처음 발견한 것을 큐로 만든다', async () => {
+      const { coordinator, library, playback, playlistId } = await setup()
+      const selected = await library.createPlaylist('SELECTED (없음)')
       expect(selected.ok && library.selectedPlaylistId).toBe(
         selected.ok ? selected.playlistId : null,
       )
@@ -939,9 +939,9 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(library.getPlaylist(playlistId)?.name).toBe('PLAYLIST A')
     })
 
-    it('선택 목록과 다른 목록에 모두 있으면 선택 목록이 이긴다', () => {
-      const { coordinator, library, playback } = setup()
-      const other = library.createPlaylist('SELECTED B')
+    it('선택 목록과 다른 목록에 모두 있으면 선택 목록이 이긴다', async () => {
+      const { coordinator, library, playback } = await setup()
+      const other = await library.createPlaylist('SELECTED B')
       const otherId = other.ok ? other.playlistId : ''
       library.addTrack(otherId, { videoId: VIDEO[1], title: 'B has it too' })
 
@@ -950,8 +950,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.queue.map((track) => track.title)).toEqual(['B has it too'])
     })
 
-    it('큐는 라이브러리의 스냅샷이다 — 이후 편집에 흔들리지 않는다', () => {
-      const { coordinator, library, playback, playlistId } = setup()
+    it('큐는 라이브러리의 스냅샷이다 — 이후 편집에 흔들리지 않는다', async () => {
+      const { coordinator, library, playback, playlistId } = await setup()
       const ids = trackIds(library, playlistId)
 
       coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 7 })
@@ -962,8 +962,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.currentTrack?.title).toBe('Track 2')
     })
 
-    it('라이브러리에서 지운 영상의 Moment 는 그 한 곡만으로 재생한다', () => {
-      const { coordinator, library, playback, fake, playlistId } = setup()
+    it('라이브러리에서 지운 영상의 Moment 는 그 한 곡만으로 재생한다', async () => {
+      const { coordinator, library, playback, fake, playlistId } = await setup()
       const ids = trackIds(library, playlistId)
       // Track 2 를 지운다. Moment 는 videoId 를 가리키므로 남아 있다.
       library.removeTrack(playlistId, ids[1] ?? '')
@@ -988,8 +988,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toEqual([{ videoId: VIDEO[1], autoplay: true, startSeconds: 42 }])
     })
 
-    it('단일 곡 큐에서 이전·다음은 움직이지 않는다', () => {
-      const { coordinator, playback, fake } = setup(0)
+    it('단일 곡 큐에서 이전·다음은 움직이지 않는다', async () => {
+      const { coordinator, playback, fake } = await setup(0)
 
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
 
@@ -999,8 +999,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(1)
     })
 
-    it('단일 곡의 ENDED 는 큐 끝 안내로 끝난다', () => {
-      const { coordinator, playback, fake } = setup(0)
+    it('단일 곡의 ENDED 는 큐 끝 안내로 끝난다', async () => {
+      const { coordinator, playback, fake } = await setup(0)
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
 
       fake.emitStateChange('playing')
@@ -1010,16 +1010,16 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(1)
     })
 
-    it('제목이 없으면 트랙과 같은 대체 표기를 쓴다', () => {
-      const { coordinator, playback } = setup(0)
+    it('제목이 없으면 트랙과 같은 대체 표기를 쓴다', async () => {
+      const { coordinator, playback } = await setup(0)
 
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
 
       expect(playback.currentTrack?.title).toBe(`YouTube · ${ORPHAN}`)
     })
 
-    it('단일 곡의 id 는 라이브러리 트랙 id 와 겹치지 않아 trackRemoved 에 걸리지 않는다', () => {
-      const { coordinator, playback, fake, library, playlistId } = setup()
+    it('단일 곡의 id 는 라이브러리 트랙 id 와 겹치지 않아 trackRemoved 에 걸리지 않는다', async () => {
+      const { coordinator, playback, fake, library, playlistId } = await setup()
       const ids = trackIds(library, playlistId)
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
       const current = playback.currentTrack
@@ -1032,16 +1032,16 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(ids).not.toContain(current?.id)
     })
 
-    it('0 초 Moment 는 startSeconds 0 으로 적재한다 — 생략과 다르다', () => {
-      const { coordinator, fake } = setup()
+    it('0 초 Moment 는 startSeconds 0 으로 적재한다 — 생략과 다르다', async () => {
+      const { coordinator, fake } = await setup()
 
       coordinator.playMoment({ videoId: VIDEO[2], atSeconds: 0 })
 
       expect(fake.calls.load).toEqual([{ videoId: VIDEO[2], autoplay: true, startSeconds: 0 }])
     })
 
-    it('Moment 로 시작한 큐도 다음·이전이 평소처럼 처음부터 재생한다', () => {
-      const { coordinator, playback, fake } = setup()
+    it('Moment 로 시작한 큐도 다음·이전이 평소처럼 처음부터 재생한다', async () => {
+      const { coordinator, playback, fake } = await setup()
       coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 30 })
 
       expect(coordinator.next()).toBe(true)
@@ -1053,8 +1053,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load[2]).not.toHaveProperty('startSeconds')
     })
 
-    it('Moment 로 시작한 재생도 ENDED 에서 자동으로 다음 곡으로 간다', () => {
-      const { coordinator, playback, fake } = setup()
+    it('Moment 로 시작한 재생도 ENDED 에서 자동으로 다음 곡으로 간다', async () => {
+      const { coordinator, playback, fake } = await setup()
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 30 })
 
       fake.emitStateChange('playing')
@@ -1073,8 +1073,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       ['소수 시점', { videoId: 'aaaaaaaaaaa', atSeconds: 1.5 }],
       ['NaN 시점', { videoId: 'aaaaaaaaaaa', atSeconds: Number.NaN }],
       ['Infinity 시점', { videoId: 'aaaaaaaaaaa', atSeconds: Number.POSITIVE_INFINITY }],
-    ])('잘못된 Moment (%s) 를 거부하고 아무것도 바꾸지 않는다', (_label, target) => {
-      const { coordinator, playback, fake } = playingAt(10)
+    ])('잘못된 Moment (%s) 를 거부하고 아무것도 바꾸지 않는다', async (_label, target) => {
+      const { coordinator, playback, fake } = await playingAt(10)
       const queueBefore = playback.queue.map((track) => track.id)
 
       expect(coordinator.playMoment(target)).toEqual({ ok: false, reason: 'invalid-moment' })
@@ -1097,8 +1097,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.queue).toEqual([])
     })
 
-    it('연결이 끊긴 뒤에는 성공으로 돌려주지 않는다', () => {
-      const { coordinator, attachment, fake } = setup()
+    it('연결이 끊긴 뒤에는 성공으로 돌려주지 않는다', async () => {
+      const { coordinator, attachment, fake } = await setup()
       attachment.detach()
 
       expect(coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })).toEqual({
@@ -1108,8 +1108,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toEqual([])
     })
 
-    it('플레이어가 가려져 있으면 다른 재생과 같은 이유로 거절하고 큐를 바꾸지 않는다', () => {
-      const { coordinator, playback, fake } = setup()
+    it('플레이어가 가려져 있으면 다른 재생과 같은 이유로 거절하고 큐를 바꾸지 않는다', async () => {
+      const { coordinator, playback, fake } = await setup()
       // 가려진 영역을 등록한다.
       const hidden = new FakePlayerAdapter()
       const attachment = coordinator.attachAdapter(hidden, hiddenPresence())
@@ -1126,8 +1126,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.statusMessage).toContain('재생할 수 없어요')
     })
 
-    it('가려진 플레이어에서는 같은 영상의 seek 도 거절한다', () => {
-      const { coordinator, playback, fake, playlistId } = playingAt(10)
+    it('가려진 플레이어에서는 같은 영상의 seek 도 거절한다', async () => {
+      const { coordinator, playback, fake, playlistId } = await playingAt(10)
       // 같은 어댑터를 가려진 영역과 함께 다시 등록한다.
       const attachment = coordinator.attachAdapter(fake, hiddenPresence())
       void attachment
@@ -1140,8 +1140,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.queueIndex).toBe(0)
     })
 
-    it('자동재생 차단 안내는 다른 재생과 같고 자동 전환을 멈춘다', () => {
-      const { coordinator, playback, fake } = setup()
+    it('자동재생 차단 안내는 다른 재생과 같고 자동 전환을 멈춘다', async () => {
+      const { coordinator, playback, fake } = await setup()
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 30 })
 
       fake.emitAutoplayBlocked()
@@ -1152,8 +1152,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(1)
     })
 
-    it('임베드 불가 영상의 Moment 는 기존 오류 안내가 뜨고 다음 곡으로 넘기지 않는다', () => {
-      const { coordinator, playback, fake } = setup(0)
+    it('임베드 불가 영상의 Moment 는 기존 오류 안내가 뜨고 다음 곡으로 넘기지 않는다', async () => {
+      const { coordinator, playback, fake } = await setup(0)
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 30, title: '막힌 영상' })
 
       fake.emitError({ kind: 'embed-not-allowed', code: 150 })
@@ -1167,13 +1167,13 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(1)
     })
 
-    it('재생할 수 없는 영상이라도 Moments 저장소를 건드리지 않는다', () => {
+    it('재생할 수 없는 영상이라도 Moments 저장소를 건드리지 않는다', async () => {
       globalThis.localStorage.setItem(
         '39page.moments',
         JSON.stringify({ version: 1, data: [{ id: 'm', videoId: ORPHAN, atSeconds: 30 }] }),
       )
       const raw = globalThis.localStorage.getItem('39page.moments')
-      const { coordinator, fake } = setup(0)
+      const { coordinator, fake } = await setup(0)
 
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 30 })
       fake.emitError({ kind: 'not-found', code: 100 })
@@ -1184,8 +1184,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
   })
 
   describe('빠른 연속 요청과 늦은 사건', () => {
-    it('연달아 누르면 마지막 Moment 가 이긴다', () => {
-      const { coordinator, playback, fake } = setup()
+    it('연달아 누르면 마지막 Moment 가 이긴다', async () => {
+      const { coordinator, playback, fake } = await setup()
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
       coordinator.playMoment({ videoId: VIDEO[2], atSeconds: 20 })
@@ -1196,8 +1196,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load[2]?.videoId).toBe(VIDEO[1])
     })
 
-    it('같은 영상에서 연달아 seek 하면 순서대로 간다', () => {
-      const { coordinator, fake } = playingAt(5)
+    it('같은 영상에서 연달아 seek 하면 순서대로 간다', async () => {
+      const { coordinator, fake } = await playingAt(5)
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 50 })
@@ -1207,8 +1207,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(1)
     })
 
-    it('다른 영상으로 바꾼 직후 같은 영상의 Moment 를 누르면 재적재에 시점이 실린다', () => {
-      const { coordinator, fake } = playingAt(5)
+    it('다른 영상으로 바꾼 직후 같은 영상의 Moment 를 누르면 재적재에 시점이 실린다', async () => {
+      const { coordinator, fake } = await playingAt(5)
 
       // B 로 바꾼다 → 플레이어는 아직 B 의 위치를 모른다.
       coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
@@ -1222,8 +1222,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       ])
     })
 
-    it('바꾸기 직전 영상의 ENDED 가 Moment 로 고른 곡을 건너뛰지 않는다', () => {
-      const { coordinator, playback, fake } = playingAt(170)
+    it('바꾸기 직전 영상의 ENDED 가 Moment 로 고른 곡을 건너뛰지 않는다', async () => {
+      const { coordinator, playback, fake } = await playingAt(170)
 
       coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
       // Track 1 의 ENDED 가 뒤늦게 도착한다.
@@ -1233,8 +1233,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.load).toHaveLength(2)
     })
 
-    it('새 Moment 요청은 앞선 오류 안내를 지운다', () => {
-      const { coordinator, playback, fake, playlistId } = setup()
+    it('새 Moment 요청은 앞선 오류 안내를 지운다', async () => {
+      const { coordinator, playback, fake, playlistId } = await setup()
       coordinator.playPlaylist(playlistId)
       fake.emitError({ kind: 'not-found', code: 100 })
       expect(playback.statusMessage).not.toBe('')
@@ -1246,8 +1246,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
   })
 
   describe('경계', () => {
-    it('playMoment 전후로 어댑터의 DOM 노드가 같다 — 재생성이 없다', () => {
-      const { coordinator, fake } = playingAt(5)
+    it('playMoment 전후로 어댑터의 DOM 노드가 같다 — 재생성이 없다', async () => {
+      const { coordinator, fake } = await playingAt(5)
       const host = fake.hostNode
 
       coordinator.playMoment({ videoId: VIDEO[0], atSeconds: 10 })
@@ -1259,8 +1259,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(fake.calls.destroy).toBe(0)
     })
 
-    it('코디네이터는 Moments store 를 만들지 않는다 — Pinia 에 moments 가 없다', () => {
-      const { coordinator } = playingAt(5)
+    it('코디네이터는 Moments store 를 만들지 않는다 — Pinia 에 moments 가 없다', async () => {
+      const { coordinator } = await playingAt(5)
       coordinator.capturePosition()
       coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 10 })
 
@@ -1277,8 +1277,8 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(code).toContain('isValidAtSeconds')
     })
 
-    it('일반 트랙 재생에는 startSeconds 가 섞이지 않는다', () => {
-      const { coordinator, fake, playlistId, library } = setup()
+    it('일반 트랙 재생에는 startSeconds 가 섞이지 않는다', async () => {
+      const { coordinator, fake, playlistId, library } = await setup()
       const ids = trackIds(library, playlistId)
 
       coordinator.playPlaylist(playlistId)

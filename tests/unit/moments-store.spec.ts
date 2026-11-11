@@ -430,11 +430,11 @@ describe('C. CRUD 와 조회', () => {
     expect(moments.count).toBe(0)
   })
 
-  it('Moment 를 만들고 고유 id 를 발급한다', () => {
+  it('Moment 를 만들고 고유 id 를 발급한다', async () => {
     const moments = useMomentsStore()
 
-    const first = moments.add({ videoId: VIDEO, atSeconds: 10 })
-    const second = moments.add({ videoId: VIDEO, atSeconds: 20 })
+    const first = await moments.add({ videoId: VIDEO, atSeconds: 10 })
+    const second = await moments.add({ videoId: VIDEO, atSeconds: 20 })
 
     expect(first.ok).toBe(true)
     expect(second.ok).toBe(true)
@@ -443,9 +443,9 @@ describe('C. CRUD 와 조회', () => {
     expect(ids.every((id) => id.length > 0)).toBe(true)
   })
 
-  it('만든 Moment 를 id 로 찾는다', () => {
+  it('만든 Moment 를 id 로 찾는다', async () => {
     const moments = useMomentsStore()
-    const result = moments.add({ videoId: VIDEO, atSeconds: 42, note: '간주', title: 'ZOO' })
+    const result = await moments.add({ videoId: VIDEO, atSeconds: 42, note: '간주', title: 'ZOO' })
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
@@ -472,10 +472,10 @@ describe('C. CRUD 와 조회', () => {
     expect(moments.moments[0]).toMatchObject({ note: '', title: '' })
   })
 
-  it('atSeconds 0 을 저장한다 — 영상의 맨 앞이다', () => {
+  it('atSeconds 0 을 저장한다 — 영상의 맨 앞이다', async () => {
     const moments = useMomentsStore()
 
-    expect(moments.add({ videoId: VIDEO, atSeconds: 0 }).ok).toBe(true)
+    expect((await moments.add({ videoId: VIDEO, atSeconds: 0 })).ok).toBe(true)
     expect(moments.moments[0]?.atSeconds).toBe(0)
   })
 
@@ -532,10 +532,10 @@ describe('C. CRUD 와 조회', () => {
     ['금지 문자', 'abcdefghij!'],
     ['공백 포함', 'abcdefghi j'],
     ['전체 URL', 'https://www.youtube.com/watch?v=jNQXAC9IVRw'],
-  ])('무효한 videoId (%s) 를 거부한다', (_label, videoId) => {
+  ])('무효한 videoId (%s) 를 거부한다', async (_label, videoId) => {
     const moments = useMomentsStore()
 
-    expect(moments.add({ videoId, atSeconds: 10 })).toEqual({
+    expect(await moments.add({ videoId, atSeconds: 10 })).toEqual({
       ok: false,
       reason: 'invalid-video-id',
     })
@@ -547,10 +547,10 @@ describe('C. CRUD 와 조회', () => {
     ['소수', 1.5],
     ['NaN', Number.NaN],
     ['Infinity', Number.POSITIVE_INFINITY],
-  ])('무효한 시간값 (%s) 을 거부한다', (_label, atSeconds) => {
+  ])('무효한 시간값 (%s) 을 거부한다', async (_label, atSeconds) => {
     const moments = useMomentsStore()
 
-    expect(moments.add({ videoId: VIDEO, atSeconds })).toEqual({
+    expect(await moments.add({ videoId: VIDEO, atSeconds })).toEqual({
       ok: false,
       reason: 'invalid-time',
     })
@@ -571,17 +571,17 @@ describe('C. CRUD 와 조회', () => {
     expect(readRaw()).toBe(rawBefore)
   })
 
-  it('메모를 고치고 updatedAt 만 갱신한다', () => {
+  it('메모를 고치고 updatedAt 만 갱신한다', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-07T01:00:00.000Z'))
     const moments = useMomentsStore()
-    const added = moments.add({ videoId: VIDEO, atSeconds: 42, note: '처음' })
+    const added = await moments.add({ videoId: VIDEO, atSeconds: 42, note: '처음' })
     expect(added.ok).toBe(true)
     if (!added.ok) return
     const before = moments.getMoment(added.momentId) as Moment
 
     vi.setSystemTime(new Date('2026-11-07T02:00:00.000Z'))
-    const result = moments.updateNote(added.momentId, '고친 메모')
+    const result = await moments.updateNote(added.momentId, '고친 메모')
 
     expect(result.ok).toBe(true)
     const after = moments.getMoment(added.momentId) as Moment
@@ -591,9 +591,9 @@ describe('C. CRUD 와 조회', () => {
     expect(after.updatedAt).not.toBe(before.updatedAt)
   })
 
-  it('메모를 고쳐도 시점·영상·id 는 그대로다 — 시점은 고치지 못한다', () => {
+  it('메모를 고쳐도 시점·영상·id 는 그대로다 — 시점은 고치지 못한다', async () => {
     const moments = useMomentsStore()
-    const added = moments.add({ videoId: VIDEO, atSeconds: 42, title: 'ZOO' })
+    const added = await moments.add({ videoId: VIDEO, atSeconds: 42, title: 'ZOO' })
     if (!added.ok) return
 
     moments.updateNote(added.momentId, '다른 메모')
@@ -606,9 +606,9 @@ describe('C. CRUD 와 조회', () => {
     })
   })
 
-  it('메모를 비울 수 있다', () => {
+  it('메모를 비울 수 있다', async () => {
     const moments = useMomentsStore()
-    const added = moments.add({ videoId: VIDEO, atSeconds: 1, note: '있었다' })
+    const added = await moments.add({ videoId: VIDEO, atSeconds: 1, note: '있었다' })
     if (!added.ok) return
 
     moments.updateNote(added.momentId, '   ')
@@ -616,9 +616,9 @@ describe('C. CRUD 와 조회', () => {
     expect(moments.getMoment(added.momentId)?.note).toBe('')
   })
 
-  it('고친 메모도 상한으로 자른다', () => {
+  it('고친 메모도 상한으로 자른다', async () => {
     const moments = useMomentsStore()
-    const added = moments.add({ videoId: VIDEO, atSeconds: 1 })
+    const added = await moments.add({ videoId: VIDEO, atSeconds: 1 })
     if (!added.ok) return
 
     moments.updateNote(added.momentId, '나'.repeat(900))
@@ -626,30 +626,30 @@ describe('C. CRUD 와 조회', () => {
     expect(moments.getMoment(added.momentId)?.note).toHaveLength(MAX_MOMENT_NOTE_LENGTH)
   })
 
-  it('없는 Moment 의 메모 수정을 거절한다', () => {
+  it('없는 Moment 의 메모 수정을 거절한다', async () => {
     const moments = useMomentsStore()
     moments.add({ videoId: VIDEO, atSeconds: 1 })
     const before = JSON.stringify(moments.moments)
 
-    expect(moments.updateNote('ghost', 'x')).toEqual({ ok: false, reason: 'not-found' })
+    expect(await moments.updateNote('ghost', 'x')).toEqual({ ok: false, reason: 'not-found' })
     expect(JSON.stringify(moments.moments)).toBe(before)
   })
 
-  it('Moment 하나만 지운다', () => {
+  it('Moment 하나만 지운다', async () => {
     const moments = useMomentsStore()
-    const first = moments.add({ videoId: VIDEO, atSeconds: 10 })
-    const second = moments.add({ videoId: VIDEO, atSeconds: 20 })
-    const third = moments.add({ videoId: OTHER_VIDEO, atSeconds: 30 })
+    const first = await moments.add({ videoId: VIDEO, atSeconds: 10 })
+    const second = await moments.add({ videoId: VIDEO, atSeconds: 20 })
+    const third = await moments.add({ videoId: OTHER_VIDEO, atSeconds: 30 })
     if (!first.ok || !second.ok || !third.ok) return
 
-    expect(moments.remove(second.momentId).ok).toBe(true)
+    expect((await moments.remove(second.momentId)).ok).toBe(true)
 
     expect(moments.moments.map((item) => item.id)).toEqual([first.momentId, third.momentId])
   })
 
-  it('같은 영상의 다른 Moment 는 남는다', () => {
+  it('같은 영상의 다른 Moment 는 남는다', async () => {
     const moments = useMomentsStore()
-    const first = moments.add({ videoId: VIDEO, atSeconds: 10 })
+    const first = await moments.add({ videoId: VIDEO, atSeconds: 10 })
     moments.add({ videoId: VIDEO, atSeconds: 20 })
     if (!first.ok) return
 
@@ -658,12 +658,12 @@ describe('C. CRUD 와 조회', () => {
     expect(moments.momentsForVideo(VIDEO).map((item) => item.atSeconds)).toEqual([20])
   })
 
-  it('없는 Moment 삭제를 거절하고 상태를 바꾸지 않는다', () => {
+  it('없는 Moment 삭제를 거절하고 상태를 바꾸지 않는다', async () => {
     const moments = useMomentsStore()
     moments.add({ videoId: VIDEO, atSeconds: 1 })
     const before = JSON.stringify(moments.moments)
 
-    expect(moments.remove('ghost')).toEqual({ ok: false, reason: 'not-found' })
+    expect(await moments.remove('ghost')).toEqual({ ok: false, reason: 'not-found' })
     expect(JSON.stringify(moments.moments)).toBe(before)
   })
 
@@ -675,11 +675,11 @@ describe('C. CRUD 와 조회', () => {
     expect('reset' in moments).toBe(false)
   })
 
-  it('여러 번 수정한 뒤에도 모든 Moment 가 검증을 통과한다', () => {
+  it('여러 번 수정한 뒤에도 모든 Moment 가 검증을 통과한다', async () => {
     const moments = useMomentsStore()
-    const a = moments.add({ videoId: VIDEO, atSeconds: 0, note: 'A' })
+    const a = await moments.add({ videoId: VIDEO, atSeconds: 0, note: 'A' })
     moments.add({ videoId: OTHER_VIDEO, atSeconds: 7, title: 'T'.repeat(300) })
-    const c = moments.add({ videoId: VIDEO, atSeconds: 7 })
+    const c = await moments.add({ videoId: VIDEO, atSeconds: 7 })
     if (!a.ok || !c.ok) return
     moments.updateNote(a.momentId, '고침'.repeat(400))
     moments.remove(c.momentId)
@@ -696,9 +696,9 @@ describe('C. CRUD 와 조회', () => {
  * ================================================================== */
 
 describe('D. 영속 저장과 복원', () => {
-  it('추가하면 저장소에 쓴다 — 봉투에 version 과 data 를 담는다', () => {
+  it('추가하면 저장소에 쓴다 — 봉투에 version 과 data 를 담는다', async () => {
     const moments = useMomentsStore()
-    const result = moments.add({ videoId: VIDEO, atSeconds: 42, note: '좋다' })
+    const result = await moments.add({ videoId: VIDEO, atSeconds: 42, note: '좋다' })
 
     expect(result.ok && result.persisted).toBe(true)
     const parsed = JSON.parse(readRaw() as string)
@@ -729,10 +729,10 @@ describe('D. 영속 저장과 복원', () => {
     expect(second.status).toBe('ready')
   })
 
-  it('메모 수정과 삭제도 저장된다', () => {
+  it('메모 수정과 삭제도 저장된다', async () => {
     const first = useMomentsStore()
-    const a = first.add({ videoId: VIDEO, atSeconds: 10, note: '처음' })
-    const b = first.add({ videoId: VIDEO, atSeconds: 20 })
+    const a = await first.add({ videoId: VIDEO, atSeconds: 10, note: '처음' })
+    const b = await first.add({ videoId: VIDEO, atSeconds: 20 })
     if (!a.ok || !b.ok) return
     first.updateNote(a.momentId, '고침')
     first.remove(b.momentId)
@@ -773,12 +773,12 @@ describe('D. 영속 저장과 복원', () => {
     expect(readRaw()).toBe(raw)
   })
 
-  it('복원 후 다시 저장할 수 있다', () => {
+  it('복원 후 다시 저장할 수 있다', async () => {
     seedRaw(envelope([moment({ id: 'kept' })]))
     const moments = useMomentsStore()
     moments.restore()
 
-    const result = moments.add({ videoId: OTHER_VIDEO, atSeconds: 5 })
+    const result = await moments.add({ videoId: OTHER_VIDEO, atSeconds: 5 })
 
     expect(result.ok && result.persisted).toBe(true)
     expect(storedData()).toHaveLength(2)
@@ -876,12 +876,12 @@ describe('E. 데이터 보호', () => {
         ],
       }),
     ],
-  ])('%s — 이후 추가가 원본을 덮어쓰지 않는다', (_label, raw) => {
+  ])('%s — 이후 추가가 원본을 덮어쓰지 않는다', async (_label, raw) => {
     seedRaw(raw)
     const moments = useMomentsStore()
     moments.restore()
 
-    const result = moments.add({ videoId: OTHER_VIDEO, atSeconds: 7 })
+    const result = await moments.add({ videoId: OTHER_VIDEO, atSeconds: 7 })
 
     // 메모리에는 반영되지만 저장소는 그대로다.
     expect(result.ok).toBe(true)
@@ -890,14 +890,14 @@ describe('E. 데이터 보호', () => {
     expect(readRaw()).toBe(raw)
   })
 
-  it('보호 상태에서 메모 수정과 삭제도 저장되지 않는다', () => {
+  it('보호 상태에서 메모 수정과 삭제도 저장되지 않는다', async () => {
     const raw = envelope([moment({ id: 'good' }), { id: 'bad' }])
     seedRaw(raw)
     const moments = useMomentsStore()
     moments.restore()
 
-    const edited = moments.updateNote('good', '고침')
-    const removed = moments.remove('good')
+    const edited = await moments.updateNote('good', '고침')
+    const removed = await moments.remove('good')
 
     expect(edited.ok && edited.persisted).toBe(false)
     expect(removed.ok && removed.persisted).toBe(false)
@@ -930,7 +930,7 @@ describe('E. 데이터 보호', () => {
     expect(moments.protectedReason).toBeNull()
   })
 
-  it('저장소를 쓸 수 없어도 메모리에서는 동작한다', () => {
+  it('저장소를 쓸 수 없어도 메모리에서는 동작한다', async () => {
     stubLocalStorage({
       get() {
         throw new Error('blocked')
@@ -939,18 +939,18 @@ describe('E. 데이터 보호', () => {
     const moments = useMomentsStore()
     moments.restore()
 
-    const result = moments.add({ videoId: VIDEO, atSeconds: 9 })
+    const result = await moments.add({ videoId: VIDEO, atSeconds: 9 })
 
     expect(result.ok).toBe(true)
     expect(result.ok && result.persisted).toBe(false)
     expect(moments.moments).toHaveLength(1)
   })
 
-  it('쓰기 실패해도 메모리 수정은 유지되고 이유를 알린다', () => {
+  it('쓰기 실패해도 메모리 수정은 유지되고 이유를 알린다', async () => {
     stubWriteFailure('quota')
     const moments = useMomentsStore()
 
-    const result = moments.add({ videoId: VIDEO, atSeconds: 11, note: '남는다' })
+    const result = await moments.add({ videoId: VIDEO, atSeconds: 11, note: '남는다' })
 
     expect(result.ok).toBe(true)
     expect(result.ok && result.persisted).toBe(false)
@@ -980,21 +980,21 @@ describe('E. 데이터 보호', () => {
  * ================================================================== */
 
 describe('F. addMoments 와 replaceAllMoments', () => {
-  it('묶음으로 더하고 기존 Moment 를 남긴다', () => {
+  it('묶음으로 더하고 기존 Moment 를 남긴다', async () => {
     const moments = useMomentsStore()
     moments.add({ videoId: VIDEO, atSeconds: 1, note: '먼저' })
 
-    const result = moments.addMoments([moment({ id: 'in-1' }), moment({ id: 'in-2' })])
+    const result = await moments.addMoments([moment({ id: 'in-1' }), moment({ id: 'in-2' })])
 
     expect(result).toMatchObject({ ok: true, added: 2, dropped: 0, persisted: true })
     expect(moments.count).toBe(3)
     expect(moments.moments[0]?.note).toBe('먼저')
   })
 
-  it('불량 항목만 버리고 개수를 알린다', () => {
+  it('불량 항목만 버리고 개수를 알린다', async () => {
     const moments = useMomentsStore()
 
-    const result = moments.addMoments([
+    const result = await moments.addMoments([
       moment({ id: 'ok' }),
       { ...moment({ id: 'bad-time' }), atSeconds: -1 },
       'nope',
@@ -1004,21 +1004,21 @@ describe('F. addMoments 와 replaceAllMoments', () => {
     expect(moments.moments.map((item) => item.id)).toEqual(['ok'])
   })
 
-  it('이미 있는 id 는 버린다 — 기존 값을 덮어쓰지 않는다', () => {
+  it('이미 있는 id 는 버린다 — 기존 값을 덮어쓰지 않는다', async () => {
     const moments = useMomentsStore()
     moments.addMoments([moment({ id: 'dup', note: '원본' })])
 
-    const result = moments.addMoments([moment({ id: 'dup', note: '나중' })])
+    const result = await moments.addMoments([moment({ id: 'dup', note: '나중' })])
 
     expect(result).toMatchObject({ added: 0, dropped: 1 })
     expect(moments.moments).toHaveLength(1)
     expect(moments.moments[0]?.note).toBe('원본')
   })
 
-  it('한 묶음 안의 중복 id 도 처음 것만 받는다', () => {
+  it('한 묶음 안의 중복 id 도 처음 것만 받는다', async () => {
     const moments = useMomentsStore()
 
-    const result = moments.addMoments([
+    const result = await moments.addMoments([
       moment({ id: 'x', note: '첫째' }),
       moment({ id: 'x', note: '둘째' }),
     ])
@@ -1027,45 +1027,45 @@ describe('F. addMoments 와 replaceAllMoments', () => {
     expect(moments.moments[0]?.note).toBe('첫째')
   })
 
-  it('배열이 아니면 아무것도 하지 않는다', () => {
+  it('배열이 아니면 아무것도 하지 않는다', async () => {
     const moments = useMomentsStore()
     moments.add({ videoId: VIDEO, atSeconds: 1 })
     const before = JSON.stringify(moments.moments)
 
-    expect(moments.addMoments({ moments: [] })).toMatchObject({ added: 0, dropped: 0 })
+    expect(await moments.addMoments({ moments: [] })).toMatchObject({ added: 0, dropped: 0 })
     expect(JSON.stringify(moments.moments)).toBe(before)
   })
 
-  it('받을 것이 없으면 저장하지 않는다', () => {
+  it('받을 것이 없으면 저장하지 않는다', async () => {
     seedRaw(envelope([moment({ id: 'bad' }), { id: 'x' }]))
     const moments = useMomentsStore()
     moments.restore()
     const raw = readRaw()
 
-    expect(moments.addMoments(['nope']).persisted).toBe(false)
+    expect(await moments.addMoments(['nope'])).toMatchObject({ ok: true, persisted: false })
     expect(readRaw()).toBe(raw)
   })
 
-  it('보호 상태에서는 묶음 추가도 저장되지 않는다', () => {
+  it('보호 상태에서는 묶음 추가도 저장되지 않는다', async () => {
     const raw = envelope([moment({ id: 'good' }), { id: 'bad' }])
     seedRaw(raw)
     const moments = useMomentsStore()
     moments.restore()
 
-    const result = moments.addMoments([moment({ id: 'new' })])
+    const result = await moments.addMoments([moment({ id: 'new' })])
 
     expect(result).toMatchObject({ added: 1, persisted: false })
     expect(readRaw()).toBe(raw)
   })
 
-  it('replaceAllMoments 는 보호를 우회해 저장하고 보호를 푼다', () => {
+  it('replaceAllMoments 는 보호를 우회해 저장하고 보호를 푼다', async () => {
     const raw = envelope([moment({ id: 'unreadable' }), { id: 'bad' }])
     seedRaw(raw)
     const moments = useMomentsStore()
     moments.restore()
     expect(moments.status).toBe('protected')
 
-    const result = moments.replaceAllMoments([moment({ id: 'from-backup' })])
+    const result = await moments.replaceAllMoments([moment({ id: 'from-backup' })])
 
     expect(result).toEqual({ ok: true, persisted: true, writeFailure: null, verified: true })
     expect(moments.status).toBe('ready')
@@ -1073,11 +1073,11 @@ describe('F. addMoments 와 replaceAllMoments', () => {
     expect(storedData().map((item) => item.id)).toEqual(['from-backup'])
   })
 
-  it('빈 목록으로도 교체한다 — 사용자가 승인한 결과다', () => {
+  it('빈 목록으로도 교체한다 — 사용자가 승인한 결과다', async () => {
     const moments = useMomentsStore()
     moments.add({ videoId: VIDEO, atSeconds: 1 })
 
-    expect(moments.replaceAllMoments([]).persisted).toBe(true)
+    expect(await moments.replaceAllMoments([])).toMatchObject({ ok: true, persisted: true })
     expect(moments.moments).toEqual([])
     expect(storedData()).toEqual([])
   })
@@ -1093,12 +1093,12 @@ describe('F. addMoments 와 replaceAllMoments', () => {
     expect(moments.moments[0]?.note).toBe('원본')
   })
 
-  it('교체 저장이 실패하면 보호를 풀지 않고 이유를 알린다', () => {
+  it('교체 저장이 실패하면 보호를 풀지 않고 이유를 알린다', async () => {
     stubWriteFailure('quota')
     const moments = useMomentsStore()
     moments.restore()
     // 쓰기만 실패하는 저장소다. 읽기는 비어 있으므로 상태는 ready 다.
-    const result = moments.replaceAllMoments([moment({ id: 'x' })])
+    const result = await moments.replaceAllMoments([moment({ id: 'x' })])
 
     expect(result).toEqual({
       ok: true,
@@ -1109,7 +1109,7 @@ describe('F. addMoments 와 replaceAllMoments', () => {
     expect(moments.moments).toHaveLength(1)
   })
 
-  it('교체 저장이 실패해도 보호 상태가 유지된다', () => {
+  it('교체 저장이 실패해도 보호 상태가 유지된다', async () => {
     const raw = envelope([moment({ id: 'good' }), { id: 'bad' }])
     seedRaw(raw)
     const moments = useMomentsStore()
@@ -1134,9 +1134,9 @@ describe('F. addMoments 와 replaceAllMoments', () => {
       writable: true,
     })
 
-    const result = moments.replaceAllMoments([moment({ id: 'x' })])
+    const result = await moments.replaceAllMoments([moment({ id: 'x' })])
 
-    expect(result.persisted).toBe(false)
+    expect(result).toMatchObject({ ok: true, persisted: false })
     expect(moments.status).toBe('protected')
     expect(moments.protectedReason).toBe('partial-recovery')
   })

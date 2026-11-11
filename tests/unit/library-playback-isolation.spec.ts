@@ -42,12 +42,12 @@ afterEach(() => {
  * 시나리오: Playlist A 를 재생 중이고, Library 에서 Playlist B 를 만지작거린다.
  * A 의 큐·인덱스·현재 트랙은 전혀 흔들리지 않아야 한다.
  */
-function setupPlayingA() {
+async function setupPlayingA() {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const a = library.createPlaylist('PLAYLIST A')
-  const b = library.createPlaylist('PLAYLIST B')
+  const a = await library.createPlaylist('PLAYLIST A')
+  const b = await library.createPlaylist('PLAYLIST B')
   const idA = a.ok ? a.playlistId : ''
   const idB = b.ok ? b.playlistId : ''
 
@@ -69,8 +69,8 @@ function snapshotPlayback(playback: ReturnType<typeof usePlaybackStore>) {
 }
 
 describe('C. Library 와 Playback 의 독립성', () => {
-  it('Library 선택을 바꿔도 Playback 상태가 그대로다', () => {
-    const { library, playback, idB } = setupPlayingA()
+  it('Library 선택을 바꿔도 Playback 상태가 그대로다', async () => {
+    const { library, playback, idB } = await setupPlayingA()
     const before = snapshotPlayback(playback)
 
     library.selectPlaylist(idB)
@@ -80,8 +80,8 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(playback.queueIndex).toBe(1)
   })
 
-  it('재생 중이 아닌 플레이리스트의 이름을 바꿔도 큐가 그대로다', () => {
-    const { library, playback, idB } = setupPlayingA()
+  it('재생 중이 아닌 플레이리스트의 이름을 바꿔도 큐가 그대로다', async () => {
+    const { library, playback, idB } = await setupPlayingA()
     const before = snapshotPlayback(playback)
 
     library.selectPlaylist(idB)
@@ -90,8 +90,8 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(snapshotPlayback(playback)).toEqual(before)
   })
 
-  it('재생 중이 아닌 플레이리스트를 삭제해도 큐가 그대로다', () => {
-    const { library, playback, idB } = setupPlayingA()
+  it('재생 중이 아닌 플레이리스트를 삭제해도 큐가 그대로다', async () => {
+    const { library, playback, idB } = await setupPlayingA()
     const before = snapshotPlayback(playback)
 
     library.selectPlaylist(idB)
@@ -101,9 +101,9 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(playback.queue).toEqual(QUEUE_A)
   })
 
-  it('재생 중인 트랙이 담긴 플레이리스트를 지워도 큐가 그대로다', () => {
+  it('재생 중인 트랙이 담긴 플레이리스트를 지워도 큐가 그대로다', async () => {
     // 큐는 스냅샷이므로 원본 목록이 사라져도 재생은 계속된다.
-    const { library, playback, idA } = setupPlayingA()
+    const { library, playback, idA } = await setupPlayingA()
     const before = snapshotPlayback(playback)
 
     library.deletePlaylist(idA)
@@ -112,8 +112,8 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(snapshotPlayback(playback)).toEqual(before)
   })
 
-  it('모든 플레이리스트를 지워도 큐가 그대로다', () => {
-    const { library, playback, idA, idB } = setupPlayingA()
+  it('모든 플레이리스트를 지워도 큐가 그대로다', async () => {
+    const { library, playback, idA, idB } = await setupPlayingA()
     const before = snapshotPlayback(playback)
 
     library.deletePlaylist(idA)
@@ -124,8 +124,8 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(snapshotPlayback(playback)).toEqual(before)
   })
 
-  it('Library 복원이 Playback 상태를 건드리지 않는다', () => {
-    const { library, playback } = setupPlayingA()
+  it('Library 복원이 Playback 상태를 건드리지 않는다', async () => {
+    const { library, playback } = await setupPlayingA()
     const before = snapshotPlayback(playback)
 
     library.restore()
@@ -133,8 +133,8 @@ describe('C. Library 와 Playback 의 독립성', () => {
     expect(snapshotPlayback(playback)).toEqual(before)
   })
 
-  it('Playback 을 바꿔도 Library 선택이 그대로다', () => {
-    const { library, playback, idB } = setupPlayingA()
+  it('Playback 을 바꿔도 Library 선택이 그대로다', async () => {
+    const { library, playback, idB } = await setupPlayingA()
     library.selectPlaylist(idB)
 
     playback.setQueue([track('z1')], 0)

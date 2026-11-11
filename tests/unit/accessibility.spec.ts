@@ -51,9 +51,9 @@ function mountApp() {
 }
 
 /** 트랙 두 개를 담은 목록을 세운다. */
-function seedLibrary() {
+async function seedLibrary() {
   const library = useLibraryStore()
-  const created = library.createPlaylist('LIST')
+  const created = await library.createPlaylist('LIST')
   const playlistId = created.ok ? created.playlistId : ''
   library.addTrack(playlistId, { videoId: 'aaaaaaaaaaa', title: 'ONE' })
   library.addTrack(playlistId, { videoId: 'bbbbbbbbbbb', title: 'TWO' })
@@ -104,7 +104,7 @@ describe('A. 문서 구조', () => {
 describe('B. 키보드 경로', () => {
   it('드로어를 열면 닫기 버튼으로 포커스가 옮겨간다', async () => {
     const { wrapper } = mountApp()
-    seedLibrary()
+    await seedLibrary()
     await nextTick()
     // M7: 트랙 드로어는 플레이리스트 타일 본문으로 연다.
     const trigger = wrapper.get('.playlist-tile .playlist-open')
@@ -177,7 +177,7 @@ describe('C. 컨트롤 이름과 크기', () => {
 
   it('토글 이름이 상태를 따라간다', async () => {
     const { wrapper } = mountApp()
-    const library = seedLibrary()
+    const library = await seedLibrary()
     await nextTick()
     await wrapper.get('.playlist-play').trigger('click')
     await nextTick()
@@ -201,7 +201,7 @@ describe('C. 컨트롤 이름과 크기', () => {
 
   it('외부 링크가 새 창을 안전하게 연다', async () => {
     const { wrapper } = mountApp()
-    seedLibrary()
+    await seedLibrary()
     await nextTick()
     await wrapper.get('.playlist-play').trigger('click')
     await nextTick()

@@ -200,6 +200,8 @@ async function beginCapture(s: Session): Promise<void> {
 async function saveCapture(s: Session, note = ''): Promise<void> {
   if (note !== '') await s.wrapper.get('#moment-capture-note').setValue(note)
   await s.wrapper.get('.capture-form').trigger('submit')
+  // 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025) — 끝난 뒤의 화면을 본다.
+  await flushPromises()
   await nextTick()
 }
 
@@ -483,6 +485,31 @@ describe('B. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
     expect(s.wrapper.get('.moments-status').text()).toContain('저장에 실패했습니다')
   })
 
+  it('저장하지 못한 변경이 다른 탭의 저장을 다시 읽으며 사라지면 배너가 알린다 (M10-3 안정화)', async () => {
+    const s = boot()
+    const stop = s.moments.watchExternalChanges()
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError')
+    })
+    expect(await s.moments.add({ videoId: A, atSeconds: 4 })).toMatchObject({
+      ok: true,
+      persisted: false,
+    })
+    setItem.mockRestore()
+
+    // 다른 탭이 Moments 를 저장했다.
+    seedMoments([moment({ id: 'other', note: '다른 탭' })])
+    globalThis.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.moments }))
+    await nextTick()
+
+    expect(s.moments.moments.map((item) => item.id)).toEqual(['other'])
+    expect(s.wrapper.get('.moments-status').text()).toContain('다른 탭의 변경을 불러왔습니다')
+    expect(s.wrapper.get('.moments-status').text()).toContain(
+      '저장하지 못했던 변경은 반영되지 않았습니다',
+    )
+    stop()
+  })
+
   it('protected — 배너로 알리고, 저장해도 원본을 덮어쓰지 않는다', async () => {
     globalThis.localStorage.setItem(STORAGE_KEYS.moments, '{깨진 값')
     const s = boot()
@@ -716,6 +743,7 @@ describe('D. 메모 수정과 삭제', () => {
     const s = boot()
 
     await widget(s).get('[data-moment-edit="x"]').trigger('click')
+    await flushPromises()
     await nextTick()
     const field = widget(s).get('#moment-note-x')
     expect((field.element as HTMLTextAreaElement).value).toBe('처음')
@@ -723,11 +751,44 @@ describe('D. 메모 수정과 삭제', () => {
 
     await field.setValue('고친 메모')
     await widget(s).get('.edit-form').trigger('submit')
+    await flushPromises()
     await nextTick()
 
     expect(s.moments.getMoment('x')?.note).toBe('고친 메모')
     expect(listFeedback(s)?.text()).toContain('메모를 고쳤어요')
     expect(document.activeElement).toBe(widget(s).get('[data-moment-edit="x"]').element)
+  })
+
+  it('다른 탭이 먼저 바꿨으면 저장하지 않고 — 폼과 쓴 메모를 그대로 두고 최신을 보여준다 (M10-3 안정화)', async () => {
+    seedMoments([moment({ id: 'x', note: '처음' }), moment({ id: 'y', atSeconds: 5, note: 'Y' })])
+    const s = boot()
+
+    await widget(s).get('[data-moment-edit="x"]').trigger('click')
+    await flushPromises()
+    await widget(s).get('#moment-note-x').setValue('이 탭에서 쓴 긴 메모')
+
+    // 다른 탭이 y 의 메모를 고쳐 저장했다 (이 탭은 아직 모른다).
+    seedMoments([moment({ id: 'x', note: '처음' }), moment({ id: 'y', atSeconds: 5, note: 'Y2' })])
+    const before = rawMoments()
+
+    await widget(s).get('.edit-form').trigger('submit')
+    await flushPromises()
+    await nextTick()
+
+    // 쓰지 않았다 — 다른 탭의 변경이 그대로다.
+    expect(rawMoments()).toBe(before)
+    expect(listFeedback(s)?.text()).toContain('다른 탭에서 Moments 가 바뀌어')
+    // 폼과 쓴 메모가 남는다 — 다시 누르면 최신 위에 저장된다.
+    const field = widget(s).get('#moment-note-x')
+    expect((field.element as HTMLTextAreaElement).value).toBe('이 탭에서 쓴 긴 메모')
+    expect(s.moments.getMoment('y')?.note).toBe('Y2')
+
+    await widget(s).get('.edit-form').trigger('submit')
+    await flushPromises()
+    await nextTick()
+    expect(s.moments.getMoment('x')?.note).toBe('이 탭에서 쓴 긴 메모')
+    expect(s.moments.getMoment('y')?.note).toBe('Y2')
+    expect(widget(s).find('.edit-form').exists()).toBe(false)
   })
 
   it('수정을 취소하면 메모가 그대로다', async () => {
@@ -790,11 +851,13 @@ describe('D. 메모 수정과 삭제', () => {
     const libraryBefore = rawLibrary()
 
     await widget(s).get('[data-moment-remove="gone"]').trigger('click')
+    await flushPromises()
     const remove = widget(s)
       .get('[role="alertdialog"]')
       .findAll('button')
       .find((b) => b.text() === '삭제')
     await remove?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(s.moments.moments.map((m) => m.id)).toEqual(['keep-1', 'keep-2'])
@@ -812,11 +875,13 @@ describe('D. 메모 수정과 삭제', () => {
     const s = boot()
 
     await widget(s).get('[data-moment-remove="x"]').trigger('click')
+    await flushPromises()
     const remove = widget(s)
       .get('[role="alertdialog"]')
       .findAll('button')
       .find((b) => b.text() === '삭제')
     await remove?.trigger('click')
+    await flushPromises()
 
     expect(listFeedback(s)?.classes()).toContain('is-warning')
     expect(listFeedback(s)?.text()).toContain('새로고침하면 다시 나타납니다')

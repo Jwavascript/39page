@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { nextTick } from 'vue'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -164,6 +164,7 @@ describe('A. 드로어 동작', () => {
     await nextTick()
 
     await wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(isOpen(wrapper)).toBe(true)
@@ -208,12 +209,15 @@ describe('A. 드로어 동작', () => {
     const trigger = wrapper.get('.playlist-tile .playlist-open').element as HTMLElement
     trigger.focus()
 
-    await trigger.click()
+    trigger.click()
+    // 선택 저장이 끝난 뒤 드로어가 열린다 (ADR 0025).
+    await flushPromises()
     await nextTick()
     await nextTick()
     expect(document.activeElement).toBe(wrapper.get('[aria-label="라이브러리 닫기"]').element)
 
     await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await flushPromises()
     await nextTick()
     await nextTick()
     expect(document.activeElement).toBe(trigger)
@@ -223,7 +227,7 @@ describe('A. 드로어 동작', () => {
     const { wrapper } = mountApp()
     const library = useLibraryStore()
     library.createPlaylist('A')
-    const b = library.createPlaylist('B')
+    const b = await library.createPlaylist('B')
     await nextTick()
     // 두 번째 타일(=B)을 열어 선택을 B 로 맞춘다.
     await wrapper.findAll('.playlist-tile .playlist-open')[1]?.trigger('click')
@@ -304,7 +308,7 @@ describe('B. 플레이리스트 UI', () => {
   it('11. 이름을 바꾸고 취소할 수 있다', async () => {
     const { wrapper } = mountApp()
     const library = useLibraryStore()
-    const created = library.createPlaylist('OLD')
+    const created = await library.createPlaylist('OLD')
     const id = created.ok ? created.playlistId : ''
     await openDrawer(wrapper)
 
@@ -313,8 +317,10 @@ describe('B. 플레이리스트 UI', () => {
       .findAll('.pill')
       .filter((b) => b.text() === '이름 수정')[0]
       ?.trigger('click')
+    await flushPromises()
     await wrapper.get('#playlist-name').setValue('RENAMED')
     await wrapper.get('form.name-form').trigger('submit')
+    await flushPromises()
     await nextTick()
     expect(library.getPlaylist(id)?.name).toBe('RENAMED')
 
@@ -323,11 +329,13 @@ describe('B. 플레이리스트 UI', () => {
       .findAll('.pill')
       .filter((b) => b.text() === '이름 수정')[0]
       ?.trigger('click')
+    await flushPromises()
     await wrapper.get('#playlist-name').setValue('IGNORED')
     await wrapper
       .findAll('.pill')
       .filter((b) => b.text() === '취소')[0]
       ?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(library.getPlaylist(id)?.name).toBe('RENAMED')
@@ -404,7 +412,7 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     const playback = usePlaybackStore()
     library.createPlaylist('A')
-    const b = library.createPlaylist('B')
+    const b = await library.createPlaylist('B')
     playback.setQueue([track('q1'), track('q2')], 1)
     const before = { queue: [...playback.queue], index: playback.queueIndex }
     await openDrawer(wrapper)
@@ -473,33 +481,33 @@ describe('B. 플레이리스트 UI', () => {
 })
 
 describe('C. 영속화와 보호', () => {
-  it('17. 최초 실행에서만 MY RECORDS 를 만든다', () => {
+  it('17. 최초 실행에서만 MY RECORDS 를 만든다', async () => {
     const library = useLibraryStore()
 
     expect(library.restore()).toBe('empty')
-    const seeded = library.seedFirstRunPlaylist('MY RECORDS')
+    const seeded = await library.seedFirstRunPlaylist('MY RECORDS')
 
     expect(seeded?.ok).toBe(true)
     expect(library.playlists.map((playlist) => playlist.name)).toEqual(['MY RECORDS'])
   })
 
-  it('17. 사용자가 전부 지운 빈 라이브러리는 최초 실행이 아니다', () => {
+  it('17. 사용자가 전부 지운 빈 라이브러리는 최초 실행이 아니다', async () => {
     seedRaw(envelope({ playlists: [], selectedPlaylistId: null }))
     const library = useLibraryStore()
 
     expect(library.restore()).toBe('stored')
-    expect(library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
+    expect(await library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
     expect(library.playlists).toEqual([])
   })
 
-  it('17. 기존 데이터가 있으면 만들지 않는다', () => {
+  it('17. 기존 데이터가 있으면 만들지 않는다', async () => {
     seedRaw(
       envelope({ playlists: [{ id: 'p1', name: 'KEEP', tracks: [] }], selectedPlaylistId: 'p1' }),
     )
     const library = useLibraryStore()
     library.restore()
 
-    expect(library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
+    expect(await library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
     expect(library.playlists.map((playlist) => playlist.name)).toEqual(['KEEP'])
   })
 
@@ -509,18 +517,18 @@ describe('C. 영속화와 보호', () => {
       '미래 버전',
       JSON.stringify({ version: 99, data: { playlists: [], selectedPlaylistId: null } }),
     ],
-  ])('17. %s 에서는 자동 생성하지 않는다', (_label, raw) => {
+  ])('17. %s 에서는 자동 생성하지 않는다', async (_label, raw) => {
     seedRaw(raw)
     const library = useLibraryStore()
     library.restore()
 
     expect(library.status).toBe('protected')
-    expect(library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
+    expect(await library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
     // 원본도 그대로다.
     expect(readRaw()).toBe(raw)
   })
 
-  it('17. 저장소를 쓸 수 없으면 자동 생성하지 않는다', () => {
+  it('17. 저장소를 쓸 수 없으면 자동 생성하지 않는다', async () => {
     stubLocalStorage({
       get() {
         throw new Error('blocked')
@@ -530,7 +538,7 @@ describe('C. 영속화와 보호', () => {
     library.restore()
 
     expect(library.status).toBe('unavailable')
-    expect(library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
+    expect(await library.seedFirstRunPlaylist('MY RECORDS')).toBeNull()
   })
 
   it('18. 복원만으로 저장소에 쓰지 않는다', () => {
@@ -734,7 +742,7 @@ describe('D. 플레이어 안정성', () => {
     const library = useLibraryStore()
     const playback = usePlaybackStore()
     library.createPlaylist('A')
-    const b = library.createPlaylist('B')
+    const b = await library.createPlaylist('B')
     playback.setQueue([track('q1'), track('q2')], 1)
     playback.setPlayerState('playing')
     const before = {

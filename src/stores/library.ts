@@ -18,9 +18,13 @@ import { computed, readonly, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  REVISION_KEYS,
   STORAGE_KEYS,
+  createBaseline,
+  createWriteGate,
   defineStorage,
   type ReadOutcome,
+  type StorageEventTarget,
   type WriteFailureReason,
 } from '@/shared/storage'
 import { isYouTubeVideoId } from '@/shared/utils/youtube'
@@ -232,6 +236,11 @@ export type LibraryMutationFailure =
    * 변경은 적용하지 않았다 — 사용자가 확인하고 다시 시도한다.
    */
   | 'conflict'
+  /**
+   * 다른 탭이 저장하는 중이라 잠금을 제때 얻지 못했다 (M10-3 안정화, ADR 0025).
+   * 아무것도 바꾸지 않았다 — 다시 시도하면 된다.
+   */
+  | 'busy'
 
 export type LibraryMutationResult =
   | {
@@ -269,19 +278,11 @@ export interface LibraryExternalChange {
   readonly possiblyOverwritten: boolean
 }
 
-/**
- * 다른 탭의 저장이 이 탭의 쓰기를 덮었을 때 "동시 저장" 으로 볼 시간 (M10-3C).
- *
- * 다른 탭이 이 탭의 쓰기를 **보고 나서** 사람이 거기서 조작하기까지는 이보다 길다.
- * 그 안에 덮였다면 다른 탭은 이 탭의 쓰기를 모른 채 썼을 가능성이 크다.
- */
-export const CONCURRENT_WRITE_WINDOW_MS = 1_000
+/** 동시 저장으로 볼 시간 — 공용 정의를 다시 내보낸다 (`src/shared/storage/crossTab.ts`). */
+export { CONCURRENT_WRITE_WINDOW_MS } from '@/shared/storage'
 
-/** 다른 탭의 `storage` 이벤트를 받을 대상. 테스트가 바꿔 낄 수 있게 좁힌다. */
-export interface StorageEventTarget {
-  addEventListener(type: 'storage', listener: (event: StorageEvent) => void): void
-  removeEventListener(type: 'storage', listener: (event: StorageEvent) => void): void
-}
+/** 다른 탭의 `storage` 이벤트를 받을 대상 — 공용 정의를 다시 내보낸다. */
+export type { StorageEventTarget } from '@/shared/storage'
 
 /**
  * `replaceAll` 의 결과 (M8-3).
@@ -290,7 +291,7 @@ export interface StorageEventTarget {
  * 돌려준다** — 가져오기가 "라이브러리는 반영됐지만 저장은 실패했다" 를 사용자에게
  * 정확히 말해야 하기 때문이다.
  */
-export interface LibraryReplaceResult {
+export interface LibraryReplaceApplied {
   /** 메모리 반영은 항상 성공한다. 이 값은 저장 여부가 아니다. */
   readonly ok: true
   /** 저장소에 반영됐는지. */
@@ -309,6 +310,19 @@ export interface LibraryReplaceResult {
    */
   readonly verified: boolean
 }
+
+/**
+ * 가져오기를 반영하지 않았다 (M10-3 안정화).
+ *
+ * - `stale` — 미리보기 뒤 다른 탭이 라이브러리를 바꿨다 (잠금 안에서 다시 확인)
+ * - `busy` — 다른 탭이 저장하는 중이라 잠금을 제때 얻지 못했다
+ */
+export interface LibraryReplaceRefused {
+  readonly ok: false
+  readonly reason: 'stale' | 'busy'
+}
+
+export type LibraryReplaceResult = LibraryReplaceApplied | LibraryReplaceRefused
 
 /**
  * 비교를 위한 정규 형태 (M8-4).
@@ -362,19 +376,26 @@ export const useLibraryStore = defineStore('library', () => {
   /*
    * 탭 간 정합성 (M10-3, ADR 0024).
    *
-   * `baselineRaw` — 이 탭이 **마지막으로 읽거나 쓴 저장소 원문**. 다음에 쓰기
+   * 기준 원문 — 이 탭이 **마지막으로 읽거나 쓴 저장소 원문**. 다음에 쓰기
    * 직전에 지금 원문과 비교한다. 다르면 다른 탭이 그 사이에 썼다는 뜻이고,
    * 이 탭의 메모리 상태로 쓰면 그 변경을 지운다 — 그래서 쓰지 않는다.
    *
-   * `dirty` — 메모리에만 있고 저장되지 않은 변경이 있다 (쓰기 실패 · 보호 상태).
-   * 다시 읽을 때 그것이 사라진다는 것을 알리기 위해 센다.
+   * 저장 못 한 변경 — 메모리에만 있고 저장되지 않은 변경이 있다 (쓰기 실패 ·
+   * 보호 상태). 다시 읽을 때 그것이 사라진다는 것을 알리기 위해 센다.
+   * (둘 다 `createBaseline` 이 맡는다 — `src/shared/storage/crossTab.ts`.)
    *
    * 화면에 그릴 것이 아니라 비교용이므로 ref 가 아니다.
    */
-  let baselineRaw: string | null = null
-  let dirty = false
-  /** 이 탭이 마지막으로 쓴 원문과 시각 — 동시 저장으로 덮였는지 판단한다 (M10-3C). */
-  let lastOwnWrite: { readonly raw: string | null; readonly at: number } | null = null
+  const baseline = createBaseline(libraryStorage)
+
+  /*
+   * 탭 간 쓰기 잠금 + 영수증 (M10-3 안정화, ADR 0025). 모든 쓰기 명령이 이 문을
+   * 지난다 — 대시보드·수집 화면·백업 가져오기가 같은 길이다.
+   */
+  const gate = createWriteGate({ name: STORAGE_KEYS.library, revisionKey: REVISION_KEYS.library })
+
+  /** 지금 명령에서 저장소에 썼는지 — 썼으면 영수증을 낸다. */
+  let wroteInCommand = false
 
   /** 수정이 저장소에 반영될 수 있는 상태인지. */
   const canPersist = computed<boolean>(() => status.value === 'ready')
@@ -396,9 +417,7 @@ export const useLibraryStore = defineStore('library', () => {
    * 쓰기가 실패하게 둔다 (기존 동작, ADR 0007).
    */
   function hasExternalChange(): boolean {
-    return (
-      status.value === 'ready' && libraryStorage.available() && libraryStorage.raw() !== baselineRaw
-    )
+    return status.value === 'ready' && baseline.changedExternally()
   }
 
   /**
@@ -413,7 +432,7 @@ export const useLibraryStore = defineStore('library', () => {
    */
   function reload(): void {
     const keepSelection = selectedId.value
-    const discardedUnsaved = dirty
+    const discardedUnsaved = baseline.hasUnsaved()
 
     restore()
 
@@ -455,11 +474,11 @@ export const useLibraryStore = defineStore('library', () => {
    */
   function persist(): PersistOutcome {
     if (!canPersist.value) {
-      dirty = true
+      baseline.markUnsaved()
       return 'skipped'
     }
 
-    if (libraryStorage.available() && libraryStorage.raw() !== baselineRaw) {
+    if (baseline.changedExternally()) {
       reload()
       return 'conflict'
     }
@@ -471,13 +490,12 @@ export const useLibraryStore = defineStore('library', () => {
     lastWriteFailure.value = result.ok ? null : result.reason
 
     if (!result.ok) {
-      dirty = true
+      baseline.markUnsaved()
       return 'failed'
     }
 
-    baselineRaw = libraryStorage.raw()
-    dirty = false
-    lastOwnWrite = { raw: baselineRaw, at: Date.now() }
+    baseline.recordWrite()
+    wroteInCommand = true
     // 저장에 성공했다 — "사라졌다 / 덮였을 수 있다" 안내는 할 일을 다 했다.
     if (externalChange.value?.discardedUnsaved || externalChange.value?.possiblyOverwritten) {
       externalChange.value = {
@@ -516,8 +534,7 @@ export const useLibraryStore = defineStore('library', () => {
   function restore(): ReadOutcome {
     lastReport = null
     // 같은 동기 실행 안에서 읽으므로 이 원문이 아래 read() 가 해석한 원문이다.
-    baselineRaw = libraryStorage.raw()
-    dirty = false
+    baseline.adopt()
     const { value, outcome } = libraryStorage.read()
     const report = takeNormalizationReport()
 
@@ -553,7 +570,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /** 새 플레이리스트를 만들고 선택한다. 트랙은 비어 있다. */
-  function createPlaylist(name: string): LibraryMutationResult {
+  function createPlaylistNow(name: string): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -568,7 +585,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /** 이름만 바꾼다. id 와 트랙은 그대로 둔다. */
-  function renamePlaylist(id: string, name: string): LibraryMutationResult {
+  function renamePlaylistNow(id: string, name: string): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -595,7 +612,7 @@ export const useLibraryStore = defineStore('library', () => {
    * 선택된 목록을 지웠다면 **결정적으로** 다음 목록을 고른다. 지운 자리의
    * 항목을 쓰고, 마지막이었다면 그 앞을 쓴다. 남은 목록이 없으면 `null`.
    */
-  function deletePlaylist(id: string): LibraryMutationResult {
+  function deletePlaylistNow(id: string): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -623,7 +640,7 @@ export const useLibraryStore = defineStore('library', () => {
    * URL 문자열을 저장하지 않는다. 데이터 모델의 `videoId` 만 남긴다.
    * 같은 영상을 여러 번 넣을 수 있고, 그때도 `track.id` 는 서로 다르다.
    */
-  function addTrack(
+  function addTrackNow(
     playlistId: string,
     input: { videoId: string; title?: string },
   ): LibraryMutationResult {
@@ -650,7 +667,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /** 트랙 하나를 뺀다. 나머지 트랙의 id 와 순서는 그대로다. */
-  function removeTrack(playlistId: string, trackId: string): LibraryMutationResult {
+  function removeTrackNow(playlistId: string, trackId: string): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -675,7 +692,7 @@ export const useLibraryStore = defineStore('library', () => {
    * 경계를 넘는 요청은 `out-of-range` 로 거절하고 **상태를 바꾸지 않는다.**
    * 교환만 하므로 트랙의 id 와 내용은 그대로다.
    */
-  function moveTrack(
+  function moveTrackNow(
     playlistId: string,
     trackId: string,
     direction: 'up' | 'down',
@@ -718,7 +735,11 @@ export const useLibraryStore = defineStore('library', () => {
    * (`MVP_SPEC.md` F4). 두 경로가 같은 규칙을 쓰는 것이 중요하다 — 추가할
    * 때와 고칠 때 빈 제목의 뜻이 달라지면 사용자가 예측할 수 없다.
    */
-  function renameTrack(playlistId: string, trackId: string, title: string): LibraryMutationResult {
+  function renameTrackNow(
+    playlistId: string,
+    trackId: string,
+    title: string,
+  ): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -768,7 +789,15 @@ export const useLibraryStore = defineStore('library', () => {
    *   항목까지 보여준 뒤에 넘긴다. 여기서 또 버리면 사용자가 승인한 것과
    *   저장되는 것이 달라진다.
    */
-  function replaceAll(data: LibraryData): LibraryReplaceResult {
+  function replaceAllNow(
+    data: LibraryData,
+    expectedRaw: string | null | undefined,
+  ): LibraryReplaceResult {
+    // 미리보기 뒤 다른 탭이 바꿨으면 낡은 승인으로 덮지 않는다 — 잠금 안에서 다시 본다.
+    if (expectedRaw !== undefined && libraryStorage.raw() !== expectedRaw) {
+      return { ok: false, reason: 'stale' }
+    }
+
     // 트랙 배열까지 복사한다. 호출부가 넘긴 객체와 store 가 참조를 공유하지 않는다.
     items.value = data.playlists.map((playlist) => ({
       ...playlist,
@@ -784,15 +813,14 @@ export const useLibraryStore = defineStore('library', () => {
     lastWriteFailure.value = result.ok ? null : result.reason
 
     if (!result.ok) {
-      dirty = true
+      baseline.markUnsaved()
       return { ok: true, persisted: false, writeFailure: result.reason, verified: false }
     }
 
     // 다음 쓰기의 비교 기준을 새 원문으로 옮긴다 (M10-3). 가져오기의 신선도 검사는
     // 가져오기 경로가 따로 한다 (ADR 0018) — 여기서는 덮어쓰기를 막지 않는다.
-    baselineRaw = libraryStorage.raw()
-    dirty = false
-    lastOwnWrite = { raw: baselineRaw, at: Date.now() }
+    baseline.recordWrite()
+    wroteInCommand = true
 
     /*
      * 사용자가 원본을 버리기로 **결정했고** 그 결정이 저장됐다. 보호할
@@ -832,16 +860,16 @@ export const useLibraryStore = defineStore('library', () => {
    *
    * @returns 만들었으면 생성 결과, 아니면 `null`.
    */
-  function seedFirstRunPlaylist(name: string): LibraryMutationResult | null {
+  function seedFirstRunPlaylistNow(name: string): LibraryMutationResult | null {
     if (restoreOutcome.value !== 'empty') return null
     if (status.value !== 'ready') return null
     if (items.value.length > 0) return null
 
-    return createPlaylist(name)
+    return createPlaylistNow(name)
   }
 
   /** 존재하는 플레이리스트만 선택한다. 트랙과 재생 상태는 건드리지 않는다. */
-  function selectPlaylist(id: string): LibraryMutationResult {
+  function selectPlaylistNow(id: string): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -849,6 +877,110 @@ export const useLibraryStore = defineStore('library', () => {
 
     selectedId.value = id
     return success(id)
+  }
+
+  /**
+   * 쓰기 명령을 탭 간 잠금 안에서 실행한다 (M10-3 안정화, ADR 0025).
+   *
+   * - 보호·사용 불가 상태는 쓰지 않으므로(메모리 전용, ADR 0007) 잠그지 않고 바로 한다.
+   * - 잠금 안에서 앞 탭의 쓰기가 보인 뒤에 명령 본문(가드 → 변경 → 쓰기)을 한 번에 한다.
+   *   잠금을 얻기 전의 메모리로 쓰지 않는다 — 본문의 첫 줄이 기준 원문을 다시 본다.
+   * - 앞 탭의 쓰기를 확인하지 못하면 최신을 다시 읽고 `conflict`, 잠금을 얻지 못하면
+   *   `busy`. 둘 다 아무것도 쓰지 않았다.
+   *
+   * 잠금이 없는 환경에서는 본문을 지금 바로 실행한다 — 돌아왔을 때 이미 반영돼 있다.
+   */
+  function command<T>(run: () => T, refuse: (reason: 'conflict' | 'busy') => T): Promise<T> {
+    if (!canPersist.value) return Promise.resolve(run())
+    return gated(run, refuse)
+  }
+
+  /** 상태와 관계없이 잠금을 지난다 — `replaceAll` (보호 상태에서도 쓰는 유일한 경로). */
+  function gated<T>(run: () => T, refuse: (reason: 'conflict' | 'busy') => T): Promise<T> {
+    return gate
+      .run(() => {
+        wroteInCommand = false
+        const value = run()
+        return { value, wrote: wroteInCommand }
+      })
+      .then((outcome) => {
+        if (outcome.kind === 'done') return outcome.value
+        if (outcome.kind === 'stale-view') {
+          reload()
+          return refuse('conflict')
+        }
+        return refuse('busy')
+      })
+  }
+
+  function mutation(run: () => LibraryMutationResult): Promise<LibraryMutationResult> {
+    return command(run, (reason) => failure(reason))
+  }
+
+  /** 새 플레이리스트를 만들고 선택한다. 저장이 끝난 뒤 이행한다. */
+  function createPlaylist(name: string): Promise<LibraryMutationResult> {
+    return mutation(() => createPlaylistNow(name))
+  }
+
+  function renamePlaylist(id: string, name: string): Promise<LibraryMutationResult> {
+    return mutation(() => renamePlaylistNow(id, name))
+  }
+
+  function deletePlaylist(id: string): Promise<LibraryMutationResult> {
+    return mutation(() => deletePlaylistNow(id))
+  }
+
+  function selectPlaylist(id: string): Promise<LibraryMutationResult> {
+    return mutation(() => selectPlaylistNow(id))
+  }
+
+  function addTrack(
+    playlistId: string,
+    input: { videoId: string; title?: string },
+  ): Promise<LibraryMutationResult> {
+    return mutation(() => addTrackNow(playlistId, input))
+  }
+
+  function removeTrack(playlistId: string, trackId: string): Promise<LibraryMutationResult> {
+    return mutation(() => removeTrackNow(playlistId, trackId))
+  }
+
+  function moveTrack(
+    playlistId: string,
+    trackId: string,
+    direction: 'up' | 'down',
+  ): Promise<LibraryMutationResult> {
+    return mutation(() => moveTrackNow(playlistId, trackId, direction))
+  }
+
+  function renameTrack(
+    playlistId: string,
+    trackId: string,
+    title: string,
+  ): Promise<LibraryMutationResult> {
+    return mutation(() => renameTrackNow(playlistId, trackId, title))
+  }
+
+  /** 최초 실행 기본 목록 — 조건을 잠금 안에서 다시 본다 (두 탭이 동시에 첫 실행이어도 하나). */
+  function seedFirstRunPlaylist(name: string): Promise<LibraryMutationResult | null> {
+    return command<LibraryMutationResult | null>(
+      () => seedFirstRunPlaylistNow(name),
+      (reason) => failure(reason),
+    )
+  }
+
+  /**
+   * 라이브러리를 통째로 교체한다 (백업 가져오기 전용). `expectedRaw` 를 주면 잠금 안에서
+   * 지금 원문이 그것과 같을 때만 쓴다 — 미리보기 뒤 다른 탭의 변경을 덮지 않는다.
+   */
+  function replaceAll(
+    data: LibraryData,
+    options: { readonly expectedRaw?: string | null } = {},
+  ): Promise<LibraryReplaceResult> {
+    return gated<LibraryReplaceResult>(
+      () => replaceAllNow(data, options.expectedRaw),
+      (reason) => ({ ok: false, reason: reason === 'busy' ? 'busy' : 'stale' }),
+    )
   }
 
   /**
@@ -865,14 +997,10 @@ export const useLibraryStore = defineStore('library', () => {
     const onStorage = (event: StorageEvent): void => {
       if (event.key !== null && event.key !== libraryStorage.key) return
       if (status.value === 'unavailable' || !libraryStorage.available()) return
-      if (libraryStorage.raw() === baselineRaw) return
+      if (!baseline.changedExternally()) return
 
       // 덮인 것이 이 탭이 방금 쓴 값이면, 다른 탭은 그것을 모르고 썼을 수 있다.
-      const overwroteOwn =
-        lastOwnWrite !== null &&
-        event.oldValue === lastOwnWrite.raw &&
-        Date.now() - lastOwnWrite.at <= CONCURRENT_WRITE_WINDOW_MS
-      lastOwnWrite = null
+      const overwroteOwn = baseline.overwroteRecentWrite(event.oldValue)
 
       reload()
       if (overwroteOwn && externalChange.value !== null) {

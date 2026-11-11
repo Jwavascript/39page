@@ -3,8 +3,12 @@
  * 영상별로 묶은 Moment 목록 (M9-4, F14 · F16).
  *
  * **표현 컴포넌트다.** store 도 코디네이터도 모른다. 묶음을 props 로 받고,
- * 재생·메모 수정·삭제는 이벤트로 올린다 (`AGENTS.md` 규칙 3). `TrackList` 와
+ * 재생·삭제는 이벤트로 올린다 (`AGENTS.md` 규칙 3). `TrackList` 와
  * 같은 구조다 — 같은 앱의 같은 종류의 행이 같은 방식으로 움직인다.
+ *
+ * 메모 저장만 **결과를 기다리는 함수**(`saveNote`)로 받는다 (M10-3 안정화). 저장은
+ * 탭 간 잠금 안에서 끝나고 거절될 수 있다(`conflict` · `busy`) — 그때 폼을 닫으면
+ * 쓴 메모가 사라진다. 결과가 `true` 일 때만 닫는다.
  *
  * 삭제 확인은 **여기서** 받는다. 확인된 뒤에만 `remove` 를 올린다. 사용자
  * 데이터를 지우는 동작이므로 한 번 더 묻는다 (F16).
@@ -21,13 +25,17 @@ const props = defineProps<{
   /** 지금 재생 중인 영상. 그 묶음을 강조한다. */
   currentVideoId: string | null
   maxNoteLength: number
+  /** 메모를 저장한다. 폼을 닫아도 되면 `true` — 거절되면 `false` 이고 쓴 메모를 지킨다. */
+  saveNote: (momentId: string, note: string) => Promise<boolean>
 }>()
 
 const emit = defineEmits<{
   play: [momentId: string]
-  'save-note': [momentId: string, note: string]
   remove: [momentId: string]
 }>()
+
+/** 메모 저장을 기다리는 중 — 두 번 저장되지 않게 버튼을 끈다. */
+const isSavingNote = ref(false)
 
 /** 메모를 고치는 중인 Moment. 한 번에 하나만 열린다. */
 const editingId = ref<string | null>(null)
@@ -66,17 +74,24 @@ function closeEdit(): void {
   if (momentId !== null) focusIn(`[data-moment-edit="${momentId}"]`)
 }
 
-function submitEdit(): void {
+async function submitEdit(): Promise<void> {
   const momentId = editingId.value
-  if (momentId === null) return
+  if (momentId === null || isSavingNote.value) return
 
   if (draftNote.value.length > props.maxNoteLength) {
     editError.value = `메모는 ${String(props.maxNoteLength)}자까지 쓸 수 있어요.`
     return
   }
 
-  emit('save-note', momentId, draftNote.value)
-  closeEdit()
+  isSavingNote.value = true
+  let done: boolean
+  try {
+    done = await props.saveNote(momentId, draftNote.value)
+  } finally {
+    isSavingNote.value = false
+  }
+  // 기다리는 동안 다른 줄을 열었으면 그 폼을 닫지 않는다.
+  if (done && editingId.value === momentId) closeEdit()
 }
 
 function requestRemove(momentId: string): void {
@@ -194,7 +209,14 @@ function noteLabel(note: string): string {
             </p>
             <p class="error-msg">{{ editError }}</p>
             <div class="row-actions">
-              <button type="submit" class="pill pill--strong">저장</button>
+              <button
+                type="submit"
+                class="pill pill--strong"
+                :disabled="isSavingNote"
+                :aria-busy="isSavingNote ? 'true' : 'false'"
+              >
+                저장
+              </button>
               <button type="button" class="pill" @click="closeEdit">취소</button>
             </div>
           </form>

@@ -22,7 +22,7 @@
  * - 섹션마다 결과를 따로 돌려준다. 하나라도 저장되지 않았으면 "복원했습니다" 라고
  *   말하지 않는다
  */
-import { computed, inject, ref, type ComputedRef, type Ref } from 'vue'
+import { computed, inject, readonly, ref, type ComputedRef, type Ref } from 'vue'
 
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { LibraryData, MomentsData, ThemeKey } from '@/shared/types'
@@ -202,11 +202,28 @@ export interface BackupImportModel {
   downloadRawOriginal(): void
   /** 읽지 못한 Moments 원본을 원문 그대로 꺼낸다 (M9-5). */
   downloadRawMoments(): void
-  /** 승인. 여기서 **처음** 쓴다. */
-  apply(): void
-  /** 저장에 실패한 것을 다시 저장해 본다 (M8-4). */
-  retrySave(): void
+  /**
+   * 적용(또는 다시 저장)이 진행 중이다 (M10-3 안정화). 쓰기는 탭 간 잠금 안에서
+   * 끝나므로 잠깐 걸린다 — 그동안 버튼을 끄고, 결과는 끝난 뒤에만 쓴다.
+   */
+  applying: Readonly<Ref<boolean>>
+  /** 승인. 여기서 **처음** 쓴다. 쓰기가 끝나면 이행한다. */
+  apply(): Promise<void>
+  /** 저장에 실패한 것을 다시 저장해 본다 (M8-4). 끝나면 이행한다. */
+  retrySave(): Promise<void>
 }
+
+/** 승인할 때 본 저장소 원문 — 잠금 안에서 그대로인지 다시 본다 (M10-3 안정화). */
+interface Expected {
+  readonly library: string | null
+  readonly moments: string | null
+}
+
+/** 미리보기 뒤 데이터가 바뀌었을 때의 안내. 미리 비교 · 잠금 안 비교가 같은 문구를 쓴다. */
+const STALE_MESSAGE =
+  '미리보기를 뜬 뒤 지금 데이터가 바뀌었습니다. 아래 내용을 다시 확인하고 눌러주세요.'
+const BUSY_MESSAGE =
+  '다른 39page 탭이 저장하는 중이라 아무것도 바꾸지 않았습니다. 잠시 뒤 다시 눌러주세요.'
 
 /** 현재 데이터의 지문. 미리보기 승인이 낡았는지 본다. */
 interface Fingerprint {
@@ -228,16 +245,22 @@ export function useBackupImport(): BackupImportModel {
   const failed = ref(false)
   const applyTheme = ref(true)
   const stale = ref(false)
+  const applying = ref(false)
 
   /**
    * 저장에 실패해 **메모리에만** 남은 것 (M8-4).
    *
    * 다시 저장을 시도할 수 있게 들고 있는다. 저장되면 비운다.
+   *
+   * `expected` — 승인할 때 본 저장소 원문 (M10-3 안정화). 다시 저장할 때도 잠금
+   * 안에서 원문이 그대로인지 본다 — 그 사이 다른 탭이 저장했으면 낡은 승인으로
+   * 덮지 않는다. 저장이 실패했으면 원문은 그때 그대로이므로 같은 값을 쓴다.
    */
   const pending = ref<{
     library: LibraryData | null
     moments: MomentsData | null
     theme: ThemeKey | null
+    expected: Expected
   } | null>(null)
   const unsaved = computed<boolean>(() => pending.value !== null)
   const results = ref<readonly SectionResult[]>([])
@@ -517,9 +540,9 @@ export function useBackupImport(): BackupImportModel {
     failed.value = !result.ok
   }
 
-  function apply(): void {
+  async function apply(): Promise<void> {
     const file = read.value
-    if (file === null) return
+    if (file === null || applying.value) return
 
     const current = preview.value
     if (current?.blocked != null) {
@@ -537,20 +560,33 @@ export function useBackupImport(): BackupImportModel {
      */
     const now = takeFingerprint()
     if (fingerprint !== null && !sameFingerprint(fingerprint, now)) {
-      fingerprint = now
-      stale.value = true
-      failed.value = true
-      notice.value =
-        '미리보기를 뜬 뒤 지금 데이터가 바뀌었습니다. 아래 내용을 다시 확인하고 눌러주세요.'
+      markStale()
       return
     }
     stale.value = false
 
-    const outcome = write({
-      library: file.library,
-      moments: file.moments,
-      theme: applyTheme.value ? file.theme : null,
-    })
+    // 잠금 안에서 다시 본다 — 위 비교와 쓰기 사이에 다른 탭이 저장할 수 있다.
+    const expected: Expected = { library: now.rawLibrary, moments: now.rawMoments }
+    const outcome = await writing(() =>
+      write(
+        {
+          library: file.library,
+          moments: file.moments,
+          theme: applyTheme.value ? file.theme : null,
+        },
+        expected,
+      ),
+    )
+
+    if (outcome.refused === 'stale') {
+      markStale()
+      return
+    }
+    if (outcome.refused === 'busy') {
+      failed.value = true
+      notice.value = BUSY_MESSAGE
+      return
+    }
 
     // 파일에서 가져오지 않은 것도 결과에 적는다. 조용히 빠뜨리지 않는다.
     if (file.library === null) {
@@ -577,12 +613,38 @@ export function useBackupImport(): BackupImportModel {
       outcome.results.push({ name: '테마', outcome: 'skipped', detail: '적용하지 않도록 껐음' })
     }
 
-    report(outcome)
+    report(outcome, expected)
     reset()
+  }
+
+  /**
+   * 미리보기 승인이 낡았다 — 지문을 새로 뜨고 다시 확인하게 한다. 미리보기는 그대로
+   * 두므로 사용자가 비교한 뒤 다시 누를 수 있다.
+   */
+  function markStale(): void {
+    fingerprint = takeFingerprint()
+    stale.value = true
+    failed.value = true
+    notice.value = STALE_MESSAGE
+  }
+
+  /** 쓰기가 끝날 때까지 `applying` 을 켠다. */
+  async function writing<T>(run: () => Promise<T>): Promise<T> {
+    applying.value = true
+    try {
+      return await run()
+    } finally {
+      applying.value = false
+    }
   }
 
   /** 집계 결과. 저장되지 않은 것이 있으면 `pending` 에 남는다. */
   interface WriteOutcome {
+    /**
+     * 첫 섹션(플레이리스트)부터 거절돼 **아무것도 쓰지 않았다** (M10-3 안정화).
+     * `stale` — 승인 뒤 다른 탭이 바꿨다. `busy` — 다른 탭이 저장 중이었다.
+     */
+    refused: 'stale' | 'busy' | null
     results: SectionResult[]
     unsavedLibrary: LibraryData | null
     /** 화면에 반영했지만 저장 못 했거나, 앞 섹션 때문에 **보류**한 Moments. */
@@ -596,13 +658,21 @@ export function useBackupImport(): BackupImportModel {
    *
    * `localStorage` 에 여러 키 트랜잭션이 없으므로 원자성을 약속하지 않는다.
    * 대신 무엇이 반영되고 무엇이 안 됐는지 섹션마다 정확히 돌려준다.
+   *
+   * 섹션마다 탭 간 잠금 안에서 원문이 `expected` 와 같을 때만 쓴다 (M10-3 안정화).
+   * 플레이리스트가 거절되면 아무것도 쓰지 않고 멈춘다. 플레이리스트를 쓴 뒤
+   * Moments 가 거절되면 그 사실을 섹션 결과로 남긴다 — 원자성은 여전히 없다.
    */
-  function write(next: {
-    library: LibraryData | null
-    moments: MomentsData | null
-    theme: ThemeKey | null
-  }): WriteOutcome {
+  async function write(
+    next: {
+      library: LibraryData | null
+      moments: MomentsData | null
+      theme: ThemeKey | null
+    },
+    expected: Expected,
+  ): Promise<WriteOutcome> {
     const outcome: WriteOutcome = {
+      refused: null,
       results: [],
       unsavedLibrary: null,
       unsavedMoments: null,
@@ -613,7 +683,13 @@ export function useBackupImport(): BackupImportModel {
     let libraryLanded = true
 
     if (next.library !== null) {
-      const result = library.replaceAll(next.library)
+      const result = await library.replaceAll(next.library, { expectedRaw: expected.library })
+      if (!result.ok) {
+        // 거절 — 메모리도 저장소도 그대로다. 다른 탭의 최신을 화면에 맞춘다.
+        if (result.reason === 'stale') library.reload()
+        outcome.refused = result.reason
+        return outcome
+      }
       const tracks = next.library.playlists.reduce(
         (total, playlist) => total + playlist.tracks.length,
         0,
@@ -660,10 +736,28 @@ export function useBackupImport(): BackupImportModel {
           detail: '플레이리스트가 저장되지 않아 반영하지 않음 — 다시 저장 시도 때 함께 반영',
         })
       } else {
-        const result = moments.replaceAllMoments(next.moments)
+        const result = await moments.replaceAllMoments(next.moments, {
+          expectedRaw: expected.moments,
+        })
         const label = `Moment ${String(next.moments.length)}개`
 
-        if (result.persisted && result.verified) {
+        if (!result.ok && result.reason === 'stale') {
+          // 승인 뒤 다른 탭이 Moments 를 바꿨다. 낡은 승인으로 덮지 않는다 — 지금 것을 둔다.
+          moments.reload()
+          outcome.results.push({
+            name: 'Moments',
+            outcome: 'skipped',
+            detail: `${label} — 미리보기 뒤 다른 탭에서 바뀌어 반영하지 않음, 지금 것 유지`,
+          })
+        } else if (!result.ok) {
+          // 잠금을 얻지 못했다. 반영하지 않았고, 다시 저장 시도 때 반영한다.
+          outcome.unsavedMoments = next.moments
+          outcome.results.push({
+            name: 'Moments',
+            outcome: 'held',
+            detail: `${label} — 다른 탭이 저장 중이라 반영하지 않음, 다시 저장 시도 때 반영`,
+          })
+        } else if (result.persisted && result.verified) {
           outcome.results.push({ name: 'Moments', outcome: 'saved', detail: label })
         } else {
           outcome.unsavedMoments = next.moments
@@ -698,7 +792,7 @@ export function useBackupImport(): BackupImportModel {
   }
 
   /** 결과를 문구로 옮기고 저장 안 된 것을 기억한다. */
-  function report(outcome: WriteOutcome): void {
+  function report(outcome: WriteOutcome, expected: Expected): void {
     const hadFailure =
       outcome.unsavedLibrary !== null ||
       outcome.unsavedMoments !== null ||
@@ -709,6 +803,7 @@ export function useBackupImport(): BackupImportModel {
           library: outcome.unsavedLibrary,
           moments: outcome.unsavedMoments,
           theme: outcome.unsavedTheme,
+          expected,
         }
       : null
 
@@ -755,11 +850,31 @@ export function useBackupImport(): BackupImportModel {
    * 이유가 없다 — 승인한 복원이 저장되지 않았을 뿐이다. 순서도 같다 —
    * 플레이리스트가 이번에도 저장되지 않으면 보류한 Moments 는 계속 보류된다.
    */
-  function retrySave(): void {
+  async function retrySave(): Promise<void> {
     const target = pending.value
-    if (target === null) return
+    if (target === null || applying.value) return
 
-    report(write({ library: target.library, moments: target.moments, theme: target.theme }))
+    const outcome = await writing(() =>
+      write(
+        { library: target.library, moments: target.moments, theme: target.theme },
+        target.expected,
+      ),
+    )
+
+    if (outcome.refused === 'stale') {
+      // 실패 뒤 다른 탭이 저장했다. 승인한 복원은 이제 낡았다 — 다시 저장하지 않는다.
+      pending.value = null
+      failed.value = true
+      notice.value =
+        '저장하지 못한 사이 다른 탭에서 데이터가 바뀌어 다시 저장하지 않았습니다. 백업 파일을 다시 골라 확인해 주세요.'
+      return
+    }
+    if (outcome.refused === 'busy') {
+      failed.value = true
+      notice.value = BUSY_MESSAGE
+      return
+    }
+    report(outcome, target.expected)
   }
 
   return {
@@ -769,6 +884,7 @@ export function useBackupImport(): BackupImportModel {
     failed,
     applyTheme,
     stale,
+    applying: readonly(applying),
     unsaved,
     results,
     selectFile,

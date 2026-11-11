@@ -89,19 +89,21 @@ afterEach(() => {
 })
 
 describe('시나리오 — 다른 탭이 추가한 트랙이 사라지지 않는다', () => {
-  it('A 로드 → B 가 추가 → A 가 선택만 바꿔도 B 의 트랙이 저장소에 남는다', () => {
+  it('A 로드 → B 가 추가 → A 가 선택만 바꿔도 B 의 트랙이 저장소에 남는다', async () => {
     const tabA = openTab()
     const playlistId = firstId(tabA)
     const tabB = openTab()
 
-    expect(tabB.addTrack(playlistId, { videoId: B_VIDEO, title: 'B 가 넣은 곡' })).toMatchObject({
+    expect(
+      await tabB.addTrack(playlistId, { videoId: B_VIDEO, title: 'B 가 넣은 곡' }),
+    ).toMatchObject({
       ok: true,
       persisted: true,
     })
 
     // A 는 아직 모른다 (이벤트가 늦게 오거나 오지 않는 경우).
     expect(titles(tabA)).toEqual([])
-    const result = tabA.selectPlaylist(playlistId)
+    const result = await tabA.selectPlaylist(playlistId)
 
     expect(result).toEqual({ ok: false, reason: 'conflict' })
     expect(titles(stored())).toEqual(['B 가 넣은 곡'])
@@ -109,26 +111,26 @@ describe('시나리오 — 다른 탭이 추가한 트랙이 사라지지 않는
     expect(titles(tabA)).toEqual(['B 가 넣은 곡'])
   })
 
-  it('충돌 뒤 다시 시도하면 최신 위에서 저장된다 — 두 탭의 변경이 모두 남는다', () => {
+  it('충돌 뒤 다시 시도하면 최신 위에서 저장된다 — 두 탭의 변경이 모두 남는다', async () => {
     const tabA = openTab()
     const playlistId = firstId(tabA)
     const tabB = openTab()
 
     tabB.addTrack(playlistId, { videoId: B_VIDEO, title: 'B 곡' })
-    expect(tabA.addTrack(playlistId, { videoId: A_VIDEO, title: 'A 곡' })).toEqual({
+    expect(await tabA.addTrack(playlistId, { videoId: A_VIDEO, title: 'A 곡' })).toEqual({
       ok: false,
       reason: 'conflict',
     })
     expect(titles(stored())).toEqual(['B 곡'])
 
-    expect(tabA.addTrack(playlistId, { videoId: A_VIDEO, title: 'A 곡' })).toMatchObject({
+    expect(await tabA.addTrack(playlistId, { videoId: A_VIDEO, title: 'A 곡' })).toMatchObject({
       ok: true,
       persisted: true,
     })
     expect(titles(stored())).toEqual(['B 곡', 'A 곡'])
   })
 
-  it('storage 이벤트가 오면 쓰기 전에 이미 최신이다 — 충돌 없이 이어서 저장', () => {
+  it('storage 이벤트가 오면 쓰기 전에 이미 최신이다 — 충돌 없이 이어서 저장', async () => {
     const tabA = openTab()
     const tabB = openTab()
     const listening = tabA.watchExternalChanges()
@@ -142,7 +144,7 @@ describe('시나리오 — 다른 탭이 추가한 트랙이 사라지지 않는
       discardedUnsaved: false,
       possiblyOverwritten: false,
     })
-    expect(tabA.addTrack(firstId(tabA), { videoId: A_VIDEO, title: 'A 곡' })).toMatchObject({
+    expect(await tabA.addTrack(firstId(tabA), { videoId: A_VIDEO, title: 'A 곡' })).toMatchObject({
       ok: true,
       persisted: true,
     })
@@ -152,26 +154,32 @@ describe('시나리오 — 다른 탭이 추가한 트랙이 사라지지 않는
 })
 
 describe('다른 탭의 이름 변경 · 삭제', () => {
-  it('B 가 이름을 바꾸면 A 의 이름 변경은 거절되고 B 의 이름이 남는다', () => {
+  it('B 가 이름을 바꾸면 A 의 이름 변경은 거절되고 B 의 이름이 남는다', async () => {
     const tabA = openTab()
     const id = firstId(tabA)
     const tabB = openTab()
 
     tabB.renamePlaylist(id, 'B 의 이름')
-    expect(tabA.renamePlaylist(id, 'A 의 이름')).toEqual({ ok: false, reason: 'conflict' })
+    expect(await tabA.renamePlaylist(id, 'A 의 이름')).toEqual({ ok: false, reason: 'conflict' })
     expect(stored().playlists[0]?.name).toBe('B 의 이름')
     expect(tabA.playlists[0]?.name).toBe('B 의 이름')
   })
 
-  it('B 가 지운 목록에 A 가 추가하면 거절 → 다시 하면 not-found (되살리지 않는다)', () => {
+  it('B 가 지운 목록에 A 가 추가하면 거절 → 다시 하면 not-found (되살리지 않는다)', async () => {
     const tabA = openTab()
     const doomed = firstId(tabA)
     tabA.createPlaylist('남는 목록')
     const tabB = openTab()
 
     tabB.deletePlaylist(doomed)
-    expect(tabA.addTrack(doomed, { videoId: A_VIDEO })).toEqual({ ok: false, reason: 'conflict' })
-    expect(tabA.addTrack(doomed, { videoId: A_VIDEO })).toEqual({ ok: false, reason: 'not-found' })
+    expect(await tabA.addTrack(doomed, { videoId: A_VIDEO })).toEqual({
+      ok: false,
+      reason: 'conflict',
+    })
+    expect(await tabA.addTrack(doomed, { videoId: A_VIDEO })).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
     expect(stored().playlists.map((playlist) => playlist.name)).toEqual(['남는 목록'])
   })
 
@@ -195,14 +203,14 @@ describe('다른 탭의 이름 변경 · 삭제', () => {
 })
 
 describe('저장 실패 · 손상 · 미지원 버전', () => {
-  it('A 의 쓰기 실패(저장 안 된 변경) 뒤 B 의 변경이 오면 최신으로 맞추고 그렇다고 알린다', () => {
+  it('A 의 쓰기 실패(저장 안 된 변경) 뒤 B 의 변경이 오면 최신으로 맞추고 그렇다고 알린다', async () => {
     const tabA = openTab()
     const id = firstId(tabA)
     const tabB = openTab()
     const listening = tabA.watchExternalChanges()
 
     quotaExceededOnWrite()
-    expect(tabA.addTrack(id, { videoId: A_VIDEO, title: '저장 안 된 곡' })).toMatchObject({
+    expect(await tabA.addTrack(id, { videoId: A_VIDEO, title: '저장 안 된 곡' })).toMatchObject({
       ok: true,
       persisted: false,
     })
@@ -229,7 +237,7 @@ describe('저장 실패 · 손상 · 미지원 버전', () => {
     listening()
   })
 
-  it('쓰기 실패 뒤 저장소가 그대로면 다음 변경은 충돌이 아니다 (기존 재시도 동작)', () => {
+  it('쓰기 실패 뒤 저장소가 그대로면 다음 변경은 충돌이 아니다 (기존 재시도 동작)', async () => {
     const tabA = openTab()
     const id = firstId(tabA)
 
@@ -240,14 +248,14 @@ describe('저장 실패 · 손상 · 미지원 버전', () => {
       value: realLocalStorage,
     })
 
-    expect(tabA.addTrack(id, { videoId: B_VIDEO, title: '둘째 곡' })).toMatchObject({
+    expect(await tabA.addTrack(id, { videoId: B_VIDEO, title: '둘째 곡' })).toMatchObject({
       ok: true,
       persisted: true,
     })
     expect(titles(stored())).toEqual(['첫 곡', '둘째 곡'])
   })
 
-  it('다른 탭(새 버전 앱)이 미지원 버전을 쓰면 이 탭은 보호 상태가 되고 원문을 덮지 않는다', () => {
+  it('다른 탭(새 버전 앱)이 미지원 버전을 쓰면 이 탭은 보호 상태가 되고 원문을 덮지 않는다', async () => {
     const tabA = openTab()
     const listening = tabA.watchExternalChanges()
     const future = JSON.stringify({ version: LIBRARY_STORAGE_VERSION + 1, data: { future: true } })
@@ -257,23 +265,23 @@ describe('저장 실패 · 손상 · 미지원 버전', () => {
 
     expect(tabA.status).toBe('protected')
     expect(tabA.protectedReason).toBe('version-mismatch')
-    expect(tabA.createPlaylist('메모리에만')).toMatchObject({ ok: true, persisted: false })
+    expect(await tabA.createPlaylist('메모리에만')).toMatchObject({ ok: true, persisted: false })
     expect(raw()).toBe(future)
     listening()
   })
 
-  it('다른 탭이 원문을 망가뜨려도 이 탭이 덮어써 "고치지" 않는다', () => {
+  it('다른 탭이 원문을 망가뜨려도 이 탭이 덮어써 "고치지" 않는다', async () => {
     const tabA = openTab()
     const id = firstId(tabA)
 
     realLocalStorage.setItem(KEY, '{broken')
-    expect(tabA.addTrack(id, { videoId: A_VIDEO })).toEqual({ ok: false, reason: 'conflict' })
+    expect(await tabA.addTrack(id, { videoId: A_VIDEO })).toEqual({ ok: false, reason: 'conflict' })
     expect(tabA.status).toBe('protected')
-    expect(tabA.addTrack(id, { videoId: A_VIDEO }).ok).toBe(false)
+    expect((await tabA.addTrack(id, { videoId: A_VIDEO })).ok).toBe(false)
     expect(raw()).toBe('{broken')
   })
 
-  it('보호 상태의 탭은 다른 탭이 읽을 수 있는 값으로 바꾸면 다시 저장할 수 있게 된다', () => {
+  it('보호 상태의 탭은 다른 탭이 읽을 수 있는 값으로 바꾸면 다시 저장할 수 있게 된다', async () => {
     realLocalStorage.setItem(KEY, '{broken')
     const tabA = openTab()
     const listening = tabA.watchExternalChanges()
@@ -290,13 +298,16 @@ describe('저장 실패 · 손상 · 미지원 버전', () => {
     expect(tabA.status).toBe('ready')
     expect(tabA.playlists.map((playlist) => playlist.name)).toEqual(['복원됨'])
     expect(tabA.externalChange?.discardedUnsaved).toBe(true)
-    expect(tabA.addTrack('p1', { videoId: A_VIDEO })).toMatchObject({ ok: true, persisted: true })
+    expect(await tabA.addTrack('p1', { videoId: A_VIDEO })).toMatchObject({
+      ok: true,
+      persisted: true,
+    })
     listening()
   })
 })
 
 describe('여러 탭에서 연속 수정', () => {
-  it('이벤트 없이 번갈아 고쳐도 충돌 → 재시도로 모든 변경이 남는다', () => {
+  it('이벤트 없이 번갈아 고쳐도 충돌 → 재시도로 모든 변경이 남는다', async () => {
     const tabA = openTab()
     const id = firstId(tabA)
     const tabB = openTab()
@@ -308,10 +319,10 @@ describe('여러 탭에서 연속 수정', () => {
         [tabA, `A${round}`],
         [tabB, `B${round}`],
       ] as const) {
-        const first = tab.addTrack(id, { videoId: A_VIDEO, title: name })
+        const first = await tab.addTrack(id, { videoId: A_VIDEO, title: name })
         firstAttempts.push(first.ok ? 'ok' : first.reason)
         // 충돌이었으면 최신을 읽은 뒤 다시 누른다. 이미 저장됐으면 두 번 넣지 않는다.
-        const final = first.ok ? first : tab.addTrack(id, { videoId: A_VIDEO, title: name })
+        const final = first.ok ? first : await tab.addTrack(id, { videoId: A_VIDEO, title: name })
         expect(final).toMatchObject({ ok: true, persisted: true })
         expected.push(name)
       }
@@ -322,16 +333,16 @@ describe('여러 탭에서 연속 수정', () => {
     expect(titles(stored())).toEqual(expected)
   })
 
-  it('이벤트가 오면 충돌 없이 이어진다', () => {
+  it('이벤트가 오면 충돌 없이 이어진다', async () => {
     const tabA = openTab()
     const id = firstId(tabA)
     const tabB = openTab()
     const stopA = tabA.watchExternalChanges()
 
     for (let round = 0; round < 5; round += 1) {
-      expect(tabA.addTrack(id, { videoId: A_VIDEO, title: `A${round}` }).ok).toBe(true)
+      expect((await tabA.addTrack(id, { videoId: A_VIDEO, title: `A${round}` })).ok).toBe(true)
       tabB.reload() // B 쪽 탭이 이벤트를 받은 것과 같다
-      expect(tabB.addTrack(id, { videoId: B_VIDEO, title: `B${round}` }).ok).toBe(true)
+      expect((await tabB.addTrack(id, { videoId: B_VIDEO, title: `B${round}` })).ok).toBe(true)
       deliverStorageEvent()
     }
 
@@ -340,25 +351,28 @@ describe('여러 탭에서 연속 수정', () => {
     stopA()
   })
 
-  it('첫 실행을 두 탭이 동시에 해도 기본 목록은 하나다', () => {
+  it('첫 실행을 두 탭이 동시에 해도 기본 목록은 하나다', async () => {
     const tabA = useLibraryStore(createPinia())
     const tabB = useLibraryStore(createPinia())
     tabA.restore()
     tabB.restore()
 
-    expect(tabA.seedFirstRunPlaylist('MY RECORDS')).toMatchObject({ ok: true, persisted: true })
-    expect(tabB.seedFirstRunPlaylist('MY RECORDS')).toEqual({ ok: false, reason: 'conflict' })
+    expect(await tabA.seedFirstRunPlaylist('MY RECORDS')).toMatchObject({
+      ok: true,
+      persisted: true,
+    })
+    expect(await tabB.seedFirstRunPlaylist('MY RECORDS')).toEqual({ ok: false, reason: 'conflict' })
     expect(stored().playlists).toHaveLength(1)
     expect(tabB.playlists).toHaveLength(1)
   })
 })
 
 describe('변경이 없는 일반 저장 · 이벤트 거르기', () => {
-  it('한 탭에서의 연속 저장은 충돌하지 않는다', () => {
+  it('한 탭에서의 연속 저장은 충돌하지 않는다', async () => {
     const tab = openTab()
     const id = firstId(tab)
     for (const title of ['1', '2', '3']) {
-      expect(tab.addTrack(id, { videoId: A_VIDEO, title })).toMatchObject({
+      expect(await tab.addTrack(id, { videoId: A_VIDEO, title })).toMatchObject({
         ok: true,
         persisted: true,
       })
@@ -406,28 +420,34 @@ describe('백업 가져오기(replaceAll)와 함께', () => {
     selectedPlaylistId: 'imp',
   }
 
-  it('가져오기 뒤 같은 탭의 다음 변경은 충돌이 아니다 (기준 원문이 옮겨졌다)', () => {
+  it('가져오기 뒤 같은 탭의 다음 변경은 충돌이 아니다 (기준 원문이 옮겨졌다)', async () => {
     const tab = openTab()
-    expect(tab.replaceAll(imported)).toMatchObject({ persisted: true, verified: true })
-    expect(tab.addTrack('imp', { videoId: A_VIDEO })).toMatchObject({ ok: true, persisted: true })
+    expect(await tab.replaceAll(imported)).toMatchObject({ persisted: true, verified: true })
+    expect(await tab.addTrack('imp', { videoId: A_VIDEO })).toMatchObject({
+      ok: true,
+      persisted: true,
+    })
   })
 
-  it('다른 탭의 가져오기는 이 탭의 낡은 변경을 막고, 이벤트로 화면에 반영된다', () => {
+  it('다른 탭의 가져오기는 이 탭의 낡은 변경을 막고, 이벤트로 화면에 반영된다', async () => {
     const tabA = openTab()
     const oldId = firstId(tabA)
     const tabB = openTab()
 
     tabB.replaceAll(imported)
-    expect(tabA.addTrack(oldId, { videoId: A_VIDEO })).toEqual({ ok: false, reason: 'conflict' })
+    expect(await tabA.addTrack(oldId, { videoId: A_VIDEO })).toEqual({
+      ok: false,
+      reason: 'conflict',
+    })
     expect(tabA.playlists.map((playlist) => playlist.name)).toEqual(['가져온 목록'])
     expect(stored()).toEqual(imported)
   })
 
-  it('가져오기의 쓰기가 실패하면 다음 변경도 막히지 않고 원래 원문은 그대로', () => {
+  it('가져오기의 쓰기가 실패하면 다음 변경도 막히지 않고 원래 원문은 그대로', async () => {
     const tab = openTab()
     const before = raw()
     quotaExceededOnWrite()
-    expect(tab.replaceAll(imported)).toMatchObject({ persisted: false })
+    expect(await tab.replaceAll(imported)).toMatchObject({ persisted: false })
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,
       value: realLocalStorage,
@@ -437,7 +457,7 @@ describe('백업 가져오기(replaceAll)와 함께', () => {
 })
 
 describe('저장소에 접근할 수 없게 된 것은 다른 탭의 변경이 아니다', () => {
-  it('세션 도중 저장소가 막히면 메모리의 목록을 지키고 "저장되지 않음" 으로 알린다', () => {
+  it('세션 도중 저장소가 막히면 메모리의 목록을 지키고 "저장되지 않음" 으로 알린다', async () => {
     const tab = openTab()
     const id = firstId(tab)
     tab.addTrack(id, { videoId: A_VIDEO, title: '저장된 곡' })
@@ -449,7 +469,7 @@ describe('저장소에 접근할 수 없게 된 것은 다른 탭의 변경이 �
       },
     })
 
-    expect(tab.addTrack(id, { videoId: B_VIDEO, title: '메모리 곡' })).toMatchObject({
+    expect(await tab.addTrack(id, { videoId: B_VIDEO, title: '메모리 곡' })).toMatchObject({
       ok: true,
       persisted: false,
     })

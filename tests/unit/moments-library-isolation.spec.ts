@@ -60,21 +60,29 @@ afterEach(() => {
  *
  * @returns 트랙과 Moment 의 id
  */
-function setupTrackWithMoments(): {
+async function setupTrackWithMoments(): Promise<{
   playlistId: string
   trackId: string
   momentIds: string[]
-} {
+}> {
   const library = useLibraryStore()
   const moments = useMomentsStore()
 
-  const created = library.createPlaylist('MY RECORDS')
+  const created = await library.createPlaylist('MY RECORDS')
   if (!created.ok) throw new Error('setup: createPlaylist failed')
-  const added = library.addTrack(created.playlistId, { videoId: VIDEO, title: 'Me at the zoo' })
+  const added = await library.addTrack(created.playlistId, {
+    videoId: VIDEO,
+    title: 'Me at the zoo',
+  })
   if (!added.ok || added.trackId === undefined) throw new Error('setup: addTrack failed')
 
-  const first = moments.add({ videoId: VIDEO, atSeconds: 10, note: '간주', title: 'Me at the zoo' })
-  const second = moments.add({
+  const first = await moments.add({
+    videoId: VIDEO,
+    atSeconds: 10,
+    note: '간주',
+    title: 'Me at the zoo',
+  })
+  const second = await moments.add({
     videoId: VIDEO,
     atSeconds: 40,
     note: '드럼',
@@ -90,31 +98,31 @@ function setupTrackWithMoments(): {
 }
 
 describe('A. 트랙·플레이리스트 삭제가 Moment 를 지우지 않는다', () => {
-  it('트랙을 지워도 그 영상의 Moment 가 남는다', () => {
+  it('트랙을 지워도 그 영상의 Moment 가 남는다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
-    const { playlistId, trackId, momentIds } = setupTrackWithMoments()
+    const { playlistId, trackId, momentIds } = await setupTrackWithMoments()
 
-    expect(library.removeTrack(playlistId, trackId).ok).toBe(true)
+    expect((await library.removeTrack(playlistId, trackId)).ok).toBe(true)
 
     expect(library.getPlaylist(playlistId)?.tracks).toEqual([])
     expect(moments.moments.map((item) => item.id)).toEqual(momentIds)
     expect(moments.momentsForVideo(VIDEO)).toHaveLength(2)
   })
 
-  it('플레이리스트를 통째로 지워도 Moment 가 남는다', () => {
+  it('플레이리스트를 통째로 지워도 Moment 가 남는다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
-    const { playlistId } = setupTrackWithMoments()
+    const { playlistId } = await setupTrackWithMoments()
 
-    expect(library.deletePlaylist(playlistId).ok).toBe(true)
+    expect((await library.deletePlaylist(playlistId)).ok).toBe(true)
 
     expect(library.playlists).toEqual([])
     expect(moments.count).toBe(2)
   })
 
-  it('트랙을 지운 뒤 새로고침해도 Moment 가 돌아온다', () => {
-    const { playlistId, trackId } = setupTrackWithMoments()
+  it('트랙을 지운 뒤 새로고침해도 Moment 가 돌아온다', async () => {
+    const { playlistId, trackId } = await setupTrackWithMoments()
     useLibraryStore().removeTrack(playlistId, trackId)
 
     // 새 Pinia = 새로고침.
@@ -128,10 +136,10 @@ describe('A. 트랙·플레이리스트 삭제가 Moment 를 지우지 않는다
     expect(library.getPlaylist(playlistId)?.tracks).toEqual([])
   })
 
-  it('Moment 를 지워도 트랙은 남는다 — 반대 방향도 연쇄가 없다', () => {
+  it('Moment 를 지워도 트랙은 남는다 — 반대 방향도 연쇄가 없다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
-    const { playlistId, momentIds } = setupTrackWithMoments()
+    const { playlistId, momentIds } = await setupTrackWithMoments()
 
     for (const id of momentIds) moments.remove(id)
 
@@ -139,10 +147,10 @@ describe('A. 트랙·플레이리스트 삭제가 Moment 를 지우지 않는다
     expect(library.getPlaylist(playlistId)?.tracks).toHaveLength(1)
   })
 
-  it('트랙 이름을 바꿔도 Moment 의 스냅샷 제목은 그대로다', () => {
+  it('트랙 이름을 바꿔도 Moment 의 스냅샷 제목은 그대로다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
-    const { playlistId, trackId } = setupTrackWithMoments()
+    const { playlistId, trackId } = await setupTrackWithMoments()
 
     library.renameTrack(playlistId, trackId, '다른 이름')
 
@@ -151,11 +159,11 @@ describe('A. 트랙·플레이리스트 삭제가 Moment 를 지우지 않는다
     expect(moments.moments.every((item) => item.title === 'Me at the zoo')).toBe(true)
   })
 
-  it('라이브러리에 아예 없는 영상의 Moment 도 저장되고 복원된다', () => {
+  it('라이브러리에 아예 없는 영상의 Moment 도 저장되고 복원된다', async () => {
     const moments = useMomentsStore()
     useLibraryStore().createPlaylist('EMPTY')
 
-    expect(moments.add({ videoId: OTHER_VIDEO, atSeconds: 3 }).ok).toBe(true)
+    expect((await moments.add({ videoId: OTHER_VIDEO, atSeconds: 3 })).ok).toBe(true)
 
     setActivePinia(createPinia())
     const reloaded = useMomentsStore()
@@ -166,14 +174,14 @@ describe('A. 트랙·플레이리스트 삭제가 Moment 를 지우지 않는다
 })
 
 describe('B. 저장 키가 서로를 건드리지 않는다', () => {
-  it('라이브러리 수정이 39page.moments 를 건드리지 않는다', () => {
+  it('라이브러리 수정이 39page.moments 를 건드리지 않는다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
     moments.add({ videoId: VIDEO, atSeconds: 10 })
     const before = rawMoments()
     expect(before).not.toBeNull()
 
-    const created = library.createPlaylist('NEW')
+    const created = await library.createPlaylist('NEW')
     if (created.ok) {
       library.addTrack(created.playlistId, { videoId: VIDEO })
       library.renamePlaylist(created.playlistId, 'RENAMED')
@@ -183,14 +191,14 @@ describe('B. 저장 키가 서로를 건드리지 않는다', () => {
     expect(rawMoments()).toBe(before)
   })
 
-  it('Moment 수정이 39page.library 를 건드리지 않는다', () => {
+  it('Moment 수정이 39page.library 를 건드리지 않는다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
-    const created = library.createPlaylist('KEEP')
+    const created = await library.createPlaylist('KEEP')
     const before = rawLibrary()
     expect(before).not.toBeNull()
 
-    const added = moments.add({ videoId: VIDEO, atSeconds: 10 })
+    const added = await moments.add({ videoId: VIDEO, atSeconds: 10 })
     if (added.ok) {
       moments.updateNote(added.momentId, '고침')
       moments.remove(added.momentId)
@@ -233,27 +241,27 @@ describe('C. 라이브러리 교체(백업 복원)가 Moment 를 날리지 않�
    * M8-3 의 가져오기는 라이브러리를 **통째로 교체**한다. ADR 0019 결정 3 이
    * 키를 나눈 첫 번째 이유가 바로 이것이다.
    */
-  it('library.replaceAll 이 Moment 를 건드리지 않는다', () => {
+  it('library.replaceAll 이 Moment 를 건드리지 않는다', async () => {
     const library = useLibraryStore()
     const moments = useMomentsStore()
-    setupTrackWithMoments()
+    await setupTrackWithMoments()
     const before = rawMoments()
 
     const replacement: LibraryData = {
       playlists: [{ id: 'from-backup', name: 'FROM BACKUP', tracks: [] }],
       selectedPlaylistId: 'from-backup',
     }
-    const result = library.replaceAll(replacement)
+    const result = await library.replaceAll(replacement)
 
-    expect(result.persisted).toBe(true)
+    expect(result).toMatchObject({ ok: true, persisted: true })
     expect(library.playlists.map((playlist) => playlist.id)).toEqual(['from-backup'])
     // Moment 는 메모리에도 저장소에도 그대로다.
     expect(moments.count).toBe(2)
     expect(rawMoments()).toBe(before)
   })
 
-  it('교체 후 새로고침해도 Moment 가 남는다', () => {
-    setupTrackWithMoments()
+  it('교체 후 새로고침해도 Moment 가 남는다', async () => {
+    await setupTrackWithMoments()
     useLibraryStore().replaceAll({ playlists: [], selectedPlaylistId: null })
 
     setActivePinia(createPinia())
@@ -289,7 +297,7 @@ describe('C. 라이브러리 교체(백업 복원)가 Moment 를 날리지 않�
 })
 
 describe('D. 보호 상태가 서로 번지지 않는다', () => {
-  it('라이브러리가 보호 상태여도 Moment 는 저장된다', () => {
+  it('라이브러리가 보호 상태여도 Moment 는 저장된다', async () => {
     globalThis.localStorage.setItem(STORAGE_KEYS.library, '{깨진 값')
     const library = useLibraryStore()
     const moments = useMomentsStore()
@@ -298,11 +306,11 @@ describe('D. 보호 상태가 서로 번지지 않는다', () => {
 
     expect(library.status).toBe('protected')
     expect(moments.status).toBe('ready')
-    expect(moments.add({ videoId: VIDEO, atSeconds: 1 }).ok).toBe(true)
+    expect((await moments.add({ videoId: VIDEO, atSeconds: 1 })).ok).toBe(true)
     expect(rawMoments()).not.toBeNull()
   })
 
-  it('Moments 가 보호 상태여도 라이브러리는 저장된다', () => {
+  it('Moments 가 보호 상태여도 라이브러리는 저장된다', async () => {
     globalThis.localStorage.setItem(STORAGE_KEYS.moments, '{깨진 값')
     const library = useLibraryStore()
     const moments = useMomentsStore()
@@ -311,7 +319,7 @@ describe('D. 보호 상태가 서로 번지지 않는다', () => {
 
     expect(moments.status).toBe('protected')
     expect(library.status).toBe('ready')
-    const created = library.createPlaylist('OK')
+    const created = await library.createPlaylist('OK')
     expect(created.ok && created.persisted).toBe(true)
     // 보호된 Moments 원본은 그대로다.
     expect(rawMoments()).toBe('{깨진 값')

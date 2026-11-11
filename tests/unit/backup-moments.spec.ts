@@ -670,6 +670,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
 
     await pick(s, NEW_FIXTURE)
     await applyButton(s)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const expected = (JSON.parse(NEW_FIXTURE) as BackupFile).data.moments?.data
@@ -694,6 +695,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
 
     await pick(s, OLD_FIXTURE)
     await applyButton(s)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(s.library.playlists.map((p) => p.id)).toEqual(['p-night', 'p-morning'])
@@ -731,6 +733,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
 
     await pick(s, JSON.stringify(file))
     await applyButton(s)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(raw(STORAGE_KEYS.moments)).toBe(momentsBefore)
@@ -773,6 +776,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
     const failing = stubFailingWrites([STORAGE_KEYS.moments])
 
     await applyButton(s)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(s.moments.count).toBe(3)
@@ -798,6 +802,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
       .findAll('.unsaved-block .pill')
       .find((n) => n.text().includes('다시 저장'))
     await retry?.trigger('click')
+    await flushPromises()
     await nextTick()
     expect(resultItems(s)).toContain('Moments — 저장됨 · Moment 3개')
     expect(
@@ -813,6 +818,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
     const failing = stubFailingWrites([STORAGE_KEYS.library])
 
     await applyButton(s)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     // 화면의 Moments 도, 저장소도 그대로다.
@@ -828,6 +834,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
       .findAll('.unsaved-block .pill')
       .find((n) => n.text().includes('다시 저장'))
     await retry?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(s.moments.moments.map((m) => m.id)).toEqual(['m-alpha-42', 'm-gone-0', 'm-beta-3725'])
@@ -958,7 +965,7 @@ describe('F. 하위 호환 — 구형 백업 A · 새 백업 B', () => {
       moment({ id: 'ext-1', videoId: 'eeeeeeeeeee', title: '확장에서 저장' }),
       { id: 'ext-bad', videoId: 'nope' },
     ]
-    const added = s.moments.addMoments(fromExtension)
+    const added = await s.moments.addMoments(fromExtension)
     expect(added).toMatchObject({ added: 1, dropped: 1 })
 
     const created = stubDownloads()

@@ -51,6 +51,10 @@ const PLAY_REFUSED: Readonly<Record<MomentPlayFailure, string>> = {
 }
 
 const NOT_FOUND = '이 순간을 찾을 수 없어요. 이미 지워졌을 수 있어요.'
+/** 다른 탭과 겹쳐 저장하지 않았다 (M10-3 안정화, ADR 0025). */
+const CONFLICT =
+  '다른 탭에서 Moments 가 바뀌어 최신 목록을 불러왔어요. 이번 변경은 저장하지 않았으니 확인 후 다시 해 주세요.'
+const BUSY = '다른 39page 탭이 저장하는 중이라 저장하지 않았어요. 잠시 뒤 다시 해 주세요.'
 
 export interface MomentsBrowserModel {
   total: ComputedRef<number>
@@ -67,10 +71,13 @@ export interface MomentsBrowserModel {
 
   /** Moment 의 지점부터 재생한다. 시트를 비켜준 뒤 요청하므로 비동기다. */
   play(momentId: string): Promise<void>
-  /** 메모를 고친다. 폼을 닫아도 되면 `true`. */
-  saveNote(momentId: string, note: string): boolean
-  /** 한 건을 지운다. **확인은 화면이 먼저 받는다.** */
-  remove(momentId: string): void
+  /**
+   * 메모를 고친다. 저장이 끝난 뒤 이행한다. 폼을 닫아도 되면 `true` — 다른 탭과
+   * 겹쳐 거절되면 `false` 이고, 쓴 메모가 폼에 남는다.
+   */
+  saveNote(momentId: string, note: string): Promise<boolean>
+  /** 한 건을 지운다. **확인은 화면이 먼저 받는다.** 지운 뒤 이행한다. */
+  remove(momentId: string): Promise<void>
   clearFeedback(): void
 }
 
@@ -125,14 +132,19 @@ export function useMomentsBrowser(): MomentsBrowserModel {
     feedback.value = result.ok ? null : warning(PLAY_REFUSED[result.reason])
   }
 
-  function saveNote(momentId: string, note: string): boolean {
+  async function saveNote(momentId: string, note: string): Promise<boolean> {
     if (note.length > MAX_MOMENT_NOTE_LENGTH) {
       feedback.value = warning(`메모는 ${String(MAX_MOMENT_NOTE_LENGTH)}자까지 쓸 수 있어요.`)
       return false
     }
 
-    const result = moments.updateNote(momentId, note)
+    const result = await moments.updateNote(momentId, note)
     if (!result.ok) {
+      if (result.reason === 'conflict' || result.reason === 'busy') {
+        feedback.value = warning(result.reason === 'conflict' ? CONFLICT : BUSY)
+        // 폼을 닫지 않는다 — 쓴 메모를 잃지 않게. 지워졌으면 다음 저장이 not-found 다.
+        return false
+      }
       feedback.value = warning(NOT_FOUND)
       return true
     }
@@ -145,10 +157,12 @@ export function useMomentsBrowser(): MomentsBrowserModel {
     return true
   }
 
-  function remove(momentId: string): void {
-    const result = moments.remove(momentId)
+  async function remove(momentId: string): Promise<void> {
+    const result = await moments.remove(momentId)
     if (!result.ok) {
-      feedback.value = warning(NOT_FOUND)
+      feedback.value = warning(
+        result.reason === 'conflict' ? CONFLICT : result.reason === 'busy' ? BUSY : NOT_FOUND,
+      )
       return
     }
 

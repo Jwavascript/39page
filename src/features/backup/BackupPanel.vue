@@ -172,7 +172,13 @@ function onFileChange(event: Event): void {
         지금 화면은 복원됐지만 <strong>저장되지 않았습니다.</strong> 새로고침하면 되돌아갑니다.
       </p>
       <div class="backup-actions">
-        <button type="button" class="pill pill--strong" @click="restore.retrySave()">
+        <button
+          type="button"
+          class="pill pill--strong"
+          :disabled="restore.applying.value"
+          :aria-busy="restore.applying.value ? 'true' : 'false'"
+          @click="restore.retrySave()"
+        >
           다시 저장 시도
         </button>
         <button type="button" class="pill" @click="restore.exportCurrentFirst()">
@@ -335,7 +341,8 @@ function onFileChange(event: Event): void {
         <button
           type="button"
           class="pill pill--strong"
-          :disabled="restore.preview.value.blocked !== null"
+          :disabled="restore.preview.value.blocked !== null || restore.applying.value"
+          :aria-busy="restore.applying.value ? 'true' : 'false'"
           @click="restore.apply()"
         >
           교체하고 가져오기

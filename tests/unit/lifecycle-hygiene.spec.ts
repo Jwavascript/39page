@@ -145,7 +145,7 @@ describe('C. 플레이어 수명주기', () => {
   it('세션당 mount 1회, 언마운트에서 destroy 1회', async () => {
     const { wrapper, fake } = mountApp()
     const library = useLibraryStore()
-    const created = library.createPlaylist('LIST')
+    const created = await library.createPlaylist('LIST')
     const playlistId = created.ok ? created.playlistId : ''
     library.addTrack(playlistId, { videoId: 'aaaaaaaaaaa', title: 'ONE' })
     library.selectPlaylist(playlistId)

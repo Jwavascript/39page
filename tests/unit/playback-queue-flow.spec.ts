@@ -146,7 +146,7 @@ async function setup(trackCount = 3) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('MY RECORDS')
+  const created = await library.createPlaylist('MY RECORDS')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
@@ -201,7 +201,7 @@ describe('A. 드로어에서 재생 시작', () => {
 
   it('목록 행의 ▶ 가 그 목록을 선택하고 재생한다', async () => {
     const { wrapper, library, playback } = await setup()
-    const other = library.createPlaylist('OTHER')
+    const other = await library.createPlaylist('OTHER')
     const otherId = other.ok ? other.playlistId : ''
     library.addTrack(otherId, { videoId: VIDEOS[2], title: 'Only' })
     await nextTick()
@@ -217,7 +217,7 @@ describe('A. 드로어에서 재생 시작', () => {
 
   it('선택된 목록이 첫 번째가 아니어도 그 목록에서 트랙을 찾는다', async () => {
     const { wrapper, library, playback } = await setup()
-    const second = library.createPlaylist('SECOND')
+    const second = await library.createPlaylist('SECOND')
     const secondId = second.ok ? second.playlistId : ''
     library.addTrack(secondId, { videoId: VIDEOS[2], title: 'Only in second' })
     library.selectPlaylist(secondId)

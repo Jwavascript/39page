@@ -428,11 +428,11 @@ describe('B. 감시 — watchPlayerVisibility', () => {
 })
 
 /** 코디네이터 + 가짜 어댑터 + 바꿔 끼울 수 있는 가시성 측정. */
-function setupCoordinator(trackCount = 3) {
+async function setupCoordinator(trackCount = 3) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('PLAYLIST A')
+  const created = await library.createPlaylist('PLAYLIST A')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
@@ -487,7 +487,7 @@ function setupCoordinator(trackCount = 3) {
 }
 
 /** 실제로 재생 중인 상태까지 끌고 간다. */
-function playing(context: ReturnType<typeof setupCoordinator>) {
+function playing(context: Awaited<ReturnType<typeof setupCoordinator>>) {
   context.coordinator.playPlaylist(context.playlistId)
   context.fake.emitReady()
   context.fake.emitStateChange('playing')
@@ -495,8 +495,8 @@ function playing(context: ReturnType<typeof setupCoordinator>) {
 }
 
 describe('C. 가드 — 재생을 시작하지 않는다', () => {
-  it('가려져 있으면 목록 전체 재생을 거절하고 큐를 바꾸지 않는다', () => {
-    const { coordinator, playback, fake, playlistId, hide } = setupCoordinator()
+  it('가려져 있으면 목록 전체 재생을 거절하고 큐를 바꾸지 않는다', async () => {
+    const { coordinator, playback, fake, playlistId, hide } = await setupCoordinator()
     hide()
 
     const result = coordinator.playPlaylist(playlistId)
@@ -507,8 +507,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('가려져 있으면 트랙 재생도 거절한다', () => {
-    const { coordinator, playback, fake, library, playlistId, hide } = setupCoordinator()
+  it('가려져 있으면 트랙 재생도 거절한다', async () => {
+    const { coordinator, playback, fake, library, playlistId, hide } = await setupCoordinator()
     const second = library.getPlaylist(playlistId)?.tracks[1]?.id ?? ''
     hide()
 
@@ -520,8 +520,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(fake.calls.load).toEqual([])
   })
 
-  it('200×200 미달도 같은 사유로 거절하되 다른 문구를 쓴다', () => {
-    const { coordinator, playback, playlistId, hide } = setupCoordinator()
+  it('200×200 미달도 같은 사유로 거절하되 다른 문구를 쓴다', async () => {
+    const { coordinator, playback, playlistId, hide } = await setupCoordinator()
     hide('too-small')
 
     expect(coordinator.playPlaylist(playlistId)).toEqual({
@@ -532,8 +532,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(playback.statusTone).toBe('warning')
   })
 
-  it('가려진 상태의 거절은 경고 어조로 안내한다', () => {
-    const { coordinator, playback, playlistId, hide } = setupCoordinator()
+  it('가려진 상태의 거절은 경고 어조로 안내한다', async () => {
+    const { coordinator, playback, playlistId, hide } = await setupCoordinator()
     hide()
 
     coordinator.playPlaylist(playlistId)
@@ -542,8 +542,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(playback.statusTone).toBe('warning')
   })
 
-  it('가려져 있으면 토글이 재생 명령을 보내지 않는다', () => {
-    const context = setupCoordinator()
+  it('가려져 있으면 토글이 재생 명령을 보내지 않는다', async () => {
+    const context = await setupCoordinator()
     context.coordinator.playPlaylist(context.playlistId)
     context.fake.emitStateChange('paused')
     context.hide()
@@ -553,8 +553,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.fake.calls.play).toBe(0)
   })
 
-  it('가려져 있어도 일시정지는 막지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('가려져 있어도 일시정지는 막지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
 
     context.coordinator.togglePlay()
@@ -562,8 +562,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.fake.calls.pause).toBe(1)
   })
 
-  it('가려져 있으면 다음 버튼이 큐를 움직이지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('가려져 있으면 다음 버튼이 큐를 움직이지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     const loadsBefore = context.fake.calls.load.length
     context.hide()
 
@@ -572,8 +572,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.fake.calls.load.length).toBe(loadsBefore)
   })
 
-  it('가려져 있으면 이전 버튼도 큐를 움직이지 않는다', () => {
-    const context = setupCoordinator()
+  it('가려져 있으면 이전 버튼도 큐를 움직이지 않는다', async () => {
+    const context = await setupCoordinator()
     const second = context.library.getPlaylist(context.playlistId)?.tracks[1]?.id ?? ''
     context.coordinator.playTrack(context.playlistId, second)
     context.hide()
@@ -582,8 +582,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.playback.queueIndex).toBe(1)
   })
 
-  it('가려진 동안 영상이 끝나도 다음 곡으로 넘기지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('가려진 동안 영상이 끝나도 다음 곡으로 넘기지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
 
     context.fake.emitStateChange('ended')
@@ -592,11 +592,11 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.fake.calls.load.map((call) => call.videoId)).toEqual([VIDEOS[0]])
   })
 
-  it('측정 함수가 없으면 가드하지 않는다', () => {
+  it('측정 함수가 없으면 가드하지 않는다', async () => {
     // 플레이어 영역 없이 코디네이터만 세우는 기존 테스트와의 호환이다.
     const library = useLibraryStore()
     const playback = usePlaybackStore()
-    const created = library.createPlaylist('P')
+    const created = await library.createPlaylist('P')
     const playlistId = created.ok ? created.playlistId : ''
     library.addTrack(playlistId, { videoId: VIDEOS[0], title: 'T' })
 
@@ -608,10 +608,10 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(playback.queueIndex).toBe(0)
   })
 
-  it('화면 밖이면 끌어온 뒤 다시 재서 재생한다', () => {
+  it('화면 밖이면 끌어온 뒤 다시 재서 재생한다', async () => {
     // 좁은 화면의 단일 열 배치에서는 플레이어가 화면 한참 아래에 있다.
     // 끌어오지 않으면 사용자가 손으로 스크롤하기 전까지 아무것도 재생할 수 없다.
-    const context = setupCoordinator()
+    const context = await setupCoordinator()
     context.hideBelowFold()
 
     expect(context.coordinator.playPlaylist(context.playlistId)).toEqual({ ok: true })
@@ -619,16 +619,16 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('이미 보이면 끌어오지 않는다 — 화면이 멋대로 움직이지 않는다', () => {
-    const context = setupCoordinator()
+  it('이미 보이면 끌어오지 않는다 — 화면이 멋대로 움직이지 않는다', async () => {
+    const context = await setupCoordinator()
 
     context.coordinator.playPlaylist(context.playlistId)
 
     expect(context.presence.reveal).not.toHaveBeenCalled()
   })
 
-  it('끌어와도 보이지 않으면(display:none) 거절한다', () => {
-    const context = setupCoordinator()
+  it('끌어와도 보이지 않으면(display:none) 거절한다', async () => {
+    const context = await setupCoordinator()
     context.hide()
 
     expect(context.coordinator.playPlaylist(context.playlistId)).toEqual({
@@ -638,8 +638,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.presence.reveal).toHaveBeenCalledTimes(1)
   })
 
-  it('너무 작으면 끌어오지 않는다 — 스크롤로 해결되지 않는다', () => {
-    const context = setupCoordinator()
+  it('너무 작으면 끌어오지 않는다 — 스크롤로 해결되지 않는다', async () => {
+    const context = await setupCoordinator()
     context.hide('too-small')
 
     context.coordinator.playPlaylist(context.playlistId)
@@ -647,8 +647,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
     expect(context.presence.reveal).not.toHaveBeenCalled()
   })
 
-  it('detach 하면 측정 함수도 함께 떨어진다', () => {
-    const context = setupCoordinator()
+  it('detach 하면 측정 함수도 함께 떨어진다', async () => {
+    const context = await setupCoordinator()
     context.hide()
     context.attachment.detach()
 
@@ -658,8 +658,8 @@ describe('C. 가드 — 재생을 시작하지 않는다', () => {
 })
 
 describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
-  it('가려졌다는 알림을 받으면 일시정지하고 안내한다', () => {
-    const context = playing(setupCoordinator())
+  it('가려졌다는 알림을 받으면 일시정지하고 안내한다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
 
     context.coordinator.revalidatePlayerVisibility()
@@ -670,16 +670,16 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     )
   })
 
-  it('보이는 상태라면 알림을 받아도 멈추지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('보이는 상태라면 알림을 받아도 멈추지 않는다', async () => {
+    const context = playing(await setupCoordinator())
 
     context.coordinator.revalidatePlayerVisibility()
 
     expect(context.fake.calls.pause).toBe(0)
   })
 
-  it('이미 멈춰 있으면 다시 멈추지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('이미 멈춰 있으면 다시 멈추지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.fake.emitStateChange('paused')
     context.hide()
 
@@ -688,8 +688,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.fake.calls.pause).toBe(0)
   })
 
-  it('불러오는 중에 가려지면 보류한 재생까지 취소한다', () => {
-    const context = setupCoordinator()
+  it('불러오는 중에 가려지면 보류한 재생까지 취소한다', async () => {
+    const context = await setupCoordinator()
     context.coordinator.playPlaylist(context.playlistId)
     expect(context.playback.playerState).toBe('loading')
     context.hide()
@@ -699,8 +699,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.fake.calls.pause).toBe(1)
   })
 
-  it('다시 보이게 되어도 자동으로 재생하지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('다시 보이게 되어도 자동으로 재생하지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
     context.coordinator.revalidatePlayerVisibility()
     context.fake.emitStateChange('paused')
@@ -712,8 +712,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.playerState).toBe('paused')
   })
 
-  it('멈춘 뒤 늦게 도착한 ENDED 로 다음 곡이 흐르지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('멈춘 뒤 늦게 도착한 ENDED 로 다음 곡이 흐르지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
     context.coordinator.revalidatePlayerVisibility()
 
@@ -723,8 +723,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.queueIndex).toBe(0)
   })
 
-  it('다시 보이면 가시성 안내를 지운다 (M5)', () => {
-    const context = playing(setupCoordinator())
+  it('다시 보이면 가시성 안내를 지운다 (M5)', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
     context.coordinator.revalidatePlayerVisibility()
     context.fake.emitStateChange('paused')
@@ -740,8 +740,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.statusMessage).toBe('')
   })
 
-  it('안내를 지워도 재생을 되살리지는 않는다 (M5)', () => {
-    const context = playing(setupCoordinator())
+  it('안내를 지워도 재생을 되살리지는 않는다 (M5)', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
     context.coordinator.revalidatePlayerVisibility()
     context.fake.emitStateChange('paused')
@@ -753,8 +753,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.playerState).toBe('paused')
   })
 
-  it('거절 안내도 다시 보이면 지워진다 (M5)', () => {
-    const context = setupCoordinator()
+  it('거절 안내도 다시 보이면 지워진다 (M5)', async () => {
+    const context = await setupCoordinator()
     context.hide()
     context.coordinator.playPlaylist(context.playlistId)
     expect(context.playback.statusMessage).toContain('보이지 않아')
@@ -765,8 +765,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.statusMessage).toBe('')
   })
 
-  it('오류 안내는 다시 보여도 남는다 (M5)', () => {
-    const context = playing(setupCoordinator())
+  it('오류 안내는 다시 보여도 남는다 (M5)', async () => {
+    const context = playing(await setupCoordinator())
     context.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
     const message = context.playback.statusMessage
 
@@ -776,8 +776,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.statusMessage).toBe(message)
   })
 
-  it('큐 끝 안내도 다시 보여도 남는다 (M5)', () => {
-    const context = playing(setupCoordinator(1))
+  it('큐 끝 안내도 다시 보여도 남는다 (M5)', async () => {
+    const context = playing(await setupCoordinator(1))
     context.fake.emitStateChange('ended')
     expect(context.playback.statusMessage).toContain('마지막 곡')
 
@@ -786,8 +786,8 @@ describe('C2. 가드 — 재생 중에 가려지면 멈춘다', () => {
     expect(context.playback.statusMessage).toContain('마지막 곡')
   })
 
-  it('가려진 뒤 사용자가 다시 누르면 재생된다', () => {
-    const context = playing(setupCoordinator())
+  it('가려진 뒤 사용자가 다시 누르면 재생된다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide()
     context.coordinator.revalidatePlayerVisibility()
     context.fake.emitStateChange('paused')
@@ -805,8 +805,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
    * 세로 화면의 레코드 시트가 플레이어를 덮을 수 있게 됐다. 가리는 쪽만
    * **얼마나** 가리는지 알 수 있으므로 숫자를 알린다. 판단은 재생 쪽이 한다.
    */
-  it('알린 가림 높이를 측정에 그대로 넘긴다', () => {
-    const context = setupCoordinator()
+  it('알린 가림 높이를 측정에 그대로 넘긴다', async () => {
+    const context = await setupCoordinator()
     context.coordinator.setBottomObstruction(420)
     context.measuredObstruction.length = 0
 
@@ -815,8 +815,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.measuredObstruction).toContain(420)
   })
 
-  it('알리지 않으면 0 으로 잰다', () => {
-    const context = setupCoordinator()
+  it('알리지 않으면 0 으로 잰다', async () => {
+    const context = await setupCoordinator()
     context.measuredObstruction.length = 0
 
     context.coordinator.playPlaylist(context.playlistId)
@@ -824,8 +824,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.measuredObstruction.every((value) => value === 0)).toBe(true)
   })
 
-  it('음수는 0 으로 본다', () => {
-    const context = setupCoordinator()
+  it('음수는 0 으로 본다', async () => {
+    const context = await setupCoordinator()
     context.coordinator.setBottomObstruction(-50)
     context.measuredObstruction.length = 0
 
@@ -834,8 +834,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.measuredObstruction).toContain(0)
   })
 
-  it('같은 값을 다시 알리면 재측정하지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('같은 값을 다시 알리면 재측정하지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.coordinator.setBottomObstruction(300)
     context.measuredObstruction.length = 0
 
@@ -845,8 +845,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.measuredObstruction).toEqual([])
   })
 
-  it('값이 바뀌면 즉시 다시 재고, 덮였으면 멈춘다', () => {
-    const context = playing(setupCoordinator())
+  it('값이 바뀌면 즉시 다시 재고, 덮였으면 멈춘다', async () => {
+    const context = playing(await setupCoordinator())
     // 시트가 올라와 영상을 덮었다.
     context.hide('covered')
 
@@ -856,8 +856,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.playback.statusMessage).toContain('가려져 일시정지')
   })
 
-  it('덮이지 않았으면 멈추지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('덮이지 않았으면 멈추지 않는다', async () => {
+    const context = playing(await setupCoordinator())
 
     context.coordinator.setBottomObstruction(120)
 
@@ -865,8 +865,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.playback.playerState).toBe('playing')
   })
 
-  it('덮인 동안에는 재생을 시작하지 않는다', () => {
-    const context = setupCoordinator()
+  it('덮인 동안에는 재생을 시작하지 않는다', async () => {
+    const context = await setupCoordinator()
     context.hide('covered')
     context.coordinator.setBottomObstruction(560)
 
@@ -876,8 +876,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.playback.queue).toEqual([])
   })
 
-  it('시트가 닫혀 가림이 걷히면 가시성 안내가 지워진다', () => {
-    const context = setupCoordinator()
+  it('시트가 닫혀 가림이 걷히면 가시성 안내가 지워진다', async () => {
+    const context = await setupCoordinator()
     context.hide('covered')
     context.coordinator.setBottomObstruction(560)
     context.coordinator.playPlaylist(context.playlistId)
@@ -890,8 +890,8 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
     expect(context.playback.statusMessage).toBe('')
   })
 
-  it('가림이 걷혀도 자동으로 재생하지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('가림이 걷혀도 자동으로 재생하지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.hide('covered')
     context.coordinator.setBottomObstruction(560)
     expect(context.fake.calls.pause).toBe(1)
@@ -905,9 +905,9 @@ describe('C4. 가드 — 우리 UI 가 하단을 덮는다 (M7-1)', () => {
 })
 
 describe('C3. 가드 — 가려지기 직전 통지', () => {
-  it('재생 중이면 통지만으로 멈춘다 — 측정하지 않는다', () => {
+  it('재생 중이면 통지만으로 멈춘다 — 측정하지 않는다', async () => {
     // 아직 보이는 상태다. 측정에 맡기면 "보인다" 가 나와 멈추지 않는다.
-    const context = playing(setupCoordinator())
+    const context = playing(await setupCoordinator())
 
     context.coordinator.playerWillHide()
 
@@ -915,8 +915,8 @@ describe('C3. 가드 — 가려지기 직전 통지', () => {
     expect(context.playback.statusMessage).toBe('작은 화면에서는 영상이 가려져 일시정지됩니다.')
   })
 
-  it('불러오는 중이어도 멈춘다', () => {
-    const context = setupCoordinator()
+  it('불러오는 중이어도 멈춘다', async () => {
+    const context = await setupCoordinator()
     context.coordinator.playPlaylist(context.playlistId)
 
     context.coordinator.playerWillHide()
@@ -924,8 +924,8 @@ describe('C3. 가드 — 가려지기 직전 통지', () => {
     expect(context.fake.calls.pause).toBe(1)
   })
 
-  it('멈춰 있으면 아무 일도 하지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('멈춰 있으면 아무 일도 하지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.fake.emitStateChange('paused')
     const message = context.playback.statusMessage
 
@@ -935,8 +935,8 @@ describe('C3. 가드 — 가려지기 직전 통지', () => {
     expect(context.playback.statusMessage).toBe(message)
   })
 
-  it('통지로 멈춘 뒤에는 ENDED 가 와도 넘기지 않는다', () => {
-    const context = playing(setupCoordinator())
+  it('통지로 멈춘 뒤에는 ENDED 가 와도 넘기지 않는다', async () => {
+    const context = playing(await setupCoordinator())
     context.coordinator.playerWillHide()
 
     context.fake.emitStateChange('ended')
@@ -976,7 +976,7 @@ async function seedPlaying(trackCount = 3) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('LIST')
+  const created = await library.createPlaylist('LIST')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
@@ -1022,6 +1022,7 @@ describe('D. 드로어 연동', () => {
     await nextTick()
 
     await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await flushPromises()
     await nextTick()
     await nextTick()
 
@@ -1049,6 +1050,7 @@ describe('D. 드로어 연동', () => {
     setRectOverride('#record-library-drawer', sheetRect(528))
 
     await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await flushPromises()
     await nextTick()
     await nextTick()
 
@@ -1122,6 +1124,7 @@ describe('D. 드로어 연동', () => {
     // 시트를 열어 트랙 목록을 본다. 영상이 덮여 일시정지된다.
     setRectOverride('#record-library-drawer', sheetRect(528))
     await editorTrigger(context.wrapper).trigger('click')
+    await flushPromises()
     await nextTick()
     await nextTick()
     expect(context.fake.calls.pause).toBe(1)
@@ -1222,11 +1225,13 @@ describe('D. 드로어 연동', () => {
 
     setRectOverride('#record-library-drawer', sheetRect(528))
     await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await flushPromises()
     await nextTick()
     await nextTick()
     expect(context.playback.statusMessage).not.toBe('')
 
     await context.wrapper.get('.drawer .close').trigger('click')
+    await flushPromises()
     await nextTick()
     await nextTick()
 

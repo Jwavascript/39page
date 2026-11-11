@@ -24,7 +24,7 @@ import { computed, inject, nextTick, ref } from 'vue'
 
 import PlaylistTile from '@/features/library/PlaylistTile.vue'
 import { LIBRARY_DRAWER } from '@/features/library/drawerController'
-import { LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
+import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
 import {
   PLAYBACK_COORDINATOR,
@@ -55,6 +55,8 @@ const isExpanded = computed<boolean>(() => shelf?.isExpanded.value ?? true)
 const isCreating = ref(false)
 const draftName = ref('')
 const formError = ref('')
+/** 만들기가 저장을 기다리는 중 — 두 번 눌러 두 개가 생기지 않게 한다. */
+const isSubmitting = ref(false)
 const nameInput = ref<HTMLInputElement | null>(null)
 
 /** 저장되지 않았거나 요청이 거절된 사실을 알린다. */
@@ -64,15 +66,20 @@ const FAILURE_MESSAGE: Record<string, string> = {
   'empty-name': '이름을 입력해주세요.',
   'not-found': '대상을 찾을 수 없습니다.',
   conflict: LIBRARY_CONFLICT_MESSAGE,
+  busy: LIBRARY_BUSY_MESSAGE,
 }
 
 /**
  * 선택도 저장되는 변경이다. 다른 탭이 먼저 바꿨으면 거절되고 최신 내용이
  * 다시 읽힌다 (M10-3) — 그 사실을 알린다. 재생 요청은 선택과 별개로 진행한다.
+ * 탭 간 잠금 안에서 저장이 끝나면 이행한다 (ADR 0025).
  */
-function select(id: string): void {
-  const result = library.selectPlaylist(id)
-  if (!result.ok && result.reason === 'conflict') notice.value = LIBRARY_CONFLICT_MESSAGE
+async function select(id: string): Promise<boolean> {
+  const result = await library.selectPlaylist(id)
+  if (!result.ok && (result.reason === 'conflict' || result.reason === 'busy')) {
+    notice.value = FAILURE_MESSAGE[result.reason] ?? ''
+  }
+  return result.ok
 }
 
 /**
@@ -115,8 +122,15 @@ function cancelCreate(): void {
   formError.value = ''
 }
 
-function submitCreate(): void {
-  const result = library.createPlaylist(draftName.value)
+async function submitCreate(): Promise<void> {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  let result
+  try {
+    result = await library.createPlaylist(draftName.value)
+  } finally {
+    isSubmitting.value = false
+  }
 
   if (!result.ok) {
     // 실패해도 입력값을 지우지 않는다. 사용자가 고쳐 쓸 수 있어야 한다.
@@ -145,7 +159,7 @@ function report(result: PlayRequestResult | undefined): void {
  */
 function playPlaylist(id: string): void {
   notice.value = ''
-  if (id !== library.selectedPlaylistId) select(id)
+  if (id !== library.selectedPlaylistId) void select(id)
 
   void (async () => {
     await drawer?.stepAside()
@@ -156,8 +170,10 @@ function playPlaylist(id: string): void {
 /** `⋯` 누름 — 그 목록을 선택하고 편집 오버레이를 연다. */
 function openPlaylist(id: string): void {
   notice.value = ''
-  select(id)
-  drawer?.open()
+  // 선택이 끝난 뒤에 연다 — 다른 목록이 잠깐 보이거나, 거절됐는데 엉뚱한 목록이 열리지 않게.
+  void select(id).then((selected) => {
+    if (selected) drawer?.open()
+  })
 }
 </script>
 
@@ -192,7 +208,14 @@ function openPlaylist(id: string): void {
       />
       <p id="new-playlist-error" class="error-msg">{{ formError }}</p>
       <div class="form-actions">
-        <button type="submit" class="pill pill--strong">만들기</button>
+        <button
+          type="submit"
+          class="pill pill--strong"
+          :disabled="isSubmitting"
+          :aria-busy="isSubmitting ? 'true' : 'false'"
+        >
+          만들기
+        </button>
         <button type="button" class="pill" @click="cancelCreate">취소</button>
       </div>
     </form>

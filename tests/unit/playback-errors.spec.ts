@@ -12,7 +12,7 @@
  */
 import { nextTick } from 'vue'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -45,11 +45,11 @@ afterEach(() => {
 })
 
 /** 코디네이터 + 가짜 어댑터. 플레이어 영역은 항상 보인다고 본다. */
-function setup(trackCount = 3) {
+async function setup(trackCount = 3) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('PLAYLIST A')
+  const created = await library.createPlaylist('PLAYLIST A')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
@@ -88,8 +88,8 @@ const CODE_EXPECTATIONS: readonly { code: number; kind: PlayerErrorKind; fragmen
 describe('A. 오류 코드별 안내', () => {
   it.each(CODE_EXPECTATIONS)(
     '코드 $code 는 $kind 로 분류되고 그 사정을 설명한다',
-    ({ code, kind, fragment }) => {
-      const { coordinator, playback, fake, playlistId } = setup()
+    async ({ code, kind, fragment }) => {
+      const { coordinator, playback, fake, playlistId } = await setup()
       coordinator.playPlaylist(playlistId)
 
       fake.emitError({ kind, code })
@@ -101,8 +101,8 @@ describe('A. 오류 코드별 안내', () => {
     },
   )
 
-  it('101 과 150 은 같은 사정이라 같은 문장을 쓰고 번호만 다르다', () => {
-    const first = setup()
+  it('101 과 150 은 같은 사정이라 같은 문장을 쓰고 번호만 다르다', async () => {
+    const first = await setup()
     first.coordinator.playPlaylist(first.playlistId)
     first.fake.emitError({ kind: 'embed-not-allowed', code: 101 })
     const message101 = first.playback.statusMessage
@@ -112,15 +112,15 @@ describe('A. 오류 코드별 안내', () => {
     // 목록 생성이 충돌로 거절된다 (ADR 0024).
     globalThis.localStorage.clear()
     setActivePinia(createPinia())
-    const second = setup()
+    const second = await setup()
     second.coordinator.playPlaylist(second.playlistId)
     second.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
 
     expect(message101.replace('101', '150')).toBe(second.playback.statusMessage)
   })
 
-  it('알 수 없는 코드는 일반 안내로 떨어진다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('알 수 없는 코드는 일반 안내로 떨어진다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitError({ kind: 'unknown', code: 777 })
@@ -129,8 +129,8 @@ describe('A. 오류 코드별 안내', () => {
     expect(playback.statusMessage).toContain('오류 777')
   })
 
-  it('API 를 못 받은 경우는 번호가 없고 다시 눌러보라고 알린다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('API 를 못 받은 경우는 번호가 없고 다시 눌러보라고 알린다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitError({ kind: 'api-unavailable', code: null })
@@ -139,8 +139,8 @@ describe('A. 오류 코드별 안내', () => {
     expect(playback.statusMessage).not.toContain('오류')
   })
 
-  it('오류가 나도 다음 곡으로 자동 전환하지 않는다 (M3-0.7)', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('오류가 나도 다음 곡으로 자동 전환하지 않는다 (M3-0.7)', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitError({ kind: 'embed-not-allowed', code: 150 })
@@ -149,8 +149,8 @@ describe('A. 오류 코드별 안내', () => {
     expect(fake.calls.load.map((call) => call.videoId)).toEqual([VIDEOS[0]])
   })
 
-  it('오류 뒤 토글을 누르면 같은 트랙을 다시 적재한다', () => {
-    const { coordinator, fake, playlistId } = setup()
+  it('오류 뒤 토글을 누르면 같은 트랙을 다시 적재한다', async () => {
+    const { coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitError({ kind: 'not-found', code: 100 })
 
@@ -164,8 +164,8 @@ describe('A. 오류 코드별 안내', () => {
 /* ---------- B. 자동재생 차단 ---------- */
 
 describe('B. 자동재생 차단', () => {
-  it('차단 안내는 경고이고 다시 누르라고 말한다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('차단 안내는 경고이고 다시 누르라고 말한다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitAutoplayBlocked()
@@ -175,8 +175,8 @@ describe('B. 자동재생 차단', () => {
     expect(playback.statusTone).toBe('warning')
   })
 
-  it('차단은 오류가 아니다 — 재생 상태를 error 로 만들지 않는다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('차단은 오류가 아니다 — 재생 상태를 error 로 만들지 않는다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
 
     fake.emitAutoplayBlocked()
@@ -184,8 +184,8 @@ describe('B. 자동재생 차단', () => {
     expect(playback.playerState).not.toBe('error')
   })
 
-  it('차단 뒤 사용자가 다시 누르면 재생 명령이 나간다', () => {
-    const { coordinator, fake, playlistId } = setup()
+  it('차단 뒤 사용자가 다시 누르면 재생 명령이 나간다', async () => {
+    const { coordinator, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     // 실제 어댑터는 차단 시 낙관적 `loading` 을 `idle` 로 되돌린다.
     fake.emitAutoplayBlocked()
@@ -196,8 +196,8 @@ describe('B. 자동재생 차단', () => {
     expect(fake.calls.play).toBe(1)
   })
 
-  it('차단 뒤에는 ENDED 가 와도 다음 곡으로 넘기지 않는다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('차단 뒤에는 ENDED 가 와도 다음 곡으로 넘기지 않는다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     fake.emitAutoplayBlocked()
@@ -207,8 +207,8 @@ describe('B. 자동재생 차단', () => {
     expect(playback.queueIndex).toBe(0)
   })
 
-  it('큐가 비어 있으면 차단 안내를 띄우지 않는다', () => {
-    const { playback, fake } = setup()
+  it('큐가 비어 있으면 차단 안내를 띄우지 않는다', async () => {
+    const { playback, fake } = await setup()
 
     fake.emitAutoplayBlocked()
 
@@ -219,8 +219,8 @@ describe('B. 자동재생 차단', () => {
 /* ---------- C. 늦게 도착한 사건 ---------- */
 
 describe('C. 늦게 도착한 사건', () => {
-  it('재생 중에 온 오류도 버리지 않는다 — 조용한 실패를 만들지 않는다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('재생 중에 온 오류도 버리지 않는다 — 조용한 실패를 만들지 않는다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
 
@@ -235,8 +235,8 @@ describe('C. 늦게 도착한 사건', () => {
     expect(playback.statusMessage).toContain('오류 150')
   })
 
-  it('연결이 끊긴 어댑터의 사건은 버린다 — destroy 하지 않아도', () => {
-    const { coordinator, playback, fake, playlistId, attachment } = setup()
+  it('연결이 끊긴 어댑터의 사건은 버린다 — destroy 하지 않아도', async () => {
+    const { coordinator, playback, fake, playlistId, attachment } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
 
@@ -250,16 +250,16 @@ describe('C. 늦게 도착한 사건', () => {
     expect(playback.statusMessage).toBe('')
   })
 
-  it('큐가 비어 있으면 오류 안내를 띄우지 않는다', () => {
-    const { playback, fake } = setup()
+  it('큐가 비어 있으면 오류 안내를 띄우지 않는다', async () => {
+    const { playback, fake } = await setup()
 
     fake.emitError({ kind: 'not-found', code: 100 })
 
     expect(playback.statusMessage).toBe('')
   })
 
-  it('재생된 적 없는 트랙의 늦은 ENDED 는 큐를 움직이지 않는다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('재생된 적 없는 트랙의 늦은 ENDED 는 큐를 움직이지 않는다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
 
@@ -270,8 +270,8 @@ describe('C. 늦게 도착한 사건', () => {
     expect(playback.queueIndex).toBe(1)
   })
 
-  it('새 트랙이 실제로 재생되면 앞선 경고가 지워진다', () => {
-    const { coordinator, playback, fake, playlistId } = setup()
+  it('새 트랙이 실제로 재생되면 앞선 경고가 지워진다', async () => {
+    const { coordinator, playback, fake, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitError({ kind: 'not-found', code: 100 })
     expect(playback.statusMessage).not.toBe('')
@@ -283,8 +283,8 @@ describe('C. 늦게 도착한 사건', () => {
     expect(playback.playerState).toBe('playing')
   })
 
-  it('언마운트한 어댑터는 더 이상 사건을 올리지 않는다', () => {
-    const { coordinator, playback, fake, playlistId, attachment } = setup()
+  it('언마운트한 어댑터는 더 이상 사건을 올리지 않는다', async () => {
+    const { coordinator, playback, fake, playlistId, attachment } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
 
@@ -299,8 +299,8 @@ describe('C. 늦게 도착한 사건', () => {
 /* ---------- D. 재생 중 트랙 삭제 ---------- */
 
 describe('D. 재생 중 트랙 삭제', () => {
-  it('재생 중이던 곡이 지워지면 멈추고 안내한다', () => {
-    const { coordinator, playback, fake, library, playlistId } = setup()
+  it('재생 중이던 곡이 지워지면 멈추고 안내한다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const [first] = trackIds(library, playlistId)
@@ -313,8 +313,8 @@ describe('D. 재생 중 트랙 삭제', () => {
     expect(playback.statusTone).toBe('warning')
   })
 
-  it('큐는 스냅샷이라 그대로 남는다', () => {
-    const { coordinator, playback, library, playlistId, fake } = setup()
+  it('큐는 스냅샷이라 그대로 남는다', async () => {
+    const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const [first] = trackIds(library, playlistId)
@@ -327,8 +327,8 @@ describe('D. 재생 중 트랙 삭제', () => {
     expect(playback.currentTrack?.id).toBe(first)
   })
 
-  it('다음 곡으로 자동 전환하지 않는다', () => {
-    const { coordinator, playback, library, playlistId, fake } = setup()
+  it('다음 곡으로 자동 전환하지 않는다', async () => {
+    const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const [first] = trackIds(library, playlistId)
@@ -339,8 +339,8 @@ describe('D. 재생 중 트랙 삭제', () => {
     expect(fake.calls.load).toHaveLength(1)
   })
 
-  it('멈춘 뒤 ENDED 가 와도 큐가 흐르지 않는다', () => {
-    const { coordinator, playback, library, playlistId, fake } = setup()
+  it('멈춘 뒤 ENDED 가 와도 큐가 흐르지 않는다', async () => {
+    const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const [first] = trackIds(library, playlistId)
@@ -351,8 +351,8 @@ describe('D. 재생 중 트랙 삭제', () => {
     expect(playback.queueIndex).toBe(0)
   })
 
-  it('지금 재생 중이 아닌 곡을 지우면 아무 일도 없다', () => {
-    const { coordinator, playback, library, playlistId, fake } = setup()
+  it('지금 재생 중이 아닌 곡을 지우면 아무 일도 없다', async () => {
+    const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const ids = trackIds(library, playlistId)
@@ -363,8 +363,8 @@ describe('D. 재생 중 트랙 삭제', () => {
     expect(playback.statusMessage).toBe('')
   })
 
-  it('재생 중인 것이 없으면 아무 일도 없다', () => {
-    const { coordinator, playback, library, playlistId, fake } = setup()
+  it('재생 중인 것이 없으면 아무 일도 없다', async () => {
+    const { coordinator, playback, library, playlistId, fake } = await setup()
     const ids = trackIds(library, playlistId)
 
     coordinator.trackRemoved(ids[0] ?? '')
@@ -373,8 +373,8 @@ describe('D. 재생 중 트랙 삭제', () => {
     expect(playback.statusMessage).toBe('')
   })
 
-  it('사용자가 다시 고르면 재생이 이어진다', () => {
-    const { coordinator, playback, library, playlistId, fake } = setup()
+  it('사용자가 다시 고르면 재생이 이어진다', async () => {
+    const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const ids = trackIds(library, playlistId)
@@ -416,7 +416,7 @@ async function seeded(trackCount = 2) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('LIST')
+  const created = await library.createPlaylist('LIST')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
@@ -513,13 +513,17 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
   it('드로어에서 재생 중인 트랙을 지우면 멈추고 안내한다', async () => {
     const context = await seeded()
     await context.wrapper.get('.playlist-play').trigger('click')
+    await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
     await nextTick()
 
     await editorTrigger(context.wrapper).trigger('click')
+    await flushPromises()
     await context.wrapper.get('[aria-label="Track 1 삭제"]').trigger('click')
+    await flushPromises()
     await context.wrapper.get('.confirm .pill--strong').trigger('click')
+    await flushPromises()
 
     expect(context.fake.calls.pause).toBe(1)
     expect(context.wrapper.get('.status').text()).toContain('삭제돼 재생을 멈췄습니다')

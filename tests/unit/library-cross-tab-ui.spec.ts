@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
@@ -121,6 +121,7 @@ describe('이벤트보다 먼저 누르면 — 충돌 안내 · 입력 유지 ·
       title: '다른 탭 곡',
     })
     await wrapper.get('.link-form').trigger('submit')
+    await flushPromises()
     await nextTick()
 
     expect(wrapper.get('#track-url-error').text()).toBe(LIBRARY_CONFLICT_MESSAGE)
@@ -129,6 +130,7 @@ describe('이벤트보다 먼저 누르면 — 충돌 안내 · 입력 유지 ·
     expect(stored().playlists[0]?.tracks.map((track) => track.title)).toEqual(['다른 탭 곡'])
 
     await wrapper.get('.link-form').trigger('submit')
+    await flushPromises()
     await nextTick()
     expect(stored().playlists[0]?.tracks.map((track) => track.title)).toEqual([
       '다른 탭 곡',
@@ -144,11 +146,20 @@ describe('이벤트보다 먼저 누르면 — 충돌 안내 · 입력 유지 ·
     otherTab().renamePlaylist(library.playlists[0]?.id as string, '다른 탭 이름')
 
     await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(wrapper.get('.widget-notice').text()).toBe(LIBRARY_CONFLICT_MESSAGE)
     expect(stored().playlists[0]?.name).toBe('다른 탭 이름')
     expect(library.playlists[0]?.name).toBe('다른 탭 이름')
+    // 선택이 거절됐으므로 편집 오버레이를 열지 않는다 — 고르지 않은 목록이 열리지 않게 (ADR 0025).
+    expect(wrapper.get('#record-library-drawer').attributes('hidden')).toBeDefined()
+
+    // 최신을 보고 다시 누르면 선택이 저장된 뒤에 열린다.
+    await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    await flushPromises()
+    await nextTick()
+    expect(wrapper.get('#record-library-drawer').attributes('hidden')).toBeUndefined()
     wrapper.unmount()
   })
 })
@@ -173,7 +184,9 @@ describe('저장하지 못한 변경이 다시 읽기로 사라지면 알린다'
         },
       },
     })
-    expect(library.addTrack(id, { videoId: 'dQw4w9WgXcQ', title: '저장 안 됨' })).toMatchObject({
+    expect(
+      await library.addTrack(id, { videoId: 'dQw4w9WgXcQ', title: '저장 안 됨' }),
+    ).toMatchObject({
       persisted: false,
     })
     Object.defineProperty(globalThis, 'localStorage', {

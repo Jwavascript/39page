@@ -35,7 +35,9 @@ useThemeStore(pinia).restore()
 // 아예 없었던 최초 실행에서만 동작한다 (ADR 0007).
 const library = useLibraryStore(pinia)
 library.restore()
-library.seedFirstRunPlaylist(DEFAULT_PLAYLIST_NAME)
+// 탭 간 잠금 안에서 조건을 다시 보고 만든다 (ADR 0025) — 두 탭이 동시에 첫 실행이어도
+// 하나만 생긴다. 끝나기를 기다리지 않고 마운트한다. 생기면 화면이 따라 그린다.
+void library.seedFirstRunPlaylist(DEFAULT_PLAYLIST_NAME)
 // 다른 탭의 저장을 이 탭에 반영한다 (M10-3, ADR 0024). 앱 수명 동안 듣는다.
 library.watchExternalChanges()
 
@@ -75,7 +77,10 @@ if (resolveEntry(globalThis.location.hash) === 'collect') {
    * 버전 원본은 `protected` 로 남고, 라이브러리의 복원 결과와 서로 영향을
    * 주지 않는다 (ADR 0019 결정 3). 화면에 보여주는 것은 M9-4 다.
    */
-  useMomentsStore(pinia).restore()
+  const moments = useMomentsStore(pinia)
+  moments.restore()
+  // 다른 탭(수집 화면 포함)의 Moments 저장을 이 탭에 반영한다 (M10-3 안정화).
+  moments.watchExternalChanges()
 
   app.mount('#app')
 }

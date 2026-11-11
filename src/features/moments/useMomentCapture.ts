@@ -32,6 +32,9 @@ const ADD_REFUSED: Readonly<Record<MomentMutationFailure, string>> = {
   'invalid-video-id': '이 영상의 순간은 저장할 수 없어요.',
   'invalid-time': '재생 위치가 올바르지 않아 저장하지 않았어요.',
   'not-found': '저장할 대상을 찾을 수 없어요.',
+  conflict:
+    '다른 탭에서 Moments 가 바뀌어 최신 목록을 불러왔어요. 저장하지 않았으니 메모를 확인하고 다시 저장해 주세요.',
+  busy: '다른 39page 탭이 저장하는 중이라 저장하지 않았어요. 잠시 뒤 다시 저장해 주세요.',
 }
 
 export interface MomentCaptureModel {
@@ -61,10 +64,16 @@ export interface MomentCaptureModel {
 
   feedback: Readonly<Ref<MomentFeedback | null>>
 
+  /** 저장 중 — 탭 간 잠금을 기다리거나 쓰는 중이다 (ADR 0025). */
+  saving: Readonly<Ref<boolean>>
+
   /** 지금 시점을 찍고 폼을 연다. 찍지 못하면 `false` 와 안내. */
   begin(): boolean
-  /** 고정한 대상에 저장한다. 저장했으면(메모리라도) `true` 이고 폼이 닫힌다. */
-  submit(): boolean
+  /**
+   * 고정한 대상에 저장한다. 저장이 **끝난 뒤** 이행한다. 저장했으면(메모리라도)
+   * `true` 이고 폼이 닫힌다. 거절되면 `false` — 폼과 메모가 그대로 남는다.
+   */
+  submit(): Promise<boolean>
   /** 폼을 닫는다. 아무것도 저장하지 않는다. */
   cancel(): void
 }
@@ -79,6 +88,7 @@ export function useMomentCapture(): MomentCaptureModel {
   const target = ref<MomentCapture | null>(null)
   const draftNote = ref('')
   const feedback = ref<MomentFeedback | null>(null)
+  const saving = ref(false)
 
   const canCapture = computed<boolean>(() => coordinator !== null && playback.isPositionReliable)
 
@@ -128,9 +138,9 @@ export function useMomentCapture(): MomentCaptureModel {
     return true
   }
 
-  function submit(): boolean {
+  async function submit(): Promise<boolean> {
     const fixed = target.value
-    if (fixed === null) return false
+    if (fixed === null || saving.value) return false
 
     // 입력란의 maxlength 가 1차 방어선이다. 스크립트·붙여넣기 경로를 여기서 막는다.
     if (isNoteTooLong.value) {
@@ -138,12 +148,18 @@ export function useMomentCapture(): MomentCaptureModel {
       return false
     }
 
-    const result = moments.add({
-      videoId: fixed.videoId,
-      atSeconds: fixed.atSeconds,
-      title: fixed.title,
-      note: draftNote.value,
-    })
+    saving.value = true
+    let result
+    try {
+      result = await moments.add({
+        videoId: fixed.videoId,
+        atSeconds: fixed.atSeconds,
+        title: fixed.title,
+        note: draftNote.value,
+      })
+    } finally {
+      saving.value = false
+    }
 
     if (!result.ok) {
       // 폼을 닫지 않는다. 쓴 메모를 잃지 않게 한다.
@@ -179,6 +195,7 @@ export function useMomentCapture(): MomentCaptureModel {
     noteLength,
     isNoteTooLong,
     feedback: readonly(feedback) as Readonly<Ref<MomentFeedback | null>>,
+    saving: readonly(saving),
     begin,
     submit,
     cancel,

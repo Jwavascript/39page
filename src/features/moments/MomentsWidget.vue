@@ -58,17 +58,13 @@ function finishCapture(): void {
   void nextTick(() => captureButton.value?.focus())
 }
 
-function submitCapture(): void {
-  if (capture.submit()) finishCapture()
+async function submitCapture(): Promise<void> {
+  if (await capture.submit()) finishCapture()
 }
 
 function cancelCapture(): void {
   capture.cancel()
   finishCapture()
-}
-
-function onSaveNote(momentId: string, note: string): void {
-  browser.saveNote(momentId, note)
 }
 
 const emptyMessage = computed<string>(() => {
@@ -166,8 +162,13 @@ const emptyMessage = computed<string>(() => {
           >
         </p>
         <div class="row-actions">
-          <button type="submit" class="pill pill--strong" :disabled="capture.isNoteTooLong.value">
-            저장
+          <button
+            type="submit"
+            class="pill pill--strong"
+            :disabled="capture.isNoteTooLong.value || capture.saving.value"
+            :aria-busy="capture.saving.value ? 'true' : 'false'"
+          >
+            {{ capture.saving.value ? '저장 중…' : '저장' }}
           </button>
           <button type="button" class="pill" @click="cancelCapture">취소</button>
         </div>
@@ -232,8 +233,8 @@ const emptyMessage = computed<string>(() => {
           :current-video-id="browser.currentVideoId.value"
           :max-note-length="MAX_MOMENT_NOTE_LENGTH"
           @play="(id) => void browser.play(id)"
-          @save-note="onSaveNote"
-          @remove="browser.remove"
+          :save-note="browser.saveNote"
+          @remove="(id) => void browser.remove(id)"
         />
       </div>
     </div>

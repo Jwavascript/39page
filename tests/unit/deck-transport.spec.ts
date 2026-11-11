@@ -43,8 +43,8 @@ function mountApp() {
 type Context = ReturnType<typeof mountApp>
 
 /** 트랙 둘을 가진 플레이리스트를 선택 상태로 둔다. */
-function seed(library: ReturnType<typeof useLibraryStore>): string {
-  const created = library.createPlaylist('MY RECORDS')
+async function seed(library: ReturnType<typeof useLibraryStore>): Promise<string> {
+  const created = await library.createPlaylist('MY RECORDS')
   const id = created.ok ? created.playlistId : ''
   library.addTrack(id, { videoId: VIDEO_A, title: 'ONE' })
   library.addTrack(id, { videoId: VIDEO_B, title: 'TWO' })
@@ -74,7 +74,7 @@ afterEach(() => {
 describe('A. 큐가 없을 때 — 선택된 목록을 처음부터 재생한다', () => {
   it('카세트의 ▶ 가 선택된 목록을 큐로 만든다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await cassettePlay(context).trigger('click')
@@ -86,7 +86,7 @@ describe('A. 큐가 없을 때 — 선택된 목록을 처음부터 재생한다
 
   it('Mono Vinyl 의 START / STOP 키도 같은 일을 한다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await monoKey(context).trigger('click')
@@ -95,16 +95,16 @@ describe('A. 큐가 없을 때 — 선택된 목록을 처음부터 재생한다
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('큐가 없을 때의 ▶ 이름이 무엇을 할지 말한다', () => {
+  it('큐가 없을 때의 ▶ 이름이 무엇을 할지 말한다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
 
     expect(cassettePlay(context).attributes('aria-label')).toBe('선택한 목록을 처음부터 재생')
   })
 
   it('■ 는 멈춰 있을 때 재생을 시작하지 않는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await cassetteStop(context).trigger('click')
@@ -119,7 +119,7 @@ describe('A. 큐가 없을 때 — 선택된 목록을 처음부터 재생한다
 describe('B. 큐가 있을 때 — 그 자리에서 이어서', () => {
   async function playing(): Promise<Context> {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await cassettePlay(context).trigger('click')
@@ -209,7 +209,7 @@ describe('C. 거절 — 왜 안 되는지 알린다', () => {
     await cassettePlay(context).trigger('click')
     expect(notice(context).exists()).toBe(true)
 
-    const id = seed(context.library)
+    const id = await seed(context.library)
     context.library.selectPlaylist(id)
     await nextTick()
     await cassettePlay(context).trigger('click')
@@ -227,7 +227,7 @@ describe('C. 거절 — 왜 안 되는지 알린다', () => {
    */
   it('가려져서 거절되면 데크와 플레이어가 함께 알린다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     setPlayerRect(HIDDEN_RECT)
 
@@ -240,7 +240,7 @@ describe('C. 거절 — 왜 안 되는지 알린다', () => {
 
   it('영역이 작아서 거절된 경우도 같은 길로 알린다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     setPlayerRect(TOO_SMALL_RECT)
 
@@ -262,7 +262,7 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
 
   it('테마를 바꿔도 재생 상태가 유지된다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     await cassettePlay(context).trigger('click')
     context.fake.emitReady()
@@ -279,7 +279,7 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
 
   it('키가 라이브러리 트랙을 복사해 큐로 쓴다 — 편집해도 큐가 흔들리지 않는다', async () => {
     const context = mountApp()
-    const id = seed(context.library)
+    const id = await seed(context.library)
     await nextTick()
     await cassettePlay(context).trigger('click')
 
@@ -292,7 +292,7 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
 
   it('재생을 요청한 목록이 선택 상태로 남는다', async () => {
     const context = mountApp()
-    const id = seed(context.library)
+    const id = await seed(context.library)
     await nextTick()
 
     await cassettePlay(context).trigger('click')
@@ -305,7 +305,7 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
 
   it('트랙 객체를 그대로 공유하지 않는다', async () => {
     const context = mountApp()
-    const id = seed(context.library)
+    const id = await seed(context.library)
     await nextTick()
 
     await cassettePlay(context).trigger('click')

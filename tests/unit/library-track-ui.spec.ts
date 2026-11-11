@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -43,7 +43,8 @@ async function submitLink(wrapper: Wrapper, url: string, title = '') {
   await wrapper.get('#track-url').setValue(url)
   if (title !== '') await wrapper.get('#track-title').setValue(title)
   await wrapper.get('form.link-form').trigger('submit')
-  await nextTick()
+  // 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025) — 끝난 뒤의 화면을 본다.
+  await flushPromises()
 }
 
 function track(id: string): Track {
@@ -54,7 +55,7 @@ function track(id: string): Track {
 async function setup() {
   const { wrapper, fake } = mountApp()
   const library = useLibraryStore()
-  const created = library.createPlaylist('MY RECORDS')
+  const created = await library.createPlaylist('MY RECORDS')
   await openDrawer(wrapper)
   return { wrapper, fake, library, id: created.ok ? created.playlistId : '' }
 }
@@ -157,7 +158,7 @@ describe('B. 링크 등록 UI', () => {
 
   it('19. 선택된 플레이리스트에만 추가한다', async () => {
     const { wrapper, library } = await setup()
-    const b = library.createPlaylist('OTHER')
+    const b = await library.createPlaylist('OTHER')
     const idB = b.ok ? b.playlistId : ''
     await nextTick()
 
@@ -201,7 +202,7 @@ describe('B. 링크 등록 UI', () => {
    */
   it('20. 선택이 바뀌면 폼을 닫고, 다시 열면 새 대상을 겨냥한다', async () => {
     const { wrapper, library, id } = await setup()
-    const other = library.createPlaylist('OTHER')
+    const other = await library.createPlaylist('OTHER')
     const otherId = other.ok ? other.playlistId : ''
     library.selectPlaylist(id)
     await nextTick()

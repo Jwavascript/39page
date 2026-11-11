@@ -13,7 +13,7 @@ import { resolve } from 'node:path'
 
 import { nextTick } from 'vue'
 
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -44,13 +44,13 @@ function mountApp() {
 type Context = ReturnType<typeof mountApp>
 
 /** 트랙이 있는 목록 하나와 빈 목록 하나. */
-function seed(library: ReturnType<typeof useLibraryStore>) {
-  const filled = library.createPlaylist('NIGHT DRIVE')
+async function seed(library: ReturnType<typeof useLibraryStore>) {
+  const filled = await library.createPlaylist('NIGHT DRIVE')
   const filledId = filled.ok ? filled.playlistId : ''
   library.addTrack(filledId, { videoId: VIDEO_A, title: 'ONE' })
   library.addTrack(filledId, { videoId: VIDEO_B, title: 'TWO' })
 
-  const empty = library.createPlaylist('EMPTY SHELF')
+  const empty = await library.createPlaylist('EMPTY SHELF')
   const emptyId = empty.ok ? empty.playlistId : ''
 
   library.selectPlaylist(filledId)
@@ -78,7 +78,7 @@ afterEach(() => {
 describe('A. 타일 격자', () => {
   it('플레이리스트마다 타일이 하나씩 생긴다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(tiles(context).map((tile) => tile.get('.pname').text())).toEqual([
@@ -89,7 +89,7 @@ describe('A. 타일 격자', () => {
 
   it('트랙 수를 타일에 적고, 비었으면 비었다고 적는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(tiles(context)[0]?.get('.pmeta').text()).toBe('2 TRACKS')
@@ -98,7 +98,7 @@ describe('A. 타일 격자', () => {
 
   it('선택된 타일을 색 말고도 알 수 있다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(tiles(context)[0]?.classes()).toContain('is-selected')
@@ -129,7 +129,7 @@ describe('A. 타일 격자', () => {
    */
   it('기본은 접힌 상태이고 타일은 그래도 보인다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
@@ -138,7 +138,7 @@ describe('A. 타일 격자', () => {
 
   it('데크를 누르면 펼쳐지고 다시 누르면 접힌다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     const deck = context.wrapper.get('.deck-open--mono-vinyl')
 
@@ -174,7 +174,7 @@ describe('A. 타일 격자', () => {
 describe('B. 타일 누름 — 전체 재생', () => {
   it('타일의 ▶ 를 누르면 그 목록이 처음부터 재생된다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await tiles(context)[0]?.get('.playlist-play').trigger('click')
@@ -186,7 +186,7 @@ describe('B. 타일 누름 — 전체 재생', () => {
 
   it('재생한 목록이 선택 상태로 따라온다', async () => {
     const context = mountApp()
-    const { filledId, emptyId } = seed(context.library)
+    const { filledId, emptyId } = await seed(context.library)
     context.library.selectPlaylist(emptyId)
     await nextTick()
 
@@ -198,7 +198,7 @@ describe('B. 타일 누름 — 전체 재생', () => {
 
   it('▶ 는 편집 오버레이를 열지 않는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await tiles(context)[0]?.get('.playlist-play').trigger('click')
@@ -208,7 +208,7 @@ describe('B. 타일 누름 — 전체 재생', () => {
 
   it('빈 목록은 ▶ 가 비활성이고, 그 사실을 이름이 말한다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     const play = tiles(context)[1]?.get('.playlist-play')
@@ -218,7 +218,7 @@ describe('B. 타일 누름 — 전체 재생', () => {
 
   it('▶ 의 이름이 곡 수를 말한다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(tiles(context)[0]?.get('.playlist-play').attributes('aria-label')).toBe(
@@ -230,10 +230,11 @@ describe('B. 타일 누름 — 전체 재생', () => {
 describe('C. 편집 오버레이 열기', () => {
   it('타일 본문이 그 목록을 선택하고 오버레이를 연다', async () => {
     const context = mountApp()
-    const { emptyId } = seed(context.library)
+    const { emptyId } = await seed(context.library)
     await nextTick()
 
     await tiles(context)[1]?.get('.playlist-open').trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(context.library.selectedPlaylistId).toBe(emptyId)
@@ -244,7 +245,7 @@ describe('C. 편집 오버레이 열기', () => {
 
   it('타일 본문은 재생을 시작하지 않는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     await tiles(context)[0]?.get('.playlist-open').trigger('click')
@@ -255,7 +256,7 @@ describe('C. 편집 오버레이 열기', () => {
 
   it('타일 본문에 접근성 이름이 있다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(tiles(context)[0]?.get('.playlist-open').attributes('aria-label')).toBe(
@@ -265,7 +266,7 @@ describe('C. 편집 오버레이 열기', () => {
 
   it('타일의 보이는 조작은 둘뿐이다 — 재생과 편집', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     for (const tile of tiles(context)) {
@@ -308,9 +309,11 @@ describe('D. 생성', () => {
     const context = mountApp()
 
     await context.wrapper.get('.playlist-widget .pill--strong').trigger('click')
+    await flushPromises()
     const input = context.wrapper.get<HTMLInputElement>('#new-playlist-name')
     await input.setValue('   ')
     await context.wrapper.get('form.create-form').trigger('submit')
+    await flushPromises()
     await nextTick()
 
     expect(context.library.playlists).toEqual([])
@@ -427,7 +430,7 @@ describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
 describe('F. 경계 — 위젯은 재생 구현을 모른다', () => {
   it('플레이어 DOM 을 건드리지 않는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     const surface = context.wrapper.get('[data-instance-id="player-main"]').element

@@ -114,7 +114,8 @@ async function addTrack(session: Session, url: string, title: string) {
   await session.wrapper.get('#track-url').setValue(url)
   await session.wrapper.get('#track-title').setValue(title)
   await session.wrapper.get('.link-form button[type="submit"]').trigger('click')
-  await nextTick()
+  // 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025) — 끝난 뒤의 화면을 본다.
+  await flushPromises()
 }
 
 /** 재생을 시작해 실제로 울리는 상태까지 끌고 간다. */
@@ -500,7 +501,9 @@ describe('10. 재생 중인 트랙 삭제', () => {
     await startPlaying(session, 0)
 
     await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
+    await flushPromises()
     await session.wrapper.get('.confirm .pill--strong').trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(session.fake.calls.pause).toBe(1)
@@ -517,7 +520,9 @@ describe('10. 재생 중인 트랙 삭제', () => {
     await startPlaying(session, 0)
 
     await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
+    await flushPromises()
     await session.wrapper.get('.confirm .pill--strong').trigger('click')
+    await flushPromises()
     session.fake.emitStateChange('ended')
     await nextTick()
 

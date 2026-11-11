@@ -24,3 +24,15 @@ export const STORAGE_KEYS = {
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
+
+/**
+ * 수정 번호 키 (M10-3 안정화, ADR 0025).
+ *
+ * 사용자 데이터가 아니다. 탭 간 쓰기 잠금의 **영수증**이 가리키는 번호를 둔다 —
+ * 라이브러리·Moments 를 쓸 때마다 1 씩 오른다. 위 키와 스키마는 그대로이고, 이 키는
+ * 백업에 넣지 않는다. 없거나 망가졌으면 0 으로 본다. 이 키를 모르는 옛 버전은 무시한다.
+ */
+export const REVISION_KEYS = {
+  library: '39page.library.rev',
+  moments: '39page.moments.rev',
+} as const

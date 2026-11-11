@@ -44,6 +44,26 @@ const notice = computed<Notice | null>(() => {
     }
   }
 
+  /*
+   * 다른 탭의 Moments 저장을 다시 읽었다 (M10-3 안정화, ADR 0025). 라이브러리 배너와
+   * 같은 두 경우만 알린다 — 평범한 반영은 조용히 한다.
+   */
+  if (moments.externalChange?.possiblyOverwritten) {
+    return {
+      title: '다른 탭과 거의 동시에 저장했습니다',
+      detail:
+        '이 탭에서 마지막으로 저장한 순간이 다른 탭의 저장에 덮였을 수 있습니다. 목록을 확인하고 필요하면 다시 저장해 주세요.',
+    }
+  }
+
+  if (moments.externalChange?.discardedUnsaved) {
+    return {
+      title: '다른 탭의 변경을 불러왔습니다',
+      detail:
+        '다른 탭에서 Moments 가 바뀌어 최신 목록으로 맞췄습니다. 이 탭에서 저장하지 못했던 변경은 반영되지 않았습니다.',
+    }
+  }
+
   if (moments.lastWriteFailure !== null) {
     return {
       title: '저장에 실패했습니다',

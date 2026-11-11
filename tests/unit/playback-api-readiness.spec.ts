@@ -126,7 +126,7 @@ describe('API 준비 전 재생 요청', () => {
     const library = useLibraryStore()
     const playback = usePlaybackStore()
 
-    const created = library.createPlaylist('MY RECORDS')
+    const created = await library.createPlaylist('MY RECORDS')
     const playlistId = created.ok ? created.playlistId : ''
     library.addTrack(playlistId, { videoId: VIDEO_A, title: 'Track 1' })
     library.addTrack(playlistId, { videoId: VIDEO_B, title: 'Track 2' })

@@ -42,6 +42,7 @@ import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
 import { THEME_STORAGE_VERSION, useThemeStore } from '@/stores/theme'
 import { usePlaybackStore } from '@/stores/playback'
 
+import { FakeLockWorld } from '../support/fakeTabs'
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
 
 const VIDEO_A = 'aaaaaaaaaaa'
@@ -492,8 +493,8 @@ function stubDownloadGlobals() {
 }
 
 /** 현재 라이브러리에 플레이리스트 하나와 트랙 하나를 둔다. */
-function seed(context: Context): string {
-  const created = context.library.createPlaylist('CURRENT')
+async function seed(context: Context): Promise<string> {
+  const created = await context.library.createPlaylist('CURRENT')
   const id = created.ok ? created.playlistId : ''
   context.library.addTrack(id, { videoId: VIDEO_A, title: 'KEEP ME' })
   return id
@@ -522,11 +523,11 @@ async function pick(context: Context, text: string, name = 'backup.json'): Promi
 }
 
 describe('D. library.replaceAll — 보호 우회 액션', () => {
-  it('통째로 교체하고 저장한다', () => {
+  it('통째로 교체하고 저장한다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
 
-    const result = context.library.replaceAll(libraryData())
+    const result = await context.library.replaceAll(libraryData())
 
     // M8-4: 쓴 값을 다시 읽어 확인한다.
     expect(result).toEqual({ ok: true, persisted: true, writeFailure: null, verified: true })
@@ -537,22 +538,22 @@ describe('D. library.replaceAll — 보호 우회 액션', () => {
     expect(context.library.selectedPlaylistId).toBe('p2')
   })
 
-  it('보호 상태에서도 교체하고 보호를 푼다', () => {
+  it('보호 상태에서도 교체하고 보호를 푼다', async () => {
     globalThis.localStorage.setItem(STORAGE_KEYS.library, '{not json')
     const context = mountApp()
     context.library.restore()
     expect(context.library.status).toBe('protected')
 
-    const result = context.library.replaceAll(libraryData())
+    const result = await context.library.replaceAll(libraryData())
 
-    expect(result.persisted).toBe(true)
+    expect(result).toMatchObject({ ok: true, persisted: true })
     expect(context.library.status).toBe('ready')
     expect(context.library.protectedReason).toBeNull()
     // 원본이 실제로 대체됐다.
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toContain('NIGHT DRIVE')
   })
 
-  it('저장이 실패하면 보호를 풀지 않고 메모리만 바꾼다', () => {
+  it('저장이 실패하면 보호를 풀지 않고 메모리만 바꾼다', async () => {
     globalThis.localStorage.setItem(STORAGE_KEYS.library, '{not json')
     const context = mountApp()
     context.library.restore()
@@ -560,11 +561,14 @@ describe('D. library.replaceAll — 보호 우회 액션', () => {
       throw new Error('blocked')
     })
 
-    const result = context.library.replaceAll(libraryData())
+    const result = await context.library.replaceAll(libraryData())
 
-    expect(result.persisted).toBe(false)
-    expect(result.writeFailure).toBe('unknown')
-    expect(result.verified).toBe(false)
+    expect(result).toMatchObject({
+      ok: true,
+      persisted: false,
+      writeFailure: 'unknown',
+      verified: false,
+    })
     // 원본을 아직 읽지 못했으므로 보호를 풀지 않는다.
     expect(context.library.status).toBe('protected')
     // 메모리에는 반영된다.
@@ -592,7 +596,7 @@ describe('D. library.replaceAll — 보호 우회 액션', () => {
 describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', () => {
   it('파일을 고르면 미리보기가 뜬다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -604,7 +608,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
 
   it('지금 개수와 가져올 개수를 함께 보여준다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -642,7 +646,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
 
   it('교체 위험을 경고한다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -702,7 +706,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
    */
   it('파일 선택·검증·미리보기 동안 setItem 을 한 번도 부르지 않는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
 
@@ -713,7 +717,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
 
   it('거부되는 파일에서도 setItem 을 부르지 않는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
 
@@ -731,7 +735,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
 
   it('미리보기 동안 store 가 그대로다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const before = JSON.stringify(context.library.playlists)
 
@@ -743,7 +747,7 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
 
   it('취소하면 미리보기가 닫히고 데이터가 그대로다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const before = globalThis.localStorage.getItem(STORAGE_KEYS.library)
 
@@ -770,11 +774,12 @@ describe('E. 미리보기 — 저장소와 store 를 건드리지 않는다', ()
 describe('F. 적용 — 성공·부분 성공·실패', () => {
   it('승인하면 라이브러리와 테마가 교체된다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(context.library.playlists.map((playlist) => playlist.name)).toEqual([
@@ -787,11 +792,12 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
   it('저장소에도 반영되어 새로고침 후 유지된다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     // 새로고침을 모사한다.
@@ -813,6 +819,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
     await pick(context, backupText())
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const notice = context.wrapper
@@ -839,7 +846,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
   it('라이브러리 섹션을 건너뛴 파일은 테마만 적용하고 목록을 유지한다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const file = {
       format: BACKUP_FORMAT,
@@ -864,7 +871,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
    */
   it('미리보기 이후 데이터가 바뀌면 덮어쓰지 않고 다시 확인시킨다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -891,7 +898,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
   it('다시 누르면 새 지문으로 교체된다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -911,7 +918,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
   it('다른 탭이 저장소를 바꾼 경우도 잡는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -940,7 +947,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
   it('저장이 실패하면 실패를 성공으로 표시하지 않는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
@@ -951,6 +958,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
     })
 
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const notice = context.wrapper
@@ -978,6 +986,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
     })
 
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const notice = context.wrapper
@@ -995,7 +1004,7 @@ describe('F. 적용 — 성공·부분 성공·실패', () => {
 
   it('지금 데이터를 먼저 내보낼 수 있다 (M8-2 재사용)', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const created = stubDownloadGlobals()
 
@@ -1141,7 +1150,7 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('저장 실패 뒤 화면은 복원됐지만 새로고침하면 되돌아간다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const rawBefore = globalThis.localStorage.getItem(STORAGE_KEYS.library)
 
@@ -1168,12 +1177,13 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('영구 복원 성공으로 오인하지 않게 안내한다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     blockLibraryWrites()
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const block = context.wrapper.get('[aria-label="저장되지 않은 복원"]')
@@ -1183,12 +1193,13 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('다음 행동을 제공한다 — 다시 저장과 JSON 내보내기', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     blockLibraryWrites()
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const labels = context.wrapper
@@ -1200,12 +1211,13 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('다시 저장이 성공하면 안내가 사라진다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     blockLibraryWrites()
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
     expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(true)
 
@@ -1215,6 +1227,7 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
       .findAll('[aria-label="저장되지 않은 복원"] .pill')
       .find((node) => node.text() === '다시 저장 시도')
     await retry?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(false)
@@ -1223,18 +1236,20 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('다시 저장도 실패하면 안내가 남는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     blockLibraryWrites()
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const retry = context.wrapper
       .findAll('[aria-label="저장되지 않은 복원"] .pill')
       .find((node) => node.text() === '다시 저장 시도')
     await retry?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(context.wrapper.find('[aria-label="저장되지 않은 복원"]').exists()).toBe(true)
@@ -1242,12 +1257,13 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('지금 화면을 JSON으로 내보내 잃지 않게 할 수 있다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     blockLibraryWrites()
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     vi.restoreAllMocks()
@@ -1256,6 +1272,7 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
       .findAll('[aria-label="저장되지 않은 복원"] .pill')
       .find((node) => node.text().includes('JSON으로 내보내기'))
     await exportNow?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(created).toHaveLength(1)
@@ -1283,6 +1300,7 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
     })
 
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toContain('NIGHT DRIVE')
@@ -1293,7 +1311,7 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
 
   it('쓰기는 성공했는데 다시 읽으니 다르면 성공으로 보고하지 않는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     await pick(context, backupText())
 
@@ -1304,6 +1322,7 @@ describe('G2. 저장 실패 — 메모리와 저장소가 어긋난 상태 (M8-4
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {})
 
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     const notice = context.wrapper
@@ -1321,7 +1340,7 @@ describe('H. 앱 상태와 경계', () => {
     // jsdom 은 레이아웃을 계산하지 않는다. 가시성 가드가 거절하지 않게 세운다.
     installPlayerRect()
     const context = mountApp()
-    const id = seed(context)
+    const id = await seed(context)
     await nextTick()
 
     // 재생을 시작한다.
@@ -1347,7 +1366,7 @@ describe('H. 앱 상태와 경계', () => {
   it('복원이 실패해도 재생을 괜히 멈추지 않는다', async () => {
     installPlayerRect()
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     await context.wrapper.get('.playlist-play').trigger('click')
     await flushPromises()
@@ -1365,7 +1384,7 @@ describe('H. 앱 상태와 경계', () => {
 
   it('복원 중 PlayerSurface 와 어댑터가 재생성되지 않는다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
     const surface = context.wrapper.get('[data-instance-id="player-main"]').element
     const mountHost = context.wrapper.get('.player-mount').element
@@ -1384,11 +1403,12 @@ describe('H. 앱 상태와 경계', () => {
 
   it('복원 뒤 화면이 저장 결과와 일치한다', async () => {
     const context = mountApp()
-    seed(context)
+    await seed(context)
     await nextTick()
 
     await pick(context, backupText())
     await applyButton(context)?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     // 타일이 새 목록을 보여준다.
@@ -1469,5 +1489,98 @@ describe('H. 앱 상태와 경계', () => {
     await pick(context, backupText())
 
     expect(applyButton(context)?.text()).toBe('교체하고 가져오기')
+  })
+})
+
+/* ------------------------------------------------------------------ *
+ * M10-3 안정화 — 쓰기는 탭 간 잠금 안에서 다시 확인한다 (ADR 0025)
+ * ------------------------------------------------------------------ */
+
+describe('I. 탭 간 잠금 — 미리 비교와 쓰기 사이의 변경', () => {
+  let world: FakeLockWorld
+
+  beforeEach(() => {
+    world = new FakeLockWorld()
+    Object.defineProperty(globalThis.navigator, 'locks', {
+      configurable: true,
+      value: world.forTab('page'),
+    })
+  })
+
+  afterEach(() => {
+    delete (globalThis.navigator as { locks?: unknown }).locks
+    vi.useRealTimers()
+  })
+
+  /** 다른 탭이 쓰기 잠금을 잡는다. 잡은 뒤에 놓는 함수를 돌려준다. */
+  function holdLibraryLock(): Promise<() => void> {
+    return new Promise((granted) => {
+      void world
+        .forTab('other')
+        .request(
+          `${STORAGE_KEYS.library}:write`,
+          { mode: 'exclusive' },
+          () => new Promise<void>((release) => granted(release)),
+        )
+    })
+  }
+
+  it('잠금을 기다리는 사이 다른 탭이 저장하면 교체하지 않고 다시 확인하게 한다', async () => {
+    const context = mountApp()
+    await seed(context)
+    await flushPromises()
+    await pick(context, backupText())
+
+    const release = await holdLibraryLock()
+    await applyButton(context)?.trigger('click')
+    // 미리 비교는 통과했다 — 쓰기는 잠금을 기다린다. 버튼은 꺼져 있다.
+    expect(applyButton(context)?.attributes('disabled')).toBeDefined()
+
+    // 잠금을 쥔 다른 탭이 저장했다.
+    const otherTab = JSON.stringify({
+      version: LIBRARY_STORAGE_VERSION,
+      data: {
+        playlists: [{ id: 'other', name: 'FROM OTHER TAB', tracks: [] }],
+        selectedPlaylistId: 'other',
+      },
+    })
+    globalThis.localStorage.setItem(STORAGE_KEYS.library, otherTab)
+    release()
+    await flushPromises()
+    await nextTick()
+
+    expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toBe(otherTab)
+    expect(context.wrapper.text()).toContain('미리보기를 뜬 뒤 지금 데이터가 바뀌었습니다')
+    // 최신을 화면에 맞췄다 — 다시 누르면 새 지문으로 진행할 수 있다.
+    expect(context.library.playlists.map((playlist) => playlist.name)).toEqual(['FROM OTHER TAB'])
+    expect(applyButton(context)?.attributes('disabled')).toBeUndefined()
+
+    await applyButton(context)?.trigger('click')
+    await flushPromises()
+    expect(context.library.playlists.map((playlist) => playlist.name)).toEqual([
+      'NIGHT DRIVE',
+      'MORNING',
+    ])
+  })
+
+  it('잠금을 얻지 못하면 아무것도 바꾸지 않았다고 말하고 다시 누를 수 있게 한다', async () => {
+    const context = mountApp()
+    await seed(context)
+    await flushPromises()
+    await pick(context, backupText())
+    const before = globalThis.localStorage.getItem(STORAGE_KEYS.library)
+
+    vi.useFakeTimers()
+    await holdLibraryLock()
+    await applyButton(context)?.trigger('click')
+    await vi.advanceTimersByTimeAsync(5_100)
+    await nextTick()
+
+    expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toBe(before)
+    expect(context.wrapper.text()).toContain(
+      '다른 39page 탭이 저장하는 중이라 아무것도 바꾸지 않았습니다',
+    )
+    expect(context.library.playlists.map((playlist) => playlist.name)).toEqual(['CURRENT'])
+    expect(applyButton(context)?.attributes('disabled')).toBeUndefined()
   })
 })

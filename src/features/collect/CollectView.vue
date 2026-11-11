@@ -25,7 +25,7 @@ const props = defineProps<{
 }>()
 
 const collect = useCollect(props.hash, props.options)
-const { phase, choices, selectedId, duplicatePositions, canAdd } = collect
+const { phase, choices, selectedId, duplicatePositions, saving, canAdd } = collect
 
 const duplicateText = computed(() => {
   const positions = duplicatePositions.value
@@ -33,9 +33,10 @@ const duplicateText = computed(() => {
   return `이 플레이리스트에 이미 있습니다 (${positions.join(', ')}번째). 한 번 더 추가하면 같은 곡이 또 들어갑니다.`
 })
 
-const addLabel = computed(() =>
-  duplicatePositions.value.length > 0 ? '한 번 더 추가' : '플레이리스트에 추가',
-)
+const addLabel = computed(() => {
+  if (saving.value) return '저장 중…'
+  return duplicatePositions.value.length > 0 ? '한 번 더 추가' : '플레이리스트에 추가'
+})
 </script>
 
 <template>
@@ -85,7 +86,12 @@ const addLabel = computed(() =>
         </p>
 
         <div class="actions">
-          <button type="submit" class="pill pill--strong" :disabled="!canAdd">
+          <button
+            type="submit"
+            class="pill pill--strong"
+            :disabled="!canAdd"
+            :aria-busy="saving ? 'true' : 'false'"
+          >
             {{ addLabel }}
           </button>
           <a class="pill" href="/">대시보드로 이동</a>

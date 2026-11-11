@@ -470,8 +470,8 @@ type Context = ReturnType<typeof mountApp>
 const backupButton = (context: Context) =>
   context.wrapper.findAll('.backup .pill').filter((node) => node.text().includes('내보내기'))[0]
 
-function seed(store: ReturnType<typeof useLibraryStore>): void {
-  const created = store.createPlaylist('NIGHT DRIVE')
+async function seed(store: ReturnType<typeof useLibraryStore>): Promise<void> {
+  const created = await store.createPlaylist('NIGHT DRIVE')
   const id = created.ok ? created.playlistId : ''
   store.addTrack(id, { videoId: VIDEO_A, title: 'ONE' })
   store.addTrack(id, { videoId: VIDEO_B, title: 'TWO' })
@@ -525,7 +525,7 @@ describe('E. 드로어 바닥의 백업 패널', () => {
 
   it('담길 개수를 버튼 옆에 적는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
 
     expect(context.wrapper.get('.backup-count').text()).toContain('1개')
@@ -547,7 +547,7 @@ describe('E. 드로어 바닥의 백업 패널', () => {
 
   it('누르면 내려받고 결과를 알린다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     const created = stubDownloadGlobals()
 
@@ -563,7 +563,7 @@ describe('E. 드로어 바닥의 백업 패널', () => {
 
   it('내려받은 파일이 지금 라이브러리와 테마를 담는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     context.theme.setTheme('kawaii-synth-cassette')
     await nextTick()
     const created = stubDownloadGlobals()
@@ -676,7 +676,7 @@ describe('F. 보호·접근 실패 상태', () => {
 
   it('저장 실패는 복구본이 아니라 안내로 다룬다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     /*
      * 쓰기만 막는다. 복원은 정상이었다.
@@ -700,7 +700,7 @@ describe('F. 보호·접근 실패 상태', () => {
 describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
   it('localStorage 원문이 바이트 단위로 같다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     const before = globalThis.localStorage.getItem(STORAGE_KEYS.library)
     const themeBefore = globalThis.localStorage.getItem(STORAGE_KEYS.theme)
@@ -714,7 +714,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
 
   it('setItem 을 한 번도 부르지 않는다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     stubDownloadGlobals()
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
@@ -726,7 +726,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
 
   it('store 상태가 그대로다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     stubDownloadGlobals()
 
@@ -747,7 +747,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
 
   it('플레이어 DOM 과 어댑터가 유지된다', async () => {
     const context = mountApp()
-    seed(context.library)
+    await seed(context.library)
     await nextTick()
     stubDownloadGlobals()
 

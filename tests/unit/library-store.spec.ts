@@ -65,11 +65,11 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(library.selectedPlaylist).toBeNull()
   })
 
-  it('플레이리스트를 만들고 고유 ID 를 발급한다', () => {
+  it('플레이리스트를 만들고 고유 ID 를 발급한다', async () => {
     const library = useLibraryStore()
 
-    const first = library.createPlaylist('MY RECORDS')
-    const second = library.createPlaylist('CHILL')
+    const first = await library.createPlaylist('MY RECORDS')
+    const second = await library.createPlaylist('CHILL')
 
     expect(first.ok).toBe(true)
     expect(second.ok).toBe(true)
@@ -78,10 +78,10 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(ids.every((id) => id.length > 0)).toBe(true)
   })
 
-  it('생성 직후 그 플레이리스트가 선택된다', () => {
+  it('생성 직후 그 플레이리스트가 선택된다', async () => {
     const library = useLibraryStore()
     library.createPlaylist('FIRST')
-    const result = library.createPlaylist('SECOND')
+    const result = await library.createPlaylist('SECOND')
 
     expect(result.ok && library.selectedPlaylistId).toBe(result.ok ? result.playlistId : null)
     expect(library.selectedPlaylist?.name).toBe('SECOND')
@@ -105,9 +105,9 @@ describe('A. 플레이리스트 CRUD', () => {
     ['빈 문자열', ''],
     ['공백', '   '],
     ['탭·줄바꿈', ' \t\n '],
-  ])('%s 이름은 거부한다', (_label, name) => {
+  ])('%s 이름은 거부한다', async (_label, name) => {
     const library = useLibraryStore()
-    const result = library.createPlaylist(name)
+    const result = await library.createPlaylist(name)
 
     expect(result).toEqual({ ok: false, reason: 'empty-name' })
     expect(library.playlists).toEqual([])
@@ -120,9 +120,9 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(library.selectedPlaylist?.name).toHaveLength(MAX_PLAYLIST_NAME_LENGTH)
   })
 
-  it('이름을 바꿔도 ID 와 트랙이 유지된다', () => {
+  it('이름을 바꿔도 ID 와 트랙이 유지된다', async () => {
     const library = useLibraryStore()
-    const created = library.createPlaylist('OLD')
+    const created = await library.createPlaylist('OLD')
     const id = created.ok ? created.playlistId : ''
     // 저장된 트랙이 있는 상태를 복원으로 만든다.
     seedRaw(
@@ -131,7 +131,7 @@ describe('A. 플레이리스트 CRUD', () => {
     library.restore()
 
     const before = library.getPlaylist(id)?.tracks
-    const result = library.renamePlaylist(id, 'NEW NAME')
+    const result = await library.renamePlaylist(id, 'NEW NAME')
 
     expect(result.ok).toBe(true)
     expect(library.getPlaylist(id)?.name).toBe('NEW NAME')
@@ -139,40 +139,40 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(library.getPlaylist(id)?.tracks).toEqual(before)
   })
 
-  it('이름 변경 시 공백 이름을 거부한다', () => {
+  it('이름 변경 시 공백 이름을 거부한다', async () => {
     const library = useLibraryStore()
-    const created = library.createPlaylist('KEEP')
+    const created = await library.createPlaylist('KEEP')
     const id = created.ok ? created.playlistId : ''
 
-    expect(library.renamePlaylist(id, '   ')).toEqual({ ok: false, reason: 'empty-name' })
+    expect(await library.renamePlaylist(id, '   ')).toEqual({ ok: false, reason: 'empty-name' })
     expect(library.getPlaylist(id)?.name).toBe('KEEP')
   })
 
-  it('존재하지 않는 ID 의 이름 변경을 거부한다', () => {
+  it('존재하지 않는 ID 의 이름 변경을 거부한다', async () => {
     const library = useLibraryStore()
     library.createPlaylist('ONLY')
 
-    expect(library.renamePlaylist('ghost', 'X')).toEqual({ ok: false, reason: 'not-found' })
+    expect(await library.renamePlaylist('ghost', 'X')).toEqual({ ok: false, reason: 'not-found' })
     expect(library.playlists).toHaveLength(1)
   })
 
-  it('요청한 플레이리스트만 삭제한다', () => {
+  it('요청한 플레이리스트만 삭제한다', async () => {
     const library = useLibraryStore()
-    const a = library.createPlaylist('A')
+    const a = await library.createPlaylist('A')
     library.createPlaylist('B')
-    const c = library.createPlaylist('C')
+    const c = await library.createPlaylist('C')
 
-    const result = library.deletePlaylist(a.ok ? a.playlistId : '')
+    const result = await library.deletePlaylist(a.ok ? a.playlistId : '')
 
     expect(result.ok).toBe(true)
     expect(library.playlists.map((playlist) => playlist.name)).toEqual(['B', 'C'])
     expect(library.getPlaylist(c.ok ? c.playlistId : '')).toBeDefined()
   })
 
-  it('선택된 목록을 지우면 같은 자리의 목록을 선택한다', () => {
+  it('선택된 목록을 지우면 같은 자리의 목록을 선택한다', async () => {
     const library = useLibraryStore()
     library.createPlaylist('A')
-    const b = library.createPlaylist('B')
+    const b = await library.createPlaylist('B')
     library.createPlaylist('C')
 
     library.selectPlaylist(b.ok ? b.playlistId : '')
@@ -182,19 +182,19 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(library.selectedPlaylist?.name).toBe('C')
   })
 
-  it('마지막 자리의 선택된 목록을 지우면 그 앞을 선택한다', () => {
+  it('마지막 자리의 선택된 목록을 지우면 그 앞을 선택한다', async () => {
     const library = useLibraryStore()
     library.createPlaylist('A')
-    const b = library.createPlaylist('B')
+    const b = await library.createPlaylist('B')
 
     library.deletePlaylist(b.ok ? b.playlistId : '')
 
     expect(library.selectedPlaylist?.name).toBe('A')
   })
 
-  it('모든 목록을 지우면 선택이 null 이 된다', () => {
+  it('모든 목록을 지우면 선택이 null 이 된다', async () => {
     const library = useLibraryStore()
-    const only = library.createPlaylist('ONLY')
+    const only = await library.createPlaylist('ONLY')
 
     library.deletePlaylist(only.ok ? only.playlistId : '')
 
@@ -203,10 +203,10 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(library.selectedPlaylist).toBeNull()
   })
 
-  it('선택되지 않은 목록을 지워도 선택은 그대로다', () => {
+  it('선택되지 않은 목록을 지워도 선택은 그대로다', async () => {
     const library = useLibraryStore()
-    const a = library.createPlaylist('A')
-    const b = library.createPlaylist('B')
+    const a = await library.createPlaylist('A')
+    const b = await library.createPlaylist('B')
 
     library.selectPlaylist(b.ok ? b.playlistId : '')
     library.deletePlaylist(a.ok ? a.playlistId : '')
@@ -214,33 +214,33 @@ describe('A. 플레이리스트 CRUD', () => {
     expect(library.selectedPlaylist?.name).toBe('B')
   })
 
-  it('존재하지 않는 ID 삭제는 상태를 바꾸지 않는다', () => {
+  it('존재하지 않는 ID 삭제는 상태를 바꾸지 않는다', async () => {
     const library = useLibraryStore()
     library.createPlaylist('A')
     const before = [...library.playlists]
     const selectedBefore = library.selectedPlaylistId
 
-    expect(library.deletePlaylist('ghost')).toEqual({ ok: false, reason: 'not-found' })
+    expect(await library.deletePlaylist('ghost')).toEqual({ ok: false, reason: 'not-found' })
     expect(library.playlists).toEqual(before)
     expect(library.selectedPlaylistId).toBe(selectedBefore)
   })
 
-  it('선택을 바꾼다', () => {
+  it('선택을 바꾼다', async () => {
     const library = useLibraryStore()
-    const a = library.createPlaylist('A')
+    const a = await library.createPlaylist('A')
     library.createPlaylist('B')
 
-    const result = library.selectPlaylist(a.ok ? a.playlistId : '')
+    const result = await library.selectPlaylist(a.ok ? a.playlistId : '')
 
     expect(result.ok).toBe(true)
     expect(library.selectedPlaylist?.name).toBe('A')
   })
 
-  it('존재하지 않는 ID 는 선택하지 않는다', () => {
+  it('존재하지 않는 ID 는 선택하지 않는다', async () => {
     const library = useLibraryStore()
-    const a = library.createPlaylist('A')
+    const a = await library.createPlaylist('A')
 
-    expect(library.selectPlaylist('ghost')).toEqual({ ok: false, reason: 'not-found' })
+    expect(await library.selectPlaylist('ghost')).toEqual({ ok: false, reason: 'not-found' })
     expect(library.selectedPlaylistId).toBe(a.ok ? a.playlistId : null)
   })
 
@@ -265,9 +265,9 @@ describe('A. 플레이리스트 CRUD', () => {
 })
 
 describe('B. 저장과 복원', () => {
-  it('생성한 데이터가 저장된다', () => {
+  it('생성한 데이터가 저장된다', async () => {
     const library = useLibraryStore()
-    const created = library.createPlaylist('SAVED')
+    const created = await library.createPlaylist('SAVED')
 
     expect(created.ok && created.persisted).toBe(true)
     expect(JSON.parse(readRaw() as string)).toEqual({
@@ -475,7 +475,7 @@ describe('B. 저장과 복원', () => {
     expect(library.canPersist).toBe(false)
   })
 
-  it('저장 실패해도 메모리 수정은 유지된다', () => {
+  it('저장 실패해도 메모리 수정은 유지된다', async () => {
     const map = new Map<string, string>()
     stubLocalStorage({
       value: {
@@ -494,7 +494,7 @@ describe('B. 저장과 복원', () => {
     })
     const library = useLibraryStore()
 
-    const result = library.createPlaylist('STILL WORKS')
+    const result = await library.createPlaylist('STILL WORKS')
 
     expect(result.ok).toBe(true)
     expect(result.ok && result.persisted).toBe(false)
@@ -525,12 +525,12 @@ describe('B. 저장과 복원', () => {
       '미래 버전',
       JSON.stringify({ version: 99, data: { playlists: [], selectedPlaylistId: null } }),
     ],
-  ])('%s — 이후 수정이 원본을 덮어쓰지 않는다', (_label, raw) => {
+  ])('%s — 이후 수정이 원본을 덮어쓰지 않는다', async (_label, raw) => {
     seedRaw(raw)
     const library = useLibraryStore()
     library.restore()
 
-    const result = library.createPlaylist('NEW')
+    const result = await library.createPlaylist('NEW')
 
     // 메모리에는 반영되지만 저장소는 그대로다.
     expect(result.ok).toBe(true)
@@ -557,7 +557,7 @@ describe('B. 저장과 복원', () => {
     expect(readRaw()).toBe(raw)
   })
 
-  it('정상 복원 후에는 다시 저장할 수 있다', () => {
+  it('정상 복원 후에는 다시 저장할 수 있다', async () => {
     seedRaw(
       envelope({ playlists: [{ id: 'p1', name: 'A', tracks: [] }], selectedPlaylistId: 'p1' }),
     )
@@ -565,7 +565,7 @@ describe('B. 저장과 복원', () => {
     library.restore()
 
     expect(library.status).toBe('ready')
-    const result = library.createPlaylist('B')
+    const result = await library.createPlaylist('B')
 
     expect(result.ok && result.persisted).toBe(true)
     expect(storedData().playlists).toHaveLength(2)

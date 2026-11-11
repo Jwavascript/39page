@@ -6,10 +6,12 @@
  *   API(`addTrack`)를 부른다. `localStorage` 를 직접 만지지 않는다.
  * - 저장 결과(성공 · 저장 실패 · 다른 탭 충돌 · 목록 없음)를 그대로 화면 상태로
  *   옮긴다. 저장되지 않았는데 성공으로 보이게 하지 않는다.
+ * - 저장은 탭 간 잠금 안에서 끝난다 (ADR 0025). 끝나기 전에는 `saving` 이고, 그동안
+ *   다시 누를 수 없다. 성공 안내는 저장이 끝난 뒤에만 나온다.
  * - 같은 플레이리스트에 같은 영상이 있으면 알린다. 막지는 않는다 — 같은 영상을
  *   여러 번 넣는 것은 라이브러리의 기존 허용 동작이다 (`addTrack`).
  */
-import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
+import { computed, readonly, ref, watch, type ComputedRef, type Ref } from 'vue'
 
 import { useLibraryStore } from '@/stores/library'
 
@@ -26,6 +28,8 @@ export type CollectFailure =
   | 'not-found'
   /** 저장소에 쓰지 못했다 (용량 부족 등). 라이브러리는 바뀌지 않았다. */
   | 'write-failed'
+  /** 다른 탭이 저장하는 중이라 잠금을 얻지 못했다 (ADR 0025). 아무것도 바꾸지 않았다. */
+  | 'busy'
   /** 계약을 통과한 ID 를 라이브러리가 거절했다 — 일어나면 안 되는 경로. */
   | 'invalid-video-id'
   /**
@@ -57,8 +61,11 @@ export interface CollectState {
   readonly selectedId: Ref<string | null>
   /** 고른 목록에 이 영상이 이미 몇 번째에 있는지 (1부터). 없으면 빈 배열. */
   readonly duplicatePositions: ComputedRef<number[]>
+  /** 저장 중 — 잠금을 기다리거나 쓰는 중이다. */
+  readonly saving: Readonly<Ref<boolean>>
   readonly canAdd: ComputedRef<boolean>
-  add(): void
+  /** 저장이 끝나면(성공 · 실패 모두) 이행한다. */
+  add(): Promise<void>
 }
 
 export interface CollectOptions {
@@ -79,6 +86,7 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
   const request = parsed.ok ? parsed.request : null
 
   const failure = ref<CollectFailure | null>(null)
+  const saving = ref(false)
   const saved = ref<{ playlistName: string; trackTitle: string; trackId: string } | null>(null)
 
   const choices = computed<PlaylistChoice[]>(() =>
@@ -149,23 +157,31 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
   })
 
   const canAdd = computed<boolean>(
-    () => phase.value.kind === 'choosing' && selectedId.value !== null,
+    () => phase.value.kind === 'choosing' && selectedId.value !== null && !saving.value,
   )
 
-  function add(): void {
-    // 한 번만 — 저장 뒤 다시 눌러도, 연속으로 눌러도 한 곡만 들어간다.
+  async function add(): Promise<void> {
+    // 한 번만 — 저장 중에 다시 눌러도, 저장 뒤 다시 눌러도 한 곡만 들어간다.
     if (!canAdd.value || request === null || selectedId.value === null) return
 
     const target = selectedId.value
-    const result = library.addTrack(target, {
-      videoId: request.videoId,
-      title: request.title ?? undefined,
-    })
+    saving.value = true
+    let result
+    try {
+      result = await library.addTrack(target, {
+        videoId: request.videoId,
+        title: request.title ?? undefined,
+      })
+    } finally {
+      saving.value = false
+    }
 
     if (!result.ok) {
       // 다른 탭 충돌이면 store 가 최신을 이미 다시 읽었다 — 목록이 바뀌어 보인다.
       failure.value =
-        result.reason === 'conflict' || result.reason === 'invalid-video-id'
+        result.reason === 'conflict' ||
+        result.reason === 'invalid-video-id' ||
+        result.reason === 'busy'
           ? result.reason
           : 'not-found'
       return
@@ -189,5 +205,14 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
     clearRequest()
   }
 
-  return { request, phase, choices, selectedId, duplicatePositions, canAdd, add }
+  return {
+    request,
+    phase,
+    choices,
+    selectedId,
+    duplicatePositions,
+    saving: readonly(saving),
+    canAdd,
+    add,
+  }
 }

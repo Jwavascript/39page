@@ -163,7 +163,7 @@ describe('B. 원문 보호', () => {
     session.theme.setTheme('kawaii-synth-cassette')
     await nextTick()
     // 메모리 수정도 저장되지 않는다.
-    const added = session.moments.add({ videoId: VIDEO, atSeconds: 1 })
+    const added = await session.moments.add({ videoId: VIDEO, atSeconds: 1 })
     expect(added.ok && added.persisted).toBe(false)
 
     expect(rawMoments()).toBe('{깨진 값')
@@ -258,13 +258,18 @@ describe('E. main.ts', () => {
 
     const theme = code.indexOf('useThemeStore(pinia).restore()')
     const library = code.indexOf('library.restore()')
-    const moments = code.indexOf('useMomentsStore(pinia).restore()')
+    const store = code.indexOf('const moments = useMomentsStore(pinia)')
+    const moments = code.indexOf('moments.restore()')
+    // 다른 탭(수집 화면 포함)의 Moments 저장을 듣는다 — 복원 뒤에 (M10-3 안정화).
+    const watch = code.indexOf('moments.watchExternalChanges()')
     const mountCall = code.indexOf("app.mount('#app')")
 
     expect(theme).toBeGreaterThan(-1)
     expect(library).toBeGreaterThan(theme)
-    expect(moments).toBeGreaterThan(library)
-    expect(mountCall).toBeGreaterThan(moments)
+    expect(store).toBeGreaterThan(library)
+    expect(moments).toBeGreaterThan(store)
+    expect(watch).toBeGreaterThan(moments)
+    expect(mountCall).toBeGreaterThan(watch)
 
     // 기본값을 심거나 쓰는 호출이 없다.
     expect(code).not.toContain('.add(')

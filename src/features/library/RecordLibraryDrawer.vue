@@ -49,8 +49,13 @@ import {
   type PlayRequestResult,
 } from '@/features/playback/playbackCoordinator'
 import { parseYouTubeVideoId } from '@/shared/utils/youtube'
-import { LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
-import { MAX_PLAYLIST_NAME_LENGTH, MAX_TRACK_TITLE_LENGTH, useLibraryStore } from '@/stores/library'
+import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
+import {
+  MAX_PLAYLIST_NAME_LENGTH,
+  MAX_TRACK_TITLE_LENGTH,
+  useLibraryStore,
+  type LibraryMutationResult,
+} from '@/stores/library'
 
 const props = defineProps<{ open: boolean; drawerId: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -81,6 +86,12 @@ const closeButton = ref<HTMLButtonElement | null>(null)
 const renamingId = ref<string | null>(null)
 const draftName = ref('')
 const formError = ref('')
+/**
+ * 양식(이름 · 링크 · 삭제 확인)이 저장을 기다리는 중 (M10-3 안정화, ADR 0025).
+ * 저장은 탭 간 잠금 안에서 끝나므로 잠깐 걸린다 — 그동안 다시 제출해 두 번
+ * 반영되지 않게 하고, 성공 안내는 저장이 끝난 뒤에만 쓴다.
+ */
+const isSaving = ref(false)
 /** 마지막 동작이 저장되지 않았는지. `persisted: false` 를 알린다. */
 const unsavedNotice = ref('')
 
@@ -150,9 +161,9 @@ function startAddLink(): void {
   addedNotice.value = ''
 }
 
-function submitLink(): void {
+async function submitLink(): Promise<void> {
   const targetId = linkTargetId.value
-  if (targetId === null) return
+  if (targetId === null || isSaving.value) return
 
   const parsed = parseYouTubeVideoId(draftUrl.value)
   if (!parsed.ok) {
@@ -161,10 +172,12 @@ function submitLink(): void {
     return
   }
 
-  const result = library.addTrack(targetId, {
-    videoId: parsed.videoId,
-    title: draftTitle.value,
-  })
+  const result = await saving(
+    library.addTrack(targetId, {
+      videoId: parsed.videoId,
+      title: draftTitle.value,
+    }),
+  )
 
   if (!result.ok) {
     // 실패해도 입력값을 지우지 않는다 — 충돌이면 최신 목록을 보고 그대로 다시 누를 수 있다.
@@ -173,7 +186,9 @@ function submitLink(): void {
         ? '올바른 YouTube 영상 링크를 입력해주세요.'
         : result.reason === 'conflict'
           ? LIBRARY_CONFLICT_MESSAGE
-          : '해당 플레이리스트를 찾을 수 없습니다.'
+          : result.reason === 'busy'
+            ? LIBRARY_BUSY_MESSAGE
+            : '해당 플레이리스트를 찾을 수 없습니다.'
     return
   }
 
@@ -185,26 +200,27 @@ function submitLink(): void {
 
 /* ---------- 트랙 편집 ---------- */
 
-function moveTrack(trackId: string, direction: 'up' | 'down'): void {
+async function moveTrack(trackId: string, direction: 'up' | 'down'): Promise<void> {
   const target = library.selectedPlaylist
   if (target === null) return
 
-  reportResult(library.moveTrack(target.id, trackId, direction))
+  reportResult(await library.moveTrack(target.id, trackId, direction))
 }
 
 /** 트랙 이름 변경 (M6-5, 보고 6c). 확인은 `TrackList` 가 받는다. */
-function renameTrack(trackId: string, title: string): void {
+async function renameTrack(trackId: string, title: string): Promise<void> {
   const target = library.selectedPlaylist
   if (target === null) return
 
-  reportResult(library.renameTrack(target.id, trackId, title))
+  reportResult(await library.renameTrack(target.id, trackId, title))
 }
 
-function removeTrack(trackId: string): void {
+async function removeTrack(trackId: string): Promise<void> {
   const target = library.selectedPlaylist
   if (target === null) return
 
-  if (reportResult(library.removeTrack(target.id, trackId))) {
+  // 지워진 것이 확인된 뒤에만 재생 쪽에 알린다 — 거절됐으면 곡은 그대로 있다.
+  if (reportResult(await library.removeTrack(target.id, trackId))) {
     /*
      * 재생 중이던 곡이면 멈추고 안내해야 한다 (`MVP_SPEC.md` F4, M3-5).
      *
@@ -234,6 +250,17 @@ const FAILURE_MESSAGE: Record<string, string> = {
   'invalid-video-id': '올바른 YouTube 영상 링크를 입력해주세요.',
   'out-of-range': '더 이상 옮길 수 없습니다.',
   conflict: LIBRARY_CONFLICT_MESSAGE,
+  busy: LIBRARY_BUSY_MESSAGE,
+}
+
+/** 양식의 저장을 기다린다. 기다리는 동안 `isSaving` 이 켜진다. */
+async function saving(pending: Promise<LibraryMutationResult>): Promise<LibraryMutationResult> {
+  isSaving.value = true
+  try {
+    return await pending
+  } finally {
+    isSaving.value = false
+  }
 }
 
 /** 액션 결과를 화면 안내로 옮긴다. */
@@ -258,11 +285,11 @@ function startRename(): void {
   formError.value = ''
 }
 
-function submitForm(): void {
+async function submitForm(): Promise<void> {
   const id = renamingId.value
-  if (id === null) return
+  if (id === null || isSaving.value) return
 
-  if (reportResult(library.renamePlaylist(id, draftName.value))) resetForm()
+  if (reportResult(await saving(library.renamePlaylist(id, draftName.value)))) resetForm()
 }
 
 /** 삭제 확인. `confirm()` 대신 인라인으로 받는다. */
@@ -274,11 +301,11 @@ function requestDelete(): void {
   pendingDeleteId.value = current.id
 }
 
-function confirmDelete(): void {
+async function confirmDelete(): Promise<void> {
   const id = pendingDeleteId.value
-  if (id === null) return
+  if (id === null || isSaving.value) return
 
-  reportResult(library.deletePlaylist(id))
+  reportResult(await saving(library.deletePlaylist(id)))
   pendingDeleteId.value = null
 }
 
@@ -440,7 +467,7 @@ watch(
         />
         <p class="error-msg">{{ formError }}</p>
         <div class="drawer-actions">
-          <button type="submit" class="pill pill--strong">저장</button>
+          <button type="submit" class="pill pill--strong" :disabled="isSaving">저장</button>
           <button type="button" class="pill" @click="resetForm">취소</button>
         </div>
       </form>
@@ -453,7 +480,14 @@ watch(
       >
         <p class="confirm-text">“{{ library.getPlaylist(pendingDeleteId)?.name }}”을 삭제할까요?</p>
         <div class="drawer-actions">
-          <button type="button" class="pill pill--strong" @click="confirmDelete">삭제</button>
+          <button
+            type="button"
+            class="pill pill--strong"
+            :disabled="isSaving"
+            @click="confirmDelete"
+          >
+            삭제
+          </button>
           <button type="button" class="pill" @click="pendingDeleteId = null">취소</button>
         </div>
       </div>
@@ -515,7 +549,9 @@ watch(
         <p id="track-url-error" class="error-msg">{{ linkError }}</p>
 
         <div class="drawer-actions">
-          <button type="submit" class="pill pill--strong">이 목록에 추가</button>
+          <button type="submit" class="pill pill--strong" :disabled="isSaving">
+            이 목록에 추가
+          </button>
           <button type="button" class="pill" @click="closeLinkForm">취소</button>
         </div>
       </form>

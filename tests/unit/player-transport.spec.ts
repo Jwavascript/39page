@@ -60,7 +60,7 @@ async function setup(trackCount = 3) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
 
-  const created = library.createPlaylist('MY RECORDS')
+  const created = await library.createPlaylist('MY RECORDS')
   const playlistId = created.ok ? created.playlistId : ''
   for (let index = 0; index < trackCount; index += 1) {
     library.addTrack(playlistId, {
