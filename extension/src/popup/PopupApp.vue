@@ -6,12 +6,14 @@
 import { inject } from 'vue'
 
 import BrandHeader from './components/BrandHeader.vue'
+import MomentCapturePanel from './components/MomentCapturePanel.vue'
 import QuickAddPanel from './components/QuickAddPanel.vue'
 import StatusNotice from './components/StatusNotice.vue'
 import VideoCard from './components/VideoCard.vue'
 import { BRIDGE_KEY } from './bridge'
 import { errorCopy, LOADING_COPY, UNSUPPORTED_COPY } from './copy'
 import { useActiveVideo } from './useActiveVideo'
+import { useMomentCapture } from './useMomentCapture'
 import { useQuickAdd } from './useQuickAdd'
 
 const bridge = inject(BRIDGE_KEY)
@@ -19,6 +21,7 @@ if (bridge === undefined) throw new Error('PopupBridge 가 제공되지 않았�
 
 const { view, retry, currentTabId } = useActiveVideo(bridge)
 const quickAdd = useQuickAdd(bridge, { view, currentTabId, refresh: retry })
+const moment = useMomentCapture(bridge, { view, currentTabId, refresh: retry })
 </script>
 
 <template>
@@ -34,6 +37,11 @@ const quickAdd = useQuickAdd(bridge, { view, currentTabId, refresh: retry })
     <template v-else-if="view.phase === 'video'">
       <VideoCard :video-id="view.videoId" :page-kind="view.pageKind" :title="view.title" />
       <QuickAddPanel :state="quickAdd.state.value" @add="quickAdd.add" />
+      <MomentCapturePanel
+        :state="moment.state.value"
+        :disabled-reason="moment.disabledReason.value"
+        @capture="moment.capture"
+      />
     </template>
 
     <StatusNotice

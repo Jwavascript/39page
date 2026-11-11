@@ -15,20 +15,8 @@
 import type { Moment } from '@/shared/types'
 import { defaultTrackTitle } from '@/stores/library'
 
-/** 시간 표기. YouTube 플레이어와 같은 모양이다 — `0:42` · `12:05` · `1:02:03`. */
-export function formatMomentTime(seconds: number): string {
-  // store 를 지난 값은 이미 0 이상 정수다. 그래도 표시가 거짓말을 하지 않게 막는다.
-  if (!Number.isFinite(seconds) || seconds < 0) return '--:--'
-
-  const total = Math.floor(seconds)
-  const hours = Math.floor(total / 3600)
-  const minutes = Math.floor((total % 3600) / 60)
-  const secs = String(total % 60).padStart(2, '0')
-
-  return hours > 0
-    ? `${String(hours)}:${String(minutes).padStart(2, '0')}:${secs}`
-    : `${String(minutes)}:${secs}`
-}
+/** 시간 표기 — 공용 정의를 다시 내보낸다 (`src/shared/utils/time.ts`, M10-4). */
+export { formatTimestamp as formatMomentTime } from '@/shared/utils/time'
 
 /** 라이브러리에서 제목을 찾는 데 필요한 모양만 받는다. */
 export interface TitleSourcePlaylist {

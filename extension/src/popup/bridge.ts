@@ -9,11 +9,13 @@ import type { InjectionKey } from 'vue'
 import {
   fail,
   parseCollectOpened,
+  parseMomentCaptured,
   parsePageInspection,
   parseResult,
   PROTOCOL_VERSION,
   type CollectOpened,
   type ExtensionRequest,
+  type MomentCaptured,
   type PageInspection,
   type Result,
 } from '@/shared/messages'
@@ -31,6 +33,8 @@ export interface PopupBridge {
   inspect(tabId: number): Promise<Result<PageInspection>>
   /** Quick Add — 사용자가 본 영상(`videoId`)으로 수집 화면을 연다 (M10-3). */
   collect(tabId: number, videoId: string): Promise<Result<CollectOpened>>
+  /** Moment 캡처 — 누른 순간의 재생 시점으로 수집 화면을 연다 (M10-4). */
+  captureMoment(tabId: number, videoId: string): Promise<Result<MomentCaptured>>
   /** 구독을 끊는 함수를 돌려준다. */
   subscribe(listener: (event: TabEvent) => void): () => void
 }
@@ -72,6 +76,12 @@ export function createChromeBridge(timeoutMs = INSPECT_TIMEOUT_MS): PopupBridge 
       return send({ v: PROTOCOL_VERSION, type: 'tab/inspect', tabId }, parsePageInspection)
     },
 
+    captureMoment(tabId, videoId) {
+      return send(
+        { v: PROTOCOL_VERSION, type: 'moment/capture', tabId, videoId },
+        parseMomentCaptured,
+      )
+    },
     collect(tabId, videoId) {
       return send({ v: PROTOCOL_VERSION, type: 'collect/open', tabId, videoId }, parseCollectOpened)
     },

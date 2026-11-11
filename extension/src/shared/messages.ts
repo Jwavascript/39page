@@ -67,7 +67,7 @@ export function fail(code: ErrorCode, message: string): Result<never> {
  * 요청
  * ------------------------------------------------------------------ */
 
-/** Popup → Background. M10-3 의 `collect/open` 은 그때 더한다. */
+/** Popup → Background. */
 export type ExtensionRequest =
   | {
       readonly v: typeof PROTOCOL_VERSION
@@ -84,8 +84,22 @@ export type ExtensionRequest =
       readonly tabId: number
       readonly videoId: string
     }
+  | {
+      /**
+       * Music Moment 캡처 (M10-4) — 지금 재생 시점을 **누른 순간** 읽어 수집 화면을 연다.
+       * `videoId` 는 사용자가 팝업에서 본 영상이다. 탭의 플레이어가 다른 영상이면
+       * `page-changed` 로 거절한다.
+       */
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'moment/capture'
+      readonly tabId: number
+      readonly videoId: string
+    }
 
-/** Background → Content. M10-4 의 `player/position` 은 그때 더한다. */
+/**
+ * Background → Content. 재생 시점은 content 가 아니라 메인 세계에서 직접 읽는다
+ * (M10-4, `capturePlaybackInPage`) — 플레이어 메서드는 격리된 세계에서 보이지 않는다.
+ */
 export type ContentRequest = {
   readonly v: typeof PROTOCOL_VERSION
   readonly type: 'page/read'
@@ -133,7 +147,7 @@ export function parseExtensionRequest(value: unknown): ParseOutcome<ExtensionReq
     if (!isTabId(body.tabId)) return rejected('bad-request', 'tabId 가 0 이상의 정수가 아니다')
     return { ok: true, value: { v: PROTOCOL_VERSION, type, tabId: body.tabId } }
   }
-  if (type === 'collect/open') {
+  if (type === 'collect/open' || type === 'moment/capture') {
     if (!isTabId(body.tabId)) return rejected('bad-request', 'tabId 가 0 이상의 정수가 아니다')
     if (typeof body.videoId !== 'string' || !VIDEO_ID.test(body.videoId)) {
       return rejected('bad-request', 'videoId 가 11자 영상 ID 가 아니다')
@@ -328,4 +342,105 @@ export function parseCollectOpened(value: unknown): CollectOpened | null {
   if (value.status !== 'opened' && value.status !== 'focused') return null
   if (!isTabId(value.tabId)) return null
   return { status: value.status, tabId: value.tabId }
+}
+
+/* ------------------------------------------------------------------ *
+ * Music Moment 캡처 (M10-4)
+ * ------------------------------------------------------------------ */
+
+/**
+ * 메인 세계에서 **한 번에** 읽은 플레이어 상태 (`capturePlaybackInPage`).
+ * 영상 ID · 제목 · 시점이 같은 순간 같은 플레이어에서 온다. **신뢰하지 않는 값**이다.
+ */
+export interface PlaybackSnapshot {
+  readonly videoId: string | null
+  readonly title: string | null
+  /** `getCurrentTime()` — 유한한 수가 아니면 `null`. */
+  readonly currentTime: number | null
+  /** `getPlayerState()` — -1 시작 전 · 0 끝 · 1 재생 · 2 일시정지 · 3 버퍼링 · 5 대기. */
+  readonly state: number | null
+  readonly duration: number | null
+  /** 광고가 재생 중 (`ad-showing` · `ad-interrupting`). */
+  readonly adShowing: boolean
+  /** 라이브 방송 (`getVideoData().isLive` · 라이브 표시). */
+  readonly live: boolean
+}
+
+function finiteOrNull(value: unknown): number | null | undefined {
+  if (value === null) return null
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+/** 스냅샷 모양을 확인한다. 틀리면 `null` — 쓰지 않는다. */
+export function parsePlaybackSnapshot(value: unknown): PlaybackSnapshot | null {
+  if (!isRecord(value)) return null
+  const videoId = value.videoId === null ? null : boundedString(value.videoId, 64)
+  const title = value.title === null ? null : boundedString(value.title, SNAPSHOT_TEXT_MAX)
+  const currentTime = finiteOrNull(value.currentTime)
+  const state = finiteOrNull(value.state)
+  const duration = finiteOrNull(value.duration)
+  if ((value.videoId !== null && videoId === null) || (value.title !== null && title === null)) {
+    return null
+  }
+  if (currentTime === undefined || state === undefined || duration === undefined) return null
+  if (typeof value.adShowing !== 'boolean' || typeof value.live !== 'boolean') return null
+  return {
+    videoId,
+    title,
+    currentTime,
+    state,
+    duration,
+    adShowing: value.adShowing,
+    live: value.live,
+  }
+}
+
+export type CaptureRefusal =
+  /** Shorts — MVP 범위 밖. */
+  | 'shorts'
+  /** 라이브 방송 — MVP 범위 밖 (시점이 계속 움직이고 다시 볼 때 같은 지점이 아닐 수 있다). */
+  | 'live'
+  /** 광고가 재생 중이다 — 그 시점은 영상의 시점이 아니다. */
+  | 'ad'
+  /** 재생이 시작되지 않았거나 불러오는 중이다 — 시점이 확정되지 않았다. */
+  | 'not-started'
+  /** 플레이어를 읽지 못했다. */
+  | 'unreadable'
+  /** 시청 페이지가 아니다 (임베드 등). */
+  | 'not-watch'
+
+export const CAPTURE_REFUSALS: readonly CaptureRefusal[] = [
+  'shorts',
+  'live',
+  'ad',
+  'not-started',
+  'unreadable',
+  'not-watch',
+]
+
+/** `moment/capture` 의 결과. 거절은 오류가 아니라 정상 결과다. */
+export type MomentCaptured =
+  | {
+      readonly status: 'opened' | 'focused'
+      readonly tabId: number
+      readonly videoId: string
+      readonly atSeconds: number
+    }
+  | { readonly status: 'refused'; readonly reason: CaptureRefusal }
+
+export function parseMomentCaptured(value: unknown): MomentCaptured | null {
+  if (!isRecord(value)) return null
+  if (value.status === 'refused') {
+    return CAPTURE_REFUSALS.includes(value.reason as CaptureRefusal)
+      ? { status: 'refused', reason: value.reason as CaptureRefusal }
+      : null
+  }
+  if (value.status !== 'opened' && value.status !== 'focused') return null
+  if (!isTabId(value.tabId)) return null
+  if (typeof value.videoId !== 'string' || !VIDEO_ID.test(value.videoId)) return null
+  const atSeconds = value.atSeconds
+  if (typeof atSeconds !== 'number' || !Number.isSafeInteger(atSeconds) || atSeconds < 0) {
+    return null
+  }
+  return { status: value.status, tabId: value.tabId, videoId: value.videoId, atSeconds }
 }

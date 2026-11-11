@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 
 import type { PopupBridge, TabEvent } from '@/popup/bridge'
-import type { CollectOpened, PageInspection, Result } from '@/shared/messages'
+import type { CollectOpened, MomentCaptured, PageInspection, Result } from '@/shared/messages'
 
 /** 응답을 테스트가 손으로 풀어 주는 가짜 bridge. */
 export function fakeBridge(initialTabId: number | null = 1) {
@@ -12,6 +12,11 @@ export function fakeBridge(initialTabId: number | null = 1) {
     tabId: number
     videoId: string
     resolve: (r: Result<CollectOpened>) => void
+  }[] = []
+  const captures: {
+    tabId: number
+    videoId: string
+    resolve: (r: Result<MomentCaptured>) => void
   }[] = []
 
   const bridge = {
@@ -28,6 +33,12 @@ export function fakeBridge(initialTabId: number | null = 1) {
           collects.push({ tabId, videoId, resolve })
         }),
     ),
+    captureMoment: vi.fn<PopupBridge['captureMoment']>(
+      (tabId: number, videoId: string) =>
+        new Promise<Result<MomentCaptured>>((resolve) => {
+          captures.push({ tabId, videoId, resolve })
+        }),
+    ),
     subscribe: vi.fn<PopupBridge['subscribe']>((listener: (event: TabEvent) => void) => {
       listeners.push(listener)
       return () => {
@@ -41,6 +52,7 @@ export function fakeBridge(initialTabId: number | null = 1) {
     bridge,
     pending,
     collects,
+    captures,
     listeners,
     setActiveTab(id: number | null) {
       activeTab = id

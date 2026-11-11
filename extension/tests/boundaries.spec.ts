@@ -37,6 +37,7 @@ const offenders = (paths: string[], pattern: RegExp) =>
 /** 웹앱에서 가져와도 되는 것 — 의존성 없는 순수 모듈과 변수뿐인 토큰 CSS. */
 const WEB_IMPORT_ALLOWLIST = [
   '@web/shared/utils/youtube',
+  '@web/shared/utils/time',
   '@web/styles/tokens.css',
   '@web/themes/mono-vinyl/tokens.css',
 ]

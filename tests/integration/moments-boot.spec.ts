@@ -262,6 +262,7 @@ describe('E. main.ts', () => {
     const moments = code.indexOf('moments.restore()')
     // 다른 탭(수집 화면 포함)의 Moments 저장을 듣는다 — 복원 뒤에 (M10-3 안정화).
     const watch = code.indexOf('moments.watchExternalChanges()')
+    const branch = code.indexOf("if (resolveEntry(globalThis.location.hash) === 'collect')")
     const mountCall = code.indexOf("app.mount('#app')")
 
     expect(theme).toBeGreaterThan(-1)
@@ -269,6 +270,9 @@ describe('E. main.ts', () => {
     expect(store).toBeGreaterThan(library)
     expect(moments).toBeGreaterThan(store)
     expect(watch).toBeGreaterThan(moments)
+    // 대시보드와 수집 화면(M10-4) 모두 — 갈림길 전에 한 번만 복원한다.
+    expect(branch).toBeGreaterThan(watch)
+    expect(code.split('useMomentsStore(pinia)')).toHaveLength(2)
     expect(mountCall).toBeGreaterThan(watch)
 
     // 기본값을 심거나 쓰는 호출이 없다.

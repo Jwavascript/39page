@@ -374,7 +374,7 @@ describe('수집 앱은 대시보드를 띄우지 않는다', () => {
     wrapper.unmount()
   })
 
-  it('main.ts 의 수집 경로는 플레이어 어댑터와 Moments 를 건드리지 않는다', () => {
+  it('main.ts 의 수집 경로는 플레이어 어댑터를 쓰지 않고, Moments 는 복원·듣기만 한 뒤 연다 (M10-4)', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/main.ts'), 'utf8')
     const start = source.indexOf("if (resolveEntry(globalThis.location.hash) === 'collect') {")
     const end = source.indexOf('} else {', start)
@@ -383,7 +383,11 @@ describe('수집 앱은 대시보드를 띄우지 않는다', () => {
     expect(start).toBeGreaterThan(-1)
     expect(branch).toContain('createApp(CollectApp')
     expect(branch).not.toContain('PLAYER_ADAPTER_FACTORY')
-    expect(branch).not.toContain('useMomentsStore')
+    // 수집 화면도 Moment 를 저장하므로(M10-4) 두 store 를 갈림길 **전에** 복원하고 듣는다.
     expect(source.indexOf('library.watchExternalChanges()')).toBeLessThan(start)
+    expect(source.indexOf('moments.restore()')).toBeLessThan(start)
+    expect(source.indexOf('moments.watchExternalChanges()')).toBeLessThan(start)
+    // 갈림길에서 Moments 에 쓰지 않는다 — 쓰기는 사용자가 누를 때만.
+    expect(branch).not.toMatch(/moments\.(add|addMoments|updateNote|remove|replaceAllMoments)\(/)
   })
 })

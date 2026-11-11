@@ -6,6 +6,7 @@ import {
   ok,
   parseContentRequest,
   parseExtensionRequest,
+  parseMomentCaptured,
   parsePageInspection,
   parsePageSnapshot,
   parsePlayerCandidates,
@@ -65,6 +66,39 @@ describe('메시지 계약 v1 — 요청 검증', () => {
       ok: false,
       error: { code: 'bad-request' },
     })
+  })
+
+  it('moment/capture — tabId 와 사용자가 본 videoId 만 받는다 (M10-4). 시점은 Background 가 읽는다', () => {
+    expect(
+      parseExtensionRequest({ v: 1, type: 'moment/capture', tabId: 4, videoId: ID, atSeconds: 9 }),
+    ).toEqual({ ok: true, value: { v: 1, type: 'moment/capture', tabId: 4, videoId: ID } })
+    expect(parseExtensionRequest({ v: 1, type: 'moment/capture', tabId: 4 })).toMatchObject({
+      ok: false,
+      error: { code: 'bad-request' },
+    })
+  })
+
+  it('moment/capture 결과 — 열림 · 거절만, 모양이 틀리면 null', () => {
+    expect(parseMomentCaptured({ status: 'opened', tabId: 3, videoId: ID, atSeconds: 0 })).toEqual({
+      status: 'opened',
+      tabId: 3,
+      videoId: ID,
+      atSeconds: 0,
+    })
+    expect(parseMomentCaptured({ status: 'refused', reason: 'ad' })).toEqual({
+      status: 'refused',
+      reason: 'ad',
+    })
+    for (const bad of [
+      { status: 'opened', tabId: 3, videoId: ID, atSeconds: -1 },
+      { status: 'opened', tabId: 3, videoId: ID, atSeconds: 1.5 },
+      { status: 'opened', tabId: 3, videoId: 'short', atSeconds: 1 },
+      { status: 'refused', reason: 'other' },
+      { status: 'saved' },
+      null,
+    ]) {
+      expect(parseMomentCaptured(bad)).toBeNull()
+    }
   })
 
   it('버전이 다르면 종류를 보지 않는다', () => {

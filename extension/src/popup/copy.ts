@@ -1,6 +1,9 @@
 /** 팝업의 문구. 컴포넌트는 이 표를 그리기만 한다. */
-import type { ErrorCode, PageKind, UnsupportedReason } from '@/shared/messages'
+import { formatTimestamp } from '@web/shared/utils/time'
 
+import type { CaptureRefusal, ErrorCode, PageKind, UnsupportedReason } from '@/shared/messages'
+
+import type { MomentCaptureState } from './useMomentCapture'
 import type { QuickAddState } from './useQuickAdd'
 
 export interface NoticeCopy {
@@ -58,7 +61,7 @@ export function errorCopy(code: ErrorCode): NoticeCopy {
 
 export const QUICK_ADD_COPY = {
   title: '플레이리스트에 담기',
-  button: '39page 에 추가',
+  button: '플레이리스트에 추가',
   busy: '여는 중…',
   help: '39page 에서 플레이리스트를 고른 뒤 저장합니다. 이 버튼만으로는 저장되지 않습니다.',
 } as const
@@ -84,3 +87,46 @@ export function quickAddMessage(state: QuickAddState): string | null {
 }
 
 export const UNKNOWN_TITLE = '제목을 읽지 못했습니다'
+
+/* ---------- Music Moment (M10-4) ---------- */
+
+export const MOMENT_COPY = {
+  title: '지금 이 순간',
+  button: '현재 Moment 저장',
+  busy: '시점 읽는 중…',
+  help: '누른 순간의 재생 시점을 고정합니다. 메모는 39page 에서 쓰고 저장합니다. 이 버튼만으로는 저장되지 않습니다.',
+} as const
+
+export const CAPTURE_REFUSAL_COPY: Readonly<Record<CaptureRefusal, string>> = {
+  shorts: 'Shorts 는 아직 Moment 를 저장할 수 없습니다.',
+  live: '라이브 방송은 아직 Moment 를 저장할 수 없습니다.',
+  ad: '광고가 재생 중입니다. 광고가 끝난 뒤 다시 눌러 주세요.',
+  'not-started': '재생 위치가 아직 정해지지 않았습니다. 영상을 재생한 뒤 다시 눌러 주세요.',
+  unreadable:
+    '재생 위치를 읽지 못했습니다. 영상을 재생하거나 페이지를 새로 고친 뒤 다시 눌러 주세요.',
+  'not-watch': 'YouTube 영상 페이지(youtube.com/watch)에서만 Moment 를 저장할 수 있습니다.',
+}
+
+/** Moment 캡처 결과 문구. 아직 누르지 않았으면 `null`. */
+export function momentCaptureMessage(state: MomentCaptureState): string | null {
+  switch (state.kind) {
+    case 'idle':
+    case 'busy':
+      return null
+    case 'done': {
+      const time = formatTimestamp(state.atSeconds)
+      return state.status === 'focused'
+        ? `같은 순간(${time})을 담은 39page 화면으로 옮겼습니다.`
+        : `${time} 을 고정했습니다. 열린 39page 탭에서 메모를 쓰고 저장하세요.`
+    }
+    case 'refused':
+      return CAPTURE_REFUSAL_COPY[state.reason]
+    case 'error':
+      if (state.code === 'page-changed') {
+        return '그 사이 영상이 바뀌었습니다. 지금 영상을 다시 보여 드렸으니 확인 후 다시 눌러 주세요.'
+      }
+      if (state.code === 'no-tab') return '탭을 찾을 수 없습니다. 다시 시도해 주세요.'
+      if (state.code === 'timeout') return '확장이 제때 답하지 않았습니다. 다시 시도해 주세요.'
+      return `Moment 화면을 열지 못했습니다. 다시 시도해 주세요. (코드: ${state.code})`
+  }
+}

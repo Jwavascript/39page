@@ -22,6 +22,10 @@ interface Fixture {
   build: { input: { videoId: string; title: string | null; requestId: string }; hash: string }[]
   reject: { hash: string; reason: CollectRejectReason }[]
   acceptExtra: { hash: string; videoId: string; title: string | null }[]
+  buildMoment: {
+    input: { videoId: string; title: string | null; atSeconds: number; requestId: string }
+    hash: string
+  }[]
 }
 
 const fixture = JSON.parse(
@@ -40,6 +44,36 @@ describe('계약 v1 — 고정 파일', () => {
         requestId: item.input.requestId,
       },
     })
+  })
+
+  it.each(fixture.buildMoment.map((item) => [item.hash, item] as const))(
+    'Moment 를 받는다 (M10-4): %s',
+    (_hash, item) => {
+      expect(parseCollectRequest(item.hash)).toEqual({
+        ok: true,
+        request: {
+          v: 1,
+          kind: 'moment',
+          videoId: item.input.videoId,
+          title: item.input.title,
+          atSeconds: item.input.atSeconds,
+          requestId: item.input.requestId,
+        },
+      })
+    },
+  )
+
+  it('확인된 0초는 받는다 — 0 은 "모름" 이 아니다', () => {
+    const zero = fixture.buildMoment.find((item) => item.input.atSeconds === 0)
+    const result = parseCollectRequest(zero?.hash ?? '')
+    expect(result.ok && result.request.kind === 'moment' && result.request.atSeconds).toBe(0)
+  })
+
+  it('메모는 주소로 받지 않는다 — note · memo 가 있으면 어느 종류든 거절', () => {
+    const rows = fixture.reject.filter((row) => /[?&](note|memo)=/.test(row.hash))
+    expect(rows.length).toBeGreaterThanOrEqual(3)
+    for (const row of rows)
+      expect(parseCollectRequest(row.hash)).toEqual({ ok: false, reason: 'unexpected-field' })
   })
 
   // 표의 줄마다 따로 돈다 — 앞부분이 같은 줄이 서로를 가리지 않게.

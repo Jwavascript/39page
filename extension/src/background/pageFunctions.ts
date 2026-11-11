@@ -34,3 +34,48 @@ export function readPlayersInPage(): { videoId: string; title: string | null }[]
   }
   return found
 }
+
+/**
+ * Music Moment 캡처 (M10-4) — 시청 페이지 플레이어(`#movie_player`)의 상태를 **한 번에**
+ * 읽는다. 영상 ID · 제목 · 시점 · 상태가 같은 동기 실행 안에서 같은 객체에서 오므로
+ * 서로 다른 영상을 섞지 않는다 (SPA 이동 · 자동 다음 영상).
+ *
+ * Shorts 플레이어(`#shorts-player`)는 읽지 않는다 — MVP 범위 밖이다.
+ * 숫자는 유한할 때만 싣는다 (`NaN` · `Infinity` 는 `null` — "모름" 을 0 으로 바꾸지 않는다).
+ */
+export function capturePlaybackInPage(): unknown {
+  const element = document.querySelector('#movie_player')
+  if (element === null) return null
+  const finite = (value: unknown): number | null =>
+    typeof value === 'number' && Number.isFinite(value) ? value : null
+  try {
+    const player = element as unknown as {
+      getVideoData?: () => unknown
+      getCurrentTime?: () => unknown
+      getPlayerState?: () => unknown
+      getDuration?: () => unknown
+    }
+    const call = (name: 'getVideoData' | 'getCurrentTime' | 'getPlayerState' | 'getDuration') => {
+      const method = player[name]
+      return typeof method === 'function' ? method.call(element) : null
+    }
+    const data = call('getVideoData')
+    const record =
+      typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {}
+    const videoId =
+      typeof record.video_id === 'string' && record.video_id !== '' ? record.video_id : null
+    const title = typeof record.title === 'string' ? record.title : null
+    return {
+      videoId: videoId === null ? null : videoId.slice(0, 64),
+      title: title === null ? null : title.slice(0, 2000),
+      currentTime: finite(call('getCurrentTime')),
+      state: finite(call('getPlayerState')),
+      duration: finite(call('getDuration')),
+      adShowing:
+        element.classList.contains('ad-showing') || element.classList.contains('ad-interrupting'),
+      live: record.isLive === true || element.querySelector('.ytp-live') !== null,
+    }
+  } catch {
+    return null
+  }
+}

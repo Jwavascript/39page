@@ -8,27 +8,38 @@
 import { computed } from 'vue'
 
 import { defaultTrackTitle } from '@/stores/library'
+import { formatTimestamp } from '@/shared/utils/time'
 import { youtubeWatchUrl } from '@/shared/utils/youtube'
 
 const props = defineProps<{
   videoId: string
   title: string | null
+  /** Moment 의 시점 (M10-4). 있으면 시점을 보이고 링크가 그 지점에서 연다. */
+  atSeconds?: number
 }>()
 
-const watchUrl = computed(() => youtubeWatchUrl(props.videoId))
+const watchUrl = computed(() => youtubeWatchUrl(props.videoId, props.atSeconds))
+const timeText = computed(() =>
+  props.atSeconds === undefined ? null : formatTimestamp(props.atSeconds),
+)
 </script>
 
 <template>
-  <article class="video-summary" aria-label="담을 영상">
-    <p class="eyebrow mono">담을 영상</p>
+  <article class="video-summary" :aria-label="timeText === null ? '담을 영상' : '저장할 순간'">
+    <p class="eyebrow mono">{{ timeText === null ? '담을 영상' : '저장할 순간' }}</p>
     <p v-if="title !== null" class="video-title" dir="auto">{{ title }}</p>
     <p v-else class="video-title video-title--missing">
-      제목 없음 — “{{ defaultTrackTitle(videoId) }}” 로 저장됩니다
+      제목 없음<template v-if="timeText === null">
+        — “{{ defaultTrackTitle(videoId) }}” 로 저장됩니다</template
+      >
+    </p>
+    <p v-if="timeText !== null" class="moment-time">
+      <span class="time mono">{{ timeText }}</span> 지점
     </p>
     <p class="video-meta">
       <span class="mono">{{ videoId }}</span>
       <a v-if="watchUrl !== null" :href="watchUrl" target="_blank" rel="noopener noreferrer">
-        YouTube 에서 보기 ↗
+        {{ timeText === null ? 'YouTube 에서 보기 ↗' : '그 지점에서 보기 ↗' }}
       </a>
     </p>
   </article>
@@ -63,6 +74,18 @@ const watchUrl = computed(() => youtubeWatchUrl(props.videoId))
   color: var(--text-muted-color);
   font-size: 14px;
   font-weight: 400;
+}
+
+.moment-time {
+  margin: 0;
+  color: var(--text-muted-color);
+  font-size: 13px;
+}
+
+.time {
+  color: var(--accent-strong-color);
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .video-meta {

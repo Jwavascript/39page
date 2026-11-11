@@ -9,6 +9,7 @@
  */
 import { fail, parseExtensionRequest, type Result } from '@/shared/messages'
 
+import { captureMoment } from './captureMoment'
 import { inspectTab } from './inspectTab'
 import { openCollect, type CollectDeduper } from './openCollect'
 import type { TabsPort } from './tabsPort'
@@ -24,7 +25,7 @@ export interface RouterDeps {
   readonly extensionId: string
   /** `chrome.runtime.getURL('')` — `chrome-extension://<id>/`. */
   readonly extensionOrigin: string
-  /** Quick Add (M10-3). */
+  /** Quick Add (M10-3) · Moment 캡처 (M10-4) — 같은 수집 origin · 같은 중복 기록. */
   readonly collect: {
     readonly origin: string
     readonly deduper: CollectDeduper
@@ -56,6 +57,12 @@ export function createBackgroundRouter(deps: RouterDeps) {
           return await inspectTab(deps.port, parsed.value.tabId)
         case 'collect/open':
           return await openCollect(
+            { port: deps.port, ...deps.collect },
+            parsed.value.tabId,
+            parsed.value.videoId,
+          )
+        case 'moment/capture':
+          return await captureMoment(
             { port: deps.port, ...deps.collect },
             parsed.value.tabId,
             parsed.value.videoId,

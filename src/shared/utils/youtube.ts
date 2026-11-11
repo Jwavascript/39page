@@ -149,8 +149,11 @@ export function parseYouTubeVideoId(input: string): YouTubeUrlParseResult {
  * 인코딩을 지워도 어떤 테스트도 깨지지 않는다(의도된 중복). 나중에 ID 형식이
  * 느슨해지면 이 줄이 먼저 막는다. 지우지 않는다.
  */
-export function youtubeWatchUrl(videoId: string): string | null {
+export function youtubeWatchUrl(videoId: string, atSeconds?: number): string | null {
   if (!isYouTubeVideoId(videoId)) return null
 
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+  const base = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`
+  // 시점은 0 이상 정수만 싣는다 (M10-4 수집 화면의 "그 지점에서 보기"). 아니면 싣지 않는다.
+  if (atSeconds === undefined || !Number.isSafeInteger(atSeconds) || atSeconds < 0) return base
+  return `${base}&t=${String(atSeconds)}s`
 }

@@ -1,5 +1,5 @@
 {
-  "$comment": "수집 URL 계약 v1 (ADR 0023, EXTENSION_DESIGN.md §5-1). 웹앱 tests/unit/collect-request.spec.ts 와 확장 extension/tests/collectUrl.spec.ts 가 함께 읽는다. build: 확장이 input 으로 만드는 조각 = hash, 웹앱이 hash 를 읽으면 input 과 같은 필드. reject: 웹앱이 거절하는 조각과 이유.",
+  "$comment": "수집 URL 계약 v1 (ADR 0023, EXTENSION_DESIGN.md §5-1). 웹앱 tests/unit/collect-request.spec.ts 와 확장 extension/tests/collectUrl.spec.ts 가 함께 읽는다. build: 확장이 input 으로 만드는 조각 = hash, 웹앱이 hash 를 읽으면 input 과 같은 필드. reject: 웹앱이 거절하는 조각과 이유. buildMoment: kind=moment (M10-4) — 확장이 input 으로 만드는 조각 = hash, 웹앱이 읽으면 같은 필드. 메모(note·memo)는 주소로 받지 않는다.",
   "origin": "https://39page.com",
   "build": [
     {
@@ -90,7 +90,7 @@
     },
     {
       "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
-      "reason": "unsupported-kind"
+      "reason": "invalid-time"
     },
     {
       "hash": "#collect?v=1&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
@@ -135,6 +135,90 @@
     {
       "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
       "reason": "too-long"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=-1",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=1.5",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=NaN",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=Infinity",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=1e3",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=%2B5",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=%205",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=007",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=abc",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=1000000",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=0x10",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=5%20",
+      "reason": "invalid-time"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=5&atSeconds=6",
+      "reason": "duplicate-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=5&note=%EB%A9%94%EB%AA%A8",
+      "reason": "unexpected-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=5&memo=x",
+      "reason": "unexpected-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&note=",
+      "reason": "unexpected-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=5",
+      "reason": "unexpected-field"
+    },
+    {
+      "hash": "#collect?v=1&kind=playlist&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "unsupported-kind"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=short&atSeconds=5&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f",
+      "reason": "invalid-video-id"
+    },
+    {
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&atSeconds=5&title=%E2%80%AEevil",
+      "reason": "invalid-title"
     }
   ],
   "acceptExtra": [
@@ -152,6 +236,44 @@
       "hash": "#collect?v=1&kind=track&videoId=jNQXAC9IVRw&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f&title=+%20spaced%20+",
       "videoId": "jNQXAC9IVRw",
       "title": "spaced"
+    }
+  ],
+  "buildMoment": [
+    {
+      "input": {
+        "videoId": "jNQXAC9IVRw",
+        "title": "Me at the zoo",
+        "atSeconds": 83,
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&atSeconds=83&title=Me+at+the+zoo&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    },
+    {
+      "input": {
+        "videoId": "M7lc1UVf-VE",
+        "title": null,
+        "atSeconds": 0,
+        "requestId": "a1B2c3D4e5F6g7H8"
+      },
+      "hash": "#collect?v=1&kind=moment&videoId=M7lc1UVf-VE&atSeconds=0&req=a1B2c3D4e5F6g7H8"
+    },
+    {
+      "input": {
+        "videoId": "dQw4w9WgXcQ",
+        "title": "노래 & 제목 #1 / 100% + \"따옴표\" ?=",
+        "atSeconds": 3723,
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=moment&videoId=dQw4w9WgXcQ&atSeconds=3723&title=%EB%85%B8%EB%9E%98+%26+%EC%A0%9C%EB%AA%A9+%231+%2F+100%25+%2B+%22%EB%94%B0%EC%98%B4%ED%91%9C%22+%3F%3D&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+    },
+    {
+      "input": {
+        "videoId": "jNQXAC9IVRw",
+        "title": null,
+        "atSeconds": 999999,
+        "requestId": "3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
+      },
+      "hash": "#collect?v=1&kind=moment&videoId=jNQXAC9IVRw&atSeconds=999999&req=3f0c6b1e-8d2a-4c7e-9b5f-1a2b3c4d5e6f"
     }
   ]
 }

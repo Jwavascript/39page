@@ -6,7 +6,7 @@
  */
 import { withTimeout } from '@/shared/timeout'
 
-import { readPlayersInPage } from './pageFunctions'
+import { capturePlaybackInPage, readPlayersInPage } from './pageFunctions'
 import { PortError, type PortFailure, type TabsPort } from './tabsPort'
 
 /** content script 가 manifest 에 없으므로 주입할 파일 이름을 여기서만 안다. */
@@ -70,6 +70,19 @@ export function createChromeTabsPort(options: { readonly contentTimeoutMs: numbe
           target: { tabId, frameIds: [0] },
           world: 'MAIN',
           func: readPlayersInPage,
+        })
+        return first?.result ?? null
+      } catch (error) {
+        throw toPortError(error)
+      }
+    },
+
+    async capturePlayback(tabId) {
+      try {
+        const [first] = await chrome.scripting.executeScript({
+          target: { tabId, frameIds: [0] },
+          world: 'MAIN',
+          func: capturePlaybackInPage,
         })
         return first?.result ?? null
       } catch (error) {

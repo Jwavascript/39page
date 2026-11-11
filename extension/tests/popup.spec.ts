@@ -61,15 +61,19 @@ describe('팝업', () => {
     expect(wrapper.find('.video-id').text()).toBe(ID)
   })
 
-  it('Quick Add — 영상이면 "39page 에 추가" 버튼 하나, 저장하지 않는다고 적는다 (M10-3)', async () => {
+  it('영상이면 "플레이리스트에 추가" · "현재 Moment 저장" 두 버튼, 둘 다 저장하지 않는다고 적는다 (M10-3 · M10-4)', async () => {
     const { wrapper, fake } = mountPopup()
     await settle()
     fake.pending[0]!.resolve(ok(VIDEO))
     await settle()
 
     const buttons = wrapper.findAll('button')
-    expect(buttons.map((button) => button.text())).toEqual(['39page 에 추가'])
+    expect(buttons.map((button) => button.text())).toEqual([
+      '플레이리스트에 추가',
+      '현재 Moment 저장',
+    ])
     expect(wrapper.find('.quick-add').text()).toContain('이 버튼만으로는 저장되지 않습니다')
+    expect(wrapper.find('.moment').text()).toContain('이 버튼만으로는 저장되지 않습니다')
     expect(wrapper.findAll('a, input, select, textarea, [role="button"], [tabindex]')).toHaveLength(
       0,
     )
@@ -274,5 +278,86 @@ describe('Quick Add (M10-3)', () => {
     await settle()
     expect(wrapper.find('button.add').exists()).toBe(false)
     expect(fake.bridge.collect).not.toHaveBeenCalled()
+  })
+})
+
+describe('팝업 — 현재 Moment 저장 (M10-4)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  async function shown(inspection: PageInspection = VIDEO) {
+    const mounted = mountPopup()
+    await settle()
+    mounted.fake.pending[0]!.resolve(ok(inspection))
+    await settle()
+    return mounted
+  }
+
+  const captureButton = (wrapper: ReturnType<typeof mountPopup>['wrapper']) =>
+    wrapper.get('.moment button')
+
+  it('누르면 지금 보이는 영상으로 캡처를 요청하고, 고정한 시점을 알린다', async () => {
+    const { wrapper, fake } = await shown()
+
+    await captureButton(wrapper).trigger('click')
+    expect(fake.bridge.captureMoment).toHaveBeenCalledWith(1, ID)
+    expect(captureButton(wrapper).text()).toBe('시점 읽는 중…')
+    expect(captureButton(wrapper).attributes('disabled')).toBeDefined()
+
+    fake.captures[0]!.resolve(ok({ status: 'opened', tabId: 7, videoId: ID, atSeconds: 83 }))
+    await settle()
+    expect(wrapper.get('.moment-message').text()).toBe(
+      '1:23 을 고정했습니다. 열린 39page 탭에서 메모를 쓰고 저장하세요.',
+    )
+    expect(wrapper.get('.moment-message').attributes('role')).toBe('status')
+  })
+
+  it('기다리는 동안 다시 눌러도 요청은 하나다', async () => {
+    const { wrapper, fake } = await shown()
+    await captureButton(wrapper).trigger('click')
+    await captureButton(wrapper).trigger('click')
+    expect(fake.bridge.captureMoment).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['shorts', 'Shorts 는 아직 Moment 를 저장할 수 없습니다.'],
+    ['live', '라이브 방송은 아직 Moment 를 저장할 수 없습니다.'],
+    ['embed', 'YouTube 영상 페이지(youtube.com/watch)에서만 Moment 를 저장할 수 있습니다.'],
+  ] as const)('%s 페이지 — 버튼을 끄고 이유를 적는다', async (pageKind, text) => {
+    const { wrapper, fake } = await shown({ ...VIDEO, pageKind })
+
+    expect(captureButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(captureButton(wrapper).attributes('aria-describedby')).toBe('moment-unavailable')
+    expect(wrapper.get('#moment-unavailable').text()).toBe(text)
+    await captureButton(wrapper).trigger('click')
+    expect(fake.bridge.captureMoment).not.toHaveBeenCalled()
+    // 플레이리스트 추가는 그대로 쓸 수 있다.
+    expect(wrapper.get('.quick-add button').attributes('disabled')).toBeUndefined()
+  })
+
+  it.each([
+    ['ad', '광고가 재생 중입니다. 광고가 끝난 뒤 다시 눌러 주세요.'],
+    ['not-started', '재생 위치가 아직 정해지지 않았습니다. 영상을 재생한 뒤 다시 눌러 주세요.'],
+  ] as const)('거절 %s — 이유를 알린다 (alert)', async (reason, text) => {
+    const { wrapper, fake } = await shown()
+    await captureButton(wrapper).trigger('click')
+    fake.captures[0]!.resolve(ok({ status: 'refused', reason }))
+    await settle()
+
+    expect(wrapper.get('.moment-message').text()).toBe(text)
+    expect(wrapper.get('.moment-message').attributes('role')).toBe('alert')
+    expect(captureButton(wrapper).attributes('disabled')).toBeUndefined()
+  })
+
+  it('page-changed — 다시 확인하고 안내를 남긴다', async () => {
+    const { wrapper, fake } = await shown()
+    await captureButton(wrapper).trigger('click')
+    fake.captures[0]!.resolve(fail('page-changed', 'x'))
+    await settle()
+    fake.pending[1]!.resolve(ok(VIDEO))
+    await settle()
+
+    expect(fake.bridge.inspect).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('.moment-message').text()).toContain('그 사이 영상이 바뀌었습니다')
   })
 })

@@ -69,6 +69,26 @@ describe('Background 라우터', () => {
     expect(port.createTab).toHaveBeenCalledTimes(1)
   })
 
+  it('moment/capture 를 처리한다 (M10-4)', async () => {
+    const { port } = fakePort({})
+    const result = await router(port).handle(
+      { v: 1, type: 'moment/capture', tabId: 1, videoId: ID },
+      POPUP,
+    )
+    expect(result).toMatchObject({ ok: true, data: { status: 'opened', atSeconds: 83 } })
+    expect(port.capturePlayback).toHaveBeenCalledTimes(1)
+  })
+
+  it('content script 가 보낸 moment/capture 는 플레이어를 읽지 않는다', async () => {
+    const { port } = fakePort({})
+    const result = await router(port).handle(
+      { v: 1, type: 'moment/capture', tabId: 1, videoId: ID },
+      { id: EXTENSION_ID, url: 'https://www.youtube.com/watch?v=x' },
+    )
+    expect(!result.ok && result.error.code).toBe('forbidden-sender')
+    expect(port.capturePlayback).not.toHaveBeenCalled()
+  })
+
   it('content script 가 보낸 collect/open 은 탭을 열지 않는다', async () => {
     const { port } = fakePort({})
     const result = await router(port).handle(

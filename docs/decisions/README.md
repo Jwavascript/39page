@@ -52,6 +52,7 @@
 | [0023](0023-extension-webapp-communication.md) | 확장 → 웹앱은 "수집 화면 URL" 로 넘기고, 저장은 웹앱이 사용자 승인 뒤에 한다                       | 채택 (M10-1)        |
 | [0024](0024-library-cross-tab-consistency.md)  | 라이브러리는 쓰기 직전에 저장소 원문을 기준과 비교하고, 다른 탭의 변경을 storage 이벤트로 반영한다 | 채택 (M10-3A)       |
 | [0025](0025-cross-tab-write-lock.md)           | 라이브러리·Moments 쓰기는 Web Locks 배타 잠금과 "수정 번호 영수증" 안에서 한다                     | 채택 (M10-3 안정화) |
+| [0026](0026-moment-capture.md)                 | Moment 캡처는 누른 순간 플레이어를 한 번에 읽고, 확정되지 않은 시점을 0 으로 만들지 않는다         | 채택 (M10-4)        |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

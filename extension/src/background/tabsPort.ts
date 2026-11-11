@@ -55,6 +55,11 @@ export interface TabsPort {
    * **검증하지 않은 채** 돌려준다. 실패는 `PortError` 로 거절한다.
    */
   readPlayers(tabId: number): Promise<unknown>
+  /**
+   * 최상위 프레임의 메인 세계에서 `capturePlaybackInPage` 를 실행하고 그 결과를
+   * **검증하지 않은 채** 돌려준다 (M10-4). 실패는 `PortError` 로 거절한다.
+   */
+  capturePlayback(tabId: number): Promise<unknown>
   /** 새 탭을 앞으로 열고 id 를 돌려준다 (M10-3). 권한이 필요 없다. */
   createTab(options: CreateTabOptions): Promise<{ readonly id: number }>
   /** 탭과 그 창을 앞으로 가져온다. 탭이 없으면 `false` (M10-3). */

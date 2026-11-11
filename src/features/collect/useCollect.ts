@@ -73,7 +73,8 @@ export interface CollectOptions {
   readonly clearRequest?: () => void
 }
 
-function clearHashFromAddressBar(): void {
+/** 성공 뒤 주소 조각을 지운다 — 새로고침이 같은 요청을 다시 묻지 않게. */
+export function clearHashFromAddressBar(): void {
   const { pathname, search } = globalThis.location
   globalThis.history.replaceState(globalThis.history.state, '', `${pathname}${search}`)
 }
@@ -83,7 +84,8 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
   const clearRequest = options.clearRequest ?? clearHashFromAddressBar
 
   const parsed = parseCollectRequest(hash)
-  const request = parsed.ok ? parsed.request : null
+  // 이 상태는 곡 담기만 다룬다. Moment 요청은 `useCollectMoment` 가 맡는다 (CollectView 가 고른다).
+  const request = parsed.ok && parsed.request.kind === 'track' ? parsed.request : null
 
   const failure = ref<CollectFailure | null>(null)
   const saving = ref(false)
@@ -145,6 +147,7 @@ export function useCollect(hash: string, options: CollectOptions = {}): CollectS
 
   const phase = computed<CollectPhase>(() => {
     if (!parsed.ok) return { kind: 'rejected', reason: parsed.reason }
+    if (request === null) return { kind: 'rejected', reason: 'unsupported-kind' }
     if (saved.value !== null) {
       return {
         kind: 'saved',

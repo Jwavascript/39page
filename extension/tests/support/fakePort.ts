@@ -18,6 +18,20 @@ export function snapshot(overrides: Partial<PageSnapshot> = {}): PageSnapshot {
 /** 메인 세계의 플레이어 — 기본은 주소의 영상을 띄운 플레이어 하나. */
 export const PLAYERS = [{ videoId: ID, title: 'Player Title' }]
 
+/** 메인 세계에서 읽은 재생 상태 (M10-4) — 기본은 주소의 영상을 1:23.6 에서 재생 중. */
+export function playback(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    videoId: ID,
+    title: 'Player Title',
+    currentTime: 83.6,
+    state: 1,
+    duration: 212,
+    adShowing: false,
+    live: false,
+    ...overrides,
+  }
+}
+
 /**
  * 가짜 탭. `contentInstalled` 가 거짓이면 첫 질의가 "수신자 없음" 이고, 주입하면
  * 참이 된다 — 실제 Chrome 의 순서를 흉내 낸다.
@@ -30,6 +44,9 @@ export function fakePort(options: {
   sendError?: PortError
   players?: unknown
   playersError?: PortError
+  /** `capturePlayback` 의 결과 (M10-4). 기본은 `playback()`. */
+  playback?: unknown
+  playbackError?: PortError
   /** 살아 있는 탭 id — focusTab 이 true 를 돌려준다. 기본은 모두 살아 있다. */
   aliveTabs?: number[]
 }) {
@@ -51,6 +68,10 @@ export function fakePort(options: {
     readPlayers: vi.fn<TabsPort['readPlayers']>(async () => {
       if (options.playersError) throw options.playersError
       return options.players === undefined ? PLAYERS : options.players
+    }),
+    capturePlayback: vi.fn<TabsPort['capturePlayback']>(async () => {
+      if (options.playbackError) throw options.playbackError
+      return options.playback === undefined ? playback() : options.playback
     }),
     createTab: vi.fn<TabsPort['createTab']>(async () => ({ id: 100 + state.created++ })),
     focusTab: vi.fn<TabsPort['focusTab']>(
