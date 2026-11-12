@@ -23,7 +23,7 @@
 import { computed, inject, nextTick, ref } from 'vue'
 
 import PlaylistTile from '@/features/library/PlaylistTile.vue'
-import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import { ARCHIVE } from '@/features/archive/archiveController'
 import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
 import {
@@ -41,7 +41,7 @@ const library = useLibraryStore()
  * 기본값이고, 그때는 해당 동작을 **하지 않는다**.
  */
 const playback = inject(PLAYBACK_COORDINATOR, null)
-const drawer = inject(LIBRARY_DRAWER, null)
+const archive = inject(ARCHIVE, null)
 
 /**
  * 접힘/펼침 (M7 요청 1). 데크를 누르면 바뀐다.
@@ -162,7 +162,7 @@ function playPlaylist(id: string): void {
   if (id !== library.selectedPlaylistId) void select(id)
 
   void (async () => {
-    await drawer?.stepAside()
+    await archive?.stepAside()
     report(playback?.playPlaylist(id))
   })()
 }
@@ -172,7 +172,7 @@ function openPlaylist(id: string): void {
   notice.value = ''
   // 선택이 끝난 뒤에 연다 — 다른 목록이 잠깐 보이거나, 거절됐는데 엉뚱한 목록이 열리지 않게.
   void select(id).then((selected) => {
-    if (selected) drawer?.open()
+    if (selected) archive?.open('music')
   })
 }
 </script>

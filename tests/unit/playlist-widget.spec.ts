@@ -59,7 +59,7 @@ async function seed(library: ReturnType<typeof useLibraryStore>) {
 
 const tiles = (context: Context) => context.wrapper.findAll('.playlist-tile')
 const drawerOpen = (context: Context) =>
-  context.wrapper.get('#record-library-drawer').attributes('hidden') === undefined
+  context.wrapper.get('#archive-panel').attributes('hidden') === undefined
 
 beforeEach(() => {
   globalThis.localStorage.clear()
@@ -240,7 +240,7 @@ describe('C. 편집 오버레이 열기', () => {
     expect(context.library.selectedPlaylistId).toBe(emptyId)
     expect(drawerOpen(context)).toBe(true)
     // 머리말이 무엇을 편집하는지 말한다 (보고 6b).
-    expect(context.wrapper.get('#record-library-title').text()).toBe('EMPTY SHELF')
+    expect(context.wrapper.get('#playlist-editor-title').text()).toBe('EMPTY SHELF')
   })
 
   it('타일 본문은 재생을 시작하지 않는다', async () => {
@@ -362,7 +362,7 @@ describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
   })
 
   it('플레이리스트와 트랙이 서로 다른 컴포넌트에 산다', () => {
-    const drawer = readSource('src/features/library/RecordLibraryDrawer.vue')
+    const drawer = readSource('src/features/library/PlaylistEditor.vue')
 
     // 드로어에는 플레이리스트 목록이 없다. 트랙만 있다.
     expect(drawer).not.toContain('PlaylistList')

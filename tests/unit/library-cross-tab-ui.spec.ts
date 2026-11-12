@@ -66,12 +66,12 @@ async function openDrawer(wrapper: Wrapper): Promise<void> {
 }
 
 function trackNames(wrapper: Wrapper): string[] {
-  return wrapper.findAll('#record-library-drawer .track-name').map((node) => node.text())
+  return wrapper.findAll('#archive-panel .track-name').map((node) => node.text())
 }
 
 async function openLinkForm(wrapper: Wrapper): Promise<void> {
   const button = wrapper
-    .findAll('#record-library-drawer .pill')
+    .findAll('#archive-panel .pill')
     .find((node) => node.text().includes('YouTube 링크 추가'))
   await button?.trigger('click')
   await nextTick()
@@ -153,13 +153,13 @@ describe('이벤트보다 먼저 누르면 — 충돌 안내 · 입력 유지 ·
     expect(stored().playlists[0]?.name).toBe('다른 탭 이름')
     expect(library.playlists[0]?.name).toBe('다른 탭 이름')
     // 선택이 거절됐으므로 편집 오버레이를 열지 않는다 — 고르지 않은 목록이 열리지 않게 (ADR 0025).
-    expect(wrapper.get('#record-library-drawer').attributes('hidden')).toBeDefined()
+    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
 
     // 최신을 보고 다시 누르면 선택이 저장된 뒤에 열린다.
     await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
     await flushPromises()
     await nextTick()
-    expect(wrapper.get('#record-library-drawer').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
     wrapper.unmount()
   })
 })

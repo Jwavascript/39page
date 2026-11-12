@@ -570,7 +570,12 @@ describe('어떤 호출부도 잠금을 건너 쓰지 않는다', () => {
     const files = [
       'src/features/collect/useCollect.ts',
       'src/features/backup/useBackupImport.ts',
-      'src/features/library/RecordLibraryDrawer.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/backup/DataDialog.vue',
+      'src/components/layout/AppNav.vue',
       'src/features/library/PlaylistWidget.vue',
       'src/features/moments/useMomentCapture.ts',
       'src/features/moments/useMomentsBrowser.ts',

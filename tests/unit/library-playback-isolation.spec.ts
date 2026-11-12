@@ -170,7 +170,7 @@ describe('C. Library 와 Playback 의 독립성', () => {
   it('드로어가 재생 구현이나 playback store 를 보지 않는다', () => {
     // M3-2 에서 드로어에 재생 버튼이 생겼다. 그래도 드로어가 아는 것은
     // 코디네이터 **계약**뿐이다 (`AGENTS.md` 규칙 2, ADR 0009).
-    const code = stripComments(readSource('src/features/library/RecordLibraryDrawer.vue'))
+    const code = stripComments(readSource('src/features/library/PlaylistEditor.vue'))
 
     expect(code).not.toContain('usePlaybackStore')
     expect(code).not.toContain('@/stores/playback')

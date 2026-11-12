@@ -60,14 +60,25 @@ describe('1. DashboardShell 렌더링', () => {
     }
   })
 
-  it('헤더에 동작하지 않는 버튼을 만들지 않는다', () => {
+  it('헤더의 버튼은 전역 입구 셋과 테마 전환 둘이다 — 모두 동작한다 (M11-2)', async () => {
     const wrapper = mountApp()
     const header = wrapper.findComponent(AppHeader)
 
-    // 헤더의 버튼은 테마 전환 2개뿐이다. 라이브러리 열기는 M2-2에서
-    // 데크 트리거로 구현했고, 링크 추가는 아직 없다.
-    expect(header.findAll('button')).toHaveLength(2)
+    // M11-2: 음악 · Moments · 데이터 입구가 헤더로 왔다 (ADR 0027). 링크 추가는 보관함 안에 있다.
+    const buttons = header.findAll('button')
+    expect(buttons).toHaveLength(5)
+    const nav = header.findAll('.app-nav button')
+    expect(nav.map((button) => button.text())).toEqual(['♪ 음악', '◆ Moments', '⇩ 데이터'])
     expect(header.text()).not.toContain('링크 추가')
+
+    // 동작하지 않는 버튼이 없다 — 각 입구가 실제로 무언가를 연다.
+    await nav[0]?.trigger('click')
+    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
+    await nav[1]?.trigger('click')
+    expect(wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
+    await nav[2]?.trigger('click')
+    expect(wrapper.get('.data-backdrop').attributes('hidden')).toBeUndefined()
   })
 
   it('아직 없는 기능의 버튼을 만들지 않는다', () => {

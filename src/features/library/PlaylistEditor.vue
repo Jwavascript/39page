@@ -1,47 +1,29 @@
 <script setup lang="ts">
 /**
- * 플레이리스트 편집 오버레이 (M6-5).
+ * 고른 플레이리스트의 편집 표면 — 보관함 "음악" 탭의 본문 (M11-2, ADR 0027).
  *
- * 승인된 디자인의 `.drawer` 외형을 따른다. M6-2 에서 **오버레이**가 됐고,
- * 플레이어를 가리지 않는다는 보장은 레이아웃이 진다 (`WidgetHost.vue` 의
- * 정보 열 최소 폭, `DashboardShell.vue` 의 좁은 화면 아래 행).
+ * M6-5 부터 M10 까지는 이 내용이 오른쪽 오버레이 드로어(`RecordLibraryDrawer`)였다. M11-2 에서
+ * 드로어의 틀(머리말 · 닫기 · 바닥 안내)은 통합 보관함(`ArchivePanel`)으로 올라갔고, 이 컴포넌트는
+ * **한 플레이리스트를 고치는 일**만 남았다. 위계는 그대로다 (보고 6a·6b).
  *
- * M6-5 에서 **한 플레이리스트의 편집 표면**으로 좁혔다. 이전에는 플레이리스트
- * 목록과 트랙 목록이 같은 스크롤에 쌓여 있어서 둘 중 하나만 길어져도 전체가
- * 아래로 늘어났다 (보고 7번). 플레이리스트는 `PlaylistWidget` 으로 꺼냈다.
+ *   보관함 위쪽 목록   플레이리스트를 만들고 고른다
+ *   이 컴포넌트        고른 목록의 머리말에서 이름을 바꾸고 지운다
+ *                      트랙 목록 **바로 위**에서 트랙을 추가한다
  *
- * 그 결과 **위계가 공간에 드러난다** (보고 6a·6b).
+ * JSON 백업은 **여기서 빠졌다** — 한 목록의 기능이 아니라 앱 전체 데이터 관리이므로 헤더의
+ * "데이터" 대화상자로 옮겼다 (ADR 0027 결정 7, `BackupPanel` 은 그대로).
  *
- *   `PlaylistWidget`  플레이리스트를 만들고 고른다 (`＋ 새 목록`)
- *   이 오버레이       고른 목록의 머리말에서 이름을 바꾸고 지운다
- *                     트랙 목록 **바로 위**에서 트랙을 추가한다
+ * 재생은 **요청만** 한다 (M3-2). 큐를 만들거나 플레이어를 부르지 않고, 주입받은 Playback
+ * Coordinator 에 id 를 넘긴다 (`AGENTS.md` 규칙 2, 4). 트랙을 지운 뒤에는 **사실만** 알린다 (M3-5).
  *
- * 이전에는 `＋ 새 목록` 과 `＋ YouTube 링크 추가` 가 나란히 있어서 어느 것이
- * 노래를 추가하는지 알 수 없었고, `이름 수정` 이 트랙 목록 바로 위에 있어서
- * 트랙 이름을 바꾸는 것으로 읽혔다. 지금은 목록 바로 위에 있는 것이 트랙
- * 추가뿐이고, 이름 수정은 **무엇의 이름인지 적힌 머리말** 옆에 있다.
- *
- * 재생은 **요청만** 한다 (M3-2). 큐를 만들거나 플레이어를 부르지 않고,
- * 주입받은 Playback Coordinator 에 id 를 넘긴다. `playback` store 도
- * `PlayerAdapter` 도 모른다 (`AGENTS.md` 규칙 2, 4).
- *
- * 트랙을 지운 뒤에는 **사실만** 알린다 (M3-5). 재생 중이던 곡이면 멈추는
- * 판단은 코디네이터가 한다.
- *
- * M8-2 에서 바닥에 `BackupPanel` 이 들어왔다. 이 컴포넌트는 백업을 모른다 —
- * 자리만 내어 준다.
- *
- * 가시성 때문에 거절된 경우도 **여기서 말한다** (M7-1). M6-5 에서 "플레이어가
- * 항상 보이므로 플레이어의 `.status` 하나면 된다" 고 지웠는데, 세로 화면의
- * 시트가 플레이어를 덮을 수 있게 되면서 그 근거가 무너졌다 — 덮이면 그 안내도
- * 함께 덮인다. 사용자가 보고 있는 곳에 있어야 읽힌다.
+ * 가시성 때문에 거절된 경우도 **여기서 말한다** (M7-1) — 사용자가 보고 있는 곳에 있어야 읽힌다.
  */
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
-import BackupPanel from '@/features/backup/BackupPanel.vue'
+import { ARCHIVE } from '@/features/archive/archiveController'
+
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import TrackList from '@/features/library/TrackList.vue'
-import { LIBRARY_DRAWER } from '@/features/library/drawerController'
 import {
   PLAYBACK_COORDINATOR,
   PLAY_REFUSED_HIDDEN_MESSAGE,
@@ -57,8 +39,11 @@ import {
   type LibraryMutationResult,
 } from '@/stores/library'
 
-const props = defineProps<{ open: boolean; drawerId: string }>()
-const emit = defineEmits<{ close: [] }>()
+/**
+ * 보관함이 열려 있는지. 닫히면 쓰던 양식 · 안내를 비운다. Moments 탭을 잠깐 보고 와도 쓰던 링크는
+ * 남는다 — 탭 전환은 닫기가 아니다.
+ */
+const props = defineProps<{ active: boolean }>()
 
 const library = useLibraryStore()
 
@@ -78,9 +63,7 @@ const playback = inject(PLAYBACK_COORDINATOR, null)
  * — 가리는지 아닌지는 브레이크포인트를 아는 쪽만 판단할 수 있다.
  * 주입되지 않으면 비켜주지 않는다 (단독 마운트 테스트).
  */
-const drawer = inject(LIBRARY_DRAWER, null)
-
-const closeButton = ref<HTMLButtonElement | null>(null)
+const archive = inject(ARCHIVE, null)
 
 /** 이름 변경 폼이 열려 있는 대상. 열릴 때 정한 id 를 끝까지 쓴다. */
 const renamingId = ref<string | null>(null)
@@ -149,7 +132,7 @@ function closeLinkForm(): void {
   linkError.value = ''
 }
 
-function startAddLink(): void {
+async function startAddLink(): Promise<void> {
   const current = library.selectedPlaylist
   if (current === null) return
 
@@ -159,7 +142,12 @@ function startAddLink(): void {
   draftTitle.value = ''
   linkError.value = ''
   addedNotice.value = ''
+  // 링크 입력란으로 바로 간다 — 새 목록을 만든 뒤에도 같은 길이다 (M11 U15).
+  await nextTick()
+  document.getElementById('track-url')?.focus()
 }
+
+defineExpose({ startAddLink })
 
 async function submitLink(): Promise<void> {
   const targetId = linkTargetId.value
@@ -324,7 +312,7 @@ async function confirmDelete(): Promise<void> {
  * 남는다.
  */
 async function playAfterStepAside(request: () => PlayRequestResult | undefined): Promise<void> {
-  await drawer?.stepAside()
+  await archive?.stepAside()
 
   reportPlayRequest(request())
 }
@@ -371,54 +359,34 @@ function clearTransientState(): void {
  */
 watch(() => library.selectedPlaylistId, clearTransientState)
 
-/** 열릴 때 닫기 버튼으로 포커스를 옮긴다. 닫힐 때는 셸이 트리거로 되돌린다. */
+/** 보관함이 닫히면 쓰던 양식 · 일시 안내를 비운다. 포커스는 보관함이 맡는다. */
 watch(
-  () => props.open,
-  async (isOpen) => {
-    if (!isOpen) {
-      clearTransientState()
-      unsavedNotice.value = ''
-      return
-    }
-    await nextTick()
-    closeButton.value?.focus()
+  () => props.active,
+  (isActive) => {
+    if (isActive) return
+    clearTransientState()
+    unsavedNotice.value = ''
   },
 )
 </script>
 
 <template>
-  <!--
-    닫혀 있을 때 `hidden` 으로 둔다. 안쪽 버튼이 Tab 순서에 남지 않는다.
-    실제 포커스 가둠(focus trap)을 구현하지 않았으므로 aria-modal 을
-    선언하지 않는다. 넓은 화면에서는 플레이어를 비켜가는 비모달 영역이다.
-  -->
-  <aside :id="drawerId" class="drawer" :hidden="!open" aria-labelledby="record-library-title">
-    <div class="drawer-head">
-      <div class="head-text">
-        <!--
-          머리말이 **무엇을 편집하는지** 말한다. `이름 수정` 이 이 옆에 있으므로
-          무엇의 이름인지 자명하다 (보고 6b).
-        -->
-        <h2 id="record-library-title" class="drawer-title">
-          {{ library.selectedPlaylist?.name ?? 'RECORD LIBRARY' }}
-        </h2>
-        <p class="drawer-sub">
-          {{ library.selectedPlaylist === null ? 'COLLECTION' : `${trackCount} TRACKS` }} / YOUTUBE
-          ONLY
-        </p>
-      </div>
-      <button
-        ref="closeButton"
-        type="button"
-        class="close"
-        aria-label="라이브러리 닫기"
-        @click="emit('close')"
-      >
-        ×
-      </button>
+  <section class="playlist-editor" aria-labelledby="playlist-editor-title">
+    <div class="editor-head">
+      <!--
+        머리말이 **무엇을 편집하는지** 말한다. `이름 수정` 이 이 아래에 있으므로 무엇의 이름인지
+        자명하다 (보고 6b).
+      -->
+      <h3 id="playlist-editor-title" class="drawer-title">
+        {{ library.selectedPlaylist?.name ?? '플레이리스트' }}
+      </h3>
+      <p class="drawer-sub">
+        {{ library.selectedPlaylist === null ? '선택한 목록 없음' : `${trackCount} TRACKS` }} /
+        YOUTUBE ONLY
+      </p>
     </div>
 
-    <div class="drawer-body">
+    <div class="editor-body">
       <LibraryStatusBanner />
 
       <p v-if="unsavedNotice !== ''" class="unsaved" role="status">{{ unsavedNotice }}</p>
@@ -563,44 +531,20 @@ watch(
         @remove="removeTrack"
         @rename="renameTrack"
       />
-
-      <!--
-        JSON 백업 (M8-2). 편집 영역과 **선으로 끊고 다른 머리말**을 둔다 —
-        이 목록을 고치는 일과 앱 전체 데이터를 파일로 꺼내는 일은 성격이 다르다.
-      -->
-      <BackupPanel />
     </div>
-
-    <p class="drawer-foot">
-      데크나 플레이리스트의 ⋯ 로 열고, ESC 또는 ×로 닫으세요.<br />
-      ▶를 누르면 그 곡부터 목록을 이어서 재생합니다.
-    </p>
-  </aside>
+  </section>
 </template>
 
 <style scoped>
-/* 승인된 디자인의 `.drawer` 값을 따른다. */
-.drawer {
-  display: flex;
+.playlist-editor {
   min-width: 0;
-  height: 100%;
-  max-height: min(880px, 96vh);
-  flex-direction: column;
-  border-left: 1px solid var(--drawer-border-color);
-  background: var(--drawer-surface-color);
 }
 
-.drawer[hidden] {
-  display: none;
-}
-
-.drawer-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 21px 20px 16px;
+.editor-head {
+  min-width: 0;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
   border-bottom: 1px solid var(--drawer-head-border-color);
-  gap: 10px;
 }
 
 /*
@@ -612,10 +556,6 @@ watch(
  * 화면 밖 638px 에 섰다. 공백이 있는 이름도 `nowrap` 이므로 똑같다.
  * M9-6 실측에서 찾았고, M9 이전 빌드부터 있던 결함이다.
  */
-.head-text {
-  min-width: 0;
-}
-
 .drawer-title {
   margin: 0;
   overflow: hidden;
@@ -633,22 +573,8 @@ watch(
   font: 11px var(--font-mono);
 }
 
-.close {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border: 0;
-  background: transparent;
-  color: var(--close-button-text-color);
-  font-size: 23px;
-  line-height: 1;
-}
-
-.drawer-body {
-  min-height: 0;
-  flex: 1;
-  padding: 18px 16px;
-  overflow-y: auto;
+.editor-body {
+  min-width: 0;
 }
 
 /* 승인된 디자인의 `.pill` 값을 따른다. */
@@ -771,13 +697,5 @@ watch(
   color: var(--drawer-muted-text-color);
   font-size: 11px;
   line-height: 1.6;
-}
-
-.drawer-foot {
-  margin: 0;
-  padding: 13px 17px;
-  border-top: 1px solid var(--drawer-foot-border-color);
-  color: var(--drawer-foot-text-color);
-  font: 10px/1.6 var(--font-mono);
 }
 </style>

@@ -27,7 +27,14 @@ const props = defineProps<{
   maxNoteLength: number
   /** 메모를 저장한다. 폼을 닫아도 되면 `true` — 거절되면 `false` 이고 쓴 메모를 지킨다. */
   saveNote: (momentId: string, note: string) => Promise<boolean>
+  /**
+   * DOM id 앞머리 (M11-2). 대시보드 위젯과 보관함이 같은 목록을 함께 그릴 때 id 가 겹치지 않게 한다.
+   * 기본은 `moment` — 이전과 같은 id 다.
+   */
+  idPrefix?: string
 }>()
+
+const prefix = (): string => props.idPrefix ?? 'moment'
 
 const emit = defineEmits<{
   play: [momentId: string]
@@ -62,7 +69,7 @@ function startEdit(momentId: string, note: string): void {
   editingId.value = momentId
   draftNote.value = note
   editError.value = ''
-  focusIn(`#moment-note-${momentId}`)
+  focusIn(`#${prefix()}-note-${momentId}`)
 }
 
 function closeEdit(): void {
@@ -133,10 +140,10 @@ function noteLabel(note: string): string {
       class="moment-group"
       :class="{ 'is-current': group.videoId === currentVideoId }"
       :aria-current="group.videoId === currentVideoId ? 'true' : undefined"
-      :aria-labelledby="`moment-group-${group.videoId}`"
+      :aria-labelledby="`${prefix()}-group-${group.videoId}`"
     >
       <div class="group-head">
-        <h3 :id="`moment-group-${group.videoId}`" class="group-title" :title="group.title">
+        <h3 :id="`${prefix()}-group-${group.videoId}`" class="group-title" :title="group.title">
           {{ group.title }}
         </h3>
         <!-- 색에만 기대지 않는다. 지금 곡인지, 목록에서 빠졌는지 글로 적는다. -->
@@ -192,19 +199,19 @@ function noteLabel(note: string): string {
 
           <!-- 고치는 줄 **바로 아래**에 둔다. 무엇의 메모인지 자리가 말해준다. -->
           <form v-if="editingId === moment.id" class="edit-form" @submit.prevent="submitEdit">
-            <label class="label" :for="`moment-note-${moment.id}`">
+            <label class="label" :for="`${prefix()}-note-${moment.id}`">
               {{ formatMomentTime(moment.atSeconds) }} 메모
             </label>
             <textarea
-              :id="`moment-note-${moment.id}`"
+              :id="`${prefix()}-note-${moment.id}`"
               v-model="draftNote"
               class="field field--area"
               rows="3"
               :maxlength="maxNoteLength"
               :aria-invalid="editError !== '' || undefined"
-              :aria-describedby="`moment-note-${moment.id}-count`"
+              :aria-describedby="`${prefix()}-note-${moment.id}-count`"
             />
-            <p :id="`moment-note-${moment.id}-count`" class="counter">
+            <p :id="`${prefix()}-note-${moment.id}-count`" class="counter">
               {{ draftNote.length }} / {{ maxNoteLength }}
             </p>
             <p class="error-msg">{{ editError }}</p>

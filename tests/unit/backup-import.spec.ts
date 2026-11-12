@@ -1417,7 +1417,7 @@ describe('H. 앱 상태와 경계', () => {
       'MORNING',
     ])
     // 선택된 목록이 표시된다.
-    expect(context.wrapper.get('#record-library-title').text()).toBe('MORNING')
+    expect(context.wrapper.get('#playlist-editor-title').text()).toBe('MORNING')
     // 테마가 문서에 반영된다.
     expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
   })
@@ -1433,7 +1433,12 @@ describe('H. 앱 상태와 경계', () => {
       'src/features/backup/createBackup.ts',
       'src/features/backup/readBackup.ts',
       'src/features/backup/BackupPanel.vue',
-      'src/features/library/RecordLibraryDrawer.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/backup/DataDialog.vue',
+      'src/components/layout/AppNav.vue',
       'src/features/library/PlaylistWidget.vue',
       'src/features/library/PlaylistTile.vue',
       'src/features/library/TrackList.vue',

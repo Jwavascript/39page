@@ -35,6 +35,7 @@ defineProps<{ brand: string }>()
 /* 승인된 디자인의 .header / .brand 값을 따른다. */
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   align-items: center;
   justify-content: space-between;
@@ -57,8 +58,11 @@ defineProps<{ brand: string }>()
 
 .actions {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   gap: 9px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 @media (max-width: 650px) {
@@ -69,6 +73,11 @@ defineProps<{ brand: string }>()
 
   .brand {
     font-size: 10px;
+  }
+
+  /* M11-2: 전역 입구가 생겼다 — 좁은 화면에서는 브랜드 아래 한 줄을 통째로 쓴다. */
+  .actions {
+    width: 100%;
   }
 }
 </style>

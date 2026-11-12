@@ -1013,7 +1013,7 @@ describe('D. 드로어 연동', () => {
     const context = await seedPlaying()
 
     // 플레이어는 top 120 ~ bottom 425 다. 시트를 그 아래에서만 올린다.
-    setRectOverride('#record-library-drawer', sheetRect(300))
+    setRectOverride('#archive-panel', sheetRect(300))
 
     context.wrapper.get('.playlist-play').trigger('click')
     await nextTick()
@@ -1035,7 +1035,12 @@ describe('D. 드로어 연동', () => {
    * 사용자 지시 그대로다: "만약 유튜브 화면을 규정 이상으로 가리면 그냥
    * 일시정지". 규정은 200×200 이고, 남은 높이가 그 아래면 멈춘다.
    */
-  it('시트가 규정 이상으로 덮으면 일시정지한다 (M7-1)', async () => {
+  /*
+   * M11-2 — 쌓기 배치의 시트는 **영상의 실제 아래 끝**에서 시작한다. 그래서 보관함을 열어도
+   * 가림 보고가 영상에 닿지 않고 멈추지 않는다. (덮으면 멈추는 M7-1 의 가드는 그대로다 — 이
+   * 파일의 C 절과 코디네이터 시험이 고정한다. 바뀐 것은 덮지 않는 배치다.)
+   */
+  it('쌓기 배치의 시트는 영상의 실제 아래 끝에서 시작해 재생을 멈추지 않는다 (M11-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
@@ -1046,18 +1051,20 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    // 플레이어 위쪽 120px 만 남긴다 → 200px 미달이다.
-    setRectOverride('#record-library-drawer', sheetRect(528))
-
     await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
 
-    expect(context.fake.calls.pause).toBe(1)
-    expect(context.playback.statusMessage).toContain('가려져 일시정지')
-    // 큐는 그대로다. 돌아와서 ▶ 를 누르면 이어서 재생된다.
-    expect(context.playback.queue).toHaveLength(3)
+    // 영상 상자(stub) 아래 끝 425 + 여백 8 = 433px 에서 시트가 시작한다.
+    const workspace = context.wrapper.get('.workspace')
+    expect(workspace.classes()).toContain('is-stacked')
+    expect((workspace.element as HTMLElement).style.getPropertyValue('--archive-sheet-top')).toBe(
+      '433px',
+    )
+    expect(context.fake.calls.pause).toBe(0)
+    expect(context.playback.playerState).toBe('playing')
+    expect(context.playback.statusMessage).toBe('')
   })
 
   it('넓은 화면에서는 드로어가 측면 열이므로 가림을 알리지 않는다', async () => {
@@ -1066,7 +1073,7 @@ describe('D. 드로어 연동', () => {
     const context = await seedPlaying()
 
     // 측면 열이어도 스텁 사각형은 화면 하단까지 내려와 있다.
-    setRectOverride('#record-library-drawer', sheetRect(700))
+    setRectOverride('#archive-panel', sheetRect(700))
 
     context.wrapper.get('.playlist-play').trigger('click')
     await nextTick()
@@ -1090,25 +1097,23 @@ describe('D. 드로어 연동', () => {
    * 안내가 맞는 말이어도 사용자가 할 일이 남으면 막힌 것이다. 재생을 누르면
    * 시트가 **먼저 비켜주고** 재생한다.
    */
-  it('시트 안에서 트랙 ▶ 를 누르면 시트가 닫히고 재생된다 (M7-2)', async () => {
+  it('보관함 안에서 트랙 ▶ 를 누르면 보관함을 닫지 않고 재생한다 — 덮지 않으므로 (M11-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
-    // 시트가 플레이어를 규정 이상으로 덮는다.
-    setRectOverride('#record-library-drawer', sheetRect(528))
 
     await editorTrigger(context.wrapper).trigger('click')
-    await nextTick()
+    await flushPromises()
     await nextTick()
 
     await context.wrapper.get('.track-play').trigger('click')
     await flushPromises()
 
-    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
     expect(context.fake.calls.load).toEqual([{ videoId: VIDEOS[0], autoplay: true }])
   })
 
-  it('재생 중에 다른 트랙으로 바꿀 수 있다 (M7-2, 보고된 시나리오)', async () => {
+  it('재생 중에 다른 트랙으로 바꿀 수 있다 — 보관함을 연 채로 (M7-2 시나리오, M11-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
@@ -1121,32 +1126,40 @@ describe('D. 드로어 연동', () => {
     await nextTick()
     expect(context.fake.calls.load).toHaveLength(1)
 
-    // 시트를 열어 트랙 목록을 본다. 영상이 덮여 일시정지된다.
-    setRectOverride('#record-library-drawer', sheetRect(528))
+    // 보관함을 열어 트랙 목록을 본다. 영상은 덮이지 않고 멈추지 않는다.
     await editorTrigger(context.wrapper).trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
-    expect(context.fake.calls.pause).toBe(1)
+    expect(context.fake.calls.pause).toBe(0)
 
     // 두 번째 곡의 ▶ 를 누른다.
     await context.wrapper.findAll('.track-play')[1]?.trigger('click')
     await flushPromises()
 
-    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
     expect(context.playback.queueIndex).toBe(1)
     expect(context.fake.calls.load[1]).toEqual({ videoId: VIDEOS[1], autoplay: true })
   })
 
-  it('시트 안에서 목록 전체 재생도 시트를 닫고 재생한다 (M7-2)', async () => {
+  /*
+   * M7-2 의 계약 — "재생 전에 덮고 있으면 비켜준다" — 은 남는다. M11 의 배치는 덮지 않지만,
+   * 열린 뒤 영상 상자가 커지는 경우(회전 직후 등) 측정이 덮였다고 하면 먼저 닫고 재생한다.
+   */
+  it('측정상 영상이 시트 밑으로 내려가 있으면 먼저 비켜준 뒤 재생한다 (M7-2 계약)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
-    setRectOverride('#record-library-drawer', sheetRect(528))
 
     await editorTrigger(context.wrapper).trigger('click')
+    await flushPromises()
     await nextTick()
-    await nextTick()
+    // 시트는 433px 에서 시작했다. 그 뒤 영상 상자가 605px 까지 내려왔다고 측정된다.
+    setRectOverride('[data-widget="player"] .video-holder', {
+      ...VISIBLE_RECT,
+      top: 300,
+      bottom: 605,
+    })
 
     const playAll = context.wrapper
       .findAll('.drawer-actions button')
@@ -1159,32 +1172,35 @@ describe('D. 드로어 연동', () => {
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('타일의 ▶ 도 시트를 닫고 재생한다 (M7-2)', async () => {
+  it('보관함 목록의 ▶ 도 보관함을 연 채 재생한다 (M11-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
-    setRectOverride('#record-library-drawer', sheetRect(528))
 
     await editorTrigger(context.wrapper).trigger('click')
-    await nextTick()
+    await flushPromises()
     await nextTick()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.archive-lists .list-play').trigger('click')
     await flushPromises()
 
-    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('데크의 ▶ 도 같은 길을 쓴다 (M7-2)', async () => {
+  it('데크의 ▶ 도 같은 길을 쓴다 — 측정상 덮였으면 비켜준다 (M7-2 계약)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
-    setRectOverride('#record-library-drawer', sheetRect(528))
 
     await editorTrigger(context.wrapper).trigger('click')
+    await flushPromises()
     await nextTick()
-    await nextTick()
+    setRectOverride('[data-widget="player"] .video-holder', {
+      ...VISIBLE_RECT,
+      top: 300,
+      bottom: 605,
+    })
 
     await context.wrapper.get('.deck-key--mono-vinyl').trigger('click')
     await flushPromises()
@@ -1212,30 +1228,28 @@ describe('D. 드로어 연동', () => {
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('시트를 닫으면 가림이 걷히고 안내가 지워진다 (M7-1)', async () => {
+  it('보관함을 닫으면 쌓기 배치 · 페이지 스크롤 잠금이 풀린다 (M11-2)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
 
-    context.wrapper.get('.playlist-play').trigger('click')
-    await nextTick()
-    context.fake.emitReady()
-    context.fake.emitStateChange('playing')
-    await nextTick()
-
-    setRectOverride('#record-library-drawer', sheetRect(528))
     await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
     await flushPromises()
     await nextTick()
-    await nextTick()
-    expect(context.playback.statusMessage).not.toBe('')
+    expect(document.documentElement.style.overflow).toBe('hidden')
+    expect(context.wrapper.get('.workspace').classes()).toContain('is-stacked')
 
     await context.wrapper.get('.drawer .close').trigger('click')
     await flushPromises()
     await nextTick()
-    await nextTick()
 
-    expect(context.playback.statusMessage).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
+    const workspace = context.wrapper.get('.workspace')
+    expect(workspace.classes()).not.toContain('is-stacked')
+    expect(workspace.classes()).not.toContain('is-archive-open')
+    expect((workspace.element as HTMLElement).style.getPropertyValue('--archive-sheet-top')).toBe(
+      '',
+    )
     // 걷혔다고 자동으로 재생하지는 않는다.
     expect(context.fake.calls.play).toBe(0)
   })
@@ -1276,26 +1290,29 @@ describe('D. 드로어 연동', () => {
    *
    * 이제 보장은 **측정**이 진다. 레이아웃은 시트를 하단에 고정하기만 한다.
    */
-  it('좁은 화면에서 시트가 화면을 가리고, 위젯을 숨기지 않는다', () => {
+  /*
+   * M11-2 에서 다시 쓴 시험이다. M7 의 시트는 화면을 **덮고** 덮은 높이를 측정이 보았다. M11 의
+   * 보관함은 **덮지 않는 배치**다 — 쌓기에서는 영상 아래에서 시작하는 고정 시트, 나머지 위젯은
+   * CSS 로만 접는다. M7 에서 되돌린 `position: sticky` 는 쓰지 않는다.
+   */
+  it('쌓기 배치 — 시트가 영상 아래에서 시작하고, 위젯은 CSS 로만 접는다 (M11-2)', () => {
     const shell = readFileSync(
       resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
       'utf8',
     )
-    const compact = shell.slice(shell.indexOf('@media (max-width: 1100px)'))
+    const style = shell.slice(shell.indexOf('<style scoped>'))
+    const stacked = style.slice(style.indexOf('.workspace.is-archive-open.is-stacked {'))
 
-    // 시트는 뷰포트 하단에 고정되고 높이에 상한이 있다.
-    expect(compact).toContain('position: fixed')
-    expect(compact).toContain('max-height: var(--size-sheet-height)')
-
-    // 위젯을 숨기지 않는다. 보던 화면 위로 시트가 올라온다.
-    expect(compact).not.toContain(":deep(.widget-host > *:not([data-widget='player']))")
-    expect(compact).not.toMatch(/> :first-child \{\s*display: none/)
-
-    // 플레이어를 피하게 하는 우회를 두지 않는다. 측정이 사실을 본다.
-    expect(compact).not.toContain('position: sticky')
-
-    // 시트에 영구히 묻히는 콘텐츠가 없어야 한다.
-    expect(compact).toContain('padding-bottom: calc(var(--size-sheet-height) + 18px)')
+    // 시트는 뷰포트에 고정되고, 위쪽 끝이 측정한 영상 아래 끝이다.
+    expect(stacked).toContain('position: fixed')
+    expect(stacked).toContain('inset: var(--archive-sheet-top, 50dvh) 0 0')
+    // 짧은 페이지에서도 영상을 화면 위로 올릴 수 있다.
+    expect(stacked).toContain('padding-bottom: 100dvh')
+    // 플레이어 외 위젯은 display: none 으로만 — v-if 로 지우지 않는다 (ADR 0002).
+    expect(style).toContain(":deep(.widget-host > :not([data-widget='player']))")
+    expect(shell).not.toMatch(/<WidgetHost[^>]*v-if/)
+    // M7 에서 되돌린 우회를 다시 쓰지 않는다.
+    expect(style).not.toContain('position: sticky')
   })
 
   /*
@@ -1305,16 +1322,18 @@ describe('D. 드로어 연동', () => {
    * 피해 2 행으로 밀린다 — "드로어가 위쪽에 별도 공간으로 생긴다" 로 보고된
    * 증상이다. jsdom 은 그리드를 계산하지 않으므로 이 보장은 소스로 고정한다.
    */
-  it('넓은 화면에서 스테이지와 드로어가 같은 셀을 쓴다', () => {
+  it('나란히 배치 — 플레이어 열(최소 360px)과 보관함 열이 겹치지 않는다 (M11-2)', () => {
     const shell = readFileSync(
       resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
       'utf8',
     )
-    const wide = shell.slice(0, shell.indexOf('@media (max-width: 1100px)'))
+    const style = shell.slice(shell.indexOf('<style scoped>'))
 
-    expect(wide).toMatch(
-      /\.workspace\.is-drawer-open > :first-child,\s*\.workspace\.is-drawer-open > :last-child \{\s*grid-area: 1 \/ 1;/,
+    expect(style).toMatch(
+      /\.workspace\.is-archive-open \{[^}]*grid-template-columns: minmax\(360px, 0\.9fr\) minmax\(0, 1\.1fr\);/,
     )
+    // 같은 셀에 겹쳐 놓는 M6-2 의 오버레이 규칙은 없다.
+    expect(style).not.toContain('grid-area: 1 / 1')
   })
 
   it('넓은 화면에서는 드로어를 열어도 멈추지 않는다', async () => {

@@ -4,7 +4,7 @@
  * 구현은 `createPlaybackCoordinator.ts` 에 있다. 이 파일은 타입과 주입 키만
  * 담고 store 를 import 하지 않는다 — Record Library 가 재생을 요청할 때
  * 재생 구현 전체를 끌어오지 않게 하기 위해서다.
- * `features/library/drawerController.ts` 와 같은 구조다.
+ * `features/archive/archiveController.ts` 와 같은 구조다.
  *
  * 코디네이터가 있는 이유: 라이브러리와 재생은 **서로를 몰라야 한다**
  * (`AGENTS.md` 규칙 2, `SYSTEM_DESIGN.md` §6.1). 두 store 를 잇는 조립은

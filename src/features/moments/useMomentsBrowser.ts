@@ -16,7 +16,7 @@
  */
 import { computed, inject, readonly, ref, type ComputedRef, type Ref } from 'vue'
 
-import { LIBRARY_DRAWER } from '@/features/library/drawerController'
+import { ARCHIVE } from '@/features/archive/archiveController'
 import {
   PLAYBACK_COORDINATOR,
   PLAY_REFUSED_HIDDEN_MESSAGE,
@@ -89,7 +89,7 @@ export function useMomentsBrowser(): MomentsBrowserModel {
   /** 주입되지 않으면 재생을 요청하지 않는다 (단독 마운트 테스트). */
   const coordinator = inject(PLAYBACK_COORDINATOR, null)
   /** 주입되지 않으면 비켜달라고 하지 않는다. */
-  const drawer = inject(LIBRARY_DRAWER, null)
+  const archive = inject(ARCHIVE, null)
 
   const filter = ref<MomentsFilter>('all')
   const feedback = ref<MomentFeedback | null>(null)
@@ -121,7 +121,7 @@ export function useMomentsBrowser(): MomentsBrowserModel {
     const target = { videoId: moment.videoId, atSeconds: moment.atSeconds, title: moment.title }
 
     // 세로 화면의 시트가 플레이어를 덮고 있으면 먼저 비켜준다 (M7-2).
-    await drawer?.stepAside()
+    await archive?.stepAside()
 
     if (coordinator === null) {
       feedback.value = warning('플레이어가 연결되지 않아 재생할 수 없어요.')

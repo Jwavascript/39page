@@ -1,0 +1,251 @@
+<script setup lang="ts">
+/**
+ * 통합 보관함 — 음악 · Moments 두 탭 (M11-2, ADR 0027 C안).
+ *
+ * 화면 구조(어디에 놓이는지 · 플레이어를 어떻게 피하는지)는 `DashboardShell` 이 정한다. 이
+ * 컴포넌트는 **보관함 안**만 안다 — 탭, 닫기, 포커스.
+ *
+ * - 탭은 WAI-ARIA 탭 패턴이다: `role="tablist"` · 화살표 ←/→ · Home/End 로 옮기고 바로 바꾼다.
+ * - 두 탭 본문은 **늘 마운트**되어 있고 `hidden` 으로만 숨긴다. 탭을 오가도 쓰던 양식이 남는다.
+ * - 열리면 고른 탭 단추로 포커스가 온다. 닫으면 셸이 연 버튼으로 되돌린다.
+ * - 포커스 가둠이 없는 비모달 영역이다 — 플레이어 · 헤더를 계속 쓸 수 있다. 그래서 `aria-modal`
+ *   을 선언하지 않는다 (M2 드로어와 같은 판단).
+ */
+import { nextTick, ref, watch } from 'vue'
+
+import ArchivePlaylistNav from '@/features/library/ArchivePlaylistNav.vue'
+import PlaylistEditor from '@/features/library/PlaylistEditor.vue'
+import MomentsBrowserPanel from '@/features/moments/MomentsBrowserPanel.vue'
+import { useMomentsStore } from '@/stores/moments'
+
+import type { ArchiveTab } from './archiveController'
+
+const props = defineProps<{
+  open: boolean
+  tab: ArchiveTab
+  panelId: string
+}>()
+
+const emit = defineEmits<{
+  close: []
+  'select-tab': [tab: ArchiveTab]
+}>()
+
+const moments = useMomentsStore()
+
+const TABS: readonly { key: ArchiveTab; label: string }[] = [
+  { key: 'music', label: '♪ 음악' },
+  { key: 'moments', label: '◆ Moments' },
+]
+
+const tabButtons = ref<Record<ArchiveTab, HTMLButtonElement | null>>({ music: null, moments: null })
+
+function focusTab(tab: ArchiveTab): void {
+  void nextTick(() => tabButtons.value[tab]?.focus())
+}
+
+/** 화살표 · Home · End — 옮기면서 바로 그 탭을 연다 (자동 활성화). */
+function onTabKeydown(event: KeyboardEvent): void {
+  const index = TABS.findIndex((item) => item.key === props.tab)
+  let next = index
+  if (event.key === 'ArrowRight') next = (index + 1) % TABS.length
+  else if (event.key === 'ArrowLeft') next = (index - 1 + TABS.length) % TABS.length
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = TABS.length - 1
+  else return
+  event.preventDefault()
+  const target = TABS[next]
+  if (target === undefined) return
+  emit('select-tab', target.key)
+  focusTab(target.key)
+}
+
+/** 새 목록을 만들면 곡 추가로 바로 이어 준다 — 편집 표면의 "링크 추가" 로 포커스 (M11 U15). */
+const editor = ref<InstanceType<typeof PlaylistEditor> | null>(null)
+function onPlaylistCreated(): void {
+  void nextTick(() => editor.value?.startAddLink())
+}
+
+/** Moments 탭을 한 번이라도 열었는지 — 열었으면 그 뒤로 마운트를 유지한다. */
+const momentsVisited = ref(false)
+watch(
+  () => props.open && props.tab === 'moments',
+  (visible) => {
+    if (visible) momentsVisited.value = true
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [props.open, props.tab] as const,
+  ([isOpen], previous) => {
+    // 열릴 때만 옮긴다. 열린 채 탭을 바꾸는 것은 사용자가 탭을 눌렀거나 화살표를 쓴 것이다.
+    if (isOpen && previous?.[0] !== true) focusTab(props.tab)
+  },
+)
+</script>
+
+<template>
+  <!--
+    `drawer` 클래스는 M2 드로어의 표면 토큰(`--drawer-*`)을 그대로 쓰기 위한 것이다.
+    닫혀 있으면 `hidden` — 안쪽 단추가 Tab 순서에 남지 않는다.
+  -->
+  <aside :id="panelId" class="archive drawer" :hidden="!open" aria-labelledby="archive-title">
+    <div class="archive-head">
+      <h2 id="archive-title" class="archive-title">보관함</h2>
+      <div class="tabs" role="tablist" aria-label="보관함 보기">
+        <button
+          v-for="item in TABS"
+          :id="`archive-tab-${item.key}`"
+          :key="item.key"
+          :ref="(el) => (tabButtons[item.key] = el as HTMLButtonElement | null)"
+          type="button"
+          role="tab"
+          class="tab"
+          :aria-selected="tab === item.key"
+          :aria-controls="`archive-panel-${item.key}`"
+          :tabindex="tab === item.key ? 0 : -1"
+          @click="emit('select-tab', item.key)"
+          @keydown="onTabKeydown"
+        >
+          {{ item.label }}
+          <span v-if="item.key === 'moments'" class="tab-count">{{ moments.count }}</span>
+        </button>
+      </div>
+      <button type="button" class="close" aria-label="보관함 닫기" @click="emit('close')">×</button>
+    </div>
+
+    <div
+      id="archive-panel-music"
+      class="archive-body"
+      role="tabpanel"
+      aria-labelledby="archive-tab-music"
+      :hidden="tab !== 'music'"
+    >
+      <ArchivePlaylistNav @created="onPlaylistCreated" />
+      <PlaylistEditor ref="editor" :active="open" />
+    </div>
+
+    <div
+      id="archive-panel-moments"
+      class="archive-body"
+      role="tabpanel"
+      aria-labelledby="archive-tab-moments"
+      :hidden="tab !== 'moments'"
+    >
+      <!--
+        처음 이 탭을 열 때 마운트한다 (그 뒤로는 유지). 열어 보지도 않은 수백 · 수천 행을 미리 그리지
+        않고, 대시보드 위젯과 같은 목록이 화면 밖에 한 벌 더 생기지 않게 한다.
+      -->
+      <MomentsBrowserPanel v-if="momentsVisited" />
+    </div>
+
+    <p class="archive-foot">
+      Esc 또는 × 로 닫아요. 보관함을 열어도 음악은 계속 재생돼요.<br />
+      JSON 백업은 맨 위의 <strong>⇩ 데이터</strong> 에서 할 수 있어요.
+    </p>
+  </aside>
+</template>
+
+<style scoped>
+/* 승인된 디자인의 `.drawer` 표면 (M2) 을 잇는다. */
+.archive {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid var(--drawer-border-color);
+  background: var(--drawer-surface-color);
+}
+
+.archive[hidden] {
+  display: none;
+}
+
+.archive-head {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 12px 12px 16px;
+  border-bottom: 1px solid var(--drawer-head-border-color);
+}
+
+.archive-title {
+  margin: 0;
+  color: var(--drawer-title-text-color);
+  font: 13px var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+.tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.tab {
+  min-width: 0;
+  min-height: 44px;
+  flex: 1 1 0;
+  padding: 6px 12px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: var(--pill-surface-color);
+  color: var(--pill-text-color);
+  font: 12px var(--font-mono);
+  white-space: nowrap;
+}
+
+.tab[aria-selected='true'] {
+  border-color: var(--accent-strong-color);
+  background: var(--accent-strong-color);
+  color: var(--accent-strong-text-color);
+}
+
+.tab-count {
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
+.close {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--close-button-text-color);
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* 보관함 안에서 스크롤은 **이 한 곳**이다 — 중첩 스크롤을 만들지 않는다. */
+.archive-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.archive-body[hidden] {
+  display: none;
+}
+
+.archive-foot {
+  flex: none;
+  margin: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--drawer-foot-border-color);
+  color: var(--drawer-foot-text-color);
+  font: 10px/1.6 var(--font-mono);
+}
+
+.archive-foot strong {
+  color: var(--drawer-title-text-color);
+  font-weight: 400;
+}
+</style>

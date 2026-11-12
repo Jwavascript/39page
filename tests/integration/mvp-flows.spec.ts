@@ -428,7 +428,8 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
     await trigger.trigger('click')
     await nextTick()
     await flushPromises()
-    expect(document.activeElement).toBe(session.wrapper.get('.drawer .close').element)
+    // M11-2: 보관함은 열리면 고른 탭으로 포커스를 옮긴다.
+    expect(document.activeElement).toBe(session.wrapper.get('#archive-tab-music').element)
 
     await closeDrawer(session)
     await flushPromises()
@@ -446,7 +447,7 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
     await nextTick()
 
     expect(session.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
-    expect(session.wrapper.get('#record-library-drawer').attributes('hidden')).toBeDefined()
+    expect(session.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
   })
 })
 

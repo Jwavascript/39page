@@ -3,7 +3,7 @@
  *
  * 데크(LP·카세트)를 누르면 플레이리스트 위젯이 펼쳐진다. 누르는 쪽
  * (`DeckWidget`)과 펼쳐지는 쪽(`PlaylistWidget`)은 `WidgetHost` 를 사이에 두고
- * 떨어져 있어 props 로 닿지 않는다. `drawerController.ts` 와 같은 이유로 주입을
+ * 떨어져 있어 props 로 닿지 않는다. `archiveController.ts` 와 같은 이유로 주입을
  * 쓴다.
  *
  * M6 까지는 데크를 누르면 **트랙 드로어**가 열렸다. 실기기 검증에서 "lp판을

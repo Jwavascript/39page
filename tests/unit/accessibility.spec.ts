@@ -102,7 +102,7 @@ describe('A. 문서 구조', () => {
 })
 
 describe('B. 키보드 경로', () => {
-  it('드로어를 열면 닫기 버튼으로 포커스가 옮겨간다', async () => {
+  it('보관함을 열면 고른 탭으로 포커스가 옮겨간다 (M11-2)', async () => {
     const { wrapper } = mountApp()
     await seedLibrary()
     await nextTick()
@@ -112,7 +112,7 @@ describe('B. 키보드 경로', () => {
     await trigger.trigger('click')
     await flushPromises()
 
-    expect(document.activeElement).toBe(wrapper.get('.drawer .close').element)
+    expect(document.activeElement).toBe(wrapper.get('#archive-tab-music').element)
   })
 
   it('ESC 로 닫고 포커스가 트리거로 돌아온다', async () => {
@@ -144,7 +144,7 @@ describe('B. 키보드 경로', () => {
     // 넓은 화면에서는 나란히 놓이는 비모달 영역이다. 가두지 않는 것을
     // 선언하지 않는 것으로 정직하게 표시한다.
     expect(drawer.attributes('aria-modal')).toBeUndefined()
-    expect(drawer.attributes('aria-labelledby')).toBe('record-library-title')
+    expect(drawer.attributes('aria-labelledby')).toBe('archive-title')
   })
 
   it('비활성 테마의 데크 트리거는 숨어 Tab 순서에서 빠진다', () => {
@@ -229,7 +229,12 @@ describe('D. 포커스 링', () => {
       'src/components/layout/AppHeader.vue',
       'src/components/ui/ThemeSwitcher.vue',
       'src/features/playback/PlayerTransport.vue',
-      'src/features/library/RecordLibraryDrawer.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/backup/DataDialog.vue',
+      'src/components/layout/AppNav.vue',
       'src/features/library/PlaylistWidget.vue',
       'src/features/library/PlaylistTile.vue',
       'src/features/library/TrackList.vue',

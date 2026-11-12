@@ -49,7 +49,7 @@ function mountApp() {
 
 type Wrapper = ReturnType<typeof mountApp>['wrapper']
 
-const drawer = (wrapper: Wrapper) => wrapper.get('#record-library-drawer')
+const drawer = (wrapper: Wrapper) => wrapper.get('#archive-panel')
 const isOpen = (wrapper: Wrapper) => drawer(wrapper).attributes('hidden') === undefined
 
 /** 지금 보이는 데크의 열기 트리거. 비활성 테마의 것은 CSS 로 숨겨진다. */
@@ -183,7 +183,7 @@ describe('A. 드로어 동작', () => {
     const { wrapper } = mountApp()
     await openDrawer(wrapper)
 
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
 
     expect(isOpen(wrapper)).toBe(false)
@@ -200,7 +200,7 @@ describe('A. 드로어 동작', () => {
     expect(isOpen(wrapper)).toBe(false)
   })
 
-  it('6. 열면 닫기 버튼으로, 닫으면 트리거로 포커스가 간다', async () => {
+  it('6. 열면 고른 탭(음악)으로, 닫으면 트리거로 포커스가 간다 (M11-2 보관함)', async () => {
     const { wrapper } = mountApp()
     useLibraryStore().createPlaylist('A')
     await nextTick()
@@ -214,9 +214,9 @@ describe('A. 드로어 동작', () => {
     await flushPromises()
     await nextTick()
     await nextTick()
-    expect(document.activeElement).toBe(wrapper.get('[aria-label="라이브러리 닫기"]').element)
+    expect(document.activeElement).toBe(wrapper.get('#archive-tab-music').element)
 
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
@@ -404,7 +404,7 @@ describe('B. 플레이리스트 UI', () => {
     expect(tiles[1]?.find('.playlist-play').attributes('disabled')).toBeDefined()
 
     // 드로어 머리말이 **무엇을 편집하는지** 말한다 (보고 6b).
-    expect(wrapper.get('#record-library-title').text()).toBe('B')
+    expect(wrapper.get('#playlist-editor-title').text()).toBe('B')
   })
 
   it('선택을 바꿔도 재생 큐가 그대로다', async () => {
@@ -681,7 +681,7 @@ describe('D. 플레이어 안정성', () => {
     expect(wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)
     expect(wrapper.get('.player-mount').element).toBe(mount)
 
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
 
     expect(wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)
@@ -694,7 +694,7 @@ describe('D. 플레이어 안정성', () => {
 
     for (let i = 0; i < 3; i += 1) {
       await openDrawer(wrapper)
-      await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+      await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
       await nextTick()
     }
 
@@ -711,7 +711,7 @@ describe('D. 플레이어 안정성', () => {
 
     await openDrawer(wrapper)
     await switchTheme('kawaii-synth-cassette')
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
     await switchTheme('mono-vinyl')
     await openDrawer(wrapper)
@@ -810,15 +810,19 @@ describe('F. 긴 이름·긴 제목이 드로어를 넓히지 않는다 (M9-6 �
    *
    * jsdom 은 레이아웃을 하지 않으므로 보장을 이루는 조각을 모두 고정한다.
    */
-  const drawer = () => readFileSync('src/features/library/RecordLibraryDrawer.vue', 'utf8')
+  // M11-2: 드로어의 틀은 보관함(ArchivePanel), 목록 머리말은 편집 표면(PlaylistEditor)이 맡는다.
+  const archive = () => readFileSync('src/features/archive/ArchivePanel.vue', 'utf8')
+  const editor = () => readFileSync('src/features/library/PlaylistEditor.vue', 'utf8')
   const list = () => readFileSync('src/features/library/TrackList.vue', 'utf8')
 
   it('머리말의 글 상자가 줄어들 수 있고, 닫기 버튼은 줄지 않는다', () => {
-    expect(drawer()).toContain('<div class="head-text">')
-    expect(drawer()).toMatch(/\.head-text \{[^}]*min-width: 0/)
-    expect(drawer()).toMatch(/\.close \{[^}]*flex: none/)
+    expect(editor()).toContain('<div class="editor-head">')
+    expect(editor()).toMatch(/\.editor-head \{[^}]*min-width: 0/)
+    expect(archive()).toMatch(/\.close \{[^}]*flex: none/)
+    // 탭 줄은 줄어들 수 있다 — 닫기(×)를 밀어내지 않는다.
+    expect(archive()).toMatch(/\.tabs \{[^}]*min-width: 0/)
     // 줄어든 자리에서 제목은 말줄임된다.
-    expect(drawer()).toMatch(/\.drawer-title \{[^}]*text-overflow: ellipsis/)
+    expect(editor()).toMatch(/\.drawer-title \{[^}]*text-overflow: ellipsis/)
   })
 
   it('트랙 목록의 열이 목록 폭에 묶여 있다', () => {

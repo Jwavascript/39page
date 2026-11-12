@@ -44,9 +44,9 @@ import {
   installPlayerRect,
   setPlayerRect,
   setRectOverride,
-  sheetRect,
   uninstallMatchMedia,
   uninstallPlayerRect,
+  VISIBLE_RECT,
 } from '../support/playerLayout'
 
 const A = 'aaaaaaaaaaa'
@@ -977,21 +977,25 @@ describe('E. Moment 로 재생', () => {
     expect(s.playback.queue).toEqual([])
   })
 
-  it('좁은 화면에서 시트가 플레이어를 덮고 있으면 먼저 비켜준 뒤 재생한다 (M7-2)', async () => {
+  it('쌓기 배치에서 측정상 영상이 시트에 덮이면 먼저 비켜준 뒤 재생한다 (M7-2 계약, M11-2)', async () => {
     installMatchMedia(true)
     seedMoments([moment({ id: 'x', videoId: B, title: 'Bravo', atSeconds: 30 })])
     const s = boot()
-    // 시트가 화면 하단 700px 을 덮는다 — 플레이어(120~425)까지 덮는다.
-    setRectOverride('#record-library-drawer', sheetRect(700))
     await s.wrapper.get('.playlist-tile .playlist-open').trigger('click')
     await flushPromises()
-    expect(s.wrapper.get('#record-library-drawer').attributes('hidden')).toBeUndefined()
+    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    // 보관함 시트는 영상 아래 끝에서 시작했다. 그 뒤 영상 상자가 시트 밑까지 내려왔다고 측정된다.
+    setRectOverride('[data-widget="player"] .video-holder', {
+      ...VISIBLE_RECT,
+      top: 300,
+      bottom: 605,
+    })
 
     await widget(s).get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
 
-    // 시트가 닫혔고(가림 0), 그 뒤에 가드를 통과해 재생됐다. 가드를 건너뛴 것이 아니다.
-    expect(s.wrapper.get('#record-library-drawer').attributes('hidden')).toBeDefined()
+    // 보관함이 닫혔고(가림 0), 그 뒤에 가드를 통과해 재생됐다. 가드를 건너뛴 것이 아니다.
+    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
     expect(s.fake.calls.load).toEqual([{ videoId: B, autoplay: true, startSeconds: 30 }])
   })
 
