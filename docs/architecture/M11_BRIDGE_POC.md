@@ -1,5 +1,8 @@
 # 확장 저장 브리지 — 후보 비교와 PoC 결과 (M11-1)
 
+> **M11-5 에서 정식 구현했다 (2026-11-12)** — 이 문서는 PoC 기록이다. 정식 구조 · 결정은 ADR 0028 결정 11–15 ·
+> `IMPLEMENTATION_PLAN.md` M11-5 · `EXTENSION_DESIGN.md` §16. PoC 의 메모리 기록 기반 중복 방지는 요청 ID 에서 정한 저장 id 로 바뀌었다.
+
 > 상태: **M11-1 기술 검증 완료 (2026-11-12)** — 정식 구현은 M11-5. 결정(제안): [ADR 0028](../decisions/0028-extension-save-bridge.md)
 > UX: [`../product/M11_UX_DESIGN.md`](../product/M11_UX_DESIGN.md) §8 · PoC 코드: [`../../poc/m11-bridge/`](../../poc/m11-bridge/README.md)
 > 실측 기록: `poc/m11-bridge/results/2026-11-12-chrome157.json`

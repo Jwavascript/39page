@@ -5,7 +5,7 @@
       "id": "B1",
       "title": "권한 없음 — 상태 · 쓰기 거절 · offscreen 을 만들지 않는다",
       "pass": true,
-      "ms": 48,
+      "ms": 54,
       "details": {
         "pass": true,
         "state": {
@@ -14,7 +14,7 @@
           "origin": "http://127.0.0.1:4173"
         },
         "r": {
-          "requestId": "411ee262-9e54-4f6f-a4da-eb85a759933e",
+          "requestId": "49ae59bb-b205-4ed7-ad2c-0b1f80dd8299",
           "outcome": "unavailable",
           "reason": "permission"
         },
@@ -25,7 +25,7 @@
       "id": "B2",
       "title": "실제 권한 프롬프트 — 거부하면 그대로, 허용하면 granted",
       "pass": true,
-      "ms": 1988,
+      "ms": 2535,
       "details": {
         "pass": true,
         "denied": {
@@ -42,7 +42,7 @@
       "id": "B3",
       "title": "부여 직후 — 목록이 대시보드 저장소와 같다 (분할되지 않음) · offscreen 하나",
       "pass": true,
-      "ms": 40,
+      "ms": 44,
       "details": {
         "pass": true,
         "names": ["MINE", "드라이브"],
@@ -53,28 +53,28 @@
       "id": "B4",
       "title": "담기 · 새 목록 + 담기 · Moment — 확인된 저장, 대시보드 선택 · 큐 · iframe 그대로",
       "pass": true,
-      "ms": 624,
+      "ms": 633,
       "details": {
         "pass": true,
         "add": {
           "playlistId": "drive",
           "playlistName": "드라이브",
-          "trackId": "ext-1fa19311-7dd6-4159-a099-62bd9ed51c09",
+          "trackId": "ext-cef6a495-caf1-4adb-adbb-cb81ccc0d3d7",
           "position": 1,
           "existed": false,
           "verified": true
         },
         "created": {
-          "playlistId": "ext-f855f330-292f-408b-bb3f-72d283c1e2ef-list",
+          "playlistId": "ext-cf93032f-8466-4887-8c46-1f18dc0ee332-list",
           "playlistName": "즉석 목록",
-          "trackId": "ext-f855f330-292f-408b-bb3f-72d283c1e2ef",
+          "trackId": "ext-cf93032f-8466-4887-8c46-1f18dc0ee332",
           "position": 1,
           "created": true,
           "existed": false,
           "verified": true
         },
         "moment": {
-          "momentId": "ext-c538ceae-271e-46e3-99e5-8258e50ec91a",
+          "momentId": "ext-1fed0092-8651-4864-afa0-c6d924915f5d",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 43,
           "noteSaved": true,
@@ -104,11 +104,11 @@
       "id": "B5",
       "title": "같은 요청 ID 를 다시 보내면 — 저장하지 않고 existed",
       "pass": true,
-      "ms": 13,
+      "ms": 15,
       "details": {
         "pass": true,
         "first": {
-          "momentId": "ext-caace034-a1b8-414c-a4ee-a8e6f1647c92",
+          "momentId": "ext-30a6c082-ca41-452a-afeb-e7259eb4614b",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 90,
           "noteSaved": true,
@@ -116,7 +116,7 @@
           "verified": true
         },
         "second": {
-          "momentId": "ext-caace034-a1b8-414c-a4ee-a8e6f1647c92",
+          "momentId": "ext-30a6c082-ca41-452a-afeb-e7259eb4614b",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 90,
           "noteSaved": true,
@@ -130,7 +130,7 @@
       "id": "B6",
       "title": "같은 영상이 이미 있으면 묻는다 — allowDuplicate 일 때만 한 번 더",
       "pass": true,
-      "ms": 5,
+      "ms": 6,
       "details": {
         "pass": true,
         "refused": {
@@ -144,7 +144,7 @@
         "again": {
           "playlistId": "mine",
           "playlistName": "MINE",
-          "trackId": "ext-87422505-fa59-4d08-9f7c-bf5ed7e77468",
+          "trackId": "ext-f104b60f-21c3-4afc-93eb-39cb5293338f",
           "position": 2,
           "existed": false,
           "verified": true
@@ -155,23 +155,23 @@
       "id": "B7a",
       "title": "응답 유실 — 처리 중 서비스 워커 강제 종료(Target.closeTarget) → 확인 · 같은 ID 재시도 → 1건",
       "pass": true,
-      "ms": 2752,
+      "ms": 2760,
       "details": {
         "pass": true,
         "killed": "Target.closeTarget(service_worker)",
         "first": {
-          "requestId": "b68547f0-6c12-4069-9d93-e3ada11e4548",
+          "requestId": "b5445a00-609e-419b-bc64-36065b3be1c4",
           "sendError": "A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received"
         },
         "status": {
           "state": "saved",
-          "momentId": "ext-b68547f0-6c12-4069-9d93-e3ada11e4548",
+          "momentId": "ext-b5445a00-609e-419b-bc64-36065b3be1c4",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 120,
           "noteSaved": true
         },
         "retry": {
-          "momentId": "ext-b68547f0-6c12-4069-9d93-e3ada11e4548",
+          "momentId": "ext-b5445a00-609e-419b-bc64-36065b3be1c4",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 120,
           "noteSaved": true,
@@ -185,12 +185,12 @@
       "id": "B7b",
       "title": "응답 유실 — 처리 중 offscreen 문서 종료 → uncertain → 확인 · 같은 ID 재시도 → 1건",
       "pass": true,
-      "ms": 2754,
+      "ms": 2779,
       "details": {
         "pass": true,
         "killed": "Target.closeTarget(background_page)",
         "first": {
-          "requestId": "2fe677db-08db-4e7e-96f2-ce2de7f4926b",
+          "requestId": "7fec5297-6917-4f5e-819f-13ffef30e1f6",
           "outcome": "uncertain",
           "reason": "disconnected"
         },
@@ -198,7 +198,7 @@
           "state": "not-found"
         },
         "retry": {
-          "momentId": "ext-2fe677db-08db-4e7e-96f2-ce2de7f4926b",
+          "momentId": "ext-7fec5297-6917-4f5e-819f-13ffef30e1f6",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 120,
           "noteSaved": true,
@@ -212,11 +212,11 @@
       "id": "B8",
       "title": "철회(API) — onRemoved 가 offscreen 을 닫고, 쓰기는 거절 · 저장소 그대로",
       "pass": true,
-      "ms": 17,
+      "ms": 28,
       "details": {
         "pass": true,
         "r": {
-          "requestId": "240b9b24-fcf0-4c29-9bd5-607522f0a930",
+          "requestId": "b3ea5299-537e-41dd-8194-176799e66788",
           "outcome": "unavailable",
           "reason": "permission"
         },
@@ -228,7 +228,7 @@
       "id": "B9",
       "title": "다시 허용 — 프롬프트 없이 부여되고 새 브리지로 저장",
       "pass": true,
-      "ms": 7204,
+      "ms": 7186,
       "details": {
         "pass": true,
         "regrant": {
@@ -236,7 +236,7 @@
           "granted": true
         },
         "r": {
-          "momentId": "ext-04c05063-0fc5-49d8-8502-685ed3b7e528",
+          "momentId": "ext-46cc6640-0214-49dc-b1f9-385f053ef283",
           "videoId": "M7lc1UVf-VE",
           "atSeconds": 150,
           "noteSaved": true,
@@ -250,7 +250,7 @@
       "id": "B10",
       "title": "서비스 워커가 멈춘 동안 사이트 액세스에서 철회 — 깨어나 닫는가 · 다음 쓰기 거절",
       "pass": true,
-      "ms": 2806,
+      "ms": 2804,
       "details": {
         "pass": true,
         "removed": "ok",
@@ -258,7 +258,7 @@
         "workerWokeOnRemoved": true,
         "offscreenAfterRevoke": [],
         "r": {
-          "requestId": "a3edf7d4-ad92-4f7d-8e27-0dc61bf14ab3",
+          "requestId": "fc49a925-c6f8-4765-9612-642bcdb5e5c1",
           "outcome": "unavailable",
           "reason": "permission"
         },
@@ -269,7 +269,7 @@
       "id": "B11",
       "title": "다른 39page 탭과 같은 순간 저장 — 대시보드가 목록을 만들 때 브리지가 담기, 조용한 손실 0",
       "pass": true,
-      "ms": 31222,
+      "ms": 31030,
       "details": {
         "pass": true,
         "regrant": {
@@ -282,7 +282,7 @@
           "bridge": 14,
           "dash": 15
         },
-        "selectedName": "dash-1794482217702-14",
+        "selectedName": "dash-1794484839050-14",
         "nonOk": ["conflict"]
       }
     },
@@ -290,7 +290,7 @@
       "id": "B12",
       "title": "보호 상태 — 손상된 Moments 에는 쓰지 않고 원본 그대로",
       "pass": true,
-      "ms": 7,
+      "ms": 10,
       "details": {
         "pass": true,
         "r": {
@@ -308,11 +308,11 @@
       "id": "B13",
       "title": "쓰기와 철회가 겹침 — 성공이라 했으면 저장돼 있고, 모르면 uncertain · 재허용 뒤 확인하면 일치",
       "pass": true,
-      "ms": 6954,
+      "ms": 7115,
       "details": {
         "pass": true,
         "first": {
-          "requestId": "ce27c9e8-c24d-419d-bef7-5d16e1677378",
+          "requestId": "409df248-db3d-49f0-9ca4-7b89398a51e6",
           "outcome": "unavailable",
           "reason": "permission"
         },

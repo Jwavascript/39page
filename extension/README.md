@@ -44,19 +44,37 @@ YouTube 에서 보고 있는 영상을 39page 로 담는 확장이다 (M10-3 Qui
 
 ## 권한
 
-| 권한        | 왜                                                      |
-| ----------- | ------------------------------------------------------- |
-| `activeTab` | 아이콘을 누른 **그 탭**의 주소를 보고 스크립트를 넣는다 |
-| `scripting` | 그 탭에 페이지를 읽는 스크립트를 넣는다                 |
+| 권한                          | 왜                                                              |
+| ----------------------------- | --------------------------------------------------------------- |
+| `activeTab`                   | 아이콘을 누른 **그 탭**의 주소를 보고 스크립트를 넣는다         |
+| `scripting`                   | 그 탭에 페이지를 읽는 스크립트 · 패널 iframe 을 넣는다          |
+| `offscreen`                   | 39page 저장 페이지를 띄울 보이지 않는 문서 (M11-5, 경고 없음)   |
+| `https://39page.com/*` (선택) | 패널에서 바로 저장 — 처음 쓸 때 묻는다. 없으면 수집 화면(새 탭) |
 
-YouTube 상시 접근 권한·방문 기록 권한(`tabs`)은 요청하지 않는다. 확장은 네트워크
-요청을 하지 않고, 39page 의 저장소에 닿지 않는다.
+YouTube 상시 접근 권한·방문 기록 권한(`tabs`)은 요청하지 않는다. 확장은 데이터를 갖지 않는다 — 저장은 39page 의 기존
+store 가 39page origin 에서 한다 (ADR 0028). Chrome 116 이상.
+
+## 실제 Chrome 통합 하네스 (M11-5)
+
+`integration/` — Chrome for Testing · 격리 프로필 · 로컬 빌드(127.0.0.1:4173)만. 실제 권한 프롬프트는 헤드풀 + Windows UI
+Automation(`permissions-prompt.ps1`, 그 Chrome 프로세스의 창만)으로 누른다.
+
+```sh
+# 39page (루트): 개발 확장 ID 를 허용한 빌드
+VITE_BRIDGE_EXTENSION_IDS=pkagnijdhfmkodpdfgdehfdghcgbfpoa npx vite build --outDir <WEB_DIST>
+# 확장: 개발 빌드(고정 ID · 개발 origin)
+VITE_COLLECT_ORIGIN=http://127.0.0.1:4173 npm run build:dev
+POC_CHROME=<chrome.exe> WEB_DIST=<…> EXT_DIST=<…/dist-dev> OUT=<…> node integration/bridge.mjs   # 브리지 15
+POC_CHROME=<chrome.exe> WEB_DIST=<…> EXT_DIST=<…/dist-dev> OUT=<…> node integration/panel.mjs    # 패널 12 (실제 YouTube)
+```
 
 ## 구조
 
 ```
 src/
-├── popup/        Vue 3 팝업 — 상태(useActiveVideo) · bridge · 컴포넌트
+├── panel/        Vue 3 YouTube 위 패널 — 음악 담기 · Moment · 결과 (M11-5)
+├── offscreen/    39page 저장 페이지를 띄우는 offscreen 문서 (M11-5)
+├── popup/        Vue 3 팝업 — YouTube 영상이면 패널을 열고 닫힌다, 아니면 안내 · 수집 화면
 ├── background/   서비스 워커 — 메시지 라우터 · 탭 조회 · 스크립트 주입 · 플레이어 읽기
 ├── content/      YouTube 페이지에서 읽기만 하는 스크립트 (아이콘을 누를 때 주입)
 └── shared/       메시지 계약 v1 · 검증 · YouTube 페이지 판정 · 제목 정리

@@ -543,3 +543,24 @@ manifest 1.0.0 · `minimum_chrome_version` 102 · 아이콘 16/32/48/128(`extens
 manifest 와 함께 내보낸다 — 정적 폴더를 쓰지 않는 원칙 그대로) · 단축키 2개. `npm run package` 가
 검사한 뒤 재현 가능한 ZIP 을 만든다. 출시 순서 · 보안 검토 · 브라우저 범위 · 통합 시나리오는
 [`../development/EXTENSION_RELEASE.md`](../development/EXTENSION_RELEASE.md).
+
+## 16. YouTube 위 패널 · 저장 브리지 — M11-5
+
+M10 의 "새 탭 수집 화면" 이 대체 경로가 되고, 주 경로는 **YouTube 위 패널 → 서비스 워커 → offscreen → 39page
+`bridge.html` → 기존 store** 다 (ADR 0028 결정 11–15, `IMPLEMENTATION_PLAN.md` M11-5).
+
+| 구성          | 파일                                                | 책임                                                                                                                             |
+| ------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 패널          | `src/panel/`                                        | 확장 origin iframe. 영상 카드(연 때 영상에 고정) · 음악 담기 · Moment · 결과 · 수집 화면 폴백. `chrome.*` 는 `panelBridge.ts` 만 |
+| content       | `src/content/panelFrame.ts`                         | 닫힌 shadow root 안 iframe 하나, 열기 · 닫기 · 포커스 복귀. 페이지 `postMessage` 를 듣지 않는다                                  |
+| 워커 · 패널   | `src/background/panel.ts`                           | 탭마다 지시(번호 · 탭 · 잡은 시점), 패널 문서 묶기(`documentId`), 동기화 · 다시 잡기 · 수집 화면                                 |
+| 워커 · 브리지 | `src/background/bridgeClient.ts`                    | 권한 확인(생성 전 · 후 · 요청마다) · 세대 · offscreen 기동 · 결과 분류(`uncertain`)                                              |
+| offscreen     | `src/offscreen/`                                    | 39page iframe 하나, 워커의 같은 세대 요청만 넘긴다                                                                               |
+| 계약          | `src/shared/bridgeMessages.ts` · `panelMessages.ts` | 명령 목록 · 입력 검증 · 결과 모양 (순수)                                                                                         |
+
+신뢰 경계 — YouTube 페이지 스크립트는 (1) 패널 iframe 안을 읽거나 누를 수 없고(다른 origin), (2) 워커에 보낼 수 없으며
+(`externally_connectable` 없음), (3) 따로 띄운 패널 iframe 은 묶이지 않아 아무것도 못 한다. 남는 위험은 패널 위에 가짜 UI 를
+겹치는 화면 속이기 — 피해는 "지금 영상을 목록에 담기 · 지금 시점 저장" 수준이다.
+
+권한 — 7절의 표에 `offscreen` · 선택 호스트 권한(`https://39page.com/*`) · `web_accessible_resources`(패널, YouTube 한정)가
+더해졌다. 39page 접근은 사용자가 패널에서 목적을 읽고 "39page 접근 허용" 을 누를 때 묻고, 거부하면 수집 화면으로 간다.

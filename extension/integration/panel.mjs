@@ -515,6 +515,87 @@ try {
     },
   )
 
+  await step(
+    'P12',
+    '오래 쓰기 — 20번 (열기 → 시점 잡기 → 메모 → 저장 → 닫기): 저장 정확히 20건 · iframe · offscreen 누적 없음 · 워커 메모리',
+    async () => {
+      const sw = await h.serviceWorker()
+      const swSession = await h.cdp.attach(sw.targetId)
+      await h.cdp.send('Runtime.enable', {}, swSession)
+      const heap = async () =>
+        Math.round((await h.cdp.send('Runtime.getHeapUsage', {}, swSession)).usedSize / 1024)
+      const heapBefore = await heap()
+      const stamp = Date.now()
+      const outcomes = []
+      for (let i = 0; i < 20; i += 1) {
+        await trigger()
+        const p = await attachPanel()
+        await p.ev(`document.getElementById('panel-tab-moment').click(); true`)
+        await waitFor(
+          () =>
+            p.ev(`!!document.querySelector('.list-row') || !!document.querySelector('.access')`),
+          { label: 'panel ready' },
+        )
+        await p.ev(
+          `(() => { const b = [...document.querySelectorAll('#panel-body-moment button')].find((x) => x.textContent.includes('시점') && x.textContent.includes('잡기')); b.click(); return true })()`,
+        )
+        await waitFor(() => p.ev(`!!document.querySelector('.capture-time strong')`), {
+          label: 'captured',
+        })
+        const note = `soak-${stamp}-${i}`
+        await p.ev(
+          `(() => { const t = document.getElementById('panel-note'); t.value = ${JSON.stringify(note)}; t.dispatchEvent(new Event('input', { bubbles: true })); return true })()`,
+        )
+        await p.ev(
+          `[...document.querySelectorAll('.btn.primary')].find((b) => b.textContent.trim() === 'Moment 저장').click(); true`,
+        )
+        const r = await waitFor(
+          () =>
+            p.ev(
+              `(() => { const f = document.querySelector('#panel-body-moment .feedback'); return f && !f.textContent.includes('저장하는 중') ? f.className + '|' + f.textContent.trim().slice(0, 40) : null })()`,
+            ),
+          { timeout: 20_000, label: 'saved' },
+        )
+        outcomes.push(r.startsWith('feedback ok') ? 'ok' : r)
+        await p.ev(`document.querySelector('.close').click(); true`)
+        await waitFor(() => yt.ev(`document.getElementById('page39-panel-host') === null`), {
+          label: 'closed',
+        })
+      }
+      await sleep(800)
+      const saved = await dash.ev(
+        `JSON.parse(localStorage.getItem('39page.moments')).data.filter((m) => m.note.startsWith(${JSON.stringify(`soak-${stamp}-`)})).length`,
+      )
+      const offscreen = await h.cdp.evaluate(
+        swSession,
+        `chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] }).then((c) => c.length)`,
+      )
+      const frames = (await h.cdp.targets()).filter(
+        (t) => t.type === 'iframe' && t.url.includes('/src/panel/index.html'),
+      ).length
+      const hosts = await yt.ev(`document.querySelectorAll('#page39-panel-host').length`)
+      await h.cdp.send('HeapProfiler.collectGarbage', {}, swSession).catch(() => null)
+      const heapAfter = await heap()
+      const v = await video()
+      return {
+        pass:
+          outcomes.every((o) => o === 'ok') &&
+          saved === 20 &&
+          offscreen <= 1 &&
+          frames === 0 &&
+          hosts === 0 &&
+          !v.paused,
+        outcomes: outcomes.filter((o) => o !== 'ok'),
+        saved,
+        offscreen,
+        frames,
+        hosts,
+        workerHeapKB: [heapBefore, heapAfter],
+        video: v,
+      }
+    },
+  )
+
   await step('P10', '대시보드 — 선택 목록 · 재생 중인 곡 · iframe 그대로', async () => {
     const after = await dashStorage()
     const iframe = await dash.ev(
