@@ -53,8 +53,9 @@
 | [0024](0024-library-cross-tab-consistency.md)  | 라이브러리는 쓰기 직전에 저장소 원문을 기준과 비교하고, 다른 탭의 변경을 storage 이벤트로 반영한다     | 채택 (M10-3A)       |
 | [0025](0025-cross-tab-write-lock.md)           | 라이브러리·Moments 쓰기는 Web Locks 배타 잠금과 "수정 번호 영수증" 안에서 한다                         | 채택 (M10-3 안정화) |
 | [0026](0026-moment-capture.md)                 | Moment 캡처는 누른 순간 플레이어를 한 번에 읽고, 확정되지 않은 시점을 0 으로 만들지 않는다             | 채택 (M10-4)        |
-| [0027](0027-m11-information-architecture.md)   | M11 정보 구조 — 대시보드 유지, 라이브러리·Moments 를 한 보관함의 두 탭으로, 데이터는 헤더 대화상자로   | 제안 (M11-1)        |
-| [0028](0028-extension-save-bridge.md)          | 확장 저장은 offscreen 안 39page 브리지 페이지가 기존 store 로 하고, 새 탭 수집 화면은 대체 경로로 둔다 | 제안 (M11-1)        |
+| [0027](0027-m11-information-architecture.md)   | M11 정보 구조 — 대시보드 유지, 라이브러리·Moments 를 한 보관함의 두 탭으로, 데이터는 헤더 대화상자로   | 채택 (M11-2)        |
+| [0028](0028-extension-save-bridge.md)          | 확장 저장은 offscreen 안 39page 브리지 페이지가 기존 store 로 하고, 새 탭 수집 화면은 대체 경로로 둔다 | 조건부 채택 (M11)   |
+| [0029](0029-track-title-oembed-prefill.md)     | 링크로 곡을 추가할 때 제목 칸만 YouTube oEmbed 로 미리 채운다 — 사용자 제목 · 저장된 제목은 그대로     | 채택 (M11-4 후속)   |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

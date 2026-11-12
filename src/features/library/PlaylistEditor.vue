@@ -23,6 +23,7 @@ import { computed, inject, nextTick, ref, watch } from 'vue'
 import { ARCHIVE } from '@/features/archive/archiveController'
 
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
+import { useTitleLookup } from '@/features/library/useTitleLookup'
 import TrackList from '@/features/library/TrackList.vue'
 import {
   PLAYBACK_COORDINATOR,
@@ -99,6 +100,12 @@ const linkError = ref('')
 /** 방금 등록한 트랙 제목. 성공을 사용자가 확인할 수 있게 한다. */
 const addedNotice = ref('')
 
+/**
+ * 제목 칸 미리 채우기 (ADR 0029) — 링크를 넣고 제목 칸이 비어 있고 손대지 않았을 때만 YouTube oEmbed 로
+ * 제목을 받아 **칸만** 채운다. 사용자가 쓴 제목을 덮지 않고, 추가는 조회를 기다리지 않는다.
+ */
+const titleLookup = useTitleLookup(draftUrl, draftTitle)
+
 /** 재생 요청이 거절된 이유 (M3-4). */
 const playbackNotice = ref('')
 
@@ -127,6 +134,7 @@ const linkTarget = computed(() =>
 )
 
 function closeLinkForm(): void {
+  titleLookup.reset()
   linkTargetId.value = null
   draftUrl.value = ''
   draftTitle.value = ''
@@ -138,6 +146,7 @@ async function startAddLink(): Promise<void> {
   if (current === null) return
 
   resetForm()
+  titleLookup.reset()
   linkTargetId.value = current.id
   draftUrl.value = ''
   draftTitle.value = ''
@@ -216,6 +225,8 @@ async function submitLink(): Promise<void> {
   draftUrl.value = ''
   draftTitle.value = ''
   linkError.value = ''
+  // 늦게 오는 조회가 다음 링크의 칸을 채우지 않게 — 조회도 처음 상태로.
+  titleLookup.reset()
   await nextTick()
   document.getElementById('track-url')?.focus()
 }
@@ -549,8 +560,19 @@ watch(
           type="text"
           :maxlength="MAX_TRACK_TITLE_LENGTH"
           autocomplete="off"
-          placeholder="입력하지 않으면 YouTube 영상 ID로 표시"
+          placeholder="비워 두면 YouTube 에서 제목을 찾아 채워요"
+          aria-describedby="track-title-status"
+          @input="titleLookup.markEdited()"
         />
+        <p
+          id="track-title-status"
+          class="title-status"
+          :class="{ 'is-failed': titleLookup.status.value === 'failed' }"
+          role="status"
+          aria-live="polite"
+        >
+          {{ titleLookup.message.value }}
+        </p>
 
         <p id="track-url-error" class="error-msg">{{ linkError }}</p>
 
@@ -579,6 +601,21 @@ watch(
 </template>
 
 <style scoped>
+/* 제목 미리 채우기 안내 — 제목 칸 바로 아래 한 줄 (ADR 0029). */
+.title-status {
+  margin: -4px 0 8px;
+  color: var(--drawer-sub-text-color);
+  font: 11px/1.5 var(--font-mono);
+}
+
+.title-status:empty {
+  display: none;
+}
+
+.title-status.is-failed {
+  color: var(--status-warning-text-color);
+}
+
 .playlist-editor {
   min-width: 0;
 }
