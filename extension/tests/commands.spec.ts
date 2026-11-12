@@ -1,12 +1,15 @@
 /**
- * 단축키 (M10-5) — 팝업 없이 같은 경로로 Quick Add · Moment 캡처. 담지 못하면 그 탭
- * 아이콘에 `!` 와 이유를 달고 6초 뒤 지운다.
+ * 단축키 (M10-5 → M11-5B) — YouTube 위 패널을 연다. 새 탭을 열지 않는다. Moment 단축키는 누른 순간의
+ * 시점을 잡아 패널에 넘긴다(잡지 못한 이유도 패널이 보인다). 패널을 띄우지 못하거나 영상 페이지가
+ * 아니면 그 탭 아이콘에 `!` 와 이유를 달고 6초 뒤 지운다.
  */
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ActionPort } from '@/background/actionPort'
 import { BADGE_CLEAR_MS, handleCommand } from '@/background/commands'
 import { createCollectDeduper } from '@/background/openCollect'
+import type { PanelSession } from '@/background/panel'
+import { PortError } from '@/background/tabsPort'
 
 import { fakePort, ID, playback } from './support/fakePort'
 
@@ -25,51 +28,55 @@ function setup(options: Parameters<typeof fakePort>[0] = {}) {
     deduper: createCollectDeduper(),
     newRequestId: () => REQ,
     now: () => 1_000,
+    sessions: new Map<number, PanelSession>(),
     action,
     later: (run: () => void, ms: number) => timers.push({ run, ms }),
   }
   return { port, action, timers, deps }
 }
 
-describe('handleCommand — 단축키', () => {
-  it('quick-add — 탭을 확인하고 수집 화면을 연다 (팝업과 같은 경로)', async () => {
+describe('handleCommand — 단축키 → 패널', () => {
+  it('quick-add — 음악 담기 패널을 연다 · 새 탭 없음', async () => {
     const { port, action, deps } = setup()
-    expect(await handleCommand(deps, 'quick-add', { id: 1 })).toEqual({
-      kind: 'opened',
-      tabId: 100,
-    })
-    expect(port.createTab.mock.calls[0]?.[0].url).toBe(
-      `https://39page.com/#collect?v=1&kind=track&videoId=${ID}&title=Player+Title&req=${REQ}`,
-    )
+    expect(await handleCommand(deps, 'quick-add', { id: 1 })).toEqual({ kind: 'opened', tabId: 1 })
+    expect(port.sendToContent).toHaveBeenCalledWith(1, { v: 1, type: 'panel/open' })
+    expect(port.createTab).not.toHaveBeenCalled()
+    expect(deps.sessions.get(1)).toMatchObject({ seq: 1, mode: 'music', capture: null })
     expect(action.flag).not.toHaveBeenCalled()
     expect(action.clear).toHaveBeenCalledWith(1)
   })
 
-  it('capture-moment — 누른 순간의 시점으로 Moment 수집 화면을 연다', async () => {
+  it('capture-moment — 누른 순간의 시점을 잡아 Moment 패널에 넘긴다', async () => {
     const { port, deps } = setup()
     expect(await handleCommand(deps, 'capture-moment', { id: 1 })).toEqual({
       kind: 'opened',
-      tabId: 100,
-    })
-    expect(port.createTab.mock.calls[0]?.[0].url).toContain('kind=moment')
-    expect(port.createTab.mock.calls[0]?.[0].url).toContain('atSeconds=83')
-  })
-
-  it('거절되면 아이콘에 이유를 달고 6초 뒤 지운다 — 탭은 열지 않는다', async () => {
-    const { port, action, timers, deps } = setup({ playback: playback({ adShowing: true }) })
-    expect(await handleCommand(deps, 'capture-moment', { id: 1 })).toEqual({
-      kind: 'flagged',
-      message: '광고가 재생 중입니다. 광고가 끝난 뒤 다시 눌러 주세요.',
+      tabId: 1,
     })
     expect(port.createTab).not.toHaveBeenCalled()
-    expect(action.flag).toHaveBeenCalledWith(
-      1,
-      '광고가 재생 중입니다. 광고가 끝난 뒤 다시 눌러 주세요.',
-    )
-    expect(timers).toHaveLength(1)
-    expect(timers[0]?.ms).toBe(BADGE_CLEAR_MS)
-    timers[0]?.run()
-    expect(action.clear).toHaveBeenCalledWith(1)
+    expect(deps.sessions.get(1)).toMatchObject({
+      mode: 'moment',
+      capture: { status: 'captured', videoId: ID, atSeconds: 83, at: 1_000 },
+    })
+  })
+
+  it('패널이 이미 떠 있으면 다시 띄우지 않고 지시만 바꾼다 (번호가 오른다)', async () => {
+    const { deps } = setup()
+    await handleCommand(deps, 'quick-add', { id: 1 })
+    expect(await handleCommand(deps, 'capture-moment', { id: 1 })).toEqual({
+      kind: 'focused',
+      tabId: 1,
+    })
+    expect(deps.sessions.get(1)).toMatchObject({ seq: 2, mode: 'moment' })
+  })
+
+  it('광고 중 Moment 단축키 — 패널은 열고 잡지 못한 이유를 넘긴다 (아이콘 배지 없음)', async () => {
+    const { action, deps } = setup({ playback: playback({ adShowing: true }) })
+    expect(await handleCommand(deps, 'capture-moment', { id: 1 })).toEqual({
+      kind: 'opened',
+      tabId: 1,
+    })
+    expect(deps.sessions.get(1)?.capture).toEqual({ status: 'refused', reason: 'ad' })
+    expect(action.flag).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -79,37 +86,24 @@ describe('handleCommand — 단축키', () => {
       `https://music.youtube.com/watch?v=${ID}`,
       'YouTube Music 은 아직 지원하지 않습니다.',
     ],
-  ])('%s 에서는 아이콘으로 알린다', async (_label, url, message) => {
-    const { port, action, deps } = setup({ tab: { id: 1, url, index: 0, windowId: 1 } })
+  ])('%s 에서는 아이콘으로 알리고 6초 뒤 지운다', async (_label, url, message) => {
+    const { port, action, timers, deps } = setup({ tab: { id: 1, url, index: 0, windowId: 1 } })
     expect(await handleCommand(deps, 'quick-add', { id: 1 })).toEqual({ kind: 'flagged', message })
     expect(action.flag).toHaveBeenCalledWith(1, message)
     expect(port.createTab).not.toHaveBeenCalled()
+    expect(timers[0]?.ms).toBe(BADGE_CLEAR_MS)
+    timers[0]?.run()
+    expect(action.clear).toHaveBeenCalledWith(1)
   })
 
-  it('Shorts 에서 Moment 단축키는 거절, 담기 단축키는 된다', async () => {
-    const shorts = { id: 1, url: `https://www.youtube.com/shorts/${ID}`, index: 0, windowId: 1 }
-    const moment = setup({ tab: shorts })
-    expect(await handleCommand(moment.deps, 'capture-moment', { id: 1 })).toEqual({
-      kind: 'flagged',
-      message: 'Shorts 는 아직 Moment 를 저장할 수 없습니다.',
+  it('패널을 띄우지 못하면(주입 실패) 아이콘으로 알린다', async () => {
+    const { action, deps } = setup({
+      contentInstalled: false,
+      injectError: new PortError('no-access', 'no access'),
     })
-    const quick = setup({ tab: shorts })
-    expect(await handleCommand(quick.deps, 'quick-add', { id: 1 })).toMatchObject({
-      kind: 'opened',
-    })
-  })
-
-  it('재생목록 안의 영상(&list=)도 그 영상으로 담는다', async () => {
-    const { port, deps } = setup({
-      tab: {
-        id: 1,
-        url: `https://www.youtube.com/watch?v=${ID}&list=PL123&index=3`,
-        index: 2,
-        windowId: 1,
-      },
-    })
-    await handleCommand(deps, 'capture-moment', { id: 1 })
-    expect(port.createTab.mock.calls[0]?.[0].url).toContain(`videoId=${ID}`)
+    const outcome = await handleCommand(deps, 'quick-add', { id: 1 })
+    expect(outcome.kind).toBe('flagged')
+    expect(action.flag).toHaveBeenCalled()
   })
 
   it('탭을 모르거나 모르는 명령이면 아무것도 하지 않는다', async () => {
@@ -127,15 +121,5 @@ describe('handleCommand — 단축키', () => {
     const outcome = await handleCommand(deps, 'quick-add', { id: 1 })
     expect(outcome).toEqual({ kind: 'flagged', message: '확장 내부 오류 — 다시 눌러 주세요.' })
     expect(JSON.stringify(action.flag.mock.calls)).not.toContain('secret')
-  })
-
-  it('팝업과 같은 중복 기록을 쓴다 — 5초 안 같은 영상이면 열어 둔 탭으로', async () => {
-    const { port, deps } = setup()
-    await handleCommand(deps, 'quick-add', { id: 1 })
-    expect(await handleCommand(deps, 'quick-add', { id: 1 })).toEqual({
-      kind: 'focused',
-      tabId: 100,
-    })
-    expect(port.createTab).toHaveBeenCalledTimes(1)
   })
 })

@@ -51,6 +51,8 @@ async function startWorker() {
         .fn<(id: number) => Promise<object>>()
         .mockResolvedValue({ id: 1, url: 'https://example.com/', title: 'x' }),
       sendMessage: vi.fn<() => Promise<unknown>>(),
+      // 패널 (M11-5B) — 닫힌 탭의 지시를 지운다.
+      onRemoved: fakeEvent<(tabId: number) => void>(),
     },
     scripting: { executeScript: vi.fn<() => Promise<unknown>>() },
   })

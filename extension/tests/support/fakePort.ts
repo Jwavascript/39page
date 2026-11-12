@@ -50,15 +50,25 @@ export function fakePort(options: {
   /** 살아 있는 탭 id — focusTab 이 true 를 돌려준다. 기본은 모두 살아 있다. */
   aliveTabs?: number[]
 }) {
-  const state = { contentInstalled: options.contentInstalled ?? true, created: 0 }
+  const state = { contentInstalled: options.contentInstalled ?? true, created: 0, panelOpen: false }
   const tab =
     options.tab === undefined ? { id: 1, url: WATCH_URL, index: 3, windowId: 9 } : options.tab
   const port = {
     getTab: vi.fn<TabsPort['getTab']>(async () => tab),
-    sendToContent: vi.fn<TabsPort['sendToContent']>(async () => {
+    sendToContent: vi.fn<TabsPort['sendToContent']>(async (_tabId, message) => {
       if (options.sendError) throw options.sendError
       if (!state.contentInstalled)
         throw new PortError('no-receiver', 'Receiving end does not exist.')
+      // 패널 (M11-5B) — content script 가 iframe 을 띄우거나(처음) 그리로 포커스한다.
+      if (message.type === 'panel/open') {
+        const status = state.panelOpen ? 'focused' : 'opened'
+        state.panelOpen = true
+        return ok({ status })
+      }
+      if (message.type === 'panel/close') {
+        state.panelOpen = false
+        return ok({ closed: true })
+      }
       return options.reply ?? ok(snapshot())
     }),
     injectContent: vi.fn<TabsPort['injectContent']>(async () => {

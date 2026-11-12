@@ -23,6 +23,7 @@ import {
   type PlaybackSnapshot,
   type Result,
 } from '@/shared/messages'
+import type { CaptureOutcome } from '@/shared/panelMessages'
 import { cleanTitle } from '@/shared/title'
 import { classifyPageUrl } from '@/shared/youtubePage'
 
@@ -77,21 +78,25 @@ export function decideCapture(
   return { kind: 'capture', atSeconds, title: cleanTitle(snapshot.title) }
 }
 
-async function captureFresh(
-  deps: OpenCollectDeps,
+/**
+ * 지금 재생 시점을 **누른 순간** 읽어 고정한다 — 수집 화면을 열지 않는다 (M11-5B 패널 · M10-4 공용).
+ * 탭의 영상이 `expectedVideoId` 와 다르면 `page-changed`. 판단 규칙은 `decideCapture` 하나다.
+ */
+export async function capturePlaybackNow(
+  deps: Pick<OpenCollectDeps, 'port' | 'now'>,
   tabId: number,
   expectedVideoId: string,
-): Promise<Result<MomentCaptured>> {
+): Promise<Result<CaptureOutcome>> {
   const tab = await deps.port.getTab(tabId)
   if (tab === null) return fail('no-tab', '탭을 찾을 수 없다')
 
-  // 주소가 안 보이면(권한 회수 · 다른 사이트로 이동) 팝업이 다시 확인하게 한다.
+  // 주소가 안 보이면(권한 회수 · 다른 사이트로 이동) 다시 확인하게 한다.
   if (tab.url === undefined || tab.url === '') {
     return fail('page-changed', '탭의 주소를 볼 수 없다')
   }
   const page = classifyPageUrl(tab.url)
   if (page.kind === 'unsupported' || page.videoId !== expectedVideoId) {
-    return fail('page-changed', '팝업이 보여 준 영상과 지금 탭의 영상이 다르다')
+    return fail('page-changed', '보여 준 영상과 지금 탭의 영상이 다르다')
   }
   if (page.pageKind === 'shorts') return ok({ status: 'refused', reason: 'shorts' })
   if (page.pageKind === 'live') return ok({ status: 'refused', reason: 'live' })
@@ -112,6 +117,31 @@ async function captureFresh(
     return fail('page-changed', '플레이어가 다른 영상을 띄우고 있다')
   }
   if (decision.kind === 'refused') return ok({ status: 'refused', reason: decision.reason })
+  return ok({
+    status: 'captured',
+    videoId: page.videoId,
+    atSeconds: decision.atSeconds,
+    title: decision.title,
+    at: deps.now(),
+  })
+}
+
+async function captureFresh(
+  deps: OpenCollectDeps,
+  tabId: number,
+  expectedVideoId: string,
+): Promise<Result<MomentCaptured>> {
+  const captured = await capturePlaybackNow(deps, tabId, expectedVideoId)
+  if (!captured.ok) {
+    return captured.error.code === 'page-changed'
+      ? fail('page-changed', '팝업이 보여 준 영상과 지금 탭의 영상이 다르다')
+      : fail(captured.error.code, captured.error.message)
+  }
+  if (captured.data.status === 'refused') return ok(captured.data)
+  const tab = await deps.port.getTab(tabId)
+  if (tab === null) return fail('no-tab', '탭을 찾을 수 없다')
+  const page = { videoId: captured.data.videoId }
+  const decision = { atSeconds: captured.data.atSeconds, title: captured.data.title }
 
   const recentKey = `moment:${page.videoId}@${String(decision.atSeconds)}`
   const recent = deps.deduper.recent.get(recentKey)

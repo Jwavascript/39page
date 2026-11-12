@@ -97,6 +97,8 @@ export default defineConfig(({ mode }) => {
           popup: fileURLToPath(new URL('./src/popup/index.html', import.meta.url)),
           // 39page 저장 브리지를 띄우는 offscreen 문서 (M11-5).
           offscreen: fileURLToPath(new URL('./src/offscreen/index.html', import.meta.url)),
+          // YouTube 위 플로팅 패널 (M11-5B) — web_accessible_resources, YouTube 에서만.
+          panel: fileURLToPath(new URL('./src/panel/index.html', import.meta.url)),
           background: fileURLToPath(new URL('./src/background/index.ts', import.meta.url)),
         },
         output: {

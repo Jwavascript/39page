@@ -10,7 +10,10 @@
 import { bridgeOriginPattern } from '@/shared/bridgeMessages'
 import { fail } from '@/shared/messages'
 
+import { PANEL_PATH } from '@/shared/panelMessages'
+
 import { createBridgeClient } from './bridgeClient'
+import type { PanelSession } from './panel'
 import { createChromeOffscreenPort, createChromePermissionPort } from './chromeBridgePorts'
 
 import { createChromeActionPort } from './chromeActionPort'
@@ -49,12 +52,17 @@ void bridgeClient.startup()
 chrome.permissions.onAdded.addListener(() => void bridgeClient.permissionChanged())
 chrome.permissions.onRemoved.addListener(() => void bridgeClient.permissionChanged())
 
+/** 탭마다 패널 지시 · 묶인 문서 (M11-5B). 워커가 다시 시작하면 사라진다 — 패널을 다시 열면 다시 묶는다. */
+const sessions = new Map<number, PanelSession>()
+chrome.tabs.onRemoved.addListener((tabId) => sessions.delete(tabId))
+
 const router = createBackgroundRouter({
   port,
   extensionId: chrome.runtime.id,
   extensionOrigin: chrome.runtime.getURL(''),
   collect,
   bridge: { client: bridgeClient, origin: bridgeOrigin, originPattern },
+  panel: { sessions, panelPath: `/${PANEL_PATH}` },
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -69,7 +77,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 const action = createChromeActionPort(DEFAULT_TITLE)
 chrome.commands.onCommand.addListener((command, tab) => {
   void handleCommand(
-    { port, ...collect, action, later: (run, ms) => setTimeout(run, ms) },
+    { port, ...collect, sessions, action, later: (run, ms) => setTimeout(run, ms) },
     command,
     tab,
   )

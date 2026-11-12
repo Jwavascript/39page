@@ -9,6 +9,7 @@
  */
 
 import { REQUEST_ID, parseBridgePayload, type BridgePayload } from './bridgeMessages'
+import { isPanelMode, type PanelMode } from './panelMessages'
 
 /** 계약 버전. 바꾸면 모든 수신 지점이 옛 버전을 `unsupported-version` 으로 거절한다. */
 export const PROTOCOL_VERSION = 1
@@ -112,15 +113,44 @@ export type ExtensionRequest =
       readonly requestId: string
       readonly payload: BridgePayload
     }
+  /** 패널을 연다 (M11-5B) — 팝업이 보낸다(팝업은 탭 밖이라 탭 ID 를 싣는다). */
+  | {
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'panel/open'
+      readonly tabId: number
+      readonly mode: PanelMode
+    }
+  /** 패널 → 워커 (대상 탭 = 보낸 쪽 탭). 지시 번호 · 지금 영상 · 잡은 시점. */
+  | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'panel/sync' }
+  /** 패널 → 워커: 지금 시점을 다시 잡는다. `videoId` 는 패널이 보고 있는 영상. */
+  | {
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'panel/capture'
+      readonly videoId: string
+    }
+  | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'panel/close' }
+  /**
+   * 패널 → 워커: 기존 수집 화면으로 연다 (대체 경로). 메모는 싣지 않는다 — 주소에 남기지 않는다.
+   * Moment 는 패널이 고정한 시점을 그대로 넘긴다.
+   */
+  | {
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'panel/collect'
+      readonly kind: 'track' | 'moment'
+      readonly videoId: string
+      readonly atSeconds: number | null
+      readonly title: string | null
+    }
 
 /**
  * Background → Content. 재생 시점은 content 가 아니라 메인 세계에서 직접 읽는다
  * (M10-4, `capturePlaybackInPage`) — 플레이어 메서드는 격리된 세계에서 보이지 않는다.
  */
-export type ContentRequest = {
-  readonly v: typeof PROTOCOL_VERSION
-  readonly type: 'page/read'
-}
+export type ContentRequest =
+  | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'page/read' }
+  /** 패널 iframe 을 띄운다 (이미 있으면 그리로 포커스). M11-5B. */
+  | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'panel/open' }
+  | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'panel/close' }
 
 export type ParseOutcome<T> =
   { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: ErrorBody }
@@ -175,6 +205,51 @@ export function parseExtensionRequest(value: unknown): ParseOutcome<ExtensionReq
     }
   }
   if (type === 'bridge/state') return { ok: true, value: { v: PROTOCOL_VERSION, type } }
+  if (type === 'panel/open') {
+    if (!isTabId(body.tabId)) return rejected('bad-request', 'tabId 가 0 이상의 정수가 아니다')
+    if (!isPanelMode(body.mode)) return rejected('bad-request', 'mode 가 music · moment 가 아니다')
+    return { ok: true, value: { v: PROTOCOL_VERSION, type, tabId: body.tabId, mode: body.mode } }
+  }
+  if (type === 'panel/sync' || type === 'panel/close') {
+    return { ok: true, value: { v: PROTOCOL_VERSION, type } }
+  }
+  if (type === 'panel/capture') {
+    if (typeof body.videoId !== 'string' || !VIDEO_ID.test(body.videoId)) {
+      return rejected('bad-request', 'videoId 가 11자 영상 ID 가 아니다')
+    }
+    return { ok: true, value: { v: PROTOCOL_VERSION, type, videoId: body.videoId } }
+  }
+  if (type === 'panel/collect') {
+    if (body.kind !== 'track' && body.kind !== 'moment') return rejected('bad-request', 'kind')
+    if (typeof body.videoId !== 'string' || !VIDEO_ID.test(body.videoId)) {
+      return rejected('bad-request', 'videoId 가 11자 영상 ID 가 아니다')
+    }
+    const at = body.atSeconds
+    const atSeconds =
+      body.kind === 'moment' &&
+      typeof at === 'number' &&
+      Number.isSafeInteger(at) &&
+      at >= 0 &&
+      at <= 999_999
+        ? at
+        : null
+    if (body.kind === 'moment' && atSeconds === null) return rejected('bad-request', 'atSeconds')
+    const title =
+      typeof body.title === 'string' && body.title.length <= 100 && body.title.trim() !== ''
+        ? body.title.trim()
+        : null
+    return {
+      ok: true,
+      value: {
+        v: PROTOCOL_VERSION,
+        type,
+        kind: body.kind,
+        videoId: body.videoId,
+        atSeconds,
+        title,
+      },
+    }
+  }
   if (type === 'bridge/call') {
     if (typeof body.requestId !== 'string' || !REQUEST_ID.test(body.requestId)) {
       return rejected('bad-request', 'requestId 형식이 아니다')
@@ -193,8 +268,9 @@ export function parseContentRequest(value: unknown): ParseOutcome<ContentRequest
   const envelope = readEnvelope(value)
   if (!envelope.ok) return envelope
 
-  if (envelope.value.type === 'page/read') {
-    return { ok: true, value: { v: PROTOCOL_VERSION, type: 'page/read' } }
+  const type = envelope.value.type
+  if (type === 'page/read' || type === 'panel/open' || type === 'panel/close') {
+    return { ok: true, value: { v: PROTOCOL_VERSION, type } }
   }
   return rejected('unsupported-type', '모르는 요청')
 }
