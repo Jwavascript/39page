@@ -26,6 +26,10 @@ const props = defineProps<{
   panelId: string
   /** 바뀔 때마다 고른 목록의 링크 입력을 연다 (`ArchiveOpenOptions.addLink`). */
   addLinkRequest?: number
+  /** Moments 탭을 한 영상으로 거른다 (`ArchiveOpenOptions.videoId`). */
+  momentsFocusRequest?: { videoId: string; seq: number } | null
+  /** 음악 탭에서 그 영상의 곡 줄을 보인다 (`ArchiveOpenOptions.revealVideoId`). */
+  revealRequest?: { videoId: string; seq: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -74,6 +78,14 @@ watch(
     if (now !== undefined && now !== before && now > 0) {
       void nextTick(() => editor.value?.startAddLink())
     }
+  },
+)
+
+watch(
+  () => props.revealRequest?.seq,
+  () => {
+    const request = props.revealRequest
+    if (request != null) void nextTick(() => editor.value?.revealVideo(request.videoId))
   },
 )
 
@@ -148,7 +160,7 @@ watch(
         처음 이 탭을 열 때 마운트한다 (그 뒤로는 유지). 열어 보지도 않은 수백 · 수천 행을 미리 그리지
         않고, 대시보드 위젯과 같은 목록이 화면 밖에 한 벌 더 생기지 않게 한다.
       -->
-      <MomentsBrowserPanel v-if="momentsVisited" />
+      <MomentsBrowserPanel v-if="momentsVisited" :focus-request="momentsFocusRequest ?? null" />
     </div>
 
     <p class="archive-foot">

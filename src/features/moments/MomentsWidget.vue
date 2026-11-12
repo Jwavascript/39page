@@ -76,6 +76,13 @@ function cancelNote(): void {
 function openAll(): void {
   archive?.open('moments')
 }
+
+/** 이 곡의 Moments 를 보관함에서 — 그 곡으로 걸러져 열린다 (M11-4). */
+function openCurrent(): void {
+  const videoId = browser.currentVideoId.value
+  if (videoId === null) openAll()
+  else archive?.open('moments', { videoId })
+}
 </script>
 
 <template>
@@ -196,7 +203,7 @@ function openAll(): void {
     </ul>
     <p v-if="moreCount > 0" class="more">
       이 곡의 Moments {{ moreCount }}개 더 —
-      <button type="button" class="link" @click="openAll">모두 보기</button>
+      <button type="button" class="link" @click="openCurrent">모두 보기</button>
     </p>
     <p v-else-if="browser.total.value === 0" class="empty">
       아직 저장한 순간이 없어요. 곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.

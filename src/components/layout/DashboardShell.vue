@@ -158,12 +158,26 @@ async function placeArchive(): Promise<void> {
 
 /** "링크 추가로 바로" 요청 — 숫자가 바뀔 때마다 보관함이 한 번 링크 입력을 연다. */
 const addLinkRequest = ref(0)
+/** "이 영상의 Moments 만" · "음악 탭의 그 곡" 요청 (M11-4). `seq` 가 바뀔 때마다 한 번 적용된다. */
+const momentsFocusRequest = ref<{ videoId: string; seq: number } | null>(null)
+const revealRequest = ref<{ videoId: string; seq: number } | null>(null)
+let requestSeq = 0
 
 function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): void {
   if (tab !== undefined) archiveTab.value = tab
   if (options.addLink === true) {
     archiveTab.value = 'music'
     addLinkRequest.value += 1
+  }
+  if (options.videoId !== undefined) {
+    archiveTab.value = 'moments'
+    requestSeq += 1
+    momentsFocusRequest.value = { videoId: options.videoId, seq: requestSeq }
+  }
+  if (options.revealVideoId !== undefined) {
+    archiveTab.value = 'music'
+    requestSeq += 1
+    revealRequest.value = { videoId: options.revealVideoId, seq: requestSeq }
   }
   if (isArchiveOpen.value) return
 
@@ -248,7 +262,8 @@ async function closeData(): Promise<void> {
  * 무엇을 닫았는지 알 수 없다. (M7 의 플레이리스트 선반은 M11-3 에서 없어졌다 — 데크가 보관함을 연다.)
  */
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape') return
+  // 안쪽이 Esc 를 이미 썼으면(검색어 지우기 등) 닫지 않는다.
+  if (event.key !== 'Escape' || event.defaultPrevented) return
 
   if (isDataOpen.value) {
     void closeData()
@@ -321,6 +336,8 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
         :tab="archiveTab"
         :panel-id="ARCHIVE_ID"
         :add-link-request="addLinkRequest"
+        :moments-focus-request="momentsFocusRequest"
+        :reveal-request="revealRequest"
         @close="closeArchive"
         @select-tab="(tab) => (archiveTab = tab)"
       />

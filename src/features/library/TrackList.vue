@@ -14,7 +14,7 @@
  * - 긴 제목이 말줄임으로 잘리지 않고 줄을 바꾼다.
  * - 지금 곡은 글("재생 중")과 `aria-current` 로도 알린다 — 색만이 아니다.
  */
-import { nextTick, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
 
 import type { DeepReadonly } from 'vue'
 
@@ -31,6 +31,11 @@ const props = defineProps<{
   nowPlayingTrackId?: string | null
   /** 지금 곡이 실제로 소리 나는 중인지 — 일시정지면 "지금 곡" 으로 적는다. */
   nowPlayingActive?: boolean
+  /**
+   * 영상 ID → 그 영상의 Moment 수 (M11-4 §5-4). 있으면 행에 `◆ N` 단추 — 누르면 Moments 탭이 그 곡으로
+   * 걸러져 열린다. 수는 부모가 Moments store 에서 읽어 준다 (이 컴포넌트는 store 를 모른다).
+   */
+  momentCounts?: ReadonlyMap<string, number>
 }>()
 
 const emit = defineEmits<{
@@ -38,7 +43,43 @@ const emit = defineEmits<{
   move: [trackId: string, direction: 'up' | 'down']
   remove: [trackId: string]
   rename: [trackId: string, title: string]
+  moments: [videoId: string]
 }>()
+
+/**
+ * 다른 곳(Moments 묶음 머리의 "목록: A")에서 찾아온 곡 (M11-4). 테두리로 보이고, 그 줄의 ▶ 로 포커스가 온다.
+ * 잠시 뒤 표시를 거둔다 — 오래 남으면 "지금 곡" 표시와 헷갈린다.
+ */
+const revealedId = ref<string | null>(null)
+let revealTimer: ReturnType<typeof setTimeout> | null = null
+const REVEAL_MS = 2400
+
+function reveal(videoId: string): boolean {
+  const track = props.tracks?.find((item) => item.videoId === videoId)
+  if (track === undefined) return false
+  revealedId.value = track.id
+  if (revealTimer !== null) clearTimeout(revealTimer)
+  revealTimer = setTimeout(() => {
+    revealedId.value = null
+    revealTimer = null
+  }, REVEAL_MS)
+  void nextTick(() => {
+    const row = root.value?.querySelector<HTMLElement>(`[data-track-id="${track.id}"]`)
+    if (typeof row?.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' })
+    row?.querySelector<HTMLElement>('.track-play')?.focus()
+  })
+  return true
+}
+
+onBeforeUnmount(() => {
+  if (revealTimer !== null) clearTimeout(revealTimer)
+})
+
+defineExpose({ reveal })
+
+function momentCount(videoId: string): number {
+  return props.momentCounts?.get(videoId) ?? 0
+}
 
 /** "관리" 가 펼쳐진 행. 한 번에 하나다. */
 const managingId = ref<string | null>(null)
@@ -118,7 +159,8 @@ function confirmRemove(): void {
     <template v-for="(track, index) in tracks ?? []" :key="track.id">
       <div
         class="track"
-        :class="{ 'is-current': isCurrent(track) }"
+        :data-track-id="track.id"
+        :class="{ 'is-current': isCurrent(track), 'is-revealed': revealedId === track.id }"
         :aria-current="isCurrent(track) ? 'true' : undefined"
       >
         <button
@@ -138,6 +180,17 @@ function confirmRemove(): void {
           </span>
           <span class="track-id">{{ track.videoId }}</span>
         </span>
+        <button
+          v-if="momentCount(track.videoId) > 0"
+          type="button"
+          class="track-moments"
+          :data-track-moments="track.videoId"
+          :aria-label="`${track.title} 의 Moments ${momentCount(track.videoId)}개 보기`"
+          :title="`이 곡의 Moments ${momentCount(track.videoId)}개 보기`"
+          @click="emit('moments', track.videoId)"
+        >
+          <span aria-hidden="true">◆</span> {{ momentCount(track.videoId) }}
+        </button>
         <button
           type="button"
           class="track-manage"
@@ -265,6 +318,26 @@ function confirmRemove(): void {
   border-color: var(--track-current-border-color);
 }
 
+/* Moments 에서 찾아온 곡 — 잠시 겹테두리. 포커스 링도 함께 보인다. */
+.track.is-revealed {
+  border-color: var(--row-selected-border-color);
+  outline: 1px solid var(--row-selected-border-color);
+  outline-offset: 1px;
+}
+
+/* 이 곡의 Moments 수 — 누르면 Moments 탭이 이 곡으로 걸러져 열린다. 44px. */
+.track-moments {
+  min-width: 44px;
+  min-height: 44px;
+  flex: none;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--row-action-text-color);
+  font: 11px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .track-order {
   flex: none;
   width: 18px;
@@ -386,6 +459,7 @@ function confirmRemove(): void {
     background: var(--pill-surface-hover-color);
   }
 
+  .track-moments:hover,
   .track-manage:hover {
     color: var(--row-action-hover-text-color);
   }

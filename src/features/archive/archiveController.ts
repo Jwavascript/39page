@@ -18,6 +18,16 @@ export interface ArchiveOpenOptions {
    * 자연스럽게 잇는다. 링크 입력란으로 포커스가 간다.
    */
   readonly addLink?: boolean
+  /**
+   * Moments 탭을 **그 영상의 Moments 만** 보이게 연다 (M11-4 §5-4) — 음악 탭 곡 행의 `◆ N` 배지,
+   * 대시보드의 "이 곡 모두 보기". 탭은 Moments 가 된다.
+   */
+  readonly videoId?: string
+  /**
+   * 음악 탭을 열고 고른 목록에서 그 영상의 곡 줄로 포커스를 옮긴다 (M11-4 §5-4) — Moments 묶음
+   * 머리의 "목록: A". 목록을 고르는 일은 부르는 쪽이 먼저 한다.
+   */
+  readonly revealVideoId?: string
 }
 
 export interface ArchiveController {

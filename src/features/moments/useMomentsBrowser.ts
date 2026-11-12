@@ -29,9 +29,6 @@ import { usePlaybackStore } from '@/stores/playback'
 import { info, unsavedReason, warning, type MomentFeedback } from './momentFeedback'
 import { groupMoments, libraryTitleIndex, type MomentGroup } from './momentsView'
 
-/** `전체` 또는 `이 곡`. 저장하지 않는 화면 상태다. */
-export type MomentsFilter = 'all' | 'current'
-
 /**
  * 재생 거절 안내.
  *
@@ -63,9 +60,11 @@ export interface MomentsBrowserModel {
   /** 지금 영상의 Moment 수. */
   currentCount: ComputedRef<number>
 
-  filter: Ref<MomentsFilter>
-  /** 필터를 적용한 묶음. */
-  groups: ComputedRef<MomentGroup[]>
+  /**
+   * 영상별로 묶은 전체 Moment (거르지 않음). 보관함의 검색 · 보기는 이것을 바탕으로
+   * `useMomentsArchive` 가 만든다 (M11-4).
+   */
+  allGroups: ComputedRef<MomentGroup[]>
 
   feedback: Readonly<Ref<MomentFeedback | null>>
 
@@ -79,6 +78,8 @@ export interface MomentsBrowserModel {
   /** 한 건을 지운다. **확인은 화면이 먼저 받는다.** 지운 뒤 이행한다. */
   remove(momentId: string): Promise<void>
   clearFeedback(): void
+  /** 이 composable 밖의 동작(목록으로 가기 등)이 같은 안내 자리에 경고를 낸다. */
+  warn(text: string): void
 }
 
 export function useMomentsBrowser(): MomentsBrowserModel {
@@ -91,7 +92,6 @@ export function useMomentsBrowser(): MomentsBrowserModel {
   /** 주입되지 않으면 비켜달라고 하지 않는다. */
   const archive = inject(ARCHIVE, null)
 
-  const filter = ref<MomentsFilter>('all')
   const feedback = ref<MomentFeedback | null>(null)
 
   const total = computed<number>(() => moments.count)
@@ -102,12 +102,6 @@ export function useMomentsBrowser(): MomentsBrowserModel {
 
   const titles = computed(() => libraryTitleIndex(library.playlists, library.selectedPlaylistId))
   const allGroups = computed<MomentGroup[]>(() => groupMoments(moments.moments, titles.value))
-
-  const groups = computed<MomentGroup[]>(() =>
-    filter.value === 'current'
-      ? allGroups.value.filter((group) => group.videoId === currentVideoId.value)
-      : allGroups.value,
-  )
 
   async function play(momentId: string): Promise<void> {
     feedback.value = null
@@ -177,16 +171,20 @@ export function useMomentsBrowser(): MomentsBrowserModel {
     feedback.value = null
   }
 
+  function warn(text: string): void {
+    feedback.value = warning(text)
+  }
+
   return {
     total,
     currentVideoId,
     currentCount,
-    filter,
-    groups,
+    allGroups,
     feedback: readonly(feedback) as Readonly<Ref<MomentFeedback | null>>,
     play,
     saveNote,
     remove,
     clearFeedback,
+    warn,
   }
 }

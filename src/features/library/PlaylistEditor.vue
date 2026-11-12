@@ -31,6 +31,7 @@ import {
   type PlayRequestResult,
 } from '@/features/playback/playbackCoordinator'
 import { parseYouTubeVideoId } from '@/shared/utils/youtube'
+import { useMomentsStore } from '@/stores/moments'
 import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import {
   MAX_PLAYLIST_NAME_LENGTH,
@@ -147,7 +148,32 @@ async function startAddLink(): Promise<void> {
   document.getElementById('track-url')?.focus()
 }
 
-defineExpose({ startAddLink })
+/** 곡 줄 — "Moments 에서 목록으로" 가 그 곡을 보이게 할 때 쓴다 (M11-4). */
+const trackList = ref<InstanceType<typeof TrackList> | null>(null)
+
+/** 고른 목록에서 그 영상의 곡 줄을 보이고 그 줄로 포커스를 옮긴다. 없으면 `false`. */
+function revealVideo(videoId: string): boolean {
+  return trackList.value?.reveal(videoId) ?? false
+}
+
+defineExpose({ startAddLink, revealVideo })
+
+/**
+ * 영상별 Moment 수 — 곡 줄의 `◆ N` 배지 (M11-4 §5-4). 라이브러리는 Moments 를 모르고(ADR 0019),
+ * 이 화면이 두 store 를 **읽기만** 해서 잇는다. Moments 를 고치지 않는다.
+ */
+const moments = useMomentsStore()
+const momentCounts = computed<Map<string, number>>(() => {
+  const counts = new Map<string, number>()
+  for (const moment of moments.moments) {
+    counts.set(moment.videoId, (counts.get(moment.videoId) ?? 0) + 1)
+  }
+  return counts
+})
+
+function openMoments(videoId: string): void {
+  archive?.open('moments', { videoId })
+}
 
 async function submitLink(): Promise<void> {
   const targetId = linkTargetId.value
@@ -537,6 +563,8 @@ watch(
       </form>
 
       <TrackList
+        ref="trackList"
+        :moment-counts="momentCounts"
         :now-playing-track-id="nowPlayingTrackId"
         :now-playing-active="nowPlayingActive"
         :tracks="library.selectedPlaylist === null ? null : library.selectedPlaylist.tracks"
@@ -544,6 +572,7 @@ watch(
         @move="moveTrack"
         @remove="removeTrack"
         @rename="renameTrack"
+        @moments="openMoments"
       />
     </div>
   </section>

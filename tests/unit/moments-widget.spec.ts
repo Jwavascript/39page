@@ -730,12 +730,12 @@ describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
     seedMoments([moment({ id: '1' }), moment({ id: '2', videoId: B, title: 'Bravo' })])
     const s = boot()
     const panel = await openArchiveMoments(s)
-    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없다.
-    expect(panel.findAll('.chip')[1]?.attributes('disabled')).toBeDefined()
+    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없다. (M11-4: 칩은 전체 · 최근 · 이 곡)
+    expect(panel.findAll('.chip')[2]?.attributes('disabled')).toBeDefined()
 
     await playFromStart(s, 5)
-    expect(panel.findAll('.chip').map((chip) => chip.text())).toEqual(['전체 2', '이 곡 1'])
-    await panel.findAll('.chip')[1]?.trigger('click')
+    expect(panel.findAll('.chip').map((chip) => chip.text())).toEqual(['전체 2', '최근', '이 곡 1'])
+    await panel.findAll('.chip')[2]?.trigger('click')
     expect(panel.findAll('.group-title').map((t) => t.text())).toEqual(['Alpha'])
 
     await nextTrack(s)
@@ -979,8 +979,10 @@ describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
     const forbidden = ['전부 지우기', '모두 삭제', '초기화', '복구', '내보내기', '가져오기', '시점']
     expect(labels.filter((label) => forbidden.some((word) => label.includes(word)))).toEqual([])
     expect(labels.every((label) => label !== '')).toBe(true)
-    // 시점은 고치지 못한다 (F16) — 메모 칸(textarea)뿐이다.
-    expect(panel.findAll('input')).toEqual([])
+    // 시점은 고치지 못한다 (F16) — 메모 칸(textarea)뿐이다. 입력란은 M11-4 의 검색란 하나다.
+    expect(panel.findAll('input').map((input) => input.attributes('id'))).toEqual([
+      'archive-moments-search',
+    ])
     expect(panel.findAll('textarea')).toHaveLength(1)
   })
 })
@@ -1210,10 +1212,13 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
       'src/features/moments/MomentsWidget.vue',
       'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/moments/MomentList.vue',
+      'src/features/moments/MomentRow.vue',
       'src/features/moments/MomentsStatusBanner.vue',
       'src/features/moments/useMomentCapture.ts',
       'src/features/moments/useMomentsBrowser.ts',
+      'src/features/moments/useMomentsArchive.ts',
       'src/features/moments/momentsView.ts',
+      'src/features/moments/momentsSearch.ts',
       'src/features/moments/momentFeedback.ts',
     ]) {
       const code = stripComments(readSource(file))
@@ -1232,7 +1237,12 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
   })
 
   it('라이브러리를 고치는 호출이 없다 — 제목을 읽기만 한다', () => {
+    // M11-4 의 "목록: A" 는 목록을 **고르기만** 한다(selectPlaylist — 보관함의 목록 고르기와 같은 동작).
     for (const file of [
+      'src/features/moments/useMomentsArchive.ts',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/moments/MomentList.vue',
+      'src/features/moments/MomentRow.vue',
       'src/features/moments/useMomentsBrowser.ts',
       'src/features/moments/useMomentCapture.ts',
       'src/features/moments/MomentsWidget.vue',

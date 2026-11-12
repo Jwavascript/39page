@@ -221,6 +221,8 @@ describe('C. 컨트롤 이름과 크기', () => {
       'src/features/library/PlaylistWidget.vue',
       'src/features/library/TrackList.vue',
       'src/features/moments/MomentList.vue',
+      'src/features/moments/MomentRow.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/moments/MomentsWidget.vue',
       'src/features/playback/PlayerTransport.vue',
     ]) {
