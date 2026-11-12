@@ -17,6 +17,7 @@ function router(granted = true) {
     permissionChanged: vi.fn<() => Promise<void>>(async () => {}),
     hasPermission: vi.fn<() => Promise<boolean>>(async () => granted),
     call: vi.fn<BridgeClient['call']>(async () => ({ outcome: 'ok' as const, data: { ok: 1 } })),
+    idle: vi.fn<BridgeClient['idle']>(async () => true),
     generation: () => 0,
   }
   const deps = {
@@ -94,5 +95,27 @@ describe('라우터 — 저장 브리지', () => {
       error: { code: 'forbidden-sender' },
     })
     expect(client.call).not.toHaveBeenCalled()
+  })
+
+  it('유휴 알림 — offscreen 문서(탭 밖 · 그 경로)만, 다른 보낸 쪽은 거절 (M11-6)', async () => {
+    const { r, client } = router()
+    const idle = { v: 1, type: 'offscreen/idle', gen: 3 }
+    expect(
+      await r.handle(idle, { id: ID, url: `${ORIGIN}src/offscreen/index.html?gen=3` }),
+    ).toEqual({
+      v: 1,
+      ok: true,
+      data: { closed: true },
+    })
+    expect(client.idle).toHaveBeenCalledWith(3)
+    expect(await r.handle(idle, PANEL)).toMatchObject({
+      ok: false,
+      error: { code: 'forbidden-sender' },
+    })
+    expect(await r.handle(idle, { id: ID, url: `${ORIGIN}src/popup/index.html` })).toMatchObject({
+      ok: false,
+      error: { code: 'forbidden-sender' },
+    })
+    expect(client.idle).toHaveBeenCalledTimes(1)
   })
 })

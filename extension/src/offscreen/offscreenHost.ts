@@ -25,6 +25,13 @@ export interface OffscreenHostDeps {
   readonly frame: FrameLike
   /** 준비 신호를 기다리는 한도. */
   readonly readyTimeoutMs?: number
+  /**
+   * 유휴 알림 (M11-6) — 이만큼 요청이 없고 처리 중인 것도 없으면 `notifyIdle(gen)` 을 한 번 부른다. 워커가
+   * 확인하고 문서를 닫는다(상주 메모리를 돌려준다). 다음 요청은 문서를 다시 띄운다(실측 약 50–130ms).
+   */
+  readonly idleMs?: number
+  readonly notifyIdle?: (gen: number) => void
+  readonly now?: () => number
 }
 
 export interface OffscreenHost {
@@ -49,6 +56,30 @@ export function createOffscreenHost(deps: OffscreenHostDeps): OffscreenHost {
   let status: unknown = null
   const readyWaiters: (() => void)[] = []
   const pending = new Map<string, ((answer: unknown) => void)[]>()
+  const now = deps.now ?? Date.now
+  let lastActivity = now()
+  let idleSent = false
+  let idleTimer: ReturnType<typeof setTimeout> | null = null
+
+  /** 활동이 있을 때마다 유휴 시계를 다시 건다. 처리 중인 요청이 있으면 알리지 않는다. */
+  function touch(): void {
+    lastActivity = now()
+    idleSent = false
+    if (deps.idleMs === undefined || deps.notifyIdle === undefined) return
+    if (idleTimer !== null) clearTimeout(idleTimer)
+    idleTimer = setTimeout(checkIdle, deps.idleMs)
+  }
+
+  function checkIdle(): void {
+    idleTimer = null
+    if (deps.idleMs === undefined || deps.notifyIdle === undefined || idleSent) return
+    if (pending.size > 0 || now() - lastActivity < deps.idleMs) {
+      idleTimer = setTimeout(checkIdle, deps.idleMs)
+      return
+    }
+    idleSent = true
+    deps.notifyIdle(deps.gen)
+  }
 
   function settleReady(): void {
     for (const resolve of readyWaiters.splice(0)) resolve()
@@ -128,11 +159,15 @@ export function createOffscreenHost(deps: OffscreenHostDeps): OffscreenHost {
       sendResponse({ ok: false, transport: 'stale-gen' })
       return false
     }
+    touch()
     const task =
       message.kind === 'ready'
         ? ready()
         : call(message.request as unknown as Record<string, unknown>, message.waitMs)
-    void task.then(sendResponse)
+    void task.then((reply) => {
+      touch()
+      sendResponse(reply)
+    })
     return true
   }
 

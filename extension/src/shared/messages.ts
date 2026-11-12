@@ -120,6 +120,8 @@ export type ExtensionRequest =
       readonly tabId: number
       readonly mode: PanelMode
     }
+  /** offscreen → 워커: 한동안 요청이 없었다 (M11-6). 워커가 같은 세대 · 처리 중 없음을 확인하고 닫는다. */
+  | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'offscreen/idle'; readonly gen: number }
   /** 패널 → 워커 (대상 탭 = 보낸 쪽 탭). 지시 번호 · 지금 영상 · 잡은 시점. */
   | { readonly v: typeof PROTOCOL_VERSION; readonly type: 'panel/sync' }
   /** 패널 → 워커: 지금 시점을 다시 잡는다. `videoId` 는 패널이 보고 있는 영상. */
@@ -209,6 +211,12 @@ export function parseExtensionRequest(value: unknown): ParseOutcome<ExtensionReq
     if (!isTabId(body.tabId)) return rejected('bad-request', 'tabId 가 0 이상의 정수가 아니다')
     if (!isPanelMode(body.mode)) return rejected('bad-request', 'mode 가 music · moment 가 아니다')
     return { ok: true, value: { v: PROTOCOL_VERSION, type, tabId: body.tabId, mode: body.mode } }
+  }
+  if (type === 'offscreen/idle') {
+    if (typeof body.gen !== 'number' || !Number.isSafeInteger(body.gen) || body.gen < 0) {
+      return rejected('bad-request', 'gen')
+    }
+    return { ok: true, value: { v: PROTOCOL_VERSION, type, gen: body.gen } }
   }
   if (type === 'panel/sync' || type === 'panel/close') {
     return { ok: true, value: { v: PROTOCOL_VERSION, type } }

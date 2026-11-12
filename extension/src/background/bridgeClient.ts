@@ -56,6 +56,8 @@ export interface BridgeClientDeps {
   readonly startWindowMs?: number
   /** 답을 기다리는 상한. 넘으면 쓰기는 `uncertain`. */
   readonly maxWaitMs?: number
+  /** 유휴로 닫아도 되는 최소 시간 (offscreen 의 알림과 같은 값). */
+  readonly idleMs?: number
 }
 
 export interface BridgeClient {
@@ -65,6 +67,11 @@ export interface BridgeClient {
   permissionChanged(): Promise<void>
   hasPermission(): Promise<boolean>
   call(payload: BridgePayload, requestId: string): Promise<BridgeCallResult>
+  /**
+   * offscreen 이 유휴를 알렸다 (M11-6). 같은 세대이고, 처리 중인 요청이 없고, 마지막 요청 뒤
+   * `idleMs` 가 지났을 때만 닫는다 — 저장 중인 요청을 끊지 않는다. 닫았으면 `true`.
+   */
+  idle(gen: number): Promise<boolean>
   /** 시험용 — 지금 세대. */
   generation(): number
 }
@@ -95,6 +102,9 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
   const maxWaitMs = deps.maxWaitMs ?? 30_000
 
   let gen = 0
+  let inflight = 0
+  let lastUse = deps.now()
+  const idleMs = deps.idleMs ?? 5 * 60_000
   let current: { gen: number; ready: Promise<Ensure> } | null = null
   let started: Promise<void> | null = null
 
@@ -168,6 +178,25 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
   }
 
   async function call(payload: BridgePayload, requestId: string): Promise<BridgeCallResult> {
+    inflight += 1
+    lastUse = deps.now()
+    try {
+      return await callOnce(payload, requestId)
+    } finally {
+      inflight -= 1
+      lastUse = deps.now()
+    }
+  }
+
+  async function idle(idleGen: number): Promise<boolean> {
+    // 다른 세대(이미 닫고 새로 띄운 뒤의 낡은 알림) · 처리 중 · 방금 쓴 문서는 닫지 않는다.
+    if (idleGen !== gen || inflight > 0 || deps.now() - lastUse < idleMs - 5_000) return false
+    if (current?.gen === gen) current = null
+    await closeQuietly()
+    return true
+  }
+
+  async function callOnce(payload: BridgePayload, requestId: string): Promise<BridgeCallResult> {
     const write = WRITE_OPS.includes(payload.op)
     const state = await ensure()
     if (state !== 'ready') return { outcome: 'unavailable', reason: state }
@@ -251,6 +280,7 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
     permissionChanged,
     hasPermission: () => deps.permissions.contains(),
     call,
+    idle,
     generation: () => gen,
   }
 }

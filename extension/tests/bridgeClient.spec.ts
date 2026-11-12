@@ -16,6 +16,8 @@ const READ: BridgePayload = { op: 'library/list', videoId: null }
 
 type Responder = (message: OffscreenMessage) => Promise<unknown>
 
+const clock = { t: 1_000 }
+
 function setup(options: { granted?: boolean; responder?: Responder; exists?: boolean } = {}) {
   let granted = options.granted ?? true
   let open = options.exists ?? false
@@ -58,7 +60,8 @@ function setup(options: { granted?: boolean; responder?: Responder; exists?: boo
   const client = createBridgeClient({
     offscreen,
     permissions: { contains },
-    now: () => 1_000,
+    now: () => clock.t,
+    idleMs: 60_000,
     readyTimeoutMs: 50,
     maxWaitMs: 50,
   })
@@ -272,5 +275,57 @@ describe('저장 브리지 연결', () => {
     expect(normal).toBe(s.offscreen.send)
     expect(await s.client.call(WRITE, 'req-0000000000000013')).toMatchObject({ outcome: 'ok' })
     expect(s.created).toEqual([0, 0])
+  })
+
+  it('유휴 알림 — 같은 세대 · 처리 중 없음 · 충분히 지났을 때만 닫는다 (M11-6)', async () => {
+    clock.t = 1_000
+    const s = setup()
+    await s.client.call(READ, REQ)
+    expect(await s.client.idle(0)).toBe(false) // 방금 썼다
+    clock.t += 60_000
+    expect(await s.client.idle(7)).toBe(false) // 다른 세대의 낡은 알림
+    expect(s.isOpen()).toBe(true)
+    expect(await s.client.idle(0)).toBe(true)
+    expect(s.isOpen()).toBe(false)
+    // 다음 요청은 다시 띄운다 — 같은 세대로.
+    expect(await s.client.call(READ, 'req-0000000000000020')).toMatchObject({ outcome: 'ok' })
+    expect(s.created).toEqual([0, 0])
+    clock.t = 1_000
+  })
+
+  it('유휴 알림이 처리 중 요청과 겹치면 닫지 않는다 — 저장을 끊지 않는다', async () => {
+    clock.t = 1_000
+    const s = setup()
+    await s.client.call(READ, REQ)
+    let release: () => void = () => {}
+    s.setResponder(
+      (m) =>
+        new Promise((resolve) => {
+          release = () =>
+            resolve(
+              m.kind === 'ready'
+                ? { ok: true }
+                : {
+                    ok: true,
+                    answer: {
+                      ns: '39page-bridge',
+                      v: 1,
+                      kind: 'response',
+                      id: m.request.id,
+                      ok: true,
+                      data: 1,
+                    },
+                  },
+            )
+        }),
+    )
+    const pending = s.client.call(WRITE, 'req-0000000000000021')
+    // 쓰기가 offscreen 으로 나간 뒤(처리 중) 유휴 알림이 온다.
+    await vi.waitFor(() => expect(s.sent.filter((m) => m.kind === 'call')).toHaveLength(2))
+    clock.t += 120_000
+    expect(await s.client.idle(0)).toBe(false)
+    release()
+    expect(await pending).toEqual({ outcome: 'ok', data: 1 })
+    clock.t = 1_000
   })
 })

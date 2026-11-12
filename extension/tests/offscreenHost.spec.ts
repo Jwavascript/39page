@@ -150,4 +150,46 @@ describe('offscreen 문서', () => {
     })
     expect(s.posted).toHaveLength(0)
   })
+
+  it('유휴 — 요청이 없고 처리 중인 것도 없으면 한 번 알린다, 처리 중이면 기다린다 (M11-6)', async () => {
+    vi.useFakeTimers()
+    const notifyIdle = vi.fn<(gen: number) => void>()
+    const posted: unknown[] = []
+    const win = { postMessage: (message: unknown) => void posted.push(message) }
+    const host = createOffscreenHost({
+      gen: 3,
+      bridgeOrigin: ORIGIN,
+      extensionId: ID,
+      workerUrl: WORKER,
+      frame: { contentWindow: win },
+      idleMs: 1_000,
+      notifyIdle,
+    })
+    host.onFrameMessage({
+      source: win,
+      origin: ORIGIN,
+      data: { ns: '39page-bridge', kind: 'ready' },
+    })
+    host.onRuntimeMessage({ target: 'offscreen', kind: 'ready', gen: 3 }, SW, () => {})
+    await vi.advanceTimersByTimeAsync(10)
+    // 처리 중인 요청 — 답이 오지 않았다.
+    host.onRuntimeMessage(
+      { target: 'offscreen', kind: 'call', gen: 3, request: request(), waitMs: 60_000 },
+      SW,
+      () => {},
+    )
+    await vi.advanceTimersByTimeAsync(3_000)
+    expect(notifyIdle).not.toHaveBeenCalled()
+    host.onFrameMessage({
+      source: win,
+      origin: ORIGIN,
+      data: { ns: '39page-bridge', v: 1, kind: 'response', id: 'req-0000000000000001', ok: true },
+    })
+    await vi.advanceTimersByTimeAsync(2_500)
+    expect(notifyIdle).toHaveBeenCalledTimes(1)
+    expect(notifyIdle).toHaveBeenCalledWith(3)
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(notifyIdle).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
 })

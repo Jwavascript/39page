@@ -109,6 +109,12 @@ export function createBackgroundRouter(deps: RouterDeps) {
           ? bindPanel(panelDeps, panelTab, sender.documentId)
           : isBoundPanel(panelDeps, panelTab, sender.documentId)
       if (!allowed) return fail('forbidden-sender', '이 탭에 묶인 패널이 아니다')
+    } else if (parsed.value.type === 'offscreen/idle') {
+      // offscreen 문서만 — 탭 밖, 그 경로.
+      const url = typeof sender.url === 'string' ? new URL(sender.url).pathname : ''
+      if (sender.tab !== undefined || url !== '/src/offscreen/index.html') {
+        return fail('forbidden-sender', 'offscreen 문서만 보낼 수 있다')
+      }
     } else if (
       parsed.value.type === 'panel/sync' ||
       parsed.value.type === 'panel/capture' ||
@@ -146,6 +152,9 @@ export function createBackgroundRouter(deps: RouterDeps) {
         case 'bridge/call':
           if (deps.bridge === undefined) return fail('unsupported-type', '저장 브리지가 없다')
           return ok(await deps.bridge.client.call(parsed.value.payload, parsed.value.requestId))
+        case 'offscreen/idle':
+          if (deps.bridge === undefined) return fail('unsupported-type', '저장 브리지가 없다')
+          return ok({ closed: await deps.bridge.client.idle(parsed.value.gen) })
         case 'panel/open':
           if (panelDeps === undefined) return fail('unsupported-type', '패널이 없다')
           {

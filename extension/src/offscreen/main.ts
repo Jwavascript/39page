@@ -15,6 +15,11 @@ const host = createOffscreenHost({
   extensionId: chrome.runtime.id,
   workerUrl: chrome.runtime.getURL('background.js'),
   frame,
+  // 5분 동안 요청이 없으면 워커에 알린다 — 워커가 확인하고 닫는다 (M11-6).
+  idleMs: 5 * 60_000,
+  notifyIdle: (gen) => {
+    void chrome.runtime.sendMessage({ v: 1, type: 'offscreen/idle', gen }).catch(() => undefined)
+  },
 })
 
 globalThis.addEventListener('message', (event) => host.onFrameMessage(event))
