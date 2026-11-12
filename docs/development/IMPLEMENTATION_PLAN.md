@@ -2112,8 +2112,8 @@ YouTube 영상 → 확장 아이콘 → **현재 Moment 저장** → 39page 수�
 **남긴 TODO**
 
 - [ ] ADR 0027 · 0028 승인 — `M11_UX_DESIGN.md` §10 D1–D8 선택
-- [ ] 이 기기(Node 26)의 루트 시험 환경 — Node 25+ 의 전역 `localStorage` 가 jsdom 것을 가려 `NODE_OPTIONS=--no-webstorage`
-      없이는 저장소를 쓰는 시험이 실패한다. 엔진 범위(`^22.18 || >=24.12`)를 좁힐지, 시험 설정에서 막을지 결정 (M11-2 전)
+- [x] ~~이 기기(Node 26)의 루트 시험 환경~~ — M11-6 에서 해결: `tests/setup/webStorage.ts`(확장은 `tests/support/webStorage.ts`)가 jsdom
+      의 저장소를 전역에 다시 건다. `NODE_OPTIONS` 없이 54 · 1927 통과 (전: 45 파일 · 1,502 실패 재현)
 - [ ] M11 구현이 끝나면 `poc/m11-bridge/` 삭제
 
 ### M11-2. 정보 구조 골격 — 완료 (2026-11-12, 로컬 브랜치)

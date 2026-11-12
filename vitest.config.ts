@@ -8,7 +8,8 @@ export default mergeConfig(
     test: {
       environment: 'jsdom',
       // 테스트는 네트워크에 나가지 않는다 (M4 날씨 위젯).
-      setupFiles: ['tests/setup/noNetwork.ts'],
+      // Node 25+ 의 전역 Web Storage 가 jsdom 것을 가리지 않게 (M11-6) — `tests/setup/webStorage.ts`.
+      setupFiles: ['tests/setup/webStorage.ts', 'tests/setup/noNetwork.ts'],
       // Tests live in `tests/`; co-located `__tests__` folders are also picked up.
       include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/__tests__/*.{test,spec}.{ts,tsx}'],
       exclude: [...configDefaults.exclude],
