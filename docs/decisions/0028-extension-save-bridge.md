@@ -4,7 +4,7 @@
   Chrome 웹 스토어 심사(`IFRAME_SCRIPTING` · 선택 호스트 권한) · 브랜드 Chrome 실사용 · 운영 확장 ID 확정(그 전까지 운영
   `bridge.html` 은 꺼져 있다 — 결정 14). (제안 — M11-1 · 조건부 채택 — M11 Batch A)
 - 관련: **ADR 0023** (수집 화면 URL — 이 결정이 주 경로를 바꾸고 그것을 대체 경로로 남긴다), **ADR 0025** (탭 간 잠금),
-  **ADR 0007** (보호 상태), **ADR 0026** (Moment 캡처), `docs/architecture/M11_BRIDGE_POC.md`, `poc/m11-bridge/`
+  **ADR 0007** (보호 상태), **ADR 0026** (Moment 캡처), `docs/architecture/M11_BRIDGE_POC.md`, PoC 기록 `docs/architecture/m11-bridge-poc-results/` (PoC 코드는 M11-6 에서 삭제)
 
 ## 배경
 
@@ -65,7 +65,7 @@ ADR 0023 은 "열린 39page 탭에 메시지(B)" 를 보류했다 — 탭이 없
 - ADR 0023 결정 1 은 "주 경로" 에서 "대체 경로" 로 바뀐다. 결정 2–7 (조각 URL · 승인 · 계약 v1) 은 그대로 유효하다.
 - `createPlaylist` 가 새 목록을 선택하는 기존 동작 때문에 확장에서 만든 목록이 대시보드 선택을 바꾼다 — 옵션 추가를
   제안한다 (`M11_UX_DESIGN.md` §10 D4).
-- PoC 폴더 `poc/m11-bridge/` 는 단일 `src` 규칙의 임시 예외이며 M11 구현 뒤 지운다.
+- PoC 폴더 `poc/m11-bridge/` 는 단일 `src` 규칙의 임시 예외였고 M11-6 에서 지웠다 (실측 기록은 `docs/architecture/m11-bridge-poc-results/`).
 
 ## 선택 권한 사전 검증 (M11 Batch A, 2026-11-12 — `M11_BRIDGE_POC.md` §12)
 

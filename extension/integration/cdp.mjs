@@ -1,7 +1,7 @@
 /**
  * 실제 Chrome 통합 하네스용 최소 CDP 클라이언트 (Node 내장 WebSocket, 의존성 없음).
  *
- * M11-1 PoC(`poc/m11-bridge/harness/cdp.mjs`)에서 옮겼다 — PoC 폴더를 지워도 M11-5 · M11-6 검증이 쓴다.
+ * M11-1 PoC(`poc/m11-bridge/harness/cdp.mjs`, M11-6 에서 삭제)에서 옮겼다.
  * 격리된 시험 프로필의 Chrome for Testing 에만 붙는다. 확장 빌드에 들어가지 않는다.
  */
 export async function connectBrowser(port) {

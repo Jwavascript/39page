@@ -4,8 +4,8 @@
 > `IMPLEMENTATION_PLAN.md` M11-5 · `EXTENSION_DESIGN.md` §16. PoC 의 메모리 기록 기반 중복 방지는 요청 ID 에서 정한 저장 id 로 바뀌었다.
 
 > 상태: **M11-1 기술 검증 완료 (2026-11-12)** — 정식 구현은 M11-5. 결정(제안): [ADR 0028](../decisions/0028-extension-save-bridge.md)
-> UX: [`../product/M11_UX_DESIGN.md`](../product/M11_UX_DESIGN.md) §8 · PoC 코드: [`../../poc/m11-bridge/`](../../poc/m11-bridge/README.md)
-> 실측 기록: `poc/m11-bridge/results/2026-11-12-chrome157.json`
+> UX: [`../product/M11_UX_DESIGN.md`](../product/M11_UX_DESIGN.md) §8 · PoC 코드: M11-6 에서 삭제 — 정식 구현 `extension/` · `src/` 가 대신한다 (커밋 기록에 남아 있다)
+> 실측 기록: [`m11-bridge-poc-results/2026-11-12-chrome157.json`](m11-bridge-poc-results/2026-11-12-chrome157.json)
 
 ## 0. 질문
 
@@ -94,7 +94,7 @@ YouTube 탭 ──────────────────────�
 ## 5. 시나리오 실측
 
 최종 실행: Chrome for Testing 157 · 실제 YouTube (`dQw4w9WgXcQ`, 광고가 끝난 뒤 0:43 으로 옮겨 일시정지).
-**23개 중 23개 통과** (최종 기록 2026-11-11T23:37Z · `poc/m11-bridge/results/2026-11-12-chrome157.json`). 앞선 실행에서
+**23개 중 23개 통과** (최종 기록 2026-11-11T23:37Z · [`m11-bridge-poc-results/2026-11-12-chrome157.json`](m11-bridge-poc-results/2026-11-12-chrome157.json)). 앞선 실행에서
 발견해 고친 결함은 §5-3, 버린 실행과 그 이유는 기록 파일의 `discardedRuns`.
 
 | #                | 시나리오                                                                                                                                        | 결과                                                                                                                                                       |

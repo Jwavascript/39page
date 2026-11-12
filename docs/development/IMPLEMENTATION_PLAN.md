@@ -2084,10 +2084,10 @@ YouTube 영상 → 확장 아이콘 → **현재 Moment 저장** → 39page 수�
 | 데이터 · 백업 UX                          | `M11_UX_DESIGN.md` §6                                                                |
 | 웹앱 · 확장 통합 흐름 · 플로팅 패널       | `M11_UX_DESIGN.md` §8 · §9                                                           |
 | 저장 브리지 후보 비교 · PoC 결과 · 보안   | `M11_BRIDGE_POC.md` · ADR 0028                                                       |
-| PoC 코드 (배포 안 함)                     | `poc/m11-bridge/` — 운영 빌드 입력이 아니다 (빌드 해시로 확인)                       |
+| PoC 코드 (배포 안 함)                     | `poc/m11-bridge/` — 운영 빌드 입력이 아니다 (빌드 해시로 확인) · M11-6 에서 삭제     |
 
 **PoC 실측 요약** (Chrome for Testing 157 · Windows 11 · 실제 YouTube · 격리 프로필 · 운영 사이트 접속 없음.
-상세: `M11_BRIDGE_POC.md` §4 · §5, 기록: `poc/m11-bridge/results/2026-11-12-chrome157.json`)
+상세: `M11_BRIDGE_POC.md` §4 · §5, 기록: `docs/architecture/m11-bridge-poc-results/2026-11-12-chrome157.json`)
 
 | 항목                  | 결과                                                                                                                                                                                                          |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2114,7 +2114,7 @@ YouTube 영상 → 확장 아이콘 → **현재 Moment 저장** → 39page 수�
 - [ ] ADR 0027 · 0028 승인 — `M11_UX_DESIGN.md` §10 D1–D8 선택
 - [x] ~~이 기기(Node 26)의 루트 시험 환경~~ — M11-6 에서 해결: `tests/setup/webStorage.ts`(확장은 `tests/support/webStorage.ts`)가 jsdom
       의 저장소를 전역에 다시 건다. `NODE_OPTIONS` 없이 54 · 1927 통과 (전: 45 파일 · 1,502 실패 재현)
-- [ ] M11 구현이 끝나면 `poc/m11-bridge/` 삭제
+- [x] M11 구현이 끝나면 `poc/m11-bridge/` 삭제 — M11-6
 
 ### M11-2. 정보 구조 골격 — 완료 (2026-11-12, 로컬 브랜치)
 
@@ -2411,7 +2411,7 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 - [ ] 운영 확장 ID 확정(스토어 등록) → `VITE_BRIDGE_EXTENSION_IDS` → 운영 브리지 켜기 — 헤더 생성은 M11-6 에서 했다, ID 는 여전히 TODO
 - [x] offscreen 유휴 정리 — M11-6 (ADR 0028 결정 16)
 - [ ] 브랜드 Chrome · 실제 툴바 · 실제 키보드 단축키 · 프롬프트 한국어 문구 (사람, M11-6)
-- [ ] `poc/m11-bridge/` 삭제 — 정식 코드가 대신한다 (하네스 공용 부분은 `extension/integration/` 으로 옮겼다)
+- [x] `poc/m11-bridge/` 삭제 — M11-6 (실측 기록은 `docs/architecture/m11-bridge-poc-results/` 로 옮겼다)
 
 ### M11-6. 통합 검증 · 출시 준비 — 완료 (2026-11-12, 로컬 브랜치 · 배포 · 게시 없음)
 
