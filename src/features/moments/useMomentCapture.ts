@@ -42,6 +42,8 @@ const ADD_REFUSED: Readonly<Record<MomentMutationFailure, string>> = {
   conflict:
     '다른 탭에서 Moments 가 바뀌어 최신 목록을 불러왔어요. 저장하지 않았으니 다시 눌러 주세요.',
   busy: '다른 39page 탭이 저장하는 중이라 저장하지 않았어요. 잠시 뒤 다시 눌러 주세요.',
+  // 대시보드는 id 를 정하지 않으므로 닿지 않는다 (확장 브리지 전용, M11-5).
+  'duplicate-id': '저장할 대상을 찾을 수 없어요.',
 }
 
 const NOTE_REFUSED_CONFLICT =

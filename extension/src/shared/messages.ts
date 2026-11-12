@@ -8,6 +8,8 @@
  * `chrome.*` 를 부르지 않는 순수 모듈이다.
  */
 
+import { REQUEST_ID, parseBridgePayload, type BridgePayload } from './bridgeMessages'
+
 /** 계약 버전. 바꾸면 모든 수신 지점이 옛 버전을 `unsupported-version` 으로 거절한다. */
 export const PROTOCOL_VERSION = 1
 
@@ -95,6 +97,21 @@ export type ExtensionRequest =
       readonly tabId: number
       readonly videoId: string
     }
+  | {
+      /** 저장 브리지 상태 — 39page 권한이 있는지, 요청할 권한 (M11-5). */
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'bridge/state'
+    }
+  | {
+      /**
+       * 저장 브리지 명령 하나 (M11-5) — 명령 목록은 `bridgeMessages.ts` 의 것뿐이다. `requestId` 는 저장
+       * 항목 id 의 재료라, 같은 쓰기를 다시 보낼 때 **같은 값**을 쓴다 (한 번만 저장된다).
+       */
+      readonly v: typeof PROTOCOL_VERSION
+      readonly type: 'bridge/call'
+      readonly requestId: string
+      readonly payload: BridgePayload
+    }
 
 /**
  * Background → Content. 재생 시점은 content 가 아니라 메인 세계에서 직접 읽는다
@@ -155,6 +172,18 @@ export function parseExtensionRequest(value: unknown): ParseOutcome<ExtensionReq
     return {
       ok: true,
       value: { v: PROTOCOL_VERSION, type, tabId: body.tabId, videoId: body.videoId },
+    }
+  }
+  if (type === 'bridge/state') return { ok: true, value: { v: PROTOCOL_VERSION, type } }
+  if (type === 'bridge/call') {
+    if (typeof body.requestId !== 'string' || !REQUEST_ID.test(body.requestId)) {
+      return rejected('bad-request', 'requestId 형식이 아니다')
+    }
+    const payload = parseBridgePayload(body.payload)
+    if (payload === null) return rejected('bad-request', '브리지 명령이 아니거나 값이 틀렸다')
+    return {
+      ok: true,
+      value: { v: PROTOCOL_VERSION, type, requestId: body.requestId, payload },
     }
   }
   return rejected('unsupported-type', '모르는 요청')

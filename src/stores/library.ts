@@ -241,6 +241,11 @@ export type LibraryMutationFailure =
    * 아무것도 바꾸지 않았다 — 다시 시도하면 된다.
    */
   | 'busy'
+  /**
+   * 부르는 쪽이 정한 id(`CallerIdOptions.id`)가 형식에 맞지 않거나, 같은 id 의 **다른** 항목이 이미
+   * 있다 (M11-5). 아무것도 바꾸지 않았다.
+   */
+  | 'duplicate-id'
 
 export type LibraryMutationResult =
   | {
@@ -251,8 +256,39 @@ export type LibraryMutationResult =
       readonly trackId?: string
       /** 저장소에 반영됐는지. `false` 면 메모리에만 반영됐다. */
       readonly persisted: boolean
+      /**
+       * 부르는 쪽이 정한 id 의 항목이 **이미 있어** 아무것도 쓰지 않았다 (M11-5 — 같은 요청의 재전송).
+       * 앱의 다른 호출에서는 나오지 않는다.
+       */
+      readonly existed?: boolean
     }
   | { readonly ok: false; readonly reason: LibraryMutationFailure }
+
+/**
+ * 부르는 쪽이 정한 식별자 (M11-5, 확장 저장 브리지 — ADR 0028 결정 11).
+ *
+ * 같은 요청을 다시 보내도 **한 번만** 저장되게 한다. 이 id 의 항목이 이미 있으면 쓰지 않고
+ * `existed: true` 로 성공을 돌려준다 — 판단은 탭 간 잠금 안에서, 저장소와 맞춘 상태로 한다
+ * (ADR 0025). 형식은 `isCallerId` — 앱이 만드는 id(`createId`)와 겹치지 않는 `ext-` 앞머리.
+ */
+export function isCallerId(value: unknown): value is string {
+  return typeof value === 'string' && /^ext-[A-Za-z0-9_-]{16,80}$/.test(value)
+}
+
+export interface CreatePlaylistOptions {
+  /**
+   * 만든 목록을 고를지. 기본 `true` — 웹앱의 "＋ 새 목록" 은 만든 목록으로 간다. 확장에서 만든 목록은
+   * 대시보드의 선택을 바꾸지 않는다 (`false`, M11 D4).
+   */
+  readonly select?: boolean
+  readonly id?: string
+}
+
+export interface AddTrackInput {
+  readonly videoId: string
+  readonly title?: string
+  readonly id?: string
+}
 
 function failure(reason: LibraryMutationFailure): LibraryMutationResult {
   return { ok: false, reason }
@@ -513,6 +549,11 @@ export const useLibraryStore = defineStore('library', () => {
     return { ok: true, playlistId, trackId, persisted: outcome === 'written' }
   }
 
+  /** 이미 있는 항목 — 쓰지 않는다. 저장소에 있는지는 상태가 말한다 (보호 · 사용 불가면 메모리뿐). */
+  function unchanged(playlistId: string, trackId?: string): LibraryMutationResult {
+    return { ok: true, playlistId, trackId, persisted: canPersist.value, existed: true }
+  }
+
   /**
    * 한 플레이리스트의 트랙 배열만 바꾼다.
    *
@@ -569,17 +610,29 @@ export const useLibraryStore = defineStore('library', () => {
     return outcome
   }
 
-  /** 새 플레이리스트를 만들고 선택한다. 트랙은 비어 있다. */
-  function createPlaylistNow(name: string): LibraryMutationResult {
+  /** 새 플레이리스트를 만들고 (기본은) 선택한다. 트랙은 비어 있다. */
+  function createPlaylistNow(
+    name: string,
+    options: CreatePlaylistOptions = {},
+  ): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
     const normalized = normalizeName(name)
     if (normalized === null) return failure('empty-name')
 
-    const playlist: Playlist = { id: createId(), name: normalized, tracks: [] }
+    if (options.id !== undefined) {
+      if (!isCallerId(options.id)) return failure('duplicate-id')
+      const existing = items.value.find((playlist) => playlist.id === options.id)
+      // 같은 요청의 재전송 — 이미 만들었다. 이름이 다르면 다른 요청이 같은 id 를 쓴 것이다.
+      if (existing !== undefined) {
+        return existing.name === normalized ? unchanged(existing.id) : failure('duplicate-id')
+      }
+    }
+
+    const playlist: Playlist = { id: options.id ?? createId(), name: normalized, tracks: [] }
     items.value = [...items.value, playlist]
-    selectedId.value = playlist.id
+    if (options.select !== false) selectedId.value = playlist.id
 
     return success(playlist.id)
   }
@@ -640,10 +693,7 @@ export const useLibraryStore = defineStore('library', () => {
    * URL 문자열을 저장하지 않는다. 데이터 모델의 `videoId` 만 남긴다.
    * 같은 영상을 여러 번 넣을 수 있고, 그때도 `track.id` 는 서로 다르다.
    */
-  function addTrackNow(
-    playlistId: string,
-    input: { videoId: string; title?: string },
-  ): LibraryMutationResult {
+  function addTrackNow(playlistId: string, input: AddTrackInput): LibraryMutationResult {
     const stale = staleGuard()
     if (stale !== null) return stale
 
@@ -655,8 +705,21 @@ export const useLibraryStore = defineStore('library', () => {
     const playlist = items.value[index]
     if (playlist === undefined) return failure('not-found')
 
+    if (input.id !== undefined) {
+      if (!isCallerId(input.id)) return failure('duplicate-id')
+      const existing = playlist.tracks.find((track) => track.id === input.id)
+      // 같은 요청의 재전송 — 이미 담았다. 영상이 다르면 다른 요청이 같은 id 를 쓴 것이다.
+      if (existing !== undefined) {
+        return existing.videoId === input.videoId
+          ? unchanged(playlistId, existing.id)
+          : failure('duplicate-id')
+      }
+      const elsewhere = items.value.some((other) => other.tracks.some((t) => t.id === input.id))
+      if (elsewhere) return failure('duplicate-id')
+    }
+
     const track: Track = {
-      id: createId(),
+      id: input.id ?? createId(),
       source: 'youtube',
       videoId: input.videoId,
       title: normalizeTitle(input.title, input.videoId),
@@ -917,9 +980,12 @@ export const useLibraryStore = defineStore('library', () => {
     return command(run, (reason) => failure(reason))
   }
 
-  /** 새 플레이리스트를 만들고 선택한다. 저장이 끝난 뒤 이행한다. */
-  function createPlaylist(name: string): Promise<LibraryMutationResult> {
-    return mutation(() => createPlaylistNow(name))
+  /** 새 플레이리스트를 만들고 (기본은) 선택한다. 저장이 끝난 뒤 이행한다. */
+  function createPlaylist(
+    name: string,
+    options?: CreatePlaylistOptions,
+  ): Promise<LibraryMutationResult> {
+    return mutation(() => createPlaylistNow(name, options))
   }
 
   function renamePlaylist(id: string, name: string): Promise<LibraryMutationResult> {
@@ -934,10 +1000,7 @@ export const useLibraryStore = defineStore('library', () => {
     return mutation(() => selectPlaylistNow(id))
   }
 
-  function addTrack(
-    playlistId: string,
-    input: { videoId: string; title?: string },
-  ): Promise<LibraryMutationResult> {
+  function addTrack(playlistId: string, input: AddTrackInput): Promise<LibraryMutationResult> {
     return mutation(() => addTrackNow(playlistId, input))
   }
 

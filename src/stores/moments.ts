@@ -326,6 +326,11 @@ export type MomentMutationFailure =
   | 'conflict'
   /** 다른 탭이 저장하는 중이라 잠금을 제때 얻지 못했다. 아무것도 바꾸지 않았다. */
   | 'busy'
+  /**
+   * 부르는 쪽이 정한 id(`MomentInput.id`)가 형식에 맞지 않거나, 같은 id 의 **다른** Moment 가 이미
+   * 있다 (M11-5). 아무것도 바꾸지 않았다.
+   */
+  | 'duplicate-id'
 
 export type MomentMutationResult =
   | {
@@ -334,6 +339,8 @@ export type MomentMutationResult =
       readonly momentId: string
       /** 저장소에 반영됐는지. `false` 면 메모리에만 반영됐다. */
       readonly persisted: boolean
+      /** 부르는 쪽이 정한 id 의 Moment 가 **이미 있어** 쓰지 않았다 (M11-5 — 같은 요청의 재전송). */
+      readonly existed?: boolean
     }
   | { readonly ok: false; readonly reason: MomentMutationFailure }
 
@@ -430,6 +437,19 @@ export interface MomentInput {
   readonly atSeconds: number
   readonly note?: string
   readonly title?: string
+  /**
+   * 부르는 쪽이 정한 식별자 (M11-5, 확장 저장 브리지 — ADR 0028 결정 11).
+   *
+   * 같은 요청을 다시 보내도 **한 번만** 저장되게 한다. 이 id 의 항목이 이미 있으면 쓰지 않고
+   * `existed: true` 로 성공을 돌려준다 — 판단은 탭 간 잠금 안에서, 저장소와 맞춘 상태로 한다
+   * (ADR 0025). 형식은 `isCallerId` — 앱이 만드는 id(`createId`)와 겹치지 않는 `ext-` 앞머리.
+   */
+  readonly id?: string
+}
+
+/** 부르는 쪽이 정한 id 의 형식 — 라이브러리 store 의 `isCallerId` 와 같은 규칙 (서로 가져오지 않는다). */
+export function isCallerMomentId(value: unknown): value is string {
+  return typeof value === 'string' && /^ext-[A-Za-z0-9_-]{16,80}$/.test(value)
 }
 
 export const useMomentsStore = defineStore('moments', () => {
@@ -603,13 +623,24 @@ export const useMomentsStore = defineStore('moments', () => {
     if (!isYouTubeVideoId(input.videoId)) return failure('invalid-video-id')
     if (!isValidAtSeconds(input.atSeconds)) return failure('invalid-time')
 
+    if (input.id !== undefined) {
+      if (!isCallerMomentId(input.id)) return failure('duplicate-id')
+      const existing = items.value.find((moment) => moment.id === input.id)
+      // 같은 요청의 재전송 — 이미 저장했다. 영상 · 시점이 다르면 다른 요청이 같은 id 를 쓴 것이다.
+      if (existing !== undefined) {
+        return existing.videoId === input.videoId && existing.atSeconds === input.atSeconds
+          ? { ok: true, momentId: existing.id, persisted: canPersist.value, existed: true }
+          : failure('duplicate-id')
+      }
+    }
+
     const moment = createMoment({
       videoId: input.videoId,
       atSeconds: input.atSeconds,
       note: input.note ?? '',
       title: input.title ?? '',
       now: new Date(),
-      id: createId(),
+      id: input.id ?? createId(),
     })
 
     items.value = [...items.value, moment]

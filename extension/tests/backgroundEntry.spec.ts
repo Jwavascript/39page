@@ -25,7 +25,25 @@ async function startWorker() {
   }
   lastWorker = { onCommand, action }
   vi.stubGlobal('chrome', {
-    runtime: { id: EXTENSION_ID, getURL: (path: string) => `${ORIGIN}${path}`, onMessage },
+    runtime: {
+      id: EXTENSION_ID,
+      getURL: (path: string) => `${ORIGIN}${path}`,
+      onMessage,
+      // 저장 브리지 (M11-5) — 워커가 시작할 때 떠 있는 offscreen 을 찾아 닫는다.
+      getContexts: vi.fn<() => Promise<unknown[]>>(async () => []),
+      ContextType: { OFFSCREEN_DOCUMENT: 'OFFSCREEN_DOCUMENT' },
+      sendMessage: vi.fn<() => Promise<unknown>>(),
+    },
+    permissions: {
+      contains: vi.fn<() => Promise<boolean>>(async () => false),
+      onAdded: fakeEvent<() => void>(),
+      onRemoved: fakeEvent<() => void>(),
+    },
+    offscreen: {
+      createDocument: vi.fn<() => Promise<void>>(async () => {}),
+      closeDocument: vi.fn<() => Promise<void>>(async () => {}),
+      Reason: { IFRAME_SCRIPTING: 'IFRAME_SCRIPTING' },
+    },
     commands: { onCommand },
     action,
     tabs: {

@@ -7,7 +7,11 @@
  * 워커가 다시 시작되면 사라져 탭이 하나 더 열릴 수 있지만 저장은 수집 화면의
  * 클릭으로만 일어나므로 데이터가 두 번 들어가지 않는다 (EXTENSION_DESIGN.md §9).
  */
+import { bridgeOriginPattern } from '@/shared/bridgeMessages'
 import { fail } from '@/shared/messages'
+
+import { createBridgeClient } from './bridgeClient'
+import { createChromeOffscreenPort, createChromePermissionPort } from './chromeBridgePorts'
 
 import { createChromeActionPort } from './chromeActionPort'
 import { createChromeTabsPort } from './chromeTabsPort'
@@ -30,11 +34,27 @@ const collect = {
   now: () => Date.now(),
 }
 
+/*
+ * 저장 브리지 (M11-5, ADR 0028). 39page origin 은 수집 화면과 같다 — 운영은 https://39page.com 고정.
+ * 권한이 바뀌면 세대를 올리고 offscreen 을 닫는다. 워커가 다시 시작하면 내력을 모르는 문서를 닫는다.
+ */
+const bridgeOrigin = __COLLECT_ORIGIN__
+const originPattern = bridgeOriginPattern(bridgeOrigin)
+const bridgeClient = createBridgeClient({
+  offscreen: createChromeOffscreenPort(),
+  permissions: createChromePermissionPort(originPattern),
+  now: () => Date.now(),
+})
+void bridgeClient.startup()
+chrome.permissions.onAdded.addListener(() => void bridgeClient.permissionChanged())
+chrome.permissions.onRemoved.addListener(() => void bridgeClient.permissionChanged())
+
 const router = createBackgroundRouter({
   port,
   extensionId: chrome.runtime.id,
   extensionOrigin: chrome.runtime.getURL(''),
   collect,
+  bridge: { client: bridgeClient, origin: bridgeOrigin, originPattern },
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

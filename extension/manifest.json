@@ -3,7 +3,7 @@
   "name": "39page",
   "version": "1.0.0",
   "description": "YouTube 에서 보고 있는 영상과 지금 이 순간을 39page 로 담습니다. 저장은 39page 화면에서 직접 확인하고 합니다.",
-  "minimum_chrome_version": "102",
+  "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -23,7 +23,8 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "offscreen"],
+  "optional_host_permissions": ["https://39page.com/*"],
   "commands": {
     "quick-add": {
       "suggested_key": {

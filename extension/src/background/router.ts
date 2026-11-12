@@ -7,8 +7,11 @@
  *
  * 상태를 갖지 않는다. 서비스 워커가 언제 다시 시작해도 같은 답을 한다.
  */
-import { fail, parseExtensionRequest, type Result } from '@/shared/messages'
+import { fail, ok, parseExtensionRequest, type Result } from '@/shared/messages'
 
+import type { BridgeState } from '@/shared/bridgeMessages'
+
+import type { BridgeClient } from './bridgeClient'
 import { captureMoment } from './captureMoment'
 import { inspectTab } from './inspectTab'
 import { openCollect, type CollectDeduper } from './openCollect'
@@ -18,6 +21,8 @@ import type { TabsPort } from './tabsPort'
 export interface SenderLike {
   readonly id?: string
   readonly url?: string
+  /** 탭 안의 확장 페이지(YouTube 위 패널)면 그 탭 (M11-5). 팝업 · 서비스 워커는 없다. */
+  readonly tab?: { readonly id?: number }
 }
 
 export interface RouterDeps {
@@ -31,6 +36,12 @@ export interface RouterDeps {
     readonly deduper: CollectDeduper
     readonly newRequestId: () => string
     readonly now: () => number
+  }
+  /** 저장 브리지 (M11-5). 없으면 브리지 요청을 `unsupported-type` 으로 거절한다 (시험 · 구버전 구성). */
+  readonly bridge?: {
+    readonly client: BridgeClient
+    readonly origin: string
+    readonly originPattern: string
   }
 }
 
@@ -67,6 +78,18 @@ export function createBackgroundRouter(deps: RouterDeps) {
             parsed.value.tabId,
             parsed.value.videoId,
           )
+        case 'bridge/state': {
+          if (deps.bridge === undefined) return fail('unsupported-type', '저장 브리지가 없다')
+          const state: BridgeState = {
+            permission: (await deps.bridge.client.hasPermission()) ? 'granted' : 'not-granted',
+            origins: [deps.bridge.originPattern],
+            origin: deps.bridge.origin,
+          }
+          return ok(state)
+        }
+        case 'bridge/call':
+          if (deps.bridge === undefined) return fail('unsupported-type', '저장 브리지가 없다')
+          return ok(await deps.bridge.client.call(parsed.value.payload, parsed.value.requestId))
       }
     } catch {
       return fail('internal', '확장 내부 오류')
