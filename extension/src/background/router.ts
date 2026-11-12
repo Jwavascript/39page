@@ -58,6 +58,8 @@ export interface RouterDeps {
      * 동적 주소를 돌려주지만, 패널이 보낸 `sender.url` 은 확장 ID 주소다 (실측 2026-11-12).
      */
     readonly panelPath: string
+    /** 패널을 열었다 (팝업 · 아이콘 경로) — 그 탭의 팝업을 끈다 (M11-6). */
+    readonly onOpened?: (tabId: number) => void
   }
   /** 저장 브리지 (M11-5). 없으면 브리지 요청을 `unsupported-type` 으로 거절한다 (시험 · 구버전 구성). */
   readonly bridge?: {
@@ -146,7 +148,13 @@ export function createBackgroundRouter(deps: RouterDeps) {
           return ok(await deps.bridge.client.call(parsed.value.payload, parsed.value.requestId))
         case 'panel/open':
           if (panelDeps === undefined) return fail('unsupported-type', '패널이 없다')
-          return await openPanel(panelDeps, parsed.value.tabId, parsed.value.mode)
+          {
+            const opened = await openPanel(panelDeps, parsed.value.tabId, parsed.value.mode)
+            if (opened.ok && opened.data.status !== 'unsupported') {
+              deps.panel?.onOpened?.(parsed.value.tabId)
+            }
+            return opened
+          }
         case 'panel/sync':
           if (panelDeps === undefined || panelTab === undefined) break
           return await syncPanel(panelDeps, panelTab)

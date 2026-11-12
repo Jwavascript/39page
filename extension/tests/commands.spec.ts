@@ -20,6 +20,8 @@ function setup(options: Parameters<typeof fakePort>[0] = {}) {
   const action = {
     flag: vi.fn<ActionPort['flag']>(async () => {}),
     clear: vi.fn<ActionPort['clear']>(async () => {}),
+    usePopup: vi.fn<ActionPort['usePopup']>(async () => {}),
+    openPopup: vi.fn<ActionPort['openPopup']>(async () => {}),
   }
   const timers: { run: () => void; ms: number }[] = []
   const deps = {

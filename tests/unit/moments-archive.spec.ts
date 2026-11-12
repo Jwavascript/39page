@@ -674,7 +674,7 @@ describe('F. 편집 · 삭제', () => {
     await settle()
 
     expect(panel(s).find('.edit-form').exists()).toBe(false)
-    expect(panel(s).get('.tools .feedback').text()).toBe('메모를 고쳤어요.')
+    expect(panel(s).get('.feedback').text()).toBe('메모를 고쳤어요.')
     expect(
       panel(s)
         .findAll('.moment-note')
@@ -697,8 +697,8 @@ describe('F. 편집 · 삭제', () => {
       '잃으면 안 되는 메모',
     )
     expect(panel(s).get('.edit-form .error-msg').text()).toContain('저장하지 못했어요')
-    expect(panel(s).get('.tools .feedback').text()).toContain('다른 탭에서 Moments 가 바뀌어')
-    expect(panel(s).get('.tools .feedback').classes()).toContain('is-warning')
+    expect(panel(s).get('.feedback').text()).toContain('다른 탭에서 Moments 가 바뀌어')
+    expect(panel(s).get('.feedback').classes()).toContain('is-warning')
   })
 
   it('지우면 포커스가 같은 묶음의 이웃 줄로, 묶음이 비면 다음 묶음 머리로 간다', async () => {
@@ -726,7 +726,7 @@ describe('F. 편집 · 삭제', () => {
 
     await remove('a1')
     expect(document.activeElement).toBe(panel(s).get('[data-moment-play="a2"]').element)
-    expect(panel(s).get('.tools .feedback').text()).toBe('순간을 지웠어요.')
+    expect(panel(s).get('.feedback').text()).toBe('순간을 지웠어요.')
 
     await remove('a2')
     expect(document.activeElement).toBe(panel(s).get(`[data-group-toggle="${B}"]`).element)
@@ -766,7 +766,10 @@ describe('G. 플레이어 iframe · 접근성', () => {
     const roomy =
       /@media \(min-width: 901px\) and \(min-height: 760px\) \{\s*\.tools \{\s*position: sticky;/
     expect(style).toMatch(roomy)
-    expect(style.replace(/@media \(min-width: 901px\)[\s\S]*?\n\}/, '')).not.toContain('sticky')
+    // 미디어 밖의 `.tools` 는 붙지 않는다 (결과 줄 `.feedback` 의 sticky 는 M11-6 — 아래 H).
+    expect(style.replace(/@media \(min-width: 901px\)[\s\S]*?\n\}/, '')).not.toMatch(
+      /\.tools \{[^}]*sticky/,
+    )
     expect(code).toContain('scroller.style.scrollPaddingTop')
   })
 
@@ -785,5 +788,22 @@ describe('G. 플레이어 iframe · 접근성', () => {
     ).toBe(true)
     // 묶음 머리는 제목(h4) 안의 단추다.
     expect(panel(s).findAll('h4 .group-toggle')).toHaveLength(8)
+  })
+})
+
+describe('H. 결과 안내 자리 (M11-6)', () => {
+  it('수정 · 삭제 결과는 보관함 스크롤 아래 끝에 붙는다 — 목록 아래에서 지워도 화면 안에 보인다', () => {
+    const code = readFileSync(
+      resolve(process.cwd(), 'src/features/moments/MomentsBrowserPanel.vue'),
+      'utf8',
+    )
+    const template = code.slice(code.indexOf('<template>'), code.indexOf('<style'))
+    // 도구 줄(.tools) 안이 아니라 목록 뒤에 있다.
+    const tools = template.slice(template.indexOf('class="tools"'), template.indexOf('<MomentList'))
+    expect(tools).not.toContain('class="feedback"')
+    expect(template.indexOf('class="feedback"')).toBeGreaterThan(template.indexOf('<MomentList'))
+    expect(code.slice(code.indexOf('<style'))).toMatch(
+      /\.feedback \{\s*position: sticky;[\s\S]*?bottom: -16px;/,
+    )
   })
 })

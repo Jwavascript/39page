@@ -233,14 +233,6 @@ defineExpose({ archive })
       >
         {{ summary }}
       </p>
-      <p
-        class="feedback"
-        :class="{ 'is-warning': browser.feedback.value?.tone === 'warning' }"
-        role="status"
-        aria-live="polite"
-      >
-        {{ browser.feedback.value?.text ?? '' }}
-      </p>
     </div>
 
     <p v-if="browser.total.value === 0" class="empty">
@@ -267,6 +259,19 @@ defineExpose({ archive })
     <div v-if="archive.remaining.value > 0" ref="sentinel" class="more">
       <button type="button" class="pill" @click="showMoreByButton">{{ moreLabel }}</button>
     </div>
+
+    <!--
+      수정 · 삭제 결과 — 보관함 스크롤의 **아래 끝에 붙는다** (M11-6). 모바일에서는 도구 줄이 붙지 않아, 목록
+      아래쪽에서 지우면 위쪽의 안내가 화면 밖에 있었다(M11-4 남은 위험). 어느 크기에서도 보이는 자리다.
+    -->
+    <p
+      class="feedback"
+      :class="{ 'is-warning': browser.feedback.value?.tone === 'warning' }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ browser.feedback.value?.text ?? '' }}
+    </p>
   </section>
 </template>
 
@@ -392,6 +397,17 @@ defineExpose({ archive })
 
 .feedback.is-warning {
   color: var(--status-warning-text-color);
+}
+
+/* 아래 끝에 붙는 결과 줄 — 보관함 본문의 안쪽 여백만큼 내려 붙인다. 배경은 보관함 표면색. */
+.feedback {
+  position: sticky;
+  z-index: 1;
+  bottom: -16px;
+  margin: 0 -16px -16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--drawer-head-border-color);
+  background: var(--drawer-surface-color);
 }
 
 .empty {

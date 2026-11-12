@@ -99,6 +99,8 @@ describe('패널 — 서비스 워커', () => {
 
   it('라우터 — 패널 주소의 요청은 묶인 문서만, 탭은 보낸 쪽 탭 · 패널 전용 요청은 패널만', async () => {
     const { deps } = setup()
+    // 팝업이 패널을 열면 그 탭의 팝업을 끈다 — 다음 클릭은 깜빡임 없이 (M11-6).
+    const onOpened = vi.fn<(tabId: number) => void>()
     const routerDeps = {
       port: deps.port,
       extensionId: EXT,
@@ -109,7 +111,7 @@ describe('패널 — 서비스 워커', () => {
         newRequestId: deps.newRequestId,
         now: deps.now,
       },
-      panel: { sessions: deps.sessions, panelPath: '/src/panel/index.html' },
+      panel: { sessions: deps.sessions, panelPath: '/src/panel/index.html', onOpened },
     } satisfies RouterDeps
     const router = createBackgroundRouter(routerDeps)
     const panel = (documentId: string) => ({ id: EXT, url: PANEL_URL, tab: { id: 1 }, documentId })
@@ -123,6 +125,7 @@ describe('패널 — 서비스 워커', () => {
       { v: 1, type: 'panel/open', tabId: 1, mode: 'music' },
       { id: EXT, url: `chrome-extension://${EXT}/src/popup/index.html` },
     )
+    expect(onOpened).toHaveBeenCalledWith(1)
     expect(await router.handle({ v: 1, type: 'panel/sync' }, panel('doc-A'))).toMatchObject({
       ok: true,
     })

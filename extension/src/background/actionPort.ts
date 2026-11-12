@@ -9,4 +9,11 @@ export interface ActionPort {
   flag(tabId: number, message: string): Promise<void>
   /** 그 탭의 배지와 툴팁을 기본으로 되돌린다. */
   clear(tabId: number): Promise<void>
+  /**
+   * 그 탭에서 아이콘을 누를 때 팝업을 띄울지 (M11-6). `false` 면 `action.onClicked` 로 바로 패널을 연다 —
+   * 팝업이 잠깐 떴다 닫히는 깜빡임이 없다. 탭이 닫히면 Chrome 이 지운다.
+   */
+  usePopup(tabId: number, enabled: boolean): Promise<void>
+  /** 팝업을 연다 — Chrome 127+ 만. 없으면 아무것도 하지 않는다. */
+  openPopup(): Promise<void>
 }
