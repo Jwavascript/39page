@@ -1,0 +1,169 @@
+{
+  "browser": "Chrome/157.0.8103.50",
+  "afterInstall": {
+    "offscreen": 0,
+    "memory": {
+      "mb": 801.8,
+      "processes": 12
+    }
+  },
+  "granted": true,
+  "beforeBridge": {
+    "offscreen": 0,
+    "memory": {
+      "mb": 810.8,
+      "processes": 12
+    }
+  },
+  "firstConnect": {
+    "ms": 76,
+    "outcome": "ok",
+    "offscreen": 1,
+    "memory": {
+      "mb": 825.6,
+      "processes": 12
+    },
+    "heaps": {
+      "offscreen": {
+        "error": "Runtime.getHeapUsage: 'Runtime.getHeapUsage' wasn't found"
+      },
+      "bridge": {
+        "heapKB": 881
+      }
+    }
+  },
+  "warm": {
+    "list": {
+      "n": 15,
+      "median": 2,
+      "p25": 2,
+      "p75": 3,
+      "min": 2,
+      "max": 3
+    },
+    "trackAdd": {
+      "n": 15,
+      "median": 3,
+      "p25": 3,
+      "p75": 4,
+      "min": 3,
+      "max": 4
+    },
+    "momentSave": {
+      "n": 15,
+      "median": 4,
+      "p25": 3,
+      "p75": 4,
+      "min": 3,
+      "max": 5
+    }
+  },
+  "after45Writes": {
+    "offscreen": 1,
+    "memory": {
+      "mb": 860.4,
+      "processes": 13
+    },
+    "heaps": {
+      "offscreen": {
+        "error": "Runtime.getHeapUsage: 'Runtime.getHeapUsage' wasn't found"
+      },
+      "bridge": {
+        "heapKB": 1705
+      }
+    }
+  },
+  "reconnectAfterClose": {
+    "n": 5,
+    "median": 50,
+    "p25": 48,
+    "p75": 50,
+    "min": 45,
+    "max": 50
+  },
+  "firstCallAfterWorkerStop": {
+    "n": 5,
+    "median": 100,
+    "p25": 99,
+    "p75": 106,
+    "min": 94,
+    "max": 114
+  },
+  "panelToLists": {
+    "runs": [
+      {
+        "ms": 569,
+        "popupAppeared": true
+      },
+      {
+        "ms": 97,
+        "popupAppeared": true
+      },
+      {
+        "ms": 150,
+        "popupAppeared": true
+      },
+      {
+        "ms": 84,
+        "popupAppeared": true
+      },
+      {
+        "ms": 120,
+        "popupAppeared": true
+      },
+      {
+        "ms": 88,
+        "popupAppeared": true
+      }
+    ],
+    "first": {
+      "ms": 569,
+      "popupAppeared": true
+    },
+    "rest": {
+      "n": 5,
+      "median": 97,
+      "p25": 88,
+      "p75": 120,
+      "min": 84,
+      "max": 150
+    }
+  },
+  "idleStart": {
+    "offscreen": 1,
+    "memory": {
+      "mb": 2003.1,
+      "processes": 15
+    },
+    "worker": true
+  },
+  "idleEnd": {
+    "afterMs": 360000,
+    "offscreen": 1,
+    "memory": {
+      "mb": 1283.9,
+      "processes": 15
+    },
+    "worker": true,
+    "heaps": {
+      "offscreen": {
+        "error": "Runtime.getHeapUsage: 'Runtime.getHeapUsage' wasn't found"
+      },
+      "bridge": {
+        "heapKB": 1260
+      }
+    }
+  },
+  "afterRevoke": {
+    "offscreen": 0,
+    "memory": {
+      "mb": 1228.3,
+      "processes": 14
+    }
+  },
+  "afterRegrant": {
+    "firstCallMs": 128,
+    "outcome": "ok",
+    "offscreen": 1
+  }
+}

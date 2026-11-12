@@ -1,0 +1,25 @@
+{
+  "firstSession": {
+    "devPathA": "pkagnijdhfmkodpdfgdehfdghcgbfpoa",
+    "devReloadSamePath": "pkagnijdhfmkodpdfgdehfdghcgbfpoa",
+    "prodPathA": "lmeadhkhoapdhncbmnjepapbholfibgb",
+    "running": [
+      "admccjkmockfdflocgggjfgdacdodkdf",
+      "glbjnfimcajjenihimblfaponejbkoph",
+      "lmeadhkhoapdhncbmnjepapbholfibgb",
+      "pkagnijdhfmkodpdfgdehfdghcgbfpoa"
+    ]
+  },
+  "secondSession": {
+    "restoredAfterRestart": [
+      "admccjkmockfdflocgggjfgdacdodkdf",
+      "glbjnfimcajjenihimblfaponejbkoph"
+    ],
+    "devPathB": "pkagnijdhfmkodpdfgdehfdghcgbfpoa",
+    "prodPathB": "ngipeeeojabmiglfggnnmpiapdnmncii"
+  },
+  "verdict": {
+    "devIdStableAcrossPathsReloadRestart": true,
+    "prodIdDependsOnPath": true
+  }
+}

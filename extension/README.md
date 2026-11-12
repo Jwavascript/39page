@@ -61,11 +61,16 @@ Automation(`permissions-prompt.ps1`, 그 Chrome 프로세스의 창만)으로 �
 
 ```sh
 # 39page (루트): 개발 확장 ID 를 허용한 빌드
-VITE_BRIDGE_EXTENSION_IDS=pkagnijdhfmkodpdfgdehfdghcgbfpoa npx vite build --outDir <WEB_DIST>
+VITE_BRIDGE_EXTENSION_IDS=pkagnijdhfmkodpdfgdehfdghcgbfpoa VITE_BRIDGE_DEV_BUILD=1 npx vite build --outDir <WEB_DIST>
 # 확장: 개발 빌드(고정 ID · 개발 origin)
 VITE_COLLECT_ORIGIN=http://127.0.0.1:4173 npm run build:dev
 POC_CHROME=<chrome.exe> WEB_DIST=<…> EXT_DIST=<…/dist-dev> OUT=<…> node integration/bridge.mjs   # 브리지 15
 POC_CHROME=<chrome.exe> WEB_DIST=<…> EXT_DIST=<…/dist-dev> OUT=<…> node integration/panel.mjs    # 패널 12 (실제 YouTube)
+# M11-6
+POC_CHROME=<chrome.exe> WEB_DIST=<…> OUT=<…> node integration/webapp.mjs                           # 웹앱 시나리오 (확장 없음)
+POC_CHROME=<chrome.exe> WEB_DIST=<…> EXT_DIST=<…/dist-dev> OUT=<…> node integration/lifecycle.mjs  # offscreen 생명주기 · 속도 · 메모리
+POC_CHROME=<chrome.exe> EXT_DIST=<…/dist-dev> EXT_PROD=<…/dist> OUT=<…> node integration/fixedId.mjs # 개발 고정 ID
+LOAD_VIA_FLAG=1 POC_CHROME=<Chrome for Testing 116> … node integration/bridge.mjs                  # 최소 버전 (명령줄로 확장 로드)
 ```
 
 ## 구조

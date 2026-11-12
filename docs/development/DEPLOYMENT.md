@@ -485,6 +485,11 @@ YouTube · 테스트 데이터. M9-6 시나리오 스크립트를 운영 주소�
 
 - **허용 확장 ID 는 빌드 환경 값** `VITE_BRIDGE_EXTENSION_IDS` (쉼표). **운영 빌드에는 넣지 않았다** — 운영 확장 ID 는 스토어
   등록 뒤에 정해진다. 비어 있으면 `bridge.html` 은 아무 요청도 받지 않고 확장 패널은 수집 화면을 안내한다.
-- 켤 때(M11-6): Workers Builds 의 빌드 변수에 스토어 확장 ID 를 넣고, 정적 자원 헤더로 `/bridge.html` 에
-  `Content-Security-Policy: frame-ancestors chrome-extension://<ID>` 를 둔다 (방어 한 겹 더 — 스크립트의 조상 확인이 1차).
-  Workers 정적 자원의 `_headers` 지원을 그때 확인한다 (TODO).
+- **응답 헤더는 빌드가 만든다 (M11-6).** `vite build` 가 `dist/_headers` 를 쓴다 — `/bridge.html` 과 `/bridge` 에
+  `Content-Security-Policy: frame-ancestors chrome-extension://<ID>`(허용 ID 가 없으면 `'none'`) · `X-Content-Type-Options: nosniff` ·
+  `Referrer-Policy: no-referrer`. 스크립트의 조상 확인이 1차, 헤더는 한 겹 더다. 허용 ID 형식(a–p 32자)이 틀리면 빌드가 실패하고,
+  개발용 고정 ID 는 `VITE_BRIDGE_DEV_BUILD=1` 없이 넣으면 빌드가 실패한다 — 운영 빌드 변수에는 두지 않는다.
+- 이 Worker 는 코드 없는 정적 자원 전용이라 공식 문서상 `_headers` 가 적용된다. 기본 `html_handling` 이 `/bridge.html` 을 `/bridge` 로
+  옮길 수 있어 두 경로 모두에 둔다. **실제 응답 헤더는 배포 뒤 `curl -I` 로만 확인할 수 있다** — 로컬 `vite preview` 는
+  `_headers` 를 읽지 않는다 (미확인, TODO).
+- 켜는 순서 · 롤백 · 확인: [`M11_RELEASE_READINESS.md`](M11_RELEASE_READINESS.md) §6-3 · §7.

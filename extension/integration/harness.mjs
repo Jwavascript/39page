@@ -21,7 +21,7 @@ export const BASE = 'http://127.0.0.1:4173'
 export const DEV_EXTENSION_ID = 'pkagnijdhfmkodpdfgdehfdghcgbfpoa'
 export const ORIGIN_PATTERN = `${BASE}/*`
 
-export async function launch({ chrome, webDist, extDist, headful = true }) {
+export async function launch({ chrome, webDist, extDist, headful = true, loadViaFlag = false }) {
   const children = []
   const server = spawn(
     process.execPath,
@@ -52,6 +52,10 @@ export async function launch({ chrome, webDist, extDist, headful = true }) {
       '--lang=en-US',
       '--remote-debugging-port=0',
       '--enable-unsafe-extension-debugging',
+      // 오래된 Chrome(116)에는 CDP Extensions.loadUnpacked 가 없다 — 명령줄로 올린다 (Chrome for Testing 만 허용).
+      ...(loadViaFlag && extDist !== undefined
+        ? [`--load-extension=${extDist}`, `--disable-extensions-except=${extDist}`]
+        : []),
       '--autoplay-policy=no-user-gesture-required',
       '--mute-audio',
       `--user-data-dir=${profile}`,
@@ -76,8 +80,17 @@ export async function launch({ chrome, webDist, extDist, headful = true }) {
     { timeout: 30_000, label: 'DevToolsActivePort' },
   )
   const cdp = await connectBrowser(port)
-  const loaded = await cdp.send('Extensions.loadUnpacked', { path: extDist })
-  if (loaded.id !== DEV_EXTENSION_ID) throw new Error(`확장 ID 가 다르다: ${loaded.id}`)
+  // 웹앱만 보는 시험은 확장을 올리지 않는다 (`extDist` 없음).
+  if (extDist !== undefined && loadViaFlag) {
+    const sw = await waitFor(
+      async () => (await cdp.targets()).find((t) => t.type === 'service_worker'),
+      { timeout: 20_000, label: 'extension worker (flag)' },
+    )
+    if (!sw.url.includes(DEV_EXTENSION_ID)) throw new Error(`확장 ID 가 다르다: ${sw.url}`)
+  } else if (extDist !== undefined) {
+    const loaded = await cdp.send('Extensions.loadUnpacked', { path: extDist })
+    if (loaded.id !== DEV_EXTENSION_ID) throw new Error(`확장 ID 가 다르다: ${loaded.id}`)
+  }
 
   const kill = () => {
     for (const child of children) {
@@ -88,8 +101,9 @@ export async function launch({ chrome, webDist, extDist, headful = true }) {
     }
   }
 
-  async function tab(url) {
-    const { targetId } = await cdp.send('Target.createTarget', { url })
+  /** `newWindow` — 확장 팝업 페이지를 제어용으로 열 때: 같은 창의 활성 탭이 YouTube 면 팝업 로직이 패널을 열고 스스로 닫는다. */
+  async function tab(url, { newWindow = false } = {}) {
+    const { targetId } = await cdp.send('Target.createTarget', { url, newWindow })
     const session = await cdp.attach(targetId)
     await cdp.send('Runtime.enable', {}, session)
     return {

@@ -2,7 +2,7 @@
  * M11-5A — 저장 브리지 실제 Chrome 통합 검증.
  *
  * 준비 (로컬 빌드만):
- *   VITE_BRIDGE_EXTENSION_IDS=pkagnijdhfmkodpdfgdehfdghcgbfpoa npx vite build --outDir <WEB_DIST>
+ *   VITE_BRIDGE_EXTENSION_IDS=pkagnijdhfmkodpdfgdehfdghcgbfpoa VITE_BRIDGE_DEV_BUILD=1 npx vite build --outDir <WEB_DIST>
  *   (extension) VITE_COLLECT_ORIGIN=http://127.0.0.1:4173 npm run build:dev      # dist-dev, 고정 ID
  * 실행:
  *   POC_CHROME=<Chrome for Testing chrome.exe> WEB_DIST=<…> EXT_DIST=<…/extension/dist-dev> OUT=<…> node extension/integration/bridge.mjs
@@ -27,7 +27,12 @@ const REAL_VIDEO = 'M7lc1UVf-VE'
 const A = 'aaaaaaaaaaa'
 const B = 'bbbbbbbbbbb'
 
-const h = await launch({ chrome: POC_CHROME, webDist: WEB_DIST, extDist: EXT_DIST })
+const h = await launch({
+  chrome: POC_CHROME,
+  webDist: WEB_DIST,
+  extDist: EXT_DIST,
+  loadViaFlag: process.env.LOAD_VIA_FLAG === '1',
+})
 const { results, step } = recorder()
 
 const LIBRARY = {

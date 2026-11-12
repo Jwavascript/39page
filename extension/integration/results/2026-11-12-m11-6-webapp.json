@@ -1,0 +1,196 @@
+{
+  "browser": "Chrome/157.0.8103.50",
+  "results": [
+    {
+      "id": "W1",
+      "title": "처음 방문 — 빈 저장소의 첫 화면 (사람이 판단할 글 · 입구)",
+      "pass": true,
+      "ms": 1750,
+      "details": {
+        "pass": true,
+        "title": "39page",
+        "nav": ["♪ 음악", "◆ Moments", "⇩ 데이터"],
+        "headings": [
+          "39page",
+          "PLAYLISTS",
+          "MOMENTS",
+          "보관함",
+          "플레이리스트",
+          "플레이리스트",
+          "TRACKS",
+          "데이터 · 백업",
+          "DATA"
+        ],
+        "emptyHints": [
+          "◉ LP를 누르면 음악 보관함이 열려요",
+          "LP · 카세트나 ♪ 음악에서 곡을 고르거나 링크를 추가할 수 있어요.",
+          "아직 플레이리스트가 없습니다.＋ 새 목록으로 시작하세요.",
+          "아직 저장한 순간이 없어요. 곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.",
+          "아직 플레이리스트가 없어요. ＋ 새 목록으로 시작하세요.",
+          "플레이리스트를 먼저 만들거나 선택하면 링크를 추가할 수 있어요.",
+          "플레이리스트를 선택하면 트랙이 보입니다."
+        ]
+      }
+    },
+    {
+      "id": "W2",
+      "title": "새 플레이리스트 → 링크 추가(제목 자동 채움, 실제 oEmbed) → 담김 — 조작 수",
+      "pass": true,
+      "ms": 2226,
+      "details": {
+        "pass": true,
+        "actionsToFirstTrack": 6,
+        "filledTitle": "YouTube Developers Live: Embedded Web Player Customization",
+        "lists": [
+          "MY RECORDS:",
+          "첫 목록:YouTube Developers Live: Embedded Web Player Customization"
+        ]
+      }
+    },
+    {
+      "id": "W3",
+      "title": "재생 — 곡 ▶ → 실제 YouTube 재생 · 지금 곡 표시",
+      "pass": true,
+      "ms": 3168,
+      "details": {
+        "pass": true,
+        "actions": 1,
+        "played": {
+          "t": 2,
+          "paused": false,
+          "id": "M7lc1UVf-VE"
+        },
+        "marker": "♪ 재생 중"
+      }
+    },
+    {
+      "id": "W4",
+      "title": "두 번째 곡 · 다음/이전 · LP 로 보관함 · 닫기 — 재생 유지, iframe 같은 노드",
+      "pass": true,
+      "ms": 15718,
+      "details": {
+        "pass": true,
+        "next": {
+          "t": 0,
+          "paused": false,
+          "id": "aqz-KE-bpKQ"
+        },
+        "prev": {
+          "t": 4,
+          "paused": false,
+          "id": "M7lc1UVf-VE"
+        },
+        "deckOpensMusic": true,
+        "escCloses": true,
+        "iframe": {
+          "count": 1,
+          "marker": "original"
+        }
+      }
+    },
+    {
+      "id": "W5",
+      "title": "테마 전환 · 보관함 열고 닫기 중 재생 유지 · iframe 같은 노드",
+      "pass": true,
+      "ms": 3723,
+      "details": {
+        "pass": true,
+        "t0": {
+          "t": 5,
+          "paused": false,
+          "id": "M7lc1UVf-VE"
+        },
+        "t1": {
+          "t": 8,
+          "paused": false,
+          "id": "M7lc1UVf-VE"
+        },
+        "iframe": {
+          "count": 1,
+          "marker": "original"
+        }
+      }
+    },
+    {
+      "id": "W6",
+      "title": "Moment 빠른 저장 → 메모 추가 → 보관함 검색 → 그 시점부터 재생 — 조작 수",
+      "pass": true,
+      "ms": 7269,
+      "details": {
+        "pass": true,
+        "quickSaveActions": 1,
+        "findAndPlayActions": 4,
+        "hits": 1,
+        "playedAt": {
+          "t": 12,
+          "paused": false,
+          "id": "M7lc1UVf-VE"
+        },
+        "savedAt": 8
+      }
+    },
+    {
+      "id": "W7",
+      "title": "목록 · 곡 편집 — 이름 바꾸기 · 같은 영상 다시 담기(허용) · 긴 · 특수 제목 · 곡 삭제(확인) · 목록 삭제",
+      "pass": true,
+      "ms": 3395,
+      "details": {
+        "pass": true,
+        "rendered": [
+          "YouTube Developers Live: Embedded Web Pl",
+          "Big Buck Bunny 60fps 4K - Official Blend",
+          "아주 긴 제목 아주 긴 제목 아주 긴 제목 아주 긴 제목 아주 긴 제목 "
+        ],
+        "pageOverflow": -15
+      }
+    },
+    {
+      "id": "W8",
+      "title": "제목 조회 실패(오프라인) — 이유를 말하고 곡은 영상 ID 표기로 추가된다",
+      "pass": true,
+      "ms": 1419,
+      "details": {
+        "pass": true,
+        "status": "제목을 가져오지 못했어요 (연결 문제). 직접 쓰거나, 비워 두면 영상 ID 로 저장돼요."
+      }
+    },
+    {
+      "id": "W9",
+      "title": "데이터 — 헤더 ⇩ 데이터 → JSON 내보내기(파일 확인) — 조작 수",
+      "pass": true,
+      "ms": 1035,
+      "details": {
+        "pass": true,
+        "actionsToExport": 2,
+        "file": "39page-backup-20261112-2300.json",
+        "keys": ["library", "moments", "preferences"],
+        "schemaVersion": 1
+      }
+    },
+    {
+      "id": "W10",
+      "title": "가져오기 — 손상 파일은 거절 · 저장소 그대로, 이전 스키마 백업은 미리보기 → 취소면 그대로 → 교체 확인",
+      "pass": true,
+      "ms": 2765,
+      "details": {
+        "pass": true,
+        "corruptMsg": "“39page-backup-20261112-2300.json” 을 내려받았습니다. 플레이리스트 2개 · 3곡 · Moment 1개. | JSON 파일이 아닙니다.",
+        "afterImport": ["NIGHT DRIVE:ALPHA|BETA", "MORNING:GAMMA"],
+        "iframeKept": true
+      }
+    },
+    {
+      "id": "W11",
+      "title": "보호 상태 — 손상된 라이브러리 원문은 새로고침 뒤에도 덮어쓰지 않고, 화면이 알린다",
+      "pass": true,
+      "ms": 5861,
+      "details": {
+        "pass": true,
+        "raw": "{broken",
+        "banner": [
+          "저장된 데이터를 읽지 못했습니다. 지금 내보내면 이번 세션의 내용만 담긴 복구본이 됩니다."
+        ]
+      }
+    }
+  ]
+}

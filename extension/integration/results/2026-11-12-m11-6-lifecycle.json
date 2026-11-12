@@ -1,0 +1,167 @@
+{
+  "browser": "Chrome/157.0.8103.50",
+  "afterInstall": {
+    "offscreen": 0,
+    "memory": {
+      "mb": 899.9,
+      "processes": 14
+    }
+  },
+  "granted": true,
+  "beforeBridge": {
+    "offscreen": 0,
+    "memory": {
+      "mb": 917.3,
+      "processes": 14
+    }
+  },
+  "firstConnect": {
+    "ms": 72,
+    "outcome": "ok",
+    "offscreen": 1,
+    "memory": {
+      "mb": 941.4,
+      "processes": 14
+    },
+    "heaps": {
+      "offscreen": {
+        "error": "Runtime.getHeapUsage: 'Runtime.getHeapUsage' wasn't found"
+      },
+      "bridge": {
+        "heapKB": 881
+      }
+    }
+  },
+  "warm": {
+    "list": {
+      "n": 15,
+      "median": 3,
+      "p25": 2,
+      "p75": 3,
+      "min": 2,
+      "max": 4
+    },
+    "trackAdd": {
+      "n": 15,
+      "median": 3,
+      "p25": 3,
+      "p75": 4,
+      "min": 2,
+      "max": 16
+    },
+    "momentSave": {
+      "n": 15,
+      "median": 4,
+      "p25": 3,
+      "p75": 4,
+      "min": 2,
+      "max": 4
+    }
+  },
+  "after45Writes": {
+    "offscreen": 1,
+    "memory": {
+      "mb": 981.8,
+      "processes": 15
+    },
+    "heaps": {
+      "offscreen": {
+        "error": "Runtime.getHeapUsage: 'Runtime.getHeapUsage' wasn't found"
+      },
+      "bridge": {
+        "heapKB": 1719
+      }
+    }
+  },
+  "reconnectAfterClose": {
+    "n": 5,
+    "median": 48,
+    "p25": 48,
+    "p75": 49,
+    "min": 48,
+    "max": 51
+  },
+  "firstCallAfterWorkerStop": {
+    "n": 5,
+    "median": 201,
+    "p25": 118,
+    "p75": 214,
+    "min": 94,
+    "max": 215
+  },
+  "panelToLists": {
+    "runs": [
+      {
+        "ms": 608,
+        "popupAppeared": true
+      },
+      {
+        "ms": 241,
+        "popupAppeared": false
+      },
+      {
+        "ms": 215,
+        "popupAppeared": false
+      },
+      {
+        "ms": 177,
+        "popupAppeared": false
+      },
+      {
+        "ms": 236,
+        "popupAppeared": false
+      },
+      {
+        "ms": 215,
+        "popupAppeared": false
+      }
+    ],
+    "first": {
+      "ms": 608,
+      "popupAppeared": true
+    },
+    "rest": {
+      "n": 5,
+      "median": 215,
+      "p25": 215,
+      "p75": 236,
+      "min": 177,
+      "max": 241
+    }
+  },
+  "idleStart": {
+    "offscreen": 1,
+    "memory": {
+      "mb": 2112.9,
+      "processes": 18
+    },
+    "worker": true
+  },
+  "idleEnd": {
+    "afterMs": 360000,
+    "offscreen": 0,
+    "memory": {
+      "mb": 1259.8,
+      "processes": 15
+    },
+    "worker": true,
+    "heaps": {}
+  },
+  "firstCallAfterIdle": {
+    "ms": 54,
+    "outcome": "ok",
+    "offscreen": 1
+  },
+  "afterRevoke": {
+    "offscreen": 0,
+    "memory": {
+      "mb": 1263.7,
+      "processes": 15
+    }
+  },
+  "afterRegrant": {
+    "firstCallMs": 59,
+    "outcome": "ok",
+    "offscreen": 1
+  }
+}
