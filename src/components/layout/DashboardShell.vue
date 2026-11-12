@@ -40,13 +40,10 @@ import ArchivePanel from '@/features/archive/ArchivePanel.vue'
 import {
   ARCHIVE,
   type ArchiveController,
+  type ArchiveOpenOptions,
   type ArchiveTab,
 } from '@/features/archive/archiveController'
 import DataDialog from '@/features/backup/DataDialog.vue'
-import {
-  PLAYLIST_SHELF,
-  type PlaylistShelfController,
-} from '@/features/library/playlistShelfController'
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
 
@@ -159,8 +156,15 @@ async function placeArchive(): Promise<void> {
   reportObstruction()
 }
 
-function openArchive(tab?: ArchiveTab): void {
+/** "링크 추가로 바로" 요청 — 숫자가 바뀔 때마다 보관함이 한 번 링크 입력을 연다. */
+const addLinkRequest = ref(0)
+
+function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): void {
   if (tab !== undefined) archiveTab.value = tab
+  if (options.addLink === true) {
+    archiveTab.value = 'music'
+    addLinkRequest.value += 1
+  }
   if (isArchiveOpen.value) return
 
   const active = document.activeElement
@@ -239,25 +243,9 @@ async function closeData(): Promise<void> {
   dataTrigger = null
 }
 
-/* ------------------------------------------------------------------ *
- * 플레이리스트 선반 (M7) — 데크가 펼친다. M11-3 에서 다시 본다.
- * ------------------------------------------------------------------ */
-
-const SHELF_ID = 'playlist-shelf'
-const isShelfExpanded = ref(false)
-
-const shelf: PlaylistShelfController = {
-  isExpanded: readonly(isShelfExpanded),
-  shelfId: SHELF_ID,
-  toggle: () => {
-    isShelfExpanded.value = !isShelfExpanded.value
-  },
-}
-provide(PLAYLIST_SHELF, shelf)
-
 /**
- * Escape 는 **가장 바깥 것부터** 닫는다 — 데이터 대화상자 → 보관함 → 펼친 선반. 한 번에 둘을
- * 닫으면 사용자가 무엇을 닫았는지 알 수 없다.
+ * Escape 는 **가장 바깥 것부터** 닫는다 — 데이터 대화상자 → 보관함. 한 번에 둘을 닫으면 사용자가
+ * 무엇을 닫았는지 알 수 없다. (M7 의 플레이리스트 선반은 M11-3 에서 없어졌다 — 데크가 보관함을 연다.)
  */
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
@@ -266,11 +254,7 @@ function onKeydown(event: KeyboardEvent): void {
     void closeData()
     return
   }
-  if (isArchiveOpen.value) {
-    void closeArchive()
-    return
-  }
-  if (isShelfExpanded.value) isShelfExpanded.value = false
+  if (isArchiveOpen.value) void closeArchive()
 }
 
 /** 창 크기 · 방향이 바뀌면 배치를 다시 정한다 (세로 ↔ 가로). */
@@ -336,6 +320,7 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
         :open="isArchiveOpen"
         :tab="archiveTab"
         :panel-id="ARCHIVE_ID"
+        :add-link-request="addLinkRequest"
         @close="closeArchive"
         @select-tab="(tab) => (archiveTab = tab)"
       />

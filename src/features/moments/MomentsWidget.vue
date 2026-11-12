@@ -1,274 +1,240 @@
 <script setup lang="ts">
 /**
- * Music Moments 위젯 (M9-4).
+ * 대시보드의 Music Moments — **이 곡의 Moments** (M9-4, M11-3 에서 다시 짰다 · ADR 0027 결정 5).
  *
- * 영상의 한 순간을 남기고(F13), 목록에서 찾아(F14), 그 지점부터 다시 듣고(F15),
- * 메모를 고치거나 지운다(F16).
+ * 대시보드는 "보는 곳" 이다. 여기서 하는 일은 셋뿐이다.
  *
- * 이 컴포넌트는 **조립만** 한다 (`AGENTS.md` 규칙 3).
+ * 1. **＋ 이 순간 저장** — 누르면 바로 저장한다 (D2). 메모는 그다음에 "메모 추가" 로 붙인다.
+ * 2. **지금 곡의 Moments 미리보기** — 시점 순 최대 3개. 누르면 그 시점부터 재생한다.
+ * 3. **모두 보기** — 검색 · 수정 · 삭제 · 전체 목록은 보관함 Moments 탭에서 한다.
  *
- *   `useMomentCapture`   지금 시점을 고정하고 저장한다
- *   `useMomentsBrowser`  묶고 거르고, 재생·수정·삭제를 요청한다
- *   `MomentList`         행을 그리고 확인을 받는다 (표현 전용)
- *   `MomentsStatusBanner` 저장소 보호·실패 안내
+ * M9 의 긴 목록 · 거르기 · 인라인 수정 · 접기/펼치기는 보관함으로 옮겼다 — 정보 열의 좁은 칸(1280×800
+ * 에서 274px)에서 목록이 1~2행만 보였고(U6) 수정 폼이 스크롤 안에서 잘렸다(U7). 위젯 안 스크롤이 없다.
  *
- * 자리는 **정보 열의 빈자리**다 (넓은 화면). M7-4 가 시계·날씨 아래를 다른
- * 위젯 자리로 비워 두었다. 그 칸에서 끝나므로 위젯을 늘려도 데크·플레이어·
- * 플레이리스트를 밀지 않는다 (`WidgetHost.vue`). 저장 버튼을 플레이어
- * 트랜스포트 줄이 아니라 여기에 둔 이유는 **ADR 0021** 에 실측과 함께 있다.
- *
- * 플레이어도 YouTube API 도 모른다. iframe 을 만들거나 옮기지 않는다.
+ * 저장 · 재생 · 메모의 판단은 composable 이 한다 (`useMomentCapture` · `useMomentsBrowser`). 이 컴포넌트는
+ * 보여 주고 누름을 넘길 뿐이다 (`AGENTS.md` 규칙 3).
  */
-import { computed, nextTick, ref } from 'vue'
+import { computed, inject, nextTick, ref } from 'vue'
 
-import { MAX_MOMENT_NOTE_LENGTH } from '@/stores/moments'
+import { ARCHIVE } from '@/features/archive/archiveController'
+import { MAX_MOMENT_NOTE_LENGTH, useMomentsStore } from '@/stores/moments'
 
-import MomentList from './MomentList.vue'
 import MomentsStatusBanner from './MomentsStatusBanner.vue'
+import { firstLine, formatMomentTime } from './momentsView'
 import { useMomentCapture } from './useMomentCapture'
 import { useMomentsBrowser } from './useMomentsBrowser'
 
+/** 미리보기에 보이는 수. 더 있으면 "모두 보기" 로 보관함에서 본다. */
+const MOMENT_PREVIEW_LIMIT = 3
+
 const capture = useMomentCapture()
 const browser = useMomentsBrowser()
-
-/**
- * 접힘/펼침. **좁은 화면에서만** 의미가 있다.
- *
- * 넓은 화면에서 이 위젯은 정보 열의 남은 칸을 그대로 채우고 그 안에서
- * 스크롤한다 — 접어도 다른 위젯이 올라오지 않는다. 그래서 그때는 토글을
- * 그리지 않는다 (CSS). 좁은 화면에서는 위젯이 한 행을 차지하므로 플레이리스트
- * 위젯과 **같은 방식·같은 치수**로 접는다 (F14, M7 패턴). 기본은 접힘이다.
- */
-const isExpanded = ref(false)
+const moments = useMomentsStore()
+const archive = inject(ARCHIVE, null)
 
 const captureButton = ref<HTMLButtonElement | null>(null)
 const noteField = ref<HTMLTextAreaElement | null>(null)
 
-const isCapturing = computed<boolean>(() => capture.target.value !== null)
+/** 지금 곡의 Moments — 시점 순. */
+const currentMoments = computed(() => {
+  const videoId = browser.currentVideoId.value
+  return videoId === null ? [] : moments.momentsForVideo(videoId)
+})
+const preview = computed(() => currentMoments.value.slice(0, MOMENT_PREVIEW_LIMIT))
+const moreCount = computed<number>(() => currentMoments.value.length - preview.value.length)
 
-function beginCapture(): void {
+/** 방금 저장한 Moment 에 이미 메모가 있는지 — 단추 이름이 "메모 고치기" 가 된다. */
+const lastSavedHasNote = computed<boolean>(() => {
+  const saved = capture.lastSaved.value
+  return saved !== null && (moments.getMoment(saved.id)?.note ?? '') !== ''
+})
+
+async function save(): Promise<void> {
   browser.clearFeedback()
-  if (!capture.begin()) return
-  // 메모 칸으로 바로 간다. 쓰지 않고 저장해도 된다 — 메모는 선택이다.
+  await capture.save()
+}
+
+function startNote(): void {
+  capture.startNote()
   void nextTick(() => noteField.value?.focus())
 }
 
-function finishCapture(): void {
-  // 폼이 사라진다. 포커스를 저장 버튼으로 되돌린다.
+function backToCapture(): void {
+  // 폼이 사라진다. 포커스를 저장 단추로 되돌린다.
   void nextTick(() => captureButton.value?.focus())
 }
 
-async function submitCapture(): Promise<void> {
-  if (await capture.submit()) finishCapture()
+async function submitNote(): Promise<void> {
+  if (await capture.submitNote()) backToCapture()
 }
 
-function cancelCapture(): void {
-  capture.cancel()
-  finishCapture()
+function cancelNote(): void {
+  capture.cancelNote()
+  backToCapture()
 }
 
-const emptyMessage = computed<string>(() => {
-  if (browser.total.value === 0) return ''
-  return browser.currentVideoId.value === null
-    ? '지금 재생 중인 곡이 없어요.'
-    : '이 곡에 저장한 순간이 없어요.'
-})
+function openAll(): void {
+  archive?.open('moments')
+}
 </script>
 
 <template>
-  <section
-    class="moments-widget"
-    :class="{ 'is-collapsed': !isExpanded }"
-    aria-labelledby="moments-widget-title"
-  >
+  <section class="moments-widget" aria-labelledby="moments-widget-title">
     <div class="widget-head">
       <div class="head-text">
         <h2 id="moments-widget-title" class="widget-title">MOMENTS</h2>
-        <p class="widget-sub">{{ browser.total.value }}개 · 지금 이 순간을 남기고 다시 듣기</p>
+        <p class="widget-sub">
+          이 곡 {{ currentMoments.length }}개 · 전체 {{ browser.total.value }}개
+        </p>
       </div>
-      <!--
-        좁은 화면 전용 (CSS). 목록이 없으면 접고 펼 것도 없으므로 그리지 않는다.
-        저장 폼을 쓰는 동안에는 목록이 잠시 물러나므로 함께 숨긴다.
-      -->
-      <button
-        v-if="browser.total.value > 0"
-        v-show="!isCapturing"
-        type="button"
-        class="pill expand-toggle"
-        :aria-expanded="isExpanded"
-        aria-controls="moments-list"
-        @click="isExpanded = !isExpanded"
-      >
-        {{ isExpanded ? '접기' : '펼치기' }}
+      <button type="button" class="pill" @click="openAll">
+        모두 보기 ({{ browser.total.value }})
       </button>
     </div>
 
-    <div class="moments-body">
-      <MomentsStatusBanner />
+    <MomentsStatusBanner />
 
-      <!-- ── 지금 이 순간 저장 (F13) ───────────────────────────────── -->
-      <div v-if="!isCapturing" class="capture-idle">
-        <button
-          ref="captureButton"
-          type="button"
-          class="pill pill--strong capture-button"
-          :disabled="!capture.canCapture.value"
-          aria-describedby="moment-capture-hint"
-          @click="beginCapture"
-        >
-          ＋ 이 순간 저장
-        </button>
-        <p id="moment-capture-hint" class="capture-hint">{{ capture.hint.value }}</p>
-      </div>
-
-      <!--
-        누른 순간의 대상을 **고정해** 보여준다. 메모를 쓰는 동안 재생이 흘러도,
-        곡이 바뀌어도 저장되는 것은 이 줄에 적힌 순간이다 (ADR 0020 결정 4).
-      -->
-      <form
-        v-else
-        class="capture-form"
-        aria-labelledby="moment-capture-target"
-        @submit.prevent="submitCapture"
+    <!-- ── ＋ 이 순간 저장 (F13 · 빠른 저장) ─────────────────────────────── -->
+    <div class="capture-row">
+      <button
+        ref="captureButton"
+        type="button"
+        class="pill pill--strong capture-button"
+        :disabled="!capture.canCapture.value"
+        :aria-busy="capture.saving.value ? 'true' : 'false'"
+        aria-describedby="moment-capture-hint"
+        @click="save"
       >
-        <p id="moment-capture-target" class="capture-target">
-          <span class="target-time">{{ capture.targetTime.value }}</span>
-          <span class="target-title" :title="capture.target.value?.title">{{
-            capture.target.value?.title
-          }}</span>
-        </p>
-        <p v-if="capture.isTargetStale.value" class="stale-note">
-          재생 중인 곡이 바뀌었어요. 메모는 위에 적힌 순간에 저장됩니다.
-        </p>
-        <label class="label" for="moment-capture-note">메모 (선택)</label>
-        <textarea
-          id="moment-capture-note"
-          ref="noteField"
-          v-model="capture.draftNote.value"
-          class="field field--area"
-          rows="3"
-          :maxlength="MAX_MOMENT_NOTE_LENGTH"
-          :aria-invalid="capture.isNoteTooLong.value || undefined"
-          aria-describedby="moment-capture-count"
-        />
-        <p
-          id="moment-capture-count"
-          class="counter"
-          :class="{ 'is-over': capture.isNoteTooLong.value }"
-        >
-          {{ capture.noteLength.value }} / {{ MAX_MOMENT_NOTE_LENGTH }}
-          <template v-if="capture.isNoteTooLong.value">
-            · 메모는 {{ MAX_MOMENT_NOTE_LENGTH }}자까지 쓸 수 있어요</template
-          >
-        </p>
-        <div class="row-actions">
-          <button
-            type="submit"
-            class="pill pill--strong"
-            :disabled="capture.isNoteTooLong.value || capture.saving.value"
-            :aria-busy="capture.saving.value ? 'true' : 'false'"
-          >
-            {{ capture.saving.value ? '저장 중…' : '저장' }}
-          </button>
-          <button type="button" class="pill" @click="cancelCapture">취소</button>
-        </div>
-      </form>
-
-      <!-- 항상 있는 라이브 영역. 저장 결과를 누른 자리에서 말한다. -->
-      <p
-        class="feedback"
-        :class="{ 'is-warning': capture.feedback.value?.tone === 'warning' }"
-        role="status"
-        aria-live="polite"
-      >
-        {{ capture.feedback.value?.text ?? '' }}
-      </p>
-
-      <!-- ── 목록 (F14) — 저장 폼을 쓰는 동안에는 잠시 물러난다 ────────── -->
-      <div
-        v-if="browser.total.value > 0"
-        v-show="!isCapturing"
-        class="filter"
-        role="group"
-        aria-label="보여줄 순간"
-      >
-        <button
-          type="button"
-          class="pill chip"
-          :class="{ 'pill--strong': browser.filter.value === 'current' }"
-          :aria-pressed="browser.filter.value === 'current'"
-          :disabled="browser.currentVideoId.value === null"
-          @click="browser.filter.value = 'current'"
-        >
-          이 곡 {{ browser.currentCount.value }}
-        </button>
-        <button
-          type="button"
-          class="pill chip"
-          :class="{ 'pill--strong': browser.filter.value === 'all' }"
-          :aria-pressed="browser.filter.value === 'all'"
-          @click="browser.filter.value = 'all'"
-        >
-          전체 {{ browser.total.value }}
-        </button>
-      </div>
-
-      <p
-        class="feedback"
-        :class="{ 'is-warning': browser.feedback.value?.tone === 'warning' }"
-        role="status"
-        aria-live="polite"
-      >
-        {{ browser.feedback.value?.text ?? '' }}
-      </p>
-
-      <div v-show="!isCapturing" id="moments-list" class="list-scroll">
-        <p v-if="browser.total.value === 0" class="empty">
-          아직 저장한 순간이 없어요.<br />곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.
-        </p>
-        <p v-else-if="browser.groups.value.length === 0" class="empty">{{ emptyMessage }}</p>
-        <MomentList
-          v-else
-          :groups="browser.groups.value"
-          :current-video-id="browser.currentVideoId.value"
-          :max-note-length="MAX_MOMENT_NOTE_LENGTH"
-          @play="(id) => void browser.play(id)"
-          :save-note="browser.saveNote"
-          @remove="(id) => void browser.remove(id)"
-        />
-      </div>
+        {{ capture.saving.value ? '저장 중…' : '＋ 이 순간 저장' }}
+      </button>
+      <p id="moment-capture-hint" class="capture-hint">{{ capture.hint.value }}</p>
     </div>
+
+    <!-- 저장 결과. 라이브 영역은 늘 있다 — 비어 있으면 자리를 차지하지 않는다. -->
+    <p
+      class="feedback"
+      :class="{ 'is-warning': capture.feedback.value?.tone === 'warning' }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ capture.feedback.value?.text ?? '' }}
+    </p>
+
+    <!-- 방금 저장한 순간에 메모를 붙이는 길 (저장 직후) -->
+    <div v-if="capture.lastSaved.value !== null && !capture.noteOpen.value" class="after-save">
+      <button type="button" class="pill" @click="startNote">
+        {{ lastSavedHasNote ? '메모 고치기' : '메모 추가' }}
+        <span class="after-save-time">{{ capture.lastSavedTime.value }}</span>
+      </button>
+    </div>
+
+    <form
+      v-if="capture.noteOpen.value && capture.lastSaved.value !== null"
+      class="note-form"
+      aria-labelledby="moment-note-target"
+      @submit.prevent="submitNote"
+    >
+      <p id="moment-note-target" class="note-target">
+        <span class="target-time">{{ capture.lastSavedTime.value }}</span>
+        <span class="target-title">{{ capture.lastSaved.value.title }}</span>
+      </p>
+      <p v-if="capture.isLastSavedStale.value" class="stale-note">
+        재생 중인 곡이 바뀌었어요. 메모는 위에 적힌 순간에 붙어요.
+      </p>
+      <label class="label" for="moment-capture-note">메모 (선택)</label>
+      <textarea
+        id="moment-capture-note"
+        ref="noteField"
+        v-model="capture.draftNote.value"
+        class="field field--area"
+        rows="3"
+        :maxlength="MAX_MOMENT_NOTE_LENGTH"
+        :aria-invalid="capture.isNoteTooLong.value || undefined"
+        aria-describedby="moment-capture-count"
+      />
+      <p
+        id="moment-capture-count"
+        class="counter"
+        :class="{ 'is-over': capture.isNoteTooLong.value }"
+      >
+        {{ capture.noteLength.value }} / {{ MAX_MOMENT_NOTE_LENGTH }}
+        <template v-if="capture.isNoteTooLong.value">
+          · 메모는 {{ MAX_MOMENT_NOTE_LENGTH }}자까지 쓸 수 있어요</template
+        >
+      </p>
+      <div class="row-actions">
+        <button
+          type="submit"
+          class="pill pill--strong"
+          :disabled="capture.isNoteTooLong.value || capture.noteSaving.value"
+          :aria-busy="capture.noteSaving.value ? 'true' : 'false'"
+        >
+          {{ capture.noteSaving.value ? '저장 중…' : '메모 저장' }}
+        </button>
+        <button type="button" class="pill" @click="cancelNote">취소</button>
+      </div>
+    </form>
+
+    <!-- ── 이 곡의 Moments 미리보기 ────────────────────────────────────── -->
+    <ul v-if="preview.length > 0" class="preview" aria-label="이 곡의 Moments">
+      <li v-for="moment in preview" :key="moment.id" class="preview-row">
+        <button
+          type="button"
+          class="preview-play"
+          :data-moment-play="moment.id"
+          :aria-label="`${formatMomentTime(moment.atSeconds)} 부터 재생${
+            firstLine(moment.note) === '' ? '' : ` — ${firstLine(moment.note)}`
+          }`"
+          @click="() => void browser.play(moment.id)"
+        >
+          <span class="preview-time">▶ {{ formatMomentTime(moment.atSeconds) }}</span>
+          <span class="preview-note" :class="{ 'is-empty': firstLine(moment.note) === '' }">{{
+            firstLine(moment.note) === '' ? '메모 없음' : firstLine(moment.note)
+          }}</span>
+        </button>
+      </li>
+    </ul>
+    <p v-if="moreCount > 0" class="more">
+      이 곡의 Moments {{ moreCount }}개 더 —
+      <button type="button" class="link" @click="openAll">모두 보기</button>
+    </p>
+    <p v-else-if="browser.total.value === 0" class="empty">
+      아직 저장한 순간이 없어요. 곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.
+    </p>
+    <p
+      v-else-if="browser.currentVideoId.value !== null && currentMoments.length === 0"
+      class="empty"
+    >
+      이 곡에 저장한 순간이 없어요.
+    </p>
+
+    <!-- 재생 결과 (가려짐 · 플레이어 준비 전 등) -->
+    <p
+      class="feedback"
+      :class="{ 'is-warning': browser.feedback.value?.tone === 'warning' }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ browser.feedback.value?.text ?? '' }}
+    </p>
   </section>
 </template>
 
 <style scoped>
 /*
- * 색·치수는 기존 토큰만 쓴다 (IMPLEMENTATION_PLAN 4.7). 머리말은
- * `PlaylistWidget` 과 같은 조판이고, 목록 스크롤 높이도 플레이리스트 위젯의
- * 토큰을 그대로 쓴다 — "같은 펼침 방식" 이므로 같은 치수다.
+ * 색 · 치수는 기존 토큰만 쓴다. 머리말은 `PlaylistWidget` 과 같은 조판이다. **위젯 안 스크롤이 없다** —
+ * 미리보기는 최대 3행이고 나머지는 보관함이다 (M11-3).
  */
 .moments-widget {
   display: flex;
   min-width: 0;
-  min-height: 0;
   flex-direction: column;
   gap: 10px;
 }
 
-/*
- * 포커스 링을 **안쪽으로** 그린다.
- *
- * 전역 링은 요소 밖으로 5px(두께 2 + 간격 3) 나간다. 이 위젯은 넓은 화면에서
- * 정해진 칸 안에서 스크롤하므로, 가장자리에 붙은 버튼의 링이 스크롤 영역에
- * 잘린다. 링 색과 두께는 그대로 두고 위치만 안으로 들인다.
- */
-.moments-widget :focus-visible {
-  outline-offset: calc(-1 * var(--focus-ring-width));
-}
-
 .widget-head {
   display: flex;
-  flex: none;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
@@ -276,9 +242,9 @@ const emptyMessage = computed<string>(() => {
 
 .head-text {
   min-width: 0;
+  flex: 1 1 0;
 }
 
-/* `PlaylistWidget` 의 `.widget-title` · `.widget-sub` 와 같은 조판이다. */
 .widget-title {
   margin: 0;
   color: var(--drawer-title-text-color);
@@ -293,15 +259,7 @@ const emptyMessage = computed<string>(() => {
   font: 11px var(--font-mono);
 }
 
-.moments-body {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.capture-idle {
+.capture-row {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
@@ -314,22 +272,78 @@ const emptyMessage = computed<string>(() => {
   flex: 1 1 140px;
   margin: 0;
   color: var(--drawer-muted-text-color);
-  font: 10px/1.5 var(--font-mono);
+  font: 11px/1.5 var(--font-mono);
+}
+
+/* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
+.pill {
+  min-height: 44px;
+  flex: none;
+  padding: 7px 14px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: var(--pill-surface-color);
+  color: var(--pill-text-color);
+  font: 12px var(--font-mono);
+}
+
+/* 터치 뒤 hover 색이 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  .pill:hover:not(:disabled):not(.pill--strong) {
+    background: var(--pill-surface-hover-color);
+  }
+
+  .preview-play:hover {
+    border-color: var(--row-selected-border-color);
+  }
+}
+
+.pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pill--strong {
+  border-color: var(--accent-strong-color);
+  background: var(--accent-strong-color);
+  color: var(--accent-strong-text-color);
+}
+
+.after-save-time {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* 안내. 비어 있으면 자리를 차지하지 않는다 — 라이브 영역 자체는 남는다. */
+.feedback {
+  margin: 0;
+  color: var(--status-text-color);
+  font: 11px/1.6 var(--font-mono);
+}
+
+.feedback:empty {
+  display: none;
+}
+
+.feedback.is-warning {
+  color: var(--status-warning-text-color);
 }
 
 /* `TrackList` 의 이름 변경 폼과 같은 상자다. */
-.capture-form {
+.note-form {
   padding: 10px 12px;
   border: 1px solid var(--row-selected-border-color);
   background: var(--row-selected-surface-color);
 }
 
-.capture-target {
+.note-target {
   display: flex;
   min-width: 0;
+  flex-wrap: wrap;
   align-items: baseline;
   margin: 0 0 10px;
-  gap: 8px;
+  gap: 4px 8px;
 }
 
 .target-time {
@@ -340,18 +354,16 @@ const emptyMessage = computed<string>(() => {
 }
 
 .target-title {
-  overflow: hidden;
   min-width: 0;
   color: var(--row-text-color);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stale-note {
   margin: 0 0 10px;
   color: var(--status-warning-text-color);
-  font: 10px/1.6 var(--font-mono);
+  font: 11px/1.6 var(--font-mono);
 }
 
 .label {
@@ -361,7 +373,6 @@ const emptyMessage = computed<string>(() => {
   font: 11px var(--font-mono);
 }
 
-/* 승인된 디자인의 `.field` 값을 따른다. 여러 줄이라 높이만 내용에 맡긴다. */
 .field {
   display: block;
   width: 100%;
@@ -395,120 +406,70 @@ const emptyMessage = computed<string>(() => {
   gap: 6px;
 }
 
-/* 안내. 비어 있으면 자리를 차지하지 않는다 — 라이브 영역 자체는 남는다. */
-.feedback {
-  margin: 0;
-  color: var(--status-text-color);
-  font: 10px/1.6 var(--font-mono);
-}
-
-.feedback:empty {
-  display: none;
-}
-
-.feedback.is-warning {
-  color: var(--status-warning-text-color);
-}
-
-.filter {
+.preview {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* 승인된 디자인의 `.pill` 값을 따른다. */
-.pill {
-  min-height: 36px;
-  flex: none;
-  padding: 7px 12px;
-  border: 1px solid var(--pill-border-color);
+.preview-play {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
   border-radius: var(--radius-control);
-  background: var(--pill-surface-color);
-  color: var(--pill-text-color);
-  font: 11px var(--font-mono);
+  background: var(--row-surface-color);
+  color: var(--row-text-color);
+  text-align: left;
 }
 
-.pill:hover:not(:disabled) {
-  background: var(--pill-surface-hover-color);
+.preview-time {
+  flex: none;
+  color: var(--track-play-text-color);
+  font: 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.pill:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+/* 메모는 두 줄까지 — 그 이상은 보관함에서 (U12). */
+.preview-note {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
-.pill--strong {
-  border-color: var(--accent-strong-color);
-  background: var(--accent-strong-color);
-  color: var(--accent-strong-text-color);
+.preview-note.is-empty {
+  color: var(--drawer-muted-text-color);
+  font-style: italic;
 }
 
-.pill--strong:hover:not(:disabled) {
-  background: var(--accent-strong-color);
-}
-
-/* 거르기 단추. 눌린 쪽이 강조된다 — `aria-pressed` 와 같은 것을 색으로도 말한다. */
-.chip {
-  min-height: 32px;
-  padding: 5px 10px;
-}
-
-/*
- * 목록 스크롤. **좁은 화면**의 기본값이다 — 플레이리스트 위젯과 같은 토큰.
- * 접힘: 줄 두세 개, 펼침: 플레이리스트 위젯의 펼친 높이.
- */
-.list-scroll {
-  min-height: 0;
-  max-height: var(--size-playlist-collapsed-max-height);
-  overflow-y: auto;
-  /*
-   * 스크롤바 자리를 **늘 비워 둔다** (M9-6 성능).
-   *
-   * 스크롤바가 폭을 차지하는 환경(Windows·Linux 데스크톱 Chrome 등)에서
-   * `overflow-y: auto` 는 내용이 바뀔 때마다 "스크롤바가 필요한가" 를 정하려고
-   * 목록 전체를 다시 배치한다. 1000개에서 한 줄만 바뀌어도 레이아웃이
-   * 550~700ms 걸렸고(M9-6 실측, 1440px), 저장·삭제 확인·메모 수정을 열 때마다
-   * 그만큼 멈췄다. 자리를 고정하면 폭이 바뀔 일이 없어 바뀐 줄만 다시
-   * 배치한다 — 같은 조건에서 10ms.
-   *
-   * 스크롤바가 내용 위에 겹치는 환경(Android·iOS·macOS 기본)에서는 아무 효과가
-   * 없다. 그런 환경인 390px 모바일 에뮬레이션에서는 처음부터 이 비용이 없었다
-   * (8ms). 실기기로는 재지 않았다.
-   */
-  scrollbar-gutter: stable;
-}
-
-.moments-widget:not(.is-collapsed) .list-scroll {
-  max-height: var(--size-playlist-max-height);
-}
-
+.more,
 .empty {
   margin: 0;
   color: var(--drawer-muted-text-color);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
-/*
- * 넓은 화면: 정보 열의 남은 칸을 **그대로** 쓴다.
- *
- * 위젯의 높이는 `WidgetHost` 가 그 칸에 맞춰 준다(`contain: size` + 늘이기).
- * 몸통이 칸 안에서 스크롤하고, 목록은 남은 높이를 모두 쓴다. 접을 이유가
- * 없으므로 토글을 그리지 않는다.
- */
-@media (min-width: 1101px) {
-  .moments-body {
-    overflow-y: auto;
-  }
-
-  .list-scroll,
-  .moments-widget:not(.is-collapsed) .list-scroll {
-    max-height: none;
-    flex: 1 1 auto;
-  }
-
-  .expand-toggle {
-    display: none;
-  }
+.link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--row-text-color);
+  font: inherit;
+  text-decoration: underline;
 }
 </style>

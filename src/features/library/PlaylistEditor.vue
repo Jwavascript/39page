@@ -181,10 +181,22 @@ async function submitLink(): Promise<void> {
   }
 
   const added = library.getPlaylist(targetId)?.tracks.find((track) => track.id === result.trackId)
-  addedNotice.value = `“${added?.title ?? ''}”을 추가했습니다.`
+  addedNotice.value = `“${added?.title ?? ''}”을 추가했습니다. 다음 링크를 이어서 넣을 수 있어요.`
   reportPersisted(result)
-  closeLinkForm()
+  /*
+   * 양식을 닫지 않는다 (M11-3 E) — 링크를 여러 개 넣을 때마다 "링크 추가" 를 다시 누르지 않게. 입력만
+   * 비우고 링크 칸으로 돌아간다. 다 넣었으면 "닫기".
+   */
+  draftUrl.value = ''
+  draftTitle.value = ''
+  linkError.value = ''
+  await nextTick()
+  document.getElementById('track-url')?.focus()
 }
+
+/** 지금 곡 — 코디네이터 계약의 읽기 전용 보기 (ADR 0009). playback store 를 보지 않는다. */
+const nowPlayingTrackId = computed<string | null>(() => playback?.nowPlaying.value?.trackId ?? null)
+const nowPlayingActive = computed<boolean>(() => playback?.nowPlaying.value?.playing ?? false)
 
 /* ---------- 트랙 편집 ---------- */
 
@@ -520,11 +532,13 @@ watch(
           <button type="submit" class="pill pill--strong" :disabled="isSaving">
             이 목록에 추가
           </button>
-          <button type="button" class="pill" @click="closeLinkForm">취소</button>
+          <button type="button" class="pill" @click="closeLinkForm">닫기</button>
         </div>
       </form>
 
       <TrackList
+        :now-playing-track-id="nowPlayingTrackId"
+        :now-playing-active="nowPlayingActive"
         :tracks="library.selectedPlaylist === null ? null : library.selectedPlaylist.tracks"
         @play="requestPlayTrack"
         @move="moveTrack"
@@ -563,8 +577,7 @@ watch(
   font: 13px var(--font-mono);
   font-weight: 400;
   letter-spacing: 0.1em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .drawer-sub {
@@ -579,7 +592,8 @@ watch(
 
 /* 승인된 디자인의 `.pill` 값을 따른다. */
 .pill {
-  min-height: 36px;
+  /* 터치 목표 44px (M11 U16). */
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -588,8 +602,11 @@ watch(
   font: 11px var(--font-mono);
 }
 
-.pill:hover:not(:disabled) {
-  background: var(--pill-surface-hover-color);
+/* 터치 뒤 hover 색이 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  .pill:hover:not(:disabled):not(.pill--strong) {
+    background: var(--pill-surface-hover-color);
+  }
 }
 
 .pill:disabled {

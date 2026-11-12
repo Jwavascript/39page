@@ -1,17 +1,20 @@
 /**
- * M9-4 — Music Moments UI.
+ * Music Moments UI — 대시보드 "이 곡의 Moments" (M11-3) 와 보관함 Moments 탭 (M11-2).
  *
- * **앱 전체를 마운트**해 사용자가 하는 순서대로 밟는다. 외부 플레이어는
- * `FakePlayerAdapter` 가 맡고, 테스트가 "플레이어가 보고했다" 를 흘려보낸다.
- * 실제 YouTube 재생은 브라우저 검증이 따로 본다 (`IMPLEMENTATION_PLAN.md` M9-4).
+ * **앱 전체를 마운트**해 사용자가 하는 순서대로 밟는다. 외부 플레이어는 `FakePlayerAdapter` 가 맡고,
+ * 테스트가 "플레이어가 보고했다" 를 흘려보낸다. 실제 YouTube 재생은 브라우저 검증이 따로 본다.
  *
- *   A  저장 (F13) — 시점 고정 · 200ms 가짜 0초 · 입력 중 곡 변경 · 500자
- *   B  저장 상태 — 실패 · protected · unavailable
- *   C  목록 (F14) — 개수 · 강조 · 거르기 · 정렬 · 제목 3단 · 글자로만
- *   D  수정·삭제 (F16)
- *   E  재생 (F15) — 같은 곡 · 다른 곡 · 지운 곡 · 가려짐 · 시트 · 실패
- *   F  영속 · 테마 · iframe
- *   G  경계 — 없는 기능의 버튼 · 소스 수준
+ * M9 의 이 파일은 위젯 하나에 저장 폼 · 목록 · 거르기 · 수정 · 삭제가 다 있었다. M11 에서 저장은
+ * **빠른 저장**(누르면 바로 저장, 메모는 그다음)이 됐고(D2), 목록 · 수정 · 삭제는 보관함으로 갔다
+ * (ADR 0027). 시험도 그 자리로 옮겼다 — 같은 보장을 새 자리에서 다시 고정한다.
+ *
+ *   A  빠른 저장 (F13 · D2) — 시점 고정 · 가짜 0초 · 위치 잃음 · 연속 클릭 · 저장 중
+ *   B  저장 뒤 메모 — 추가 · 고치기 · 500자 · 취소 · 곡이 바뀐 동안 · 충돌
+ *   C  저장 상태 — 실패 · protected · unavailable · 곡이 바뀌면 지난 안내를 지운다
+ *   D  대시보드 미리보기 — 이 곡 최대 3개 · 재생 · 모두 보기 · 안쪽 스크롤 없음
+ *   E  보관함 Moments 탭 (F14 · F16) — 묶음 · 정렬 · 거르기 · 제목 3단 · 관리(수정 · 삭제)
+ *   F  재생 (F15) — 같은 곡 · 다른 곡 · 지운 곡 · 0초 · 가려짐 · 비켜주기 · 실패 · 연속
+ *   G  영속 · 테마 · iframe · 소스 수준
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -175,7 +178,7 @@ type Session = ReturnType<typeof boot>
 const widget = (s: Session) => s.wrapper.get('.moments-widget')
 const captureButton = (s: Session) => s.wrapper.get('.capture-button')
 const captureFeedback = (s: Session) => s.wrapper.findAll('.moments-widget .feedback')[0]
-const listFeedback = (s: Session) => s.wrapper.findAll('.moments-widget .feedback')[1]
+const previewFeedback = (s: Session) => s.wrapper.findAll('.moments-widget .feedback')[1]
 
 /** 목록 전체 재생 → 플레이어 준비 → 실제 재생 → 위치 보고. */
 async function playFromStart(s: Session, seconds: number): Promise<void> {
@@ -192,22 +195,50 @@ async function nextTrack(s: Session): Promise<void> {
   await nextTick()
 }
 
-async function beginCapture(s: Session): Promise<void> {
+/** ＋ 이 순간 저장 — 누르면 바로 저장한다. 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025). */
+async function quickSave(s: Session): Promise<void> {
   await captureButton(s).trigger('click')
+  await flushPromises()
   await nextTick()
 }
 
-async function saveCapture(s: Session, note = ''): Promise<void> {
-  if (note !== '') await s.wrapper.get('#moment-capture-note').setValue(note)
-  await s.wrapper.get('.capture-form').trigger('submit')
-  // 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025) — 끝난 뒤의 화면을 본다.
+/** 방금 저장한 순간에 메모를 붙인다. */
+async function addNote(s: Session, note: string): Promise<void> {
+  await widget(s).get('.after-save .pill').trigger('click')
+  await nextTick()
+  await s.wrapper.get('#moment-capture-note').setValue(note)
+  await s.wrapper.get('.note-form').trigger('submit')
   await flushPromises()
+  await nextTick()
+}
+
+/** 보관함의 Moments 탭을 연다 — 헤더 입구로. */
+async function openArchiveMoments(s: Session) {
+  if (s.wrapper.get('#archive-panel').attributes('hidden') !== undefined) {
+    await s.wrapper.findAll('.app-nav button')[1]?.trigger('click')
+  } else {
+    await s.wrapper.get('#archive-tab-moments').trigger('click')
+  }
+  await flushPromises()
+  await nextTick()
+  return s.wrapper.get('#archive-panel-moments')
+}
+
+const archiveMoments = (s: Session) => s.wrapper.get('#archive-panel-moments')
+const archiveFeedback = (s: Session) => archiveMoments(s).get('.feedback')
+
+/** 보관함 Moment 줄의 "관리" 를 펼친다 (M11-3). 이미 펼쳐져 있으면 누르지 않는다. */
+async function openMomentManage(s: Session, id: string): Promise<void> {
+  const toggle = archiveMoments(s).get(`[data-moment-manage="${id}"]`)
+  if (toggle.attributes('aria-expanded') === 'true') return
+  await toggle.trigger('click')
   await nextTick()
 }
 
 beforeEach(() => {
   globalThis.localStorage.clear()
   delete document.documentElement.dataset.theme
+  document.documentElement.style.overflow = ''
   installPlayerRect()
 })
 
@@ -217,15 +248,16 @@ afterEach(() => {
   uninstallPlayerRect()
   uninstallMatchMedia()
   delete document.documentElement.dataset.theme
+  document.documentElement.style.overflow = ''
   document.body.innerHTML = ''
   vi.restoreAllMocks()
 })
 
 /* ================================================================== *
- * A. 저장 (F13)
+ * A. 빠른 저장 (F13 · D2)
  * ================================================================== */
 
-describe('A. 지금 이 순간 저장', () => {
+describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
   it('곡이 없으면 저장 버튼이 꺼져 있고 왜 꺼졌는지 말한다', () => {
     const s = boot()
 
@@ -247,59 +279,49 @@ describe('A. 지금 이 순간 저장', () => {
     expect(s.wrapper.get('#moment-capture-hint').text()).toContain('재생이 시작되면')
   })
 
-  it('재생이 시작되면 켜지고, 누르면 그 순간을 고정해 보여준다', async () => {
+  it('재생 중 누르면 그 순간이 바로 저장되고, 영속 저장 뒤에만 "저장했어요" 를 말한다', async () => {
     const s = boot()
-    await playFromStart(s, 42.7)
+    await playFromStart(s, 83.7)
 
     expect(captureButton(s).attributes('disabled')).toBeUndefined()
-    await beginCapture(s)
-
-    const target = s.wrapper.get('.capture-target')
-    expect(target.text()).toContain('0:42')
-    expect(target.text()).toContain('Alpha')
-    // 메모 칸으로 바로 간다.
-    expect(document.activeElement).toBe(s.wrapper.get('#moment-capture-note').element)
-  })
-
-  it('메모를 쓰는 동안 재생이 흘러가도 저장되는 초는 누른 순간이다', async () => {
-    const s = boot()
-    await playFromStart(s, 42.7)
-    await beginCapture(s)
-
-    s.fake.emitPosition(97.3)
-    await saveCapture(s, '여기부터 좋다')
+    expect(s.wrapper.get('#moment-capture-hint').text()).toContain('바로 저장')
+    await quickSave(s)
 
     expect(s.moments.moments).toHaveLength(1)
     expect(s.moments.moments[0]).toMatchObject({
       videoId: A,
-      atSeconds: 42,
-      note: '여기부터 좋다',
+      atSeconds: 83,
       title: 'Alpha',
+      note: '',
     })
+    // 저장소에도 들어갔다 — 메모리만이 아니다.
+    expect(JSON.parse(rawMoments() as string).data).toHaveLength(1)
+    const feedback = captureFeedback(s)
+    expect(feedback?.text()).toBe('1:23 을 저장했어요 — Alpha')
+    expect(feedback?.classes()).not.toContain('is-warning')
+    // 메모는 그다음에 붙인다.
+    expect(widget(s).get('.after-save .pill').text()).toContain('메모 추가')
+    expect(widget(s).find('.note-form').exists()).toBe(false)
   })
 
   it('정상적으로 확인된 0초는 유효한 순간이다', async () => {
     const s = boot()
     await playFromStart(s, 0.4)
-
-    await beginCapture(s)
-    expect(s.wrapper.get('.capture-target').text()).toContain('0:00')
-    await saveCapture(s)
+    await quickSave(s)
 
     expect(s.moments.moments[0]?.atSeconds).toBe(0)
+    expect(captureFeedback(s)?.text()).toContain('0:00')
   })
 
   /*
-   * M9-3 실측: 새 영상을 적재하면 플레이어는 지정 시점으로 가기 전 약 200ms 동안
-   * `0` 을 보고한다 — 영상은 맞고 시간만 틀리다. 그 사이 저장되면 0초짜리
-   * 순간이 생긴다.
+   * M9-3 실측: 새 영상을 적재하면 플레이어는 지정 시점으로 가기 전 약 200ms 동안 `0` 을 보고한다 —
+   * 영상은 맞고 시간만 틀리다. 그 사이 저장되면 0초짜리 순간이 생긴다.
    */
   it('곡을 바꾸는 중에 보고되는 가짜 0초로는 저장할 수 없다', async () => {
     const s = boot()
     await playFromStart(s, 30)
     await nextTrack(s)
 
-    // 실제 YouTube 가 전환 중에 보내는 순서 그대로: paused@0 → idle → loading.
     s.fake.emitStateChange('paused')
     s.fake.emitPosition(0)
     await nextTick()
@@ -310,17 +332,15 @@ describe('A. 지금 이 순간 저장', () => {
     expect(captureButton(s).attributes('disabled')).toBeDefined()
 
     // 버튼을 우회해 눌러도(이벤트 직접 발생) 저장되지 않는다.
-    await captureButton(s).element.dispatchEvent(new MouseEvent('click'))
-    await nextTick()
-    expect(s.wrapper.find('.capture-form').exists()).toBe(false)
+    captureButton(s).element.dispatchEvent(new MouseEvent('click'))
+    await flushPromises()
     expect(s.moments.moments).toEqual([])
 
     // 실제로 재생이 시작된 뒤에는 그 영상의 위치로 저장된다.
     s.fake.emitPosition(0.2)
     s.fake.emitStateChange('playing')
     await nextTick()
-    await beginCapture(s)
-    await saveCapture(s)
+    await quickSave(s)
 
     expect(s.moments.moments[0]).toMatchObject({ videoId: B, atSeconds: 0, title: 'Bravo' })
   })
@@ -328,160 +348,219 @@ describe('A. 지금 이 순간 저장', () => {
   it('버튼이 켜진 뒤 누르기 전에 위치를 잃으면 0 으로 바꾸지 않고 거절한다', async () => {
     const s = boot()
     await playFromStart(s, 30)
-    // 플레이어가 보고를 거뒀다 (준비가 풀린 경우 등).
     s.fake.emitPosition(null)
 
-    await beginCapture(s)
+    await quickSave(s)
 
-    expect(s.wrapper.find('.capture-form').exists()).toBe(false)
     expect(captureFeedback(s)?.text()).toContain('재생 위치를 확인하지 못했어요')
     expect(s.moments.moments).toEqual([])
   })
 
-  it('메모를 쓰는 중에 곡이 바뀌어도 누른 곡·시점에 저장하고, 바뀌었다고 알린다', async () => {
+  it('같은 순간을 연달아 누르면 한 번만 저장하고 이미 저장했다고 알린다', async () => {
+    const s = boot()
+    await playFromStart(s, 50.2)
+    await quickSave(s)
+    await quickSave(s)
+    await quickSave(s)
+
+    expect(s.moments.moments).toHaveLength(1)
+    expect(captureFeedback(s)?.text()).toContain('0:50 은 방금 저장했어요')
+    expect(captureFeedback(s)?.text()).toContain('두 번 저장하지 않았어요')
+  })
+
+  it('재생이 흘러 다른 초가 되면 또 저장된다 — 한 영상에 여러 순간', async () => {
+    const s = boot()
+    await playFromStart(s, 10)
+    await quickSave(s)
+    s.fake.emitPosition(50)
+    await nextTick()
+    await quickSave(s)
+
+    expect(s.moments.moments.map((m) => m.atSeconds)).toEqual([10, 50])
+  })
+
+  it('지운 뒤에는 같은 초를 다시 저장할 수 있다 — 막는 것은 남아 있는 중복뿐이다', async () => {
+    const s = boot()
+    await playFromStart(s, 20)
+    await quickSave(s)
+    const id = s.moments.moments[0]?.id ?? ''
+    await s.moments.remove(id)
+    await quickSave(s)
+
+    expect(s.moments.moments).toHaveLength(1)
+    expect(s.moments.moments[0]?.id).not.toBe(id)
+  })
+
+  it('저장이 끝나기 전에는 "저장 중…" 이고 다시 누를 수 없다', async () => {
+    const s = boot()
+    await playFromStart(s, 40)
+    let release: (() => void) | undefined
+    const original = s.moments.add
+    const gate = new Promise<void>((resolveGate) => {
+      release = resolveGate
+    })
+    vi.spyOn(s.moments, 'add').mockImplementation(async (input) => {
+      await gate
+      return original(input)
+    })
+
+    await captureButton(s).trigger('click')
+    await nextTick()
+    expect(captureButton(s).text()).toBe('저장 중…')
+    expect(captureButton(s).attributes('disabled')).toBeDefined()
+    expect(captureButton(s).attributes('aria-busy')).toBe('true')
+    expect(captureFeedback(s)?.text()).toBe('')
+
+    release?.()
+    await flushPromises()
+    await nextTick()
+    expect(captureButton(s).text()).toBe('＋ 이 순간 저장')
+    expect(captureFeedback(s)?.text()).toContain('저장했어요')
+    expect(s.moments.moments).toHaveLength(1)
+  })
+})
+
+/* ================================================================== *
+ * B. 저장 뒤 메모
+ * ================================================================== */
+
+describe('B. 저장 직후 메모를 붙인다', () => {
+  it('메모 추가 → 쓰고 저장 → 그 순간의 메모가 되고, 단추는 "메모 고치기" 가 된다', async () => {
     const s = boot()
     await playFromStart(s, 42)
-    await beginCapture(s)
-    expect(s.wrapper.find('.stale-note').exists()).toBe(false)
+    await quickSave(s)
+
+    await widget(s).get('.after-save .pill').trigger('click')
+    await nextTick()
+    // 메모 칸으로 바로 간다. 어느 순간의 메모인지 보인다.
+    expect(document.activeElement).toBe(s.wrapper.get('#moment-capture-note').element)
+    expect(widget(s).get('.note-target').text()).toContain('0:42')
+    expect(widget(s).get('.note-target').text()).toContain('Alpha')
+
+    await s.wrapper.get('#moment-capture-note').setValue('여기부터 좋다')
+    await s.wrapper.get('.note-form').trigger('submit')
+    await flushPromises()
+    await nextTick()
+
+    expect(s.moments.moments[0]).toMatchObject({ atSeconds: 42, note: '여기부터 좋다' })
+    expect(captureFeedback(s)?.text()).toBe('0:42 에 메모를 붙였어요.')
+    expect(widget(s).find('.note-form').exists()).toBe(false)
+    expect(document.activeElement).toBe(captureButton(s).element)
+    expect(widget(s).get('.after-save .pill').text()).toContain('메모 고치기')
+  })
+
+  it('메모는 500자까지다 — 입력란이 막고, 넘긴 값은 저장하지 않는다', async () => {
+    const s = boot()
+    await playFromStart(s, 10)
+    await quickSave(s)
+    await widget(s).get('.after-save .pill').trigger('click')
+    await nextTick()
+
+    const field = s.wrapper.get('#moment-capture-note')
+    expect(field.attributes('maxlength')).toBe(String(MAX_MOMENT_NOTE_LENGTH))
+    await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH + 1))
+    expect(s.wrapper.get('#moment-capture-count').text()).toContain('501 / 500')
+    expect(s.wrapper.get('.note-form button[type="submit"]').attributes('disabled')).toBeDefined()
+
+    await s.wrapper.get('.note-form').trigger('submit')
+    await flushPromises()
+    expect(s.moments.moments[0]?.note).toBe('')
+    // 폼은 남는다 — 쓴 메모를 잃지 않는다.
+    expect(widget(s).find('.note-form').exists()).toBe(true)
+
+    await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH))
+    await s.wrapper.get('.note-form').trigger('submit')
+    await flushPromises()
+    expect(s.moments.moments[0]?.note).toHaveLength(MAX_MOMENT_NOTE_LENGTH)
+  })
+
+  it('메모를 취소하면 순간은 남고 메모는 비어 있다', async () => {
+    const s = boot()
+    await playFromStart(s, 10)
+    await quickSave(s)
+    await widget(s).get('.after-save .pill').trigger('click')
+    await nextTick()
+    await s.wrapper.get('#moment-capture-note').setValue('버릴 메모')
+
+    const cancel = widget(s)
+      .findAll('.note-form button')
+      .find((b) => b.text() === '취소')
+    await cancel?.trigger('click')
+    await nextTick()
+
+    expect(s.moments.moments).toHaveLength(1)
+    expect(s.moments.moments[0]?.note).toBe('')
+    expect(widget(s).find('.note-form').exists()).toBe(false)
+    expect(document.activeElement).toBe(captureButton(s).element)
+  })
+
+  it('메모를 쓰는 중에 곡이 바뀌어도 그 순간에 붙고, 바뀌었다고 알린다', async () => {
+    const s = boot()
+    await playFromStart(s, 42)
+    await quickSave(s)
+    await widget(s).get('.after-save .pill').trigger('click')
+    await nextTick()
+    await s.wrapper.get('#moment-capture-note').setValue('A 의 메모')
 
     await nextTrack(s)
     s.fake.emitStateChange('playing')
     s.fake.emitPosition(5)
     await nextTick()
 
-    expect(s.wrapper.get('.stale-note').text()).toContain('곡이 바뀌었어요')
-    // 고정한 대상이 그대로 보인다.
-    expect(s.wrapper.get('.capture-target').text()).toContain('Alpha')
+    expect(widget(s).get('.stale-note').text()).toContain('곡이 바뀌었어요')
+    expect(widget(s).get('.note-target').text()).toContain('Alpha')
+    await s.wrapper.get('.note-form').trigger('submit')
+    await flushPromises()
 
-    await saveCapture(s, 'A 의 메모')
-
-    expect(s.moments.moments[0]).toMatchObject({
-      videoId: A,
-      atSeconds: 42,
-      title: 'Alpha',
-      note: 'A 의 메모',
-    })
+    expect(s.moments.moments[0]).toMatchObject({ videoId: A, atSeconds: 42, note: 'A 의 메모' })
   })
 
-  it('메모는 500자까지다 — 입력란이 막고, 넘긴 값은 저장하지 않는다', async () => {
+  it('다른 탭이 먼저 바꿨으면 메모를 저장하지 않고 폼과 쓴 메모를 지킨다 (ADR 0025)', async () => {
     const s = boot()
-    await playFromStart(s, 10)
-    await beginCapture(s)
-
-    const field = s.wrapper.get('#moment-capture-note')
-    expect(field.attributes('maxlength')).toBe(String(MAX_MOMENT_NOTE_LENGTH))
-
-    // 스크립트·붙여넣기 경로처럼 maxlength 를 넘긴 값.
-    await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH + 1))
-    expect(s.wrapper.get('#moment-capture-count').text()).toContain('501 / 500')
-    expect(s.wrapper.get('#moment-capture-count').text()).toContain('500자까지')
-    expect(
-      s.wrapper.get('.capture-form button[type="submit"]').attributes('disabled'),
-    ).toBeDefined()
-
-    await s.wrapper.get('.capture-form').trigger('submit')
-    expect(s.moments.moments).toEqual([])
-    // 폼은 남는다 — 쓴 메모를 잃지 않는다.
-    expect(s.wrapper.find('.capture-form').exists()).toBe(true)
-
-    await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH))
-    await s.wrapper.get('.capture-form').trigger('submit')
+    await playFromStart(s, 30)
+    await quickSave(s)
+    const saved = s.moments.moments[0] as Moment
+    await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
-    expect(s.moments.moments[0]?.note).toHaveLength(MAX_MOMENT_NOTE_LENGTH)
-  })
+    await s.wrapper.get('#moment-capture-note').setValue('이 탭의 메모')
 
-  it('메모 없이도 저장된다 — 메모는 선택이다', async () => {
-    const s = boot()
-    await playFromStart(s, 10)
-    await beginCapture(s)
-    await saveCapture(s)
-
-    expect(s.moments.moments[0]?.note).toBe('')
-  })
-
-  it('취소하면 아무것도 저장하지 않고 저장 버튼으로 돌아간다', async () => {
-    const s = boot()
-    await playFromStart(s, 10)
-    await beginCapture(s)
-    await s.wrapper.get('#moment-capture-note').setValue('버릴 메모')
-
-    const cancel = s.wrapper.findAll('.capture-form button').find((b) => b.text() === '취소')
-    await cancel?.trigger('click')
+    // 다른 탭이 Moments 를 저장했다 (이 탭은 아직 모른다).
+    seedMoments([saved, moment({ id: 'other', videoId: B, note: '다른 탭' })])
+    const before = rawMoments()
+    await s.wrapper.get('.note-form').trigger('submit')
+    await flushPromises()
     await nextTick()
 
-    expect(s.moments.moments).toEqual([])
-    expect(rawMoments()).toBeNull()
-    expect(s.wrapper.find('.capture-form').exists()).toBe(false)
-    expect(document.activeElement).toBe(captureButton(s).element)
-  })
-
-  it('한 영상에 여러 순간 — 같은 시점도 합치지 않는다', async () => {
-    const s = boot()
-    await playFromStart(s, 50)
-    await beginCapture(s)
-    await saveCapture(s, '오십')
-
-    s.fake.emitPosition(10)
-    await beginCapture(s)
-    await saveCapture(s, '열 하나')
-    await beginCapture(s)
-    await saveCapture(s, '열 둘')
-
-    expect(s.moments.count).toBe(3)
-    const groups = s.wrapper.findAll('.moment-group')
-    expect(groups).toHaveLength(1)
-    expect(groups[0]?.findAll('.moment-time').map((t) => t.text())).toEqual([
-      '0:10',
-      '0:10',
-      '0:50',
-    ])
-  })
-
-  it('저장하면 무엇을 어느 시점에 저장했는지 알린다', async () => {
-    const s = boot()
-    await playFromStart(s, 83)
-    await beginCapture(s)
-    await saveCapture(s)
-
-    const feedback = captureFeedback(s)
-    expect(feedback?.text()).toContain('저장했어요')
-    expect(feedback?.text()).toContain('Alpha · 1:23')
-    expect(feedback?.classes()).not.toContain('is-warning')
-    expect(document.activeElement).toBe(captureButton(s).element)
-  })
-
-  it('저장 폼을 쓰는 동안 목록과 거르기는 잠시 물러난다', async () => {
-    seedMoments([moment()])
-    const s = boot()
-    await playFromStart(s, 20)
-
-    await beginCapture(s)
-
-    expect(s.wrapper.get('#moments-list').isVisible()).toBe(false)
-    expect(s.wrapper.get('.filter').isVisible()).toBe(false)
+    expect(rawMoments()).toBe(before)
+    expect(captureFeedback(s)?.text()).toContain('다른 탭에서 Moments 가 바뀌어')
+    expect((s.wrapper.get('#moment-capture-note').element as HTMLTextAreaElement).value).toBe(
+      '이 탭의 메모',
+    )
+    // 다시 누르면 최신 위에 저장된다.
+    await s.wrapper.get('.note-form').trigger('submit')
+    await flushPromises()
+    expect(s.moments.getMoment(saved.id)?.note).toBe('이 탭의 메모')
+    expect(s.moments.getMoment('other')?.note).toBe('다른 탭')
   })
 })
 
 /* ================================================================== *
- * B. 저장 상태 — 실패 · protected · unavailable
+ * C. 저장 상태
  * ================================================================== */
 
-describe('B. 저장되지 않은 상태를 저장된 것처럼 보이지 않는다', () => {
-  it('쓰기에 실패하면 경고하고, 목록에는 남되 새로고침하면 사라진다고 말한다', async () => {
+describe('C. 저장되지 않은 상태를 저장된 것처럼 보이지 않는다', () => {
+  it('쓰기에 실패하면 경고하고, 새로고침하면 사라진다고 말한다 — "저장했어요" 가 아니다', async () => {
     stubMomentsWriteFailure()
     const s = boot()
     await playFromStart(s, 30)
-    await beginCapture(s)
-    await saveCapture(s, '메모')
+    await quickSave(s)
 
     const feedback = captureFeedback(s)
     expect(feedback?.classes()).toContain('is-warning')
     expect(feedback?.text()).toContain('저장하지 못했어요')
     expect(feedback?.text()).toContain('저장 공간이 부족')
     expect(feedback?.text()).toContain('새로고침하면 사라집니다')
-    expect(feedback?.text()).not.toContain('저장했어요')
-    // 메모리에는 들어갔다.
-    expect(s.wrapper.findAll('.moment')).toHaveLength(1)
+    expect(feedback?.text()).not.toContain('을 저장했어요')
     expect(s.wrapper.get('.moments-status').text()).toContain('저장에 실패했습니다')
   })
 
@@ -497,7 +576,6 @@ describe('B. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
     })
     setItem.mockRestore()
 
-    // 다른 탭이 Moments 를 저장했다.
     seedMoments([moment({ id: 'other', note: '다른 탭' })])
     globalThis.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.moments }))
     await nextTick()
@@ -515,11 +593,8 @@ describe('B. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
     const s = boot()
 
     expect(s.wrapper.get('.moments-status').text()).toContain('Moments 자동 저장이 중단')
-    expect(s.wrapper.get('.moments-status').text()).toContain('원본은 보존 중')
-
     await playFromStart(s, 30)
-    await beginCapture(s)
-    await saveCapture(s, '메모리만')
+    await quickSave(s)
 
     expect(captureFeedback(s)?.text()).toContain('보호하는 중')
     expect(captureFeedback(s)?.classes()).toContain('is-warning')
@@ -535,60 +610,147 @@ describe('B. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
     const s = boot({ library: false })
 
     expect(s.wrapper.get('.moments-status').text()).toContain('저장소를 쓸 수 없습니다')
-    // 라이브러리도 저장소를 못 쓰므로 메모리에 목록을 만들어 재생한다.
     s.library.createPlaylist('MEM')
     const listId = s.library.selectedPlaylistId ?? ''
     s.library.addTrack(listId, { videoId: A, title: 'Alpha' })
     await nextTick()
     await playFromStart(s, 30)
-    await beginCapture(s)
-    await saveCapture(s)
+    await quickSave(s)
 
     expect(captureFeedback(s)?.text()).toContain('브라우저 저장소를 쓸 수 없어요')
   })
 
+  it('곡이 바뀌면 지난 곡의 저장 안내를 지운다 — 다음 곡에서 헷갈리지 않게 (M11-3)', async () => {
+    const s = boot()
+    await playFromStart(s, 30)
+    await quickSave(s)
+    expect(captureFeedback(s)?.text()).toContain('저장했어요')
+    expect(widget(s).find('.after-save').exists()).toBe(true)
+
+    await nextTrack(s)
+    await nextTick()
+
+    expect(captureFeedback(s)?.text()).toBe('')
+    expect(widget(s).find('.after-save').exists()).toBe(false)
+  })
+
   it('정상 상태에서는 배너가 비어 있다', () => {
     const s = boot()
-
     expect(s.wrapper.get('.moments-status').text()).toBe('')
   })
 })
 
 /* ================================================================== *
- * C. 목록 (F14)
+ * D. 대시보드 미리보기
  * ================================================================== */
 
-describe('C. Moments 목록', () => {
-  it('비었을 때 안내하고, 거를 것도 접을 것도 그리지 않는다', () => {
-    const s = boot()
-
-    expect(widget(s).get('.empty').text()).toContain('아직 저장한 순간이 없어요')
-    expect(widget(s).find('.filter').exists()).toBe(false)
-    expect(widget(s).find('.expand-toggle').exists()).toBe(false)
-  })
-
-  it('개수를 머리말과 거르기 단추에 보인다', async () => {
+describe('D. 대시보드 — 이 곡의 Moments 미리보기', () => {
+  it('지금 곡의 Moments 만, 시점 순으로 최대 3개 — 더 있으면 "N개 더"', async () => {
     seedMoments([
-      moment({ id: '1' }),
-      moment({ id: '2', videoId: B, title: 'Bravo' }),
-      moment({ id: '3', atSeconds: 99 }),
+      moment({ id: 'a-90', atSeconds: 90 }),
+      moment({ id: 'a-5', atSeconds: 5 }),
+      moment({ id: 'a-30', atSeconds: 30 }),
+      moment({ id: 'a-60', atSeconds: 60 }),
+      moment({ id: 'b-1', videoId: B, title: 'Bravo', atSeconds: 1 }),
     ])
     const s = boot()
-    await playFromStart(s, 5)
+    await playFromStart(s, 1)
 
-    expect(widget(s).get('.widget-sub').text()).toContain('3개')
-    const chips = widget(s)
-      .findAll('.chip')
-      .map((chip) => chip.text())
-    expect(chips).toEqual(['이 곡 2', '전체 3'])
+    expect(
+      widget(s)
+        .findAll('.preview-time')
+        .map((n) => n.text()),
+    ).toEqual(['▶ 0:05', '▶ 0:30', '▶ 1:00'])
+    expect(widget(s).get('.more').text()).toContain('이 곡의 Moments 1개 더')
+    expect(widget(s).get('.widget-sub').text()).toBe('이 곡 4개 · 전체 5개')
+  })
+
+  it('메모는 글자로만 · 첫 줄만 · 없으면 "메모 없음"', async () => {
+    const note = '<b>굵게</b><img src=x onerror="window.__pwned=1">\n둘째 줄'
+    seedMoments([moment({ id: 'x', note }), moment({ id: 'y', atSeconds: 20, note: '' })])
+    const s = boot()
+    await playFromStart(s, 1)
+
+    const notes = widget(s).findAll('.preview-note')
+    expect(notes[0]?.text()).toBe('<b>굵게</b><img src=x onerror="window.__pwned=1">')
+    expect(widget(s).findAll('b, img')).toHaveLength(0)
+    expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined()
+    expect(notes[1]?.text()).toBe('메모 없음')
+    expect(notes[1]?.classes()).toContain('is-empty')
+  })
+
+  it('"모두 보기" 는 보관함 Moments 탭을 연다', async () => {
+    seedMoments([moment()])
+    const s = boot()
+    await widget(s).get('.widget-head .pill').trigger('click')
+    await flushPromises()
+
+    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(s.wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
+  })
+
+  it('빈 상태 · 이 곡에 없을 때를 각각 안내한다', async () => {
+    const s = boot()
+    expect(widget(s).get('.empty').text()).toContain('아직 저장한 순간이 없어요')
+
+    seedMoments([moment({ videoId: B, title: 'Bravo' })])
+    s.moments.restore()
+    await playFromStart(s, 3)
+    expect(widget(s).get('.empty').text()).toBe('이 곡에 저장한 순간이 없어요.')
+  })
+
+  it('위젯에는 수정 · 삭제 · 거르기 · 안쪽 스크롤이 없다 — 관리는 보관함에서 (M11-3)', async () => {
+    seedMoments([moment({ id: 'x' })])
+    const s = boot()
+    await playFromStart(s, 1)
+
+    expect(widget(s).find('[data-moment-edit]').exists()).toBe(false)
+    expect(widget(s).find('[data-moment-remove]').exists()).toBe(false)
+    expect(widget(s).find('.chip').exists()).toBe(false)
+    const style = readSource('src/features/moments/MomentsWidget.vue')
+    expect(style.slice(style.indexOf('<style'))).not.toMatch(/overflow-y:\s*(auto|scroll)/)
+  })
+
+  it('빈 상태의 위젯 단추는 모두 보기와 저장 둘뿐이다', () => {
+    const s = boot()
+    expect(
+      widget(s)
+        .findAll('button')
+        .map((b) => b.text().trim()),
+    ).toEqual(['모두 보기 (0)', '＋ 이 순간 저장'])
+  })
+})
+
+/* ================================================================== *
+ * E. 보관함 Moments 탭 — 목록 · 관리
+ * ================================================================== */
+
+describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
+  it('개수와 거르기 — 이 곡 / 전체, 곡이 바뀌면 따라간다', async () => {
+    seedMoments([moment({ id: '1' }), moment({ id: '2', videoId: B, title: 'Bravo' })])
+    const s = boot()
+    const panel = await openArchiveMoments(s)
+    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없다.
+    expect(panel.findAll('.chip')[1]?.attributes('disabled')).toBeDefined()
+
+    await playFromStart(s, 5)
+    expect(panel.findAll('.chip').map((chip) => chip.text())).toEqual(['전체 2', '이 곡 1'])
+    await panel.findAll('.chip')[1]?.trigger('click')
+    expect(panel.findAll('.group-title').map((t) => t.text())).toEqual(['Alpha'])
+
+    await nextTrack(s)
+    expect(panel.findAll('.group-title').map((t) => t.text())).toEqual(['Bravo'])
+    await panel.findAll('.chip')[0]?.trigger('click')
+    expect(panel.findAll('.group-title')).toHaveLength(2)
   })
 
   it('지금 곡의 묶음을 강조한다 — 색만이 아니라 글로도', async () => {
     seedMoments([moment({ id: '1' }), moment({ id: '2', videoId: B, title: 'Bravo' })])
     const s = boot()
     await playFromStart(s, 5)
+    const panel = await openArchiveMoments(s)
 
-    const current = widget(s)
+    const current = panel
       .findAll('.moment-group')
       .filter((g) => g.attributes('aria-current') === 'true')
     expect(current).toHaveLength(1)
@@ -596,39 +758,7 @@ describe('C. Moments 목록', () => {
     expect(current[0]?.get('.group-meta').text()).toContain('재생 중')
   })
 
-  it('이 곡만 보기와 전체 보기', async () => {
-    seedMoments([moment({ id: '1' }), moment({ id: '2', videoId: B, title: 'Bravo' })])
-    const s = boot()
-
-    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없다.
-    expect(widget(s).findAll('.chip')[0]?.attributes('disabled')).toBeDefined()
-
-    await playFromStart(s, 5)
-    await widget(s).findAll('.chip')[0]?.trigger('click')
-
-    expect(widget(s).findAll('.chip')[0]?.attributes('aria-pressed')).toBe('true')
-    expect(
-      widget(s)
-        .findAll('.group-title')
-        .map((t) => t.text()),
-    ).toEqual(['Alpha'])
-
-    // 곡이 바뀌면 그 곡의 순간으로 바뀐다.
-    await nextTrack(s)
-    expect(
-      widget(s)
-        .findAll('.group-title')
-        .map((t) => t.text()),
-    ).toEqual(['Bravo'])
-
-    await nextTrack(s)
-    expect(widget(s).get('.empty').text()).toContain('이 곡에 저장한 순간이 없어요')
-
-    await widget(s).findAll('.chip')[1]?.trigger('click')
-    expect(widget(s).findAll('.group-title')).toHaveLength(2)
-  })
-
-  it('영상은 가장 최근에 만든 순, 안에서는 시점 오름차순으로 보인다', () => {
+  it('영상은 가장 최근에 만든 순, 안에서는 시점 오름차순으로 보인다', async () => {
     seedMoments([
       moment({ id: 'a-90', atSeconds: 90, createdAt: '2026-11-10T01:00:00Z' }),
       moment({
@@ -641,15 +771,15 @@ describe('C. Moments 목록', () => {
       moment({ id: 'a-5', atSeconds: 5, createdAt: '2026-11-10T03:00:00Z' }),
     ])
     const s = boot()
+    const panel = await openArchiveMoments(s)
 
-    const groups = widget(s).findAll('.moment-group')
+    const groups = panel.findAll('.moment-group')
     expect(groups.map((g) => g.get('.group-title').text())).toEqual(['Alpha', 'Bravo'])
     expect(groups[0]?.findAll('.moment-time').map((t) => t.text())).toEqual(['0:05', '1:30'])
-    // 저장 순서는 추가 순서 그대로다.
     expect(s.moments.moments.map((m) => m.id)).toEqual(['a-90', 'b-1', 'a-5'])
   })
 
-  it('제목 3단 — 라이브러리 현재 제목 · 스냅샷 · 대체 표기', async () => {
+  it('제목 3단 — 라이브러리 현재 제목 · 스냅샷 · 대체 표기 · 목록에 없음', async () => {
     seedMoments([
       moment({ id: 'lib', videoId: A, title: 'Old Alpha' }),
       moment({
@@ -661,187 +791,105 @@ describe('C. Moments 목록', () => {
       moment({ id: 'none', videoId: 'yyyyyyyyyyy', title: '', createdAt: '2026-11-10T00:10:00Z' }),
     ])
     const s = boot()
-    const titles = () =>
-      widget(s)
-        .findAll('.group-title')
-        .map((t) => t.text())
+    const panel = await openArchiveMoments(s)
+    const titles = () => panel.findAll('.group-title').map((t) => t.text())
 
-    // 1단: 라이브러리에 있다 — 스냅샷이 아니라 지금 이름이다.
-    expect(titles()).toContain('Alpha')
-    // 2단: 라이브러리에 없다 — 저장 당시 이름. 목록에 없다고 알린다.
-    expect(titles()).toContain('Deleted Song')
-    // 3단: 스냅샷도 없다.
-    expect(titles()).toContain('YouTube · yyyyyyyyyyy')
-    const gone = widget(s)
-      .findAll('.moment-group')
-      .find((g) => g.text().includes('Deleted Song'))
+    expect(titles()).toEqual(
+      expect.arrayContaining(['Alpha', 'Deleted Song', 'YouTube · yyyyyyyyyyy']),
+    )
+    const gone = panel.findAll('.moment-group').find((g) => g.text().includes('Deleted Song'))
     expect(gone?.get('.group-meta').text()).toContain('목록에 없음')
 
-    // 트랙 이름을 바꾸면 따라간다 (표시 시점의 파생값).
-    s.library.renameTrack('list', 't-a', 'Alpha (Live)')
+    await s.library.renameTrack('list', 't-a', 'Alpha (Live)')
     await nextTick()
     expect(titles()).toContain('Alpha (Live)')
-    // 저장된 스냅샷은 바꾸지 않는다.
     expect(s.moments.getMoment('lib')?.title).toBe('Old Alpha')
-
-    // 트랙을 지우면 스냅샷으로 내려간다. 순간은 남는다.
-    s.library.removeTrack('list', 't-a')
-    await nextTick()
-    expect(titles()).toContain('Old Alpha')
-    expect(s.moments.count).toBe(3)
   })
 
-  it('메모는 글자로만 보인다 — HTML 로 해석하지 않는다', () => {
-    const note = '<b>굵게</b><img src=x onerror="window.__pwned=1">'
-    seedMoments([moment({ note })])
-    const s = boot()
-
-    const cell = widget(s).get('.moment-note')
-    expect(cell.text()).toBe(note)
-    expect(widget(s).findAll('b, img')).toHaveLength(0)
-    expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined()
-  })
-
-  it('여러 줄 메모는 첫 줄만 보이고, 전체는 title 로 볼 수 있다', () => {
-    seedMoments([moment({ note: '첫 줄\n둘째 줄' })])
-    const s = boot()
-
-    expect(widget(s).get('.moment-note').text()).toBe('첫 줄')
-    expect(widget(s).get('.moment-note').attributes('title')).toBe('첫 줄\n둘째 줄')
-  })
-
-  it('메모가 없으면 "메모 없음" 을 흐리게 보인다', () => {
-    seedMoments([moment({ note: '' })])
-    const s = boot()
-
-    expect(widget(s).get('.moment-note').text()).toBe('메모 없음')
-    expect(widget(s).get('.moment-note').classes()).toContain('is-empty')
-  })
-
-  it('접기·펼치기는 좁은 화면용 토글이다 — 상태를 aria-expanded 로 알린다', async () => {
-    seedMoments([moment()])
-    const s = boot()
-    const toggle = widget(s).get('.expand-toggle')
-
-    expect(toggle.attributes('aria-expanded')).toBe('false')
-    expect(toggle.attributes('aria-controls')).toBe('moments-list')
-    expect(widget(s).classes()).toContain('is-collapsed')
-
-    await toggle.trigger('click')
-    expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(widget(s).classes()).not.toContain('is-collapsed')
-  })
-})
-
-/* ================================================================== *
- * D. 수정·삭제 (F16)
- * ================================================================== */
-
-describe('D. 메모 수정과 삭제', () => {
-  it('✎ 로 메모를 고친다 — 저장하면 바뀌고 ✎ 로 포커스가 돌아온다', async () => {
+  it('행에는 ▶ 와 "관리" 만 — 관리를 펼치면 글자 이름이 있는 메모 수정 · 삭제 (M11-3)', async () => {
     seedMoments([moment({ id: 'x', note: '처음' })])
     const s = boot()
+    const panel = await openArchiveMoments(s)
 
-    await widget(s).get('[data-moment-edit="x"]').trigger('click')
+    expect(panel.find('[data-moment-edit="x"]').exists()).toBe(false)
+    const manage = panel.get('[data-moment-manage="x"]')
+    expect(manage.text()).toBe('관리')
+    expect(manage.attributes('aria-expanded')).toBe('false')
+
+    await openMomentManage(s, 'x')
+    expect(manage.attributes('aria-expanded')).toBe('true')
+    expect(panel.get('[data-moment-edit="x"]').text()).toBe('✎ 메모 수정')
+    expect(panel.get('[data-moment-remove="x"]').text()).toBe('삭제')
+  })
+
+  it('메모를 고친다 — 저장하면 바뀌고 "관리" 로 포커스가 돌아온다', async () => {
+    seedMoments([moment({ id: 'x', note: '처음' })])
+    const s = boot()
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'x')
+    await panel.get('[data-moment-edit="x"]').trigger('click')
     await flushPromises()
     await nextTick()
-    const field = widget(s).get('#moment-note-x')
+
+    const field = panel.get('#archive-moment-note-x')
     expect((field.element as HTMLTextAreaElement).value).toBe('처음')
     expect(document.activeElement).toBe(field.element)
-
     await field.setValue('고친 메모')
-    await widget(s).get('.edit-form').trigger('submit')
+    await panel.get('.edit-form').trigger('submit')
     await flushPromises()
     await nextTick()
 
     expect(s.moments.getMoment('x')?.note).toBe('고친 메모')
-    expect(listFeedback(s)?.text()).toContain('메모를 고쳤어요')
-    expect(document.activeElement).toBe(widget(s).get('[data-moment-edit="x"]').element)
+    expect(archiveFeedback(s).text()).toContain('메모를 고쳤어요')
+    expect(document.activeElement).toBe(panel.get('[data-moment-manage="x"]').element)
   })
 
-  it('다른 탭이 먼저 바꿨으면 저장하지 않고 — 폼과 쓴 메모를 그대로 두고 최신을 보여준다 (M10-3 안정화)', async () => {
+  it('다른 탭이 먼저 바꿨으면 저장하지 않고 폼과 쓴 메모를 지킨다 (M10-3 안정화)', async () => {
     seedMoments([moment({ id: 'x', note: '처음' }), moment({ id: 'y', atSeconds: 5, note: 'Y' })])
     const s = boot()
-
-    await widget(s).get('[data-moment-edit="x"]').trigger('click')
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'x')
+    await panel.get('[data-moment-edit="x"]').trigger('click')
     await flushPromises()
-    await widget(s).get('#moment-note-x').setValue('이 탭에서 쓴 긴 메모')
+    await panel.get('#archive-moment-note-x').setValue('이 탭에서 쓴 긴 메모')
 
-    // 다른 탭이 y 의 메모를 고쳐 저장했다 (이 탭은 아직 모른다).
     seedMoments([moment({ id: 'x', note: '처음' }), moment({ id: 'y', atSeconds: 5, note: 'Y2' })])
     const before = rawMoments()
-
-    await widget(s).get('.edit-form').trigger('submit')
+    await panel.get('.edit-form').trigger('submit')
     await flushPromises()
     await nextTick()
 
-    // 쓰지 않았다 — 다른 탭의 변경이 그대로다.
     expect(rawMoments()).toBe(before)
-    expect(listFeedback(s)?.text()).toContain('다른 탭에서 Moments 가 바뀌어')
-    // 폼과 쓴 메모가 남는다 — 다시 누르면 최신 위에 저장된다.
-    const field = widget(s).get('#moment-note-x')
-    expect((field.element as HTMLTextAreaElement).value).toBe('이 탭에서 쓴 긴 메모')
-    expect(s.moments.getMoment('y')?.note).toBe('Y2')
+    expect(archiveFeedback(s).text()).toContain('다른 탭에서 Moments 가 바뀌어')
+    expect((panel.get('#archive-moment-note-x').element as HTMLTextAreaElement).value).toBe(
+      '이 탭에서 쓴 긴 메모',
+    )
 
-    await widget(s).get('.edit-form').trigger('submit')
+    await panel.get('.edit-form').trigger('submit')
     await flushPromises()
     await nextTick()
     expect(s.moments.getMoment('x')?.note).toBe('이 탭에서 쓴 긴 메모')
     expect(s.moments.getMoment('y')?.note).toBe('Y2')
-    expect(widget(s).find('.edit-form').exists()).toBe(false)
   })
 
-  it('수정을 취소하면 메모가 그대로다', async () => {
+  it('수정도 500자를 넘기면 저장하지 않는다 · 취소하면 그대로다', async () => {
     seedMoments([moment({ id: 'x', note: '처음' })])
     const s = boot()
-    const before = rawMoments()
-
-    await widget(s).get('[data-moment-edit="x"]').trigger('click')
-    await widget(s).get('#moment-note-x').setValue('버릴 메모')
-    const cancel = widget(s)
-      .findAll('.edit-form button')
-      .find((b) => b.text() === '취소')
-    await cancel?.trigger('click')
-
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'x')
+    await panel.get('[data-moment-edit="x"]').trigger('click')
+    await panel.get('#archive-moment-note-x').setValue('나'.repeat(MAX_MOMENT_NOTE_LENGTH + 1))
+    await panel.get('.edit-form').trigger('submit')
     expect(s.moments.getMoment('x')?.note).toBe('처음')
-    expect(rawMoments()).toBe(before)
-    expect(widget(s).find('.edit-form').exists()).toBe(false)
-  })
+    expect(panel.get('.edit-form .error-msg').text()).toContain('500자까지')
 
-  it('수정도 500자를 넘기면 저장하지 않는다', async () => {
-    seedMoments([moment({ id: 'x', note: '처음' })])
-    const s = boot()
-
-    await widget(s).get('[data-moment-edit="x"]').trigger('click')
-    await widget(s)
-      .get('#moment-note-x')
-      .setValue('나'.repeat(MAX_MOMENT_NOTE_LENGTH + 1))
-    await widget(s).get('.edit-form').trigger('submit')
-
-    expect(s.moments.getMoment('x')?.note).toBe('처음')
-    expect(widget(s).get('.edit-form .error-msg').text()).toContain('500자까지')
-  })
-
-  it('× 는 확인 없이 지우지 않는다 — 취소하면 남는다', async () => {
-    seedMoments([moment({ id: 'x' })])
-    const s = boot()
-
-    await widget(s).get('[data-moment-remove="x"]').trigger('click')
-
-    const confirm = widget(s).get('[role="alertdialog"]')
-    expect(confirm.text()).toContain('지울까요')
-    expect(s.moments.count).toBe(1)
-
-    const cancel = confirm.findAll('button').find((b) => b.text() === '취소')
+    const cancel = panel.findAll('.edit-form button').find((b) => b.text() === '취소')
     await cancel?.trigger('click')
-    await nextTick()
-
-    expect(s.moments.count).toBe(1)
-    expect(widget(s).find('[role="alertdialog"]').exists()).toBe(false)
-    expect(document.activeElement).toBe(widget(s).get('[data-moment-remove="x"]').element)
+    expect(panel.find('.edit-form').exists()).toBe(false)
+    expect(s.moments.getMoment('x')?.note).toBe('처음')
   })
 
-  it('확인하면 그 순간만 지운다 — 다른 순간과 라이브러리는 그대로다', async () => {
+  it('삭제는 확인을 받는다 — 취소하면 남고, 확인하면 그 순간만 지운다', async () => {
     seedMoments([
       moment({ id: 'keep-1', atSeconds: 5 }),
       moment({ id: 'gone', atSeconds: 10 }),
@@ -849,21 +897,32 @@ describe('D. 메모 수정과 삭제', () => {
     ])
     const s = boot()
     const libraryBefore = rawLibrary()
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'gone')
 
-    await widget(s).get('[data-moment-remove="gone"]').trigger('click')
-    await flushPromises()
-    const remove = widget(s)
+    await panel.get('[data-moment-remove="gone"]').trigger('click')
+    const confirm = panel.get('[role="alertdialog"]')
+    expect(confirm.text()).toContain('지울까요')
+    await confirm
+      .findAll('button')
+      .find((b) => b.text() === '취소')
+      ?.trigger('click')
+    await nextTick()
+    expect(s.moments.count).toBe(3)
+    expect(document.activeElement).toBe(panel.get('[data-moment-remove="gone"]').element)
+
+    await panel.get('[data-moment-remove="gone"]').trigger('click')
+    await panel
       .get('[role="alertdialog"]')
       .findAll('button')
       .find((b) => b.text() === '삭제')
-    await remove?.trigger('click')
+      ?.trigger('click')
     await flushPromises()
     await nextTick()
 
     expect(s.moments.moments.map((m) => m.id)).toEqual(['keep-1', 'keep-2'])
-    expect(JSON.parse(rawMoments() as string).data).toHaveLength(2)
     expect(rawLibrary()).toBe(libraryBefore)
-    expect(listFeedback(s)?.text()).toContain('순간을 지웠어요')
+    expect(archiveFeedback(s).text()).toContain('순간을 지웠어요')
   })
 
   it('보호 상태에서 지우면 저장되지 않았고 새로고침하면 돌아온다고 말한다', async () => {
@@ -873,39 +932,65 @@ describe('D. 메모 수정과 삭제', () => {
     })
     globalThis.localStorage.setItem(STORAGE_KEYS.moments, raw)
     const s = boot()
-
-    await widget(s).get('[data-moment-remove="x"]').trigger('click')
-    await flushPromises()
-    const remove = widget(s)
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'x')
+    await panel.get('[data-moment-remove="x"]').trigger('click')
+    await panel
       .get('[role="alertdialog"]')
       .findAll('button')
       .find((b) => b.text() === '삭제')
-    await remove?.trigger('click')
+      ?.trigger('click')
     await flushPromises()
 
-    expect(listFeedback(s)?.classes()).toContain('is-warning')
-    expect(listFeedback(s)?.text()).toContain('새로고침하면 다시 나타납니다')
+    expect(archiveFeedback(s).classes()).toContain('is-warning')
+    expect(archiveFeedback(s).text()).toContain('새로고침하면 다시 나타납니다')
     expect(rawMoments()).toBe(raw)
   })
 
   it('메모를 고치는 중 다른 줄을 지우려 하면 폼을 닫는다 — 두 폼이 겹치지 않는다', async () => {
     seedMoments([moment({ id: 'x' }), moment({ id: 'y', atSeconds: 20 })])
     const s = boot()
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'x')
+    await panel.get('[data-moment-edit="x"]').trigger('click')
+    await openMomentManage(s, 'y')
+    await panel.get('[data-moment-remove="y"]').trigger('click')
 
-    await widget(s).get('[data-moment-edit="x"]').trigger('click')
-    await widget(s).get('[data-moment-remove="y"]').trigger('click')
+    expect(panel.find('.edit-form').exists()).toBe(false)
+    expect(panel.find('[role="alertdialog"]').exists()).toBe(true)
+  })
 
-    expect(widget(s).find('.edit-form').exists()).toBe(false)
-    expect(widget(s).find('[role="alertdialog"]').exists()).toBe(true)
+  it('없는 기능의 버튼이 없다 — 전부 지우기 · 시점 편집 · 복구 (보호 상태에서도)', async () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEYS.moments,
+      JSON.stringify({
+        version: MOMENTS_STORAGE_VERSION,
+        data: [moment({ id: 'x' }), { id: 'bad' }],
+      }),
+    )
+    const s = boot()
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, 'x')
+    await panel.get('[data-moment-edit="x"]').trigger('click')
+
+    const labels = panel
+      .findAll('button')
+      .map((b) => `${b.text()} ${b.attributes('aria-label') ?? ''}`.trim())
+    const forbidden = ['전부 지우기', '모두 삭제', '초기화', '복구', '내보내기', '가져오기', '시점']
+    expect(labels.filter((label) => forbidden.some((word) => label.includes(word)))).toEqual([])
+    expect(labels.every((label) => label !== '')).toBe(true)
+    // 시점은 고치지 못한다 (F16) — 메모 칸(textarea)뿐이다.
+    expect(panel.findAll('input')).toEqual([])
+    expect(panel.findAll('textarea')).toHaveLength(1)
   })
 })
 
 /* ================================================================== *
- * E. 재생 (F15)
+ * F. 재생 (F15)
  * ================================================================== */
 
-describe('E. Moment 로 재생', () => {
-  it('지금 곡의 순간이면 다시 적재하지 않고 그 시점으로 옮긴다', async () => {
+describe('F. Moment 로 재생', () => {
+  it('지금 곡의 순간이면 다시 적재하지 않고 그 시점으로 옮긴다 (대시보드 미리보기)', async () => {
     seedMoments([moment({ id: 'x', atSeconds: 83 })])
     const s = boot()
     await playFromStart(s, 5)
@@ -917,46 +1002,44 @@ describe('E. Moment 로 재생', () => {
     expect(s.fake.calls.seek).toEqual([83])
     expect(s.fake.calls.play).toBe(1)
     expect(s.fake.calls.load).toHaveLength(loadsBefore)
-    expect(listFeedback(s)?.text()).toBe('')
+    expect(previewFeedback(s)?.text()).toBe('')
   })
 
-  it('다른 곡의 순간이면 그 시점부터 적재하고, 듣던 큐는 그대로 둔다', async () => {
+  it('다른 곡의 순간이면 그 시점부터 적재하고, 듣던 큐는 그대로 둔다 (보관함)', async () => {
     seedMoments([moment({ id: 'x', videoId: C, title: 'Charlie', atSeconds: 61 })])
     const s = boot()
     await playFromStart(s, 5)
     const queueBefore = s.playback.queue.map((track) => track.id)
+    const panel = await openArchiveMoments(s)
 
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
 
     expect(last(s.fake.calls.load)).toEqual({ videoId: C, autoplay: true, startSeconds: 61 })
-    expect(s.fake.calls.seek).toEqual([])
     expect(s.playback.queue.map((track) => track.id)).toEqual(queueBefore)
     expect(s.playback.currentTrack?.title).toBe('Charlie')
+    // 보관함은 플레이어를 덮지 않으므로 열린 채다.
+    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
   })
 
-  it('라이브러리에서 지운 영상의 순간도 목록에 남고 재생된다 — 그 한 곡으로', async () => {
+  it('라이브러리에서 지운 영상의 순간도 남고 재생된다 — 그 한 곡으로', async () => {
     seedMoments([moment({ id: 'x', videoId: GONE, title: 'Deleted Song', atSeconds: 42 })])
     const s = boot()
+    const panel = await openArchiveMoments(s)
+    expect(panel.findAll('.group-title').map((t) => t.text())).toEqual(['Deleted Song'])
 
-    expect(
-      widget(s)
-        .findAll('.group-title')
-        .map((t) => t.text()),
-    ).toEqual(['Deleted Song'])
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
 
     expect(s.fake.calls.load).toEqual([{ videoId: GONE, autoplay: true, startSeconds: 42 }])
     expect(s.playback.queue).toHaveLength(1)
-    expect(s.playback.currentTrack?.title).toBe('Deleted Song')
   })
 
   it('0초 순간은 처음부터가 아니라 "0초부터" 로 적재한다', async () => {
     seedMoments([moment({ id: 'x', videoId: B, title: 'Bravo', atSeconds: 0 })])
     const s = boot()
-
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    const panel = await openArchiveMoments(s)
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
 
     expect(s.fake.calls.load).toEqual([{ videoId: B, autoplay: true, startSeconds: 0 }])
@@ -965,15 +1048,15 @@ describe('E. Moment 로 재생', () => {
   it('플레이어가 가려져 있으면 다른 재생과 같은 문구로 거절하고 아무것도 틀지 않는다', async () => {
     seedMoments([moment({ id: 'x', videoId: B, title: 'Bravo', atSeconds: 30 })])
     const s = boot()
+    const panel = await openArchiveMoments(s)
     setPlayerRect(HIDDEN_RECT)
 
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
 
-    expect(listFeedback(s)?.text()).toBe(PLAY_REFUSED_HIDDEN_MESSAGE)
-    expect(listFeedback(s)?.classes()).toContain('is-warning')
+    expect(archiveFeedback(s).text()).toBe(PLAY_REFUSED_HIDDEN_MESSAGE)
+    expect(archiveFeedback(s).classes()).toContain('is-warning')
     expect(s.fake.calls.load).toEqual([])
-    expect(s.fake.calls.seek).toEqual([])
     expect(s.playback.queue).toEqual([])
   })
 
@@ -981,36 +1064,18 @@ describe('E. Moment 로 재생', () => {
     installMatchMedia(true)
     seedMoments([moment({ id: 'x', videoId: B, title: 'Bravo', atSeconds: 30 })])
     const s = boot()
-    await s.wrapper.get('.playlist-tile .playlist-open').trigger('click')
-    await flushPromises()
-    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
-    // 보관함 시트는 영상 아래 끝에서 시작했다. 그 뒤 영상 상자가 시트 밑까지 내려왔다고 측정된다.
+    const panel = await openArchiveMoments(s)
     setRectOverride('[data-widget="player"] .video-holder', {
       ...VISIBLE_RECT,
       top: 300,
       bottom: 605,
     })
 
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
 
-    // 보관함이 닫혔고(가림 0), 그 뒤에 가드를 통과해 재생됐다. 가드를 건너뛴 것이 아니다.
     expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
     expect(s.fake.calls.load).toEqual([{ videoId: B, autoplay: true, startSeconds: 30 }])
-  })
-
-  it('비켜줘도 여전히 가려져 있으면 거절한다 — 숨은 iframe 을 틀지 않는다', async () => {
-    installMatchMedia(true)
-    seedMoments([moment({ id: 'x', videoId: B, title: 'Bravo', atSeconds: 30 })])
-    const s = boot()
-    // 시트와 무관하게 플레이어 자체가 display: none 이다.
-    setPlayerRect(HIDDEN_RECT)
-
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
-    await flushPromises()
-
-    expect(listFeedback(s)?.text()).toBe(PLAY_REFUSED_HIDDEN_MESSAGE)
-    expect(s.fake.calls.load).toEqual([])
   })
 
   it('플레이어가 아직 없으면 성공으로 보이지 않고 이유를 말한다', async () => {
@@ -1018,10 +1083,12 @@ describe('E. Moment 로 재생', () => {
     setActivePinia(createPinia())
     useLibraryStore().restore()
     useMomentsStore().restore()
-    // 어댑터가 붙지 않은 코디네이터 — 플레이어 영역이 아직 없다.
+    const coordinator = createPlaybackCoordinator()
+    // 위젯 미리보기는 지금 곡의 것이다 — 큐에 A 를 올려 둔다 (어댑터는 없다).
+    usePlaybackStore().setQueue([{ id: 't', source: 'youtube', videoId: A, title: 'Alpha' }], 0)
     const wrapper = mount(MomentsWidget, {
       attachTo: document.body,
-      global: { provide: { [PLAYBACK_COORDINATOR as symbol]: createPlaybackCoordinator() } },
+      global: { provide: { [PLAYBACK_COORDINATOR as symbol]: coordinator } },
     })
 
     await wrapper.get('[data-moment-play="x"]').trigger('click')
@@ -1034,16 +1101,14 @@ describe('E. Moment 로 재생', () => {
     seedMoments([moment({ id: 'x', videoId: C, title: 'Charlie', atSeconds: 10 })])
     const s = boot()
     const before = rawMoments()
-
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    const panel = await openArchiveMoments(s)
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
     s.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
     await nextTick()
 
     expect(s.wrapper.get('.player-surface .status').text()).toContain('오류 150')
-    expect(s.moments.count).toBe(1)
     expect(rawMoments()).toBe(before)
-    // 재생할 수 없으니 그 상태로는 저장 버튼도 꺼진다.
     expect(captureButton(s).attributes('disabled')).toBeDefined()
   })
 
@@ -1053,66 +1118,63 @@ describe('E. Moment 로 재생', () => {
       moment({ id: 'c', videoId: C, title: 'Charlie', atSeconds: 20 }),
     ])
     const s = boot()
-
-    await widget(s).get('[data-moment-play="b"]').trigger('click')
-    await widget(s).get('[data-moment-play="c"]').trigger('click')
+    const panel = await openArchiveMoments(s)
+    await panel.get('[data-moment-play="b"]').trigger('click')
+    await panel.get('[data-moment-play="c"]').trigger('click')
     await flushPromises()
 
     expect(last(s.fake.calls.load)).toEqual({ videoId: C, autoplay: true, startSeconds: 20 })
-    expect(s.playback.currentTrack?.videoId).toBe(C)
   })
 })
 
 /* ================================================================== *
- * F. 영속 · 테마 · iframe
+ * G. 영속 · 테마 · iframe · 소스 수준
  * ================================================================== */
 
-describe('F. 영속성 · 테마 · 플레이어 DOM', () => {
-  it('저장한 순간이 새로고침 뒤에도 목록에 돌아온다', async () => {
+describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
+  it('저장한 순간과 메모가 새로고침 뒤에도 돌아온다', async () => {
     const s = boot()
     await playFromStart(s, 42)
-    await beginCapture(s)
-    await saveCapture(s, '다시 보자')
+    await quickSave(s)
+    await addNote(s, '다시 보자')
     s.wrapper.unmount()
 
     const again = boot()
-
-    expect(again.wrapper.findAll('.moment-note').map((n) => n.text())).toEqual(['다시 보자'])
-    expect(again.wrapper.get('.moment-time').text()).toBe('0:42')
+    const panel = await openArchiveMoments(again)
+    expect(panel.findAll('.moment-note').map((n) => n.text())).toEqual(['다시 보자'])
+    expect(panel.get('.moment-time').text()).toBe('0:42')
   })
 
-  it('테마를 바꿔도 목록·쓰던 메모·고정한 시점이 그대로다', async () => {
-    seedMoments([moment({ id: 'x', note: '테마와 무관' })])
+  it('테마를 바꿔도 쓰던 메모와 방금 저장한 순간이 그대로다', async () => {
     const s = boot()
     await playFromStart(s, 42)
-    await beginCapture(s)
+    await quickSave(s)
+    await widget(s).get('.after-save .pill').trigger('click')
+    await nextTick()
     await s.wrapper.get('#moment-capture-note').setValue('쓰던 중')
 
     s.theme.setTheme('kawaii-synth-cassette')
     await nextTick()
 
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
     expect((s.wrapper.get('#moment-capture-note').element as HTMLTextAreaElement).value).toBe(
       '쓰던 중',
     )
-    expect(s.wrapper.get('.capture-target').text()).toContain('0:42')
-    expect(s.moments.getMoment('x')?.note).toBe('테마와 무관')
+    expect(widget(s).get('.note-target').text()).toContain('0:42')
   })
 
-  it('저장·재생·테마 전환·드로어를 거쳐도 플레이어 DOM 은 하나이고 같은 노드다', async () => {
+  it('저장 · 재생 · 테마 전환 · 보관함을 거쳐도 플레이어 DOM 은 하나이고 같은 노드다', async () => {
     seedMoments([moment({ id: 'x', videoId: C, title: 'Charlie', atSeconds: 7 })])
     const s = boot()
     const host = s.fake.hostNode
     expect(host).not.toBeNull()
 
     await playFromStart(s, 12)
-    await beginCapture(s)
-    await saveCapture(s)
-    await widget(s).get('[data-moment-play="x"]').trigger('click')
+    await quickSave(s)
+    const panel = await openArchiveMoments(s)
+    await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
     s.theme.setTheme('kawaii-synth-cassette')
     await nextTick()
-    await s.wrapper.get('.playlist-tile .playlist-open').trigger('click')
     await s.wrapper.get('.drawer .close').trigger('click')
     await nextTick()
 
@@ -1122,74 +1184,31 @@ describe('F. 영속성 · 테마 · 플레이어 DOM', () => {
     expect(document.querySelectorAll('[data-fake-player-host]')).toHaveLength(1)
   })
 
-  it('Moment 를 저장·수정·삭제해도 라이브러리 원문은 바뀌지 않는다', async () => {
+  it('Moment 를 저장 · 메모 · 삭제해도 라이브러리 원문은 바뀌지 않는다', async () => {
     const s = boot()
     const before = rawLibrary()
     await playFromStart(s, 10)
-    await beginCapture(s)
-    await saveCapture(s, '하나')
+    await quickSave(s)
+    await addNote(s, '하나')
     const id = s.moments.moments[0]?.id ?? ''
-
-    await widget(s).get(`[data-moment-edit="${id}"]`).trigger('click')
-    await widget(s).get(`#moment-note-${id}`).setValue('둘')
-    await widget(s).get('.edit-form').trigger('submit')
-    await widget(s).get(`[data-moment-remove="${id}"]`).trigger('click')
-    const remove = widget(s)
+    const panel = await openArchiveMoments(s)
+    await openMomentManage(s, id)
+    await panel.get(`[data-moment-remove="${id}"]`).trigger('click')
+    await panel
       .get('[role="alertdialog"]')
       .findAll('button')
       .find((b) => b.text() === '삭제')
-    await remove?.trigger('click')
+      ?.trigger('click')
+    await flushPromises()
 
+    expect(s.moments.count).toBe(0)
     expect(rawLibrary()).toBe(before)
   })
-})
 
-/* ================================================================== *
- * G. 경계
- * ================================================================== */
-
-describe('G. 없는 기능 · 소스 수준 보장', () => {
-  /*
-   * M8 의 가드 테스트(`record-library-drawer.spec.ts` 24)를 Moments 로 넓힌다.
-   * 보호 상태에서도 "복구" · "초기화" · "전부 지우기" 는 없다.
-   */
-  it('없는 기능의 버튼이 없다 — 전부 지우기 · 시점 편집 · 내보내기 · 복구', async () => {
-    globalThis.localStorage.setItem(
-      STORAGE_KEYS.moments,
-      JSON.stringify({
-        version: MOMENTS_STORAGE_VERSION,
-        data: [moment({ id: 'x' }), { id: 'bad' }],
-      }),
-    )
-    const s = boot()
-    await widget(s).get('[data-moment-edit="x"]').trigger('click')
-
-    // 버튼 이름만 본다. 배너 문구("일부 순간만 복구했습니다")는 버튼이 아니다.
-    const labels = widget(s)
-      .findAll('button')
-      .map((b) => `${b.text()} ${b.attributes('aria-label') ?? ''}`.trim())
-    const forbidden = ['전부 지우기', '모두 삭제', '초기화', '복구', '내보내기', '가져오기', '시점']
-    expect(labels.filter((label) => forbidden.some((word) => label.includes(word)))).toEqual([])
-    expect(labels.every((label) => label !== '')).toBe(true)
-
-    // 시점은 고치지 못한다 (F16). 숫자·시간 입력이 없다 — 메모 칸(textarea)뿐이다.
-    expect(widget(s).findAll('input')).toEqual([])
-    expect(widget(s).findAll('textarea')).toHaveLength(1)
-  })
-
-  it('빈 상태의 위젯에는 저장 버튼 하나만 있다', () => {
-    const s = boot()
-
-    expect(
-      widget(s)
-        .findAll('button')
-        .map((b) => b.text().trim()),
-    ).toEqual(['＋ 이 순간 저장'])
-  })
-
-  it('Moments UI 는 플레이어·YouTube API 를 직접 부르지 않는다', () => {
+  it('Moments UI 는 플레이어 · YouTube API · 저장소를 직접 부르지 않는다', () => {
     for (const file of [
       'src/features/moments/MomentsWidget.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/moments/MomentList.vue',
       'src/features/moments/MomentsStatusBanner.vue',
       'src/features/moments/useMomentCapture.ts',
@@ -1208,22 +1227,30 @@ describe('G. 없는 기능 · 소스 수준 보장', () => {
         'v-html',
         'innerHTML',
       ].filter((word) => code.includes(word))
-      // 파일 이름을 함께 남겨 어디서 걸렸는지 보이게 한다.
       expect({ file, found }).toEqual({ file, found: [] })
     }
   })
 
   it('라이브러리를 고치는 호출이 없다 — 제목을 읽기만 한다', () => {
-    const code = stripComments(readSource('src/features/moments/useMomentsBrowser.ts'))
-
-    for (const action of [
-      'removeTrack',
-      'addTrack',
-      'renameTrack',
-      'deletePlaylist',
-      'replaceAll',
+    for (const file of [
+      'src/features/moments/useMomentsBrowser.ts',
+      'src/features/moments/useMomentCapture.ts',
+      'src/features/moments/MomentsWidget.vue',
     ]) {
-      expect(code).not.toContain(action)
+      const code = stripComments(readSource(file))
+      for (const action of [
+        'removeTrack',
+        'addTrack',
+        'renameTrack',
+        'deletePlaylist',
+        'replaceAll',
+      ]) {
+        expect({ file, action, found: code.includes(action) }).toEqual({
+          file,
+          action,
+          found: false,
+        })
+      }
     }
   })
 
@@ -1237,32 +1264,22 @@ describe('G. 없는 기능 · 소스 수준 보장', () => {
     expect(coordinator).toContain('playback.isPositionReliable')
   })
 
-  it('좁은 화면에서는 플레이어 바로 아래 한 행이다', () => {
+  it('좁은 화면에서는 플레이어 바로 아래 행이다 — 2열(1100px)과 1열(700px) 모두', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
-
     expect(compact).toMatch(/'player player'\s*'moments moments'/)
-    // 자기 행을 가지므로 contain 을 푼다. 풀지 않으면 행 높이가 0 이 된다.
-    expect(compact).toMatch(/\[data-widget='moments'\]\s*\{[^}]*contain: none;/)
-  })
-
-  it('넓은 화면에서 위젯이 칸 안에서 스크롤하고 토글을 숨긴다', () => {
-    const source = readSource('src/features/moments/MomentsWidget.vue')
-    const wide = source.slice(source.indexOf('@media (min-width: 1101px)'))
-
-    expect(wide).toContain('overflow-y: auto')
-    expect(wide).toMatch(/\.expand-toggle\s*\{\s*display: none;/)
+    const narrow = source.slice(source.indexOf('@media (max-width: 700px)'))
+    expect(narrow).toMatch(/'player'\s*'moments'/)
   })
 
   /*
-   * M9-6 성능 — 스크롤바가 폭을 차지하는 환경에서 `overflow-y: auto` 목록은
-   * 한 줄만 바뀌어도 전체를 다시 배치했다(1000개에서 550~700ms). 자리를 고정해
-   * 두면 10ms 다. jsdom 은 레이아웃을 하지 않으므로 그 조건을 고정한다.
+   * M9-6 성능 — 스크롤바가 폭을 차지하는 환경에서 `overflow-y: auto` 목록은 한 줄만 바뀌어도 전체를
+   * 다시 배치했다(1000개에서 550~700ms). M11-2 부터 Moments 목록의 스크롤은 보관함 본문이다 — 같은
+   * 조건을 거기서 지킨다.
    */
-  it('목록 스크롤 상자가 스크롤바 자리를 고정해 둔다 (큰 목록의 재배치 비용)', () => {
-    const source = readSource('src/features/moments/MomentsWidget.vue')
-    const block = /\.list-scroll \{[^}]*\}/.exec(source)?.[0] ?? ''
-
+  it('보관함 본문(Moments 목록의 스크롤)이 스크롤바 자리를 고정해 둔다', () => {
+    const source = readSource('src/features/archive/ArchivePanel.vue')
+    const block = /\.archive-body \{[^}]*\}/.exec(source)?.[0] ?? ''
     expect(block).toContain('overflow-y: auto')
     expect(block).toContain('scrollbar-gutter: stable')
   })

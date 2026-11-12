@@ -233,15 +233,15 @@ describe('B. 정보 열 구분선', () => {
 
     expect(wide).toContain('grid-template-rows: auto auto 1fr auto')
     /*
-     * 그 빈자리(3·4 행)를 M9-4 부터 Music Moments 가 쓴다. 빈자리가 **아래에
-     * 모인다**는 성질은 그대로다 — Moments 는 행 높이를 정하지 않는다
-     * (`contain: size`). 정하면 시계·날씨가 다시 벌어지거나 아래 행이 밀린다.
+     * 그 빈자리(3·4 행)를 M9-4 부터 Music Moments 가 쓴다. 시계 · 날씨는 1 · 2 행(`auto`)이라 늘
+     * 붙어 있다. M11-3 에서 Moments 가 "이 곡의 Moments" 미리보기(안쪽 스크롤 없음)가 되어
+     * `contain: size` 를 풀었다 — 칸보다 길어지면(메모를 쓰는 동안) 아래 행(플레이리스트 ·
+     * 마스코트)이 내려간다. 데크 · 플레이어는 위쪽 정렬이라 움직이지 않는다.
      */
     expect(wide).toContain("'deck player moments'")
     expect(wide).toContain("'playlist mascot moments'")
-    expect(source).toMatch(
-      /\[data-widget='moments'\]\s*\{[^}]*align-self: stretch;[^}]*contain: size;/,
-    )
+    expect(source).toMatch(/\[data-widget='moments'\]\s*\{[^}]*align-self: stretch;/)
+    expect(source).not.toMatch(/contain: size;/)
   })
 
   it('플레이어 열의 최소 폭이 16:9 를 지킬 수 있는 값이다', () => {

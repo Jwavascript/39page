@@ -186,17 +186,49 @@ describe('C. 컨트롤 이름과 크기', () => {
     expect(wrapper.get('.round--main').attributes('aria-label')).toBe('일시정지')
   })
 
-  it('작은 컨트롤이 최소 터치 크기를 갖는다', () => {
-    // 브라우저 실측에서 `.track-play` 가 30×22 였다 (24px 미달).
-    // M6-5 에서 트랙 행이 `TrackList.vue` 로 분리됐다 (규칙 3).
+  it('작은 컨트롤이 44px 터치 목표를 갖는다 (M11-3 U16)', () => {
+    // M5 에서 24px → 29px, M11-3 에서 44px 로 올렸다 (실측: 실제 Chromium 390px).
     const list = readSource('src/features/library/TrackList.vue')
+    expect(list).toMatch(/\.track-play \{[\s\S]*?width: 44px;[\s\S]*?min-height: 44px/)
+    expect(list).toMatch(/\.track-manage \{[\s\S]*?min-height: 44px/)
+    expect(list).toMatch(/\.pill \{[\s\S]*?min-height: 44px/)
 
-    expect(list).toMatch(/\.track-play \{[\s\S]*?min-height: 29px/)
-    expect(list).toMatch(/\.track-controls button \{[\s\S]*?height: 29px/)
-
-    // 타일의 편집 버튼도 같은 29px 를 쓴다 (M6-4).
     const tile = readSource('src/features/library/PlaylistTile.vue')
-    expect(tile).toMatch(/\.playlist-open \{[\s\S]*?height: 29px/)
+    expect(tile).toMatch(/\.playlist-play \{[\s\S]*?width: 44px;[\s\S]*?height: 44px/)
+
+    expect(readSource('src/components/ui/ThemeSwitcher.vue')).toMatch(
+      /\.theme-button \{[\s\S]*?min-height: 44px/,
+    )
+    expect(readSource('src/features/playback/PlayerTransport.vue')).toMatch(
+      /\.round \{[\s\S]*?min-width: 44px;[\s\S]*?height: 44px/,
+    )
+    // 데크의 그려진 키는 작아도, 누를 수 있는 자리는 44px 이상이다.
+    expect(readSource('src/features/deck/DeckWidget.vue')).toMatch(
+      /\.deck-key::after \{[\s\S]*?width: max\(100%, 44px\);[\s\S]*?height: max\(100%, 44px\)/,
+    )
+  })
+
+  it('터치 뒤 hover 표현이 남지 않는다 — 대시보드의 :hover 는 (hover: hover) 안에만 (M11-3 U18)', () => {
+    for (const file of [
+      'src/components/layout/AppNav.vue',
+      'src/components/ui/ThemeSwitcher.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/backup/BackupPanel.vue',
+      'src/features/deck/DeckWidget.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/PlaylistTile.vue',
+      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/TrackList.vue',
+      'src/features/moments/MomentList.vue',
+      'src/features/moments/MomentsWidget.vue',
+      'src/features/playback/PlayerTransport.vue',
+    ]) {
+      const style = readSource(file).slice(readSource(file).indexOf('<style'))
+      // :hover 가 나오는 모든 규칙이 (hover: hover) 블록 안에 있다.
+      const outside = style.replace(/@media \(hover: hover\) \{[\s\S]*?\n\}/g, '')
+      expect({ file, hover: outside.includes(':hover') }).toEqual({ file, hover: false })
+    }
   })
 
   it('외부 링크가 새 창을 안전하게 연다', async () => {

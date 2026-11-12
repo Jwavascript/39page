@@ -37,7 +37,7 @@
  */
 import { computed, inject } from 'vue'
 
-import { PLAYLIST_SHELF } from '@/features/library/playlistShelfController'
+import { ARCHIVE } from '@/features/archive/archiveController'
 import { useDeckTransport } from '@/features/deck/useDeckTransport'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
@@ -47,7 +47,7 @@ import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
 const playback = usePlaybackStore()
-const shelf = inject(PLAYLIST_SHELF, null)
+const archive = inject(ARCHIVE, null)
 
 /** 각 트리거는 **자기 테마의** 문구를 쓴다. 숨겨진 쪽도 올바른 이름을 갖는다. */
 const monoCopy = THEMES['mono-vinyl'].deck
@@ -55,7 +55,9 @@ const kawaiiCopy = THEMES['kawaii-synth-cassette'].deck
 
 /** 데크 아래 안내는 활성 테마의 문구다. */
 const copy = computed(() => theme.metadata.deck)
-const isOpen = computed<boolean>(() => shelf?.isExpanded.value ?? false)
+const isOpen = computed<boolean>(
+  () => (archive?.isOpen.value ?? false) && archive?.tab.value === 'music',
+)
 
 /**
  * 톤암이 내려와 있는 상태.
@@ -74,8 +76,13 @@ const isPaused = computed<boolean>(() => playback.playerState === 'paused')
 const transport = useDeckTransport()
 
 /** 플레이리스트 위젯을 펼치거나 접는다 (M7). */
-function toggleShelf(): void {
-  shelf?.toggle()
+/**
+ * LP · 카세트를 누르면 **음악 보관함**이 열린다 (M11-3 — 이전에는 플레이리스트 선반을 펼쳤다).
+ * 데스크톱에서 눌러도 화면이 거의 바뀌지 않던 것(U2)과 세로 화면에서 선반이 재생 화면을 밀던 것(U19)을
+ * 함께 푼다. 보관함은 플레이어를 덮지 않는다 (ADR 0027).
+ */
+function openLibrary(): void {
+  archive?.open('music')
 }
 </script>
 
@@ -96,24 +103,24 @@ function toggleShelf(): void {
         위치는 테마별로 다르다 (LP 는 원형, 카세트는 사각).
       -->
       <button
-        v-if="shelf !== null"
+        v-if="archive !== null"
         type="button"
         class="deck-open deck-open--mono-vinyl"
         :aria-label="monoCopy.openLabel"
         :aria-expanded="isOpen"
-        :aria-controls="shelf.shelfId"
-        @click="toggleShelf"
+        :aria-controls="archive.panelId"
+        @click="openLibrary"
       >
         <span class="deck-open-hint">{{ monoCopy.openHint }}</span>
       </button>
       <button
-        v-if="shelf !== null"
+        v-if="archive !== null"
         type="button"
         class="deck-open deck-open--kawaii-synth-cassette"
         :aria-label="kawaiiCopy.openLabel"
         :aria-expanded="isOpen"
-        :aria-controls="shelf.shelfId"
-        @click="toggleShelf"
+        :aria-controls="archive.panelId"
+        @click="openLibrary"
       >
         <span class="deck-open-hint">{{ kawaiiCopy.openHint }}</span>
       </button>
@@ -151,7 +158,7 @@ function toggleShelf(): void {
     </div>
 
     <!-- 데크 아래 안내. 트리거가 실제로 동작하므로 표시한다. -->
-    <p v-if="shelf !== null" class="deck-hint">
+    <p v-if="archive !== null" class="deck-hint">
       {{ copy.hintMark }} <strong>{{ copy.hintStrong }}</strong> {{ copy.hintRest }}
     </p>
 
@@ -208,11 +215,37 @@ function toggleShelf(): void {
   border-radius: var(--radius-circle);
 }
 
-:root[data-theme='mono-vinyl'] .deck-open--mono-vinyl:hover,
+/*
+ * 누르는 순간 눌린 모양 (M11-3 U2) — 데스크톱에서 눌러도 시각 변화가 없던 문제. 보관함이 열리면서
+ * 화면이 바뀌지만, 누른 자리에서도 반응한다. 움직임을 줄이도록 설정한 사용자에게는 크기를 바꾸지 않는다.
+ */
+.deck-open:active {
+  background: var(--deck-open-hover-surface-color);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .deck-open {
+    transition: transform var(--duration-hint) ease;
+  }
+
+  .deck-open:active {
+    transform: scale(0.985);
+  }
+}
+
 :root[data-theme='mono-vinyl'] .deck-open--mono-vinyl:focus-visible {
   background: var(--deck-open-hover-surface-color);
   outline: var(--deck-open-focus-ring-width) solid var(--deck-open-focus-ring-color);
   outline-offset: var(--deck-open-focus-ring-offset);
+}
+
+/* 마우스를 올릴 수 있는 기기에서만 hover 표현 — 터치 뒤 덮개가 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  :root[data-theme='mono-vinyl'] .deck-open--mono-vinyl:hover {
+    background: var(--deck-open-hover-surface-color);
+    outline: var(--deck-open-focus-ring-width) solid var(--deck-open-focus-ring-color);
+    outline-offset: var(--deck-open-focus-ring-offset);
+  }
 }
 
 /* 승인된 디자인의 `.cassette-open` 위치와 표현. */
@@ -243,10 +276,17 @@ function toggleShelf(): void {
     transform var(--duration-hint) ease;
 }
 
-.deck-open:hover .deck-open-hint,
+/* 툴팁은 키보드 포커스와, **마우스가 있는 기기**의 hover 에서만 — 터치 뒤 남지 않게 (M11 U18). */
 .deck-open:focus-visible .deck-open-hint {
   opacity: 1;
   transform: none;
+}
+
+@media (hover: hover) {
+  .deck-open:hover .deck-open-hint {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /*
@@ -270,8 +310,25 @@ function toggleShelf(): void {
   background: transparent;
 }
 
-.deck-key:hover {
-  background: var(--deck-open-hover-surface-color);
+@media (hover: hover) {
+  .deck-key:hover {
+    background: var(--deck-open-hover-surface-color);
+  }
+}
+
+/*
+ * 터치 목표 44px (M11 U16). 그려진 키는 데크 폭에 비례해 작아진다(폰에서 약 26–37px). 키 모양은 그대로
+ * 두고 **누를 수 있는 자리만** 보이지 않는 의사 요소로 넓힌다. 카세트의 두 키 사이는 넓혀도 겹치지
+ * 않는다 (360px 데크에서 키 사이 약 48px).
+ */
+.deck-key::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  content: '';
+  transform: translate(-50%, -50%);
 }
 
 .deck-key:focus-visible {

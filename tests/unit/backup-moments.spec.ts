@@ -304,7 +304,7 @@ describe('A. 내보내기', () => {
     expect(panel(s).text()).toContain('Moment 2개')
   })
 
-  it('쓰던 메모·고정한 캡처는 담지 않는다 — store 의 영속 필드만', async () => {
+  it('쓰던 메모는 담지 않는다 — store 의 영속 필드만 (M11-3 빠른 저장)', async () => {
     seedStorage({ moments: [] })
     const s = boot()
     const created = stubDownloads()
@@ -314,12 +314,17 @@ describe('A. 내보내기', () => {
     s.fake.emitStateChange('playing')
     s.fake.emitPosition(42)
     await nextTick()
+    // 빠른 저장 — 순간은 바로 저장된다. 메모는 쓰는 중이고 아직 저장하지 않았다.
     await s.wrapper.get('.capture-button').trigger('click')
+    await flushPromises()
+    await s.wrapper.get('.moments-widget .after-save .pill').trigger('click')
+    await nextTick()
     await s.wrapper.get('#moment-capture-note').setValue('아직 저장 안 한 메모')
 
     const file = await exportFile(s, created)
 
-    expect(file.data.moments?.data).toEqual([])
+    expect(file.data.moments?.data).toHaveLength(1)
+    expect(file.data.moments?.data[0]).toMatchObject({ atSeconds: 42, note: '' })
     expect(JSON.stringify(file)).not.toContain('아직 저장 안 한 메모')
   })
 

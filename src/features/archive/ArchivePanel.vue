@@ -24,6 +24,8 @@ const props = defineProps<{
   open: boolean
   tab: ArchiveTab
   panelId: string
+  /** 바뀔 때마다 고른 목록의 링크 입력을 연다 (`ArchiveOpenOptions.addLink`). */
+  addLinkRequest?: number
 }>()
 
 const emit = defineEmits<{
@@ -65,6 +67,15 @@ const editor = ref<InstanceType<typeof PlaylistEditor> | null>(null)
 function onPlaylistCreated(): void {
   void nextTick(() => editor.value?.startAddLink())
 }
+
+watch(
+  () => props.addLinkRequest,
+  (now, before) => {
+    if (now !== undefined && now !== before && now > 0) {
+      void nextTick(() => editor.value?.startAddLink())
+    }
+  },
+)
 
 /** Moments 탭을 한 번이라도 열었는지 — 열었으면 그 뒤로 마운트를 유지한다. */
 const momentsVisited = ref(false)
@@ -229,6 +240,12 @@ watch(
   padding: 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /*
+   * 스크롤바 자리를 늘 비워 둔다 (M9-6 성능). 스크롤바가 폭을 차지하는 환경에서 `overflow-y: auto` 는
+   * 내용이 바뀔 때마다 목록 전체를 다시 배치했다 — Moments 1000개에서 한 줄만 바뀌어도 550~700ms.
+   * 고정하면 바뀐 줄만 다시 배치한다(같은 조건 10ms). M11-2 부터 Moments 목록의 스크롤이 여기다.
+   */
+  scrollbar-gutter: stable;
 }
 
 .archive-body[hidden] {

@@ -144,21 +144,15 @@ const placed = computed<PlacedWidget[]>(() =>
  */
 
 /*
- * Music Moments 의 자리 (M9-4). 정보 열의 빈자리 — 3·4 행을 그대로 채운다.
+ * Music Moments 의 자리 (M9-4). 정보 열의 빈자리 — 3·4 행을 채운다.
  *
- * ⚠ **이 위젯은 행 높이를 정하지 않는다.** `contain: size` 로 자기 내용이 트랙
- * 크기 계산에 끼어들지 않게 하고, 늘이기로 남은 칸을 채운다. 행 높이는 여전히
- * 데크·플레이어(1~3 행)와 플레이리스트·마스코트(4 행)가 정한다.
- *
- * 그래서 메모 폼을 열거나 순간이 늘어나도 **다른 위젯이 밀리지 않는다** — 내용은
- * 위젯 안에서 스크롤한다. 이 칸은 실측으로 1280×800 에서 274px, 1920×1080 에서
- * 419px 이다 (ADR 0021). 늘이기만 하고 `contain` 을 빼면, 폼을 여는 순간 3 행이
- * 커져 플레이리스트·마스코트가 아래로 밀린다.
+ * M11-3 에서 위젯이 "이 곡의 Moments" 미리보기(최대 3행 · 빠른 저장)로 줄어 **안쪽 스크롤이 없다**.
+ * 그래서 M9 의 `contain: size`(칸 안에서 스크롤)를 풀었다 — 메모 폼을 여는 동안만 행이 조금 길어질 수
+ * 있다. 데크 · 플레이어는 위쪽 정렬이라 움직이지 않는다.
  */
 .widget-host > [data-widget='moments'] {
   min-height: 0;
   align-self: stretch;
-  contain: size;
 }
 
 /*
@@ -226,19 +220,6 @@ const placed = computed<PlacedWidget[]>(() =>
    */
   .widget-host > [data-widget='moments'] {
     align-self: start;
-    contain: none;
-  }
-
-  /*
-   * 플레이리스트가 **데크 높이를 넘지 않는다** (M7 요청 5).
-   *
-   * 행 높이는 데크가 정한다. 위젯을 그 행에 늘려 붙이면(`stretch`) 높이가
-   * 데크와 같아지고, 목록이 길면 위젯 **안에서** 스크롤한다. 높이를 숫자로
-   * 정하지 않으므로 화면 폭이 바뀌어도 따라간다.
-   */
-  .widget-host > [data-widget='playlist']:not(.is-collapsed) {
-    min-height: 0;
-    align-self: stretch;
   }
 
   /*
@@ -265,6 +246,42 @@ const placed = computed<PlacedWidget[]>(() =>
   .widget-host::before {
     grid-row: 1 / 2;
     grid-column: 2;
+  }
+}
+
+/*
+ * 700px 이하: **한 열** (M11-3, U20 · U21).
+ *
+ * 두 열을 360px 까지 끌고 가면 데크 옆 반 칸(약 140px)에 플레이리스트가 끼고, 시계 · 날씨가 반 칸씩
+ * 나눠 글자가 빽빽했다. 순서는 듣는 흐름이다 — 데크 → 영상 → **이 곡의 Moments(빠른 저장)** →
+ * 플레이리스트 → 시계 → 날씨 → 마스코트. 빠른 저장이 영상 바로 아래에 있어 세로 화면에서도 닿는다.
+ *
+ * `grid-template-areas` 만 바꾼다. DOM 부모 · 순서 · 인스턴스는 그대로다 (ADR 0002).
+ */
+@media (max-width: 700px) {
+  .widget-host {
+    grid-template-areas:
+      'deck'
+      'player'
+      'moments'
+      'playlist'
+      'clock'
+      'weather'
+      'mascot';
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  /* 한 열에는 세로 구분선이 없다. */
+  .widget-host::before {
+    display: none;
+  }
+
+  /* 데크가 화면 폭 전체를 쓰면 너무 크다 — 영상과 같은 상한으로 가운데에 둔다. */
+  .widget-host > [data-widget='deck'] {
+    width: 100%;
+    max-width: 420px;
+    justify-self: center;
   }
 }
 </style>

@@ -127,47 +127,60 @@ describe('A. 타일 격자', () => {
    * 접혀 있어도 타일은 보인다. `display: none` 으로 숨기면 플레이리스트가
    * 있는지조차 알 수 없고, 드로어로 가는 길도 막힌다.
    */
-  it('기본은 접힌 상태이고 타일은 그래도 보인다', async () => {
-    const context = mountApp()
-    await seed(context.library)
-    await nextTick()
+  it('목록이 많으면 6개까지만 보이고 나머지는 "모든 목록 보기" 로 보관함에서 본다 (M11-3)', async () => {
+    const { wrapper } = mountApp()
+    const library = useLibraryStore()
+    for (let index = 1; index <= 8; index += 1) await library.createPlaylist(`L${String(index)}`)
+    await library.selectPlaylist(library.playlists[0]?.id ?? '')
+    await flushPromises()
 
-    expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
-    expect(tiles(context)).toHaveLength(2)
+    expect(wrapper.findAll('.playlist-tile')).toHaveLength(6)
+    const showAll = wrapper.get('.playlist-widget .show-all')
+    expect(showAll.text()).toBe('모든 목록 보기 (8) · 2개 더')
+
+    await showAll.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(wrapper.findAll('.archive-lists .list-select')).toHaveLength(8)
   })
 
-  it('데크를 누르면 펼쳐지고 다시 누르면 접힌다', async () => {
-    const context = mountApp()
-    await seed(context.library)
-    await nextTick()
-    const deck = context.wrapper.get('.deck-open--mono-vinyl')
+  it('고른 목록이 6개 밖에 있어도 대시보드에서 사라지지 않는다 (M11-3)', async () => {
+    const { wrapper } = mountApp()
+    const library = useLibraryStore()
+    for (let index = 1; index <= 8; index += 1) await library.createPlaylist(`L${String(index)}`)
+    // 마지막(8번째) 목록이 골라져 있다 — 만들면 선택된다.
+    await flushPromises()
 
-    await deck.trigger('click')
-    expect(context.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
-
-    await deck.trigger('click')
-    expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+    const names = wrapper.findAll('.playlist-tile .pname').map((node) => node.text())
+    expect(names).toHaveLength(6)
+    expect(names[names.length - 1]).toBe('L8')
+    expect(wrapper.findAll('.playlist-tile.is-selected')).toHaveLength(1)
   })
 
-  it('Escape 로 접힌다', async () => {
-    const context = mountApp()
-    await context.wrapper.get('.deck-open--mono-vinyl').trigger('click')
-    expect(context.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
-
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+  it('새 목록을 만들면 보관함이 그 목록의 링크 입력으로 열린다 (M11-3 U15)', async () => {
+    const { wrapper } = mountApp()
+    await wrapper.get('.playlist-widget .pill--strong').trigger('click')
+    await nextTick()
+    await wrapper.get('#new-playlist-name').setValue('새 믹스')
+    await wrapper.get('.playlist-widget form.create-form').trigger('submit')
+    await flushPromises()
+    await nextTick()
     await nextTick()
 
-    expect(context.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('#playlist-editor-title').text()).toBe('새 믹스')
+    expect(wrapper.find('form.link-form').exists()).toBe(true)
+    expect(document.activeElement).toBe(wrapper.get('#track-url').element)
   })
 
-  it('접힘·펼침이 타일 영역의 높이로만 드러난다', () => {
-    const source = readSource('src/features/library/PlaylistWidget.vue')
-
-    expect(source).toMatch(
-      /\.playlist-widget\.is-collapsed \.tile-scroll \{[\s\S]*?max-height: var\(--size-playlist-collapsed-max-height\)/,
+  it('선반(접기 · 펼치기)이 없다 — 위젯이 재생 화면을 밀지 않는다 (M11-3 U19)', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/features/library/PlaylistWidget.vue'),
+      'utf8',
     )
-    // 숨기지 않는다. 접힌 상태에서도 타일이 보여야 한다.
-    expect(source).not.toMatch(/\.is-collapsed[\s\S]{0,120}display: none/)
+    expect(source).not.toContain('is-collapsed')
+    expect(source).not.toContain('PLAYLIST_SHELF')
+    expect(source).not.toContain('tile-scroll')
   })
 })
 
@@ -260,7 +273,7 @@ describe('C. 편집 오버레이 열기', () => {
     await nextTick()
 
     expect(tiles(context)[0]?.get('.playlist-open').attributes('aria-label')).toBe(
-      'NIGHT DRIVE 트랙 편집 (2곡)',
+      'NIGHT DRIVE 보관함에서 편집 (2곡)',
     )
   })
 
@@ -354,11 +367,14 @@ describe('D. 생성', () => {
 })
 
 describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
-  it('위젯이 자기 안에서 스크롤하고 높이에 상한이 있다', () => {
-    const source = readSource('src/features/library/PlaylistWidget.vue')
-
-    expect(source).toMatch(/\.tile-scroll \{[\s\S]*?overflow-y: auto/)
-    expect(source).toMatch(/\.tile-scroll \{[\s\S]*?max-height: var\(--size-playlist-max-height\)/)
+  it('위젯 안 스크롤이 없다 — 중첩 스크롤을 만들지 않는다 (M11-3)', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/features/library/PlaylistWidget.vue'),
+      'utf8',
+    )
+    const style = source.slice(source.indexOf('<style'))
+    expect(style).not.toMatch(/overflow-y:\s*(auto|scroll)/)
+    expect(style).not.toContain('--size-playlist-max-height')
   })
 
   it('플레이리스트와 트랙이 서로 다른 컴포넌트에 산다', () => {
@@ -411,19 +427,18 @@ describe('E. 두 표면이 서로를 밀지 않는다 (보고 7번)', () => {
    * M7 요청 5 — 세로에서는 데크 옆(이전의 시계·날씨 자리)이고, 펼쳐도
    * **데크 높이를 넘지 않는다.** 높이를 숫자로 정하지 않고 행에 늘려 붙인다.
    */
-  it('세로에서 데크 옆에 서고 데크 높이를 넘지 않는다', () => {
-    const host = readSource('src/components/layout/WidgetHost.vue')
-    const compact = host.slice(host.indexOf('@media (max-width: 1100px)'))
-    const widget = readSource('src/features/library/PlaylistWidget.vue')
-
-    expect(compact).toContain("'deck playlist'")
-    // 시계·날씨는 아래로 내려갔다.
-    expect(compact).toContain("'clock weather'")
-    expect(compact).toMatch(
-      /\[data-widget='playlist'\]:not\(\.is-collapsed\) \{[\s\S]*?align-self: stretch/,
+  it('좁은 화면(700px 이하)에서는 한 열 — 데크 · 영상 · Moments · 플레이리스트 순 (M11-3)', () => {
+    const host = readFileSync(
+      resolve(process.cwd(), 'src/components/layout/WidgetHost.vue'),
+      'utf8',
     )
-    // 행 높이 안에서 스크롤한다.
-    expect(widget).toMatch(/@media \(max-width: 1100px\)[\s\S]*?max-height: none/)
+    const narrow = host.slice(host.indexOf('@media (max-width: 700px)'))
+
+    expect(narrow).toMatch(
+      /grid-template-areas:\s*'deck'\s*'player'\s*'moments'\s*'playlist'\s*'clock'\s*'weather'\s*'mascot';/,
+    )
+    // 펼친 선반이 데크 높이만큼 늘던 규칙은 없어졌다.
+    expect(host).not.toContain(':not(.is-collapsed)')
   })
 })
 

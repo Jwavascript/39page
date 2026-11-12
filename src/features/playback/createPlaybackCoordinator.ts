@@ -44,6 +44,8 @@
  * 시점 이동도 **적재된 플레이어에 보내는 명령**이라 iframe 은 바뀌지 않는다
  * (ADR 0002).
  */
+import { computed } from 'vue'
+
 import type { Track } from '@/shared/types'
 import { isYouTubeVideoId } from '@/shared/utils/youtube'
 import { defaultTrackTitle, useLibraryStore } from '@/stores/library'
@@ -60,6 +62,7 @@ import type {
   MomentCapture,
   MomentPlayResult,
   MomentTarget,
+  NowPlaying,
   PlaybackCoordinator,
   PlayerAttachment,
   PlayRequestResult,
@@ -744,7 +747,15 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     }
   }
 
+  /** 지금 큐의 곡 — 읽기 전용 보기 (M11-3, `NowPlaying`). */
+  const nowPlaying = computed<NowPlaying | null>(() => {
+    const track = playback.currentTrack
+    if (track === null) return null
+    return { trackId: track.id, videoId: track.videoId, playing: playback.isPlaying }
+  })
+
   return {
+    nowPlaying,
     playPlaylist,
     playTrack,
     togglePlay,

@@ -12,6 +12,14 @@ import type { InjectionKey, Ref } from 'vue'
 /** 보관함의 탭. 데이터 · 백업은 탭이 아니라 별도 대화상자다 (ADR 0027 결정 1). */
 export type ArchiveTab = 'music' | 'moments'
 
+export interface ArchiveOpenOptions {
+  /**
+   * 음악 탭에서 고른 목록의 "YouTube 링크 추가" 를 바로 연다 (M11-3 U15) — 새 목록을 만든 다음 행동으로
+   * 자연스럽게 잇는다. 링크 입력란으로 포커스가 간다.
+   */
+  readonly addLink?: boolean
+}
+
 export interface ArchiveController {
   /** 열려 있는지. */
   readonly isOpen: Readonly<Ref<boolean>>
@@ -20,7 +28,7 @@ export interface ArchiveController {
   /** 보관함 루트의 DOM id. 입구 버튼의 `aria-controls` 가 가리킨다. */
   readonly panelId: string
   /** 그 탭으로 연다 (이미 열려 있으면 탭만 바꾼다). 탭을 주지 않으면 마지막 탭. */
-  open(tab?: ArchiveTab): void
+  open(tab?: ArchiveTab, options?: ArchiveOpenOptions): void
   /** 닫고, 연 버튼으로 포커스를 되돌린다. */
   close(): void
 

@@ -32,6 +32,8 @@ const props = defineProps<{
   playlist: DeepReadonly<Playlist>
   /** 지금 편집·재생 대상으로 선택된 목록인지. */
   isSelected: boolean
+  /** 지금 재생 중인 곡이 이 목록에 있는지 (M11-3 U14). 색만이 아니라 글로도 알린다. */
+  isPlaying?: boolean
 }>()
 
 const emit = defineEmits<{ play: []; open: [] }>()
@@ -40,11 +42,11 @@ const count = computed<number>(() => props.playlist.tracks.length)
 const isEmpty = computed<boolean>(() => count.value === 0)
 
 /** 본문 누름의 접근성 이름. 비어 있으면 그 사실도 말한다. */
-const openLabel = computed<string>(() =>
-  isEmpty.value
-    ? `${props.playlist.name} 트랙 편집 — 비어 있음`
-    : `${props.playlist.name} 트랙 편집 (${String(count.value)}곡)`,
-)
+const openLabel = computed<string>(() => {
+  if (isEmpty.value) return `${props.playlist.name} 보관함에서 편집 — 비어 있음`
+  const playing = props.isPlaying === true ? ' · 재생 중' : ''
+  return `${props.playlist.name} 보관함에서 편집 (${String(count.value)}곡${playing})`
+})
 
 /** 빈 목록은 재생할 수 없다. 이름이 그 사실을 말한다. */
 const playLabel = computed<string>(() =>
@@ -55,7 +57,10 @@ const playLabel = computed<string>(() =>
 </script>
 
 <template>
-  <div class="playlist-tile" :class="{ 'is-selected': isSelected, 'is-empty': isEmpty }">
+  <div
+    class="playlist-tile"
+    :class="{ 'is-selected': isSelected, 'is-empty': isEmpty, 'is-playing': isPlaying }"
+  >
     <!-- 본문 = 트랙 편집 열기. 타일 전체가 하나의 큰 터치 목표다. -->
     <button
       type="button"
@@ -66,7 +71,10 @@ const playLabel = computed<string>(() =>
       @click="emit('open')"
     >
       <span class="pname">{{ playlist.name }}</span>
-      <span class="pmeta">{{ isEmpty ? 'EMPTY' : `${count} TRACKS` }}</span>
+      <span class="pmeta"
+        >{{ isEmpty ? 'EMPTY' : `${count} TRACKS`
+        }}<span v-if="isPlaying" class="playing-mark">♪ 재생 중</span></span
+      >
     </button>
 
     <!--
@@ -105,7 +113,8 @@ const playLabel = computed<string>(() =>
   flex-direction: column;
   justify-content: space-between;
   /* 우측 상단 `▶` 자리를 비워 둔다. */
-  padding: 10px 34px 9px 10px;
+  min-height: 64px;
+  padding: 10px 48px 9px 10px;
   border: 1px solid var(--row-border-color);
   border-radius: var(--radius-control);
   background: var(--row-surface-color);
@@ -114,8 +123,25 @@ const playLabel = computed<string>(() =>
   text-align: left;
 }
 
-.playlist-open:hover {
-  background: var(--row-selected-surface-color);
+/* 터치 뒤 hover 덮개가 남지 않게 — 마우스가 있는 기기에서만 (M11 U18). */
+@media (hover: hover) {
+  .playlist-open:hover {
+    background: var(--row-selected-surface-color);
+  }
+
+  .playlist-play:hover:not(:disabled) {
+    color: var(--row-action-hover-text-color);
+  }
+}
+
+.playlist-tile.is-playing .playlist-open {
+  border-color: var(--track-current-border-color);
+}
+
+.playing-mark {
+  display: block;
+  margin-top: 2px;
+  color: var(--row-text-color);
 }
 
 /* 선택 강조. 색에만 의존하지 않도록 aria-current 도 함께 쓴다. */
@@ -124,13 +150,16 @@ const playLabel = computed<string>(() =>
   background: var(--row-selected-surface-color);
 }
 
+/* 긴 이름은 두 줄까지 보이고 그다음 말줄임 (M11 U12). 전체는 접근성 이름 · 보관함에서. */
 .pname {
-  display: block;
+  display: -webkit-box;
   overflow: hidden;
   font-size: 13px;
   line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .pmeta {
@@ -146,20 +175,17 @@ const playLabel = computed<string>(() =>
  */
 .playlist-play {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  min-width: 28px;
-  height: 29px;
+  top: 2px;
+  right: 2px;
+  /* 터치 목표 44px (M11 U16). */
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--playlist-play-text-color);
   font: 13px var(--font-mono);
   line-height: 1;
-}
-
-.playlist-play:hover:not(:disabled) {
-  color: var(--row-action-hover-text-color);
 }
 
 .playlist-play:disabled {

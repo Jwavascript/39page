@@ -1,19 +1,18 @@
 <script setup lang="ts">
 /**
- * 한 플레이리스트의 트랙 목록 (M6-5).
+ * 한 플레이리스트의 트랙 목록 (M2-3, M11-3 에서 행을 다시 짰다).
  *
- * 승인된 디자인의 `.track-list` / `.track` 구조를 따른다. 드로어에서 **분리해
- * 꺼낸** 컴포넌트다 — 842 줄짜리 드로어가 플레이리스트·트랙·폼·확인을 모두
- * 담고 있었다 (`AGENTS.md` 규칙 3, `M6_PLAN.md` §3).
+ * 표현만 맡는다. 누름을 이벤트로 올리고, 저장 · 재생은 부모(`PlaylistEditor`)가 한다. 재생 상태도
+ * 모른다 — "지금 곡" 은 부모가 prop 으로 알려 준다 (코디네이터의 읽기 전용 보기, ADR 0009).
  *
- * 여기서 store 를 부르지 않는다. 행의 조작을 이벤트로 올릴 뿐이고, 실제 변경과
- * 재생 요청은 드로어가 한다. 재생 상태도 모른다.
- *
- * 삭제 확인은 **여기서** 받는다. 확인된 뒤에만 `remove` 를 올리므로, 드로어는
- * "지워졌다" 만 알고 확인 UI 를 모른다.
- *
- * M6-5 에서 더한 것: **트랙 이름 변경** (보고 6c). 사용자가 이미 저장한
- * 레코드의 이름을 바꿀 방법이 없었다.
+ * M11-3 에서 바뀐 것 (U4 · U12 · U14 · U16 · U17)
+ * - **▶ 재생은 그대로 드러나 있다** — 자주 쓰는 일이다. 44×44.
+ * - 이름 바꾸기 · 위 · 아래 · 삭제는 **"관리"** 단추를 누르면 행 아래에 글자 이름과 함께 펼쳐진다.
+ *   아이콘 넷이 3px 간격으로 붙어 있던 자리(28×29)에서 잘못 누르기 쉬웠다. 단추에 글자가 있어 숨기는
+ *   것이 아니라 **한 번 더 펼치는 것**이다 — 행마다 무엇이 있는지 "관리" 라는 이름이 말한다.
+ * - 삭제는 그 줄의 맨 끝, 다른 단추와 떨어져 있고, 확인은 **그 행 바로 아래**에서 받는다.
+ * - 긴 제목이 말줄임으로 잘리지 않고 줄을 바꾼다.
+ * - 지금 곡은 글("재생 중")과 `aria-current` 로도 알린다 — 색만이 아니다.
  */
 import { nextTick, ref } from 'vue'
 
@@ -24,12 +23,14 @@ import { MAX_TRACK_TITLE_LENGTH } from '@/stores/library'
 
 const props = defineProps<{
   /**
-   * 보여줄 트랙. **선택된 플레이리스트가 없으면 `null`** 이다.
-   *
-   * 빈 배열(`[]`)과 구분한다. 둘의 안내 문구가 다르다 — 하나는 "목록을
-   * 선택하세요", 다른 하나는 "링크를 추가하세요" 다.
+   * 표시할 트랙. `null` 은 "선택된 플레이리스트 없음", 빈 배열은
+   * "플레이리스트는 있지만 비어 있음" 이다. 둘의 안내 문구가 다르다.
    */
   tracks: DeepReadonly<Track[]> | null
+  /** 지금 큐의 곡 (트랙 id). 없으면 `null`. */
+  nowPlayingTrackId?: string | null
+  /** 지금 곡이 실제로 소리 나는 중인지 — 일시정지면 "지금 곡" 으로 적는다. */
+  nowPlayingActive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -39,28 +40,33 @@ const emit = defineEmits<{
   rename: [trackId: string, title: string]
 }>()
 
-/** 삭제 확인 중인 트랙. `confirm()` 대신 인라인으로 받는다. */
+/** "관리" 가 펼쳐진 행. 한 번에 하나다. */
+const managingId = ref<string | null>(null)
+/** 삭제 확인을 받는 행. */
 const pendingTrackId = ref<string | null>(null)
 
-/** 이름을 고치는 중인 트랙. */
 const renamingId = ref<string | null>(null)
 const draftTitle = ref('')
 
-/**
- * 목록 루트. 이름 변경 입력으로 포커스를 옮길 때만 쓴다.
- *
- * 입력에 직접 `ref` 를 달지 않는다. `v-for` **안**에 있는 `ref` 는 Vue 가
- * 배열로 모으므로 `.focus()` 가 없는 값이 된다. 한 번에 한 폼만 열리므로
- * 루트에서 찾는 쪽이 간단하고 확실하다.
- */
 const root = ref<HTMLElement | null>(null)
 
 function isLast(index: number): boolean {
   return index === (props.tracks?.length ?? 0) - 1
 }
 
+function isCurrent(track: DeepReadonly<Track>): boolean {
+  return props.nowPlayingTrackId !== undefined && props.nowPlayingTrackId === track.id
+}
+
+function toggleManage(trackId: string): void {
+  pendingTrackId.value = null
+  cancelRename()
+  managingId.value = managingId.value === trackId ? null : trackId
+}
+
 async function startRename(track: DeepReadonly<Track>): Promise<void> {
   pendingTrackId.value = null
+  managingId.value = null
   renamingId.value = track.id
   draftTitle.value = track.title
   await nextTick()
@@ -80,18 +86,24 @@ function submitRename(): void {
   cancelRename()
 }
 
-function confirmRemove(): void {
-  const trackId = pendingTrackId.value
-  if (trackId === null) return
-
-  emit('remove', trackId)
-  pendingTrackId.value = null
+function move(trackId: string, direction: 'up' | 'down'): void {
+  // 옮겨도 "관리" 는 펼친 채 둔다 — 여러 칸을 연달아 옮길 수 있게.
+  emit('move', trackId, direction)
 }
 
 function requestRemove(trackId: string): void {
   // 이름을 고치는 중에 삭제를 누르면 폼을 닫는다. 두 폼이 겹치지 않게 한다.
   cancelRename()
   pendingTrackId.value = trackId
+}
+
+function confirmRemove(): void {
+  const trackId = pendingTrackId.value
+  if (trackId === null) return
+
+  emit('remove', trackId)
+  pendingTrackId.value = null
+  managingId.value = null
 }
 </script>
 
@@ -104,7 +116,11 @@ function requestRemove(trackId: string): void {
 
     <!-- :key 는 배열 인덱스가 아니라 트랙 id 를 쓴다. -->
     <template v-for="(track, index) in tracks ?? []" :key="track.id">
-      <div class="track">
+      <div
+        class="track"
+        :class="{ 'is-current': isCurrent(track) }"
+        :aria-current="isCurrent(track) ? 'true' : undefined"
+      >
         <button
           type="button"
           class="track-play"
@@ -115,48 +131,84 @@ function requestRemove(trackId: string): void {
           ▶
         </button>
         <span class="track-order">{{ index + 1 }}</span>
-        <!-- 잘려도 전체 제목을 title 로 확인할 수 있다. -->
-        <span class="track-name" :title="track.title">{{ track.title }}</span>
-        <span class="track-id">{{ track.videoId }}</span>
-
-        <!--
-          순서: 이름 변경 → 위 → 아래 → 삭제. 되돌리기 어려운 삭제를 맨 끝에
-          둔다. 이름 변경이 맨 앞인 것은 그것이 이 행에서 가장 자주 하는
-          일이기 때문이다.
-        -->
-        <span class="track-controls">
-          <button
-            type="button"
-            :aria-label="`${track.title} 이름 변경`"
-            :title="`${track.title} 이름 변경`"
-            @click="startRename(track)"
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            :aria-label="`${track.title} 위로`"
-            :disabled="index === 0"
-            @click="emit('move', track.id, 'up')"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            :aria-label="`${track.title} 아래로`"
-            :disabled="isLast(index)"
-            @click="emit('move', track.id, 'down')"
-          >
-            ↓
-          </button>
-          <button
-            type="button"
-            :aria-label="`${track.title} 삭제`"
-            @click="requestRemove(track.id)"
-          >
-            ×
-          </button>
+        <span class="track-text">
+          <span class="track-name">{{ track.title }}</span>
+          <span v-if="isCurrent(track)" class="track-badge">
+            {{ nowPlayingActive === false ? '지금 곡' : '♪ 재생 중' }}
+          </span>
+          <span class="track-id">{{ track.videoId }}</span>
         </span>
+        <button
+          type="button"
+          class="track-manage"
+          :aria-expanded="managingId === track.id"
+          :aria-controls="`track-actions-${track.id}`"
+          :aria-label="`${track.title} 관리`"
+          @click="toggleManage(track.id)"
+        >
+          관리
+        </button>
+      </div>
+
+      <!--
+        관리 — 이름 바꾸기 · 위 · 아래, 그리고 떨어진 자리의 삭제. 순서는 자주 쓰는 일부터이고 되돌리기
+        어려운 삭제를 맨 끝에 둔다. 클래스 이름 `track-controls` 는 M2 의 것을 잇는다.
+      -->
+      <div
+        v-if="managingId === track.id"
+        :id="`track-actions-${track.id}`"
+        class="track-controls"
+        role="group"
+        :aria-label="`${track.title} 관리 메뉴`"
+      >
+        <button
+          type="button"
+          class="pill"
+          :aria-label="`${track.title} 이름 변경`"
+          @click="startRename(track)"
+        >
+          ✎ 이름 바꾸기
+        </button>
+        <button
+          type="button"
+          class="pill"
+          :aria-label="`${track.title} 위로`"
+          :disabled="index === 0"
+          @click="move(track.id, 'up')"
+        >
+          ↑ 위로
+        </button>
+        <button
+          type="button"
+          class="pill"
+          :aria-label="`${track.title} 아래로`"
+          :disabled="isLast(index)"
+          @click="move(track.id, 'down')"
+        >
+          ↓ 아래로
+        </button>
+        <button
+          type="button"
+          class="pill pill--danger"
+          :aria-label="`${track.title} 삭제`"
+          @click="requestRemove(track.id)"
+        >
+          삭제
+        </button>
+      </div>
+
+      <!-- 삭제 확인 — 지울 행 **바로 아래**. -->
+      <div
+        v-if="pendingTrackId === track.id"
+        class="confirm"
+        role="alertdialog"
+        aria-label="트랙 삭제 확인"
+      >
+        <p class="confirm-text">“{{ track.title }}” 을(를) 이 목록에서 제거할까요?</p>
+        <div class="row-actions">
+          <button type="button" class="pill pill--strong" @click="confirmRemove">삭제</button>
+          <button type="button" class="pill" @click="pendingTrackId = null">취소</button>
+        </div>
       </div>
 
       <!--
@@ -180,19 +232,6 @@ function requestRemove(trackId: string): void {
         </div>
       </form>
     </template>
-
-    <div
-      v-if="pendingTrackId !== null"
-      class="confirm"
-      role="alertdialog"
-      aria-label="트랙 삭제 확인"
-    >
-      <p class="confirm-text">이 곡을 목록에서 제거할까요?</p>
-      <div class="row-actions">
-        <button type="button" class="pill pill--strong" @click="confirmRemove">삭제</button>
-        <button type="button" class="pill" @click="pendingTrackId = null">취소</button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -200,19 +239,12 @@ function requestRemove(trackId: string): void {
 /*
  * 승인된 디자인의 `.track-list` / `.track` 값을 따른다.
  *
- * `container-type` 만 더했다. 트랙 행이 들어갈 자리는 **뷰포트가 아니라 이
- * 목록의 폭**이 정한다. 가로 화면에서 드로어는 1440px 뷰포트 안의 339px 짜리
- * 좁은 열이라, 뷰포트 기준 질의로는 좁다는 사실을 알 수 없다 (아래 참조).
+ * `container-type` — 트랙 행이 들어갈 자리는 **뷰포트가 아니라 이 목록의 폭**이 정한다.
  */
 .track-list {
   display: grid;
   /*
-   * 열 하나를 **목록 폭에 묶는다** (M9-6).
-   *
-   * 암묵적 열은 `auto` 라 최소 크기가 행의 최소 내용 폭이 된다. 제목은 `nowrap`
-   * 이므로 그것은 제목 전체 폭이고, 긴 제목 하나가 열을 드로어보다 넓혀
-   * `.drawer-body` 에 가로 스크롤바를 세웠다 (M9-6 실측: 100자 제목에서 +441px).
-   * `minmax(0, 1fr)` 이면 행이 목록 폭을 넘지 않고 제목이 말줄임된다.
+   * 열 하나를 **목록 폭에 묶는다** (M9-6). 행이 목록 폭을 넘지 않는다 — 긴 제목은 이제 줄을 바꾼다.
    */
   grid-template-columns: minmax(0, 1fr);
   container-type: inline-size;
@@ -222,10 +254,15 @@ function requestRemove(trackId: string): void {
 .track {
   display: flex;
   align-items: center;
-  padding: 8px 7px;
+  padding: 4px 6px 4px 2px;
   border: 1px solid transparent;
   background: var(--track-surface-color);
-  gap: 7px;
+  gap: 6px;
+}
+
+/* 지금 곡 — 테두리(색)와 "재생 중" 글(아래)을 함께 쓴다. */
+.track.is-current {
+  border-color: var(--track-current-border-color);
 }
 
 .track-order {
@@ -236,28 +273,37 @@ function requestRemove(trackId: string): void {
   text-align: right;
 }
 
-.track-name {
-  overflow: hidden;
+.track-text {
+  display: flex;
   min-width: 0;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 6px 0;
+}
+
+/* 긴 제목은 잘리지 않고 줄을 바꾼다 (M11 U12). 행 폭은 목록 폭에 묶여 있다. */
+.track-name {
+  min-width: 0;
   color: var(--track-name-text-color);
   font-size: 12px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.track-badge {
+  color: var(--row-text-color);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.04em;
 }
 
 /*
- * 승인된 디자인의 `.track-play` 값을 따른다.
- *
- * `min-height` 만 더했다. 레퍼런스는 높이를 적지 않아 글자 높이(22px)가 되는데,
- * 그러면 터치 목표가 24px 아래로 내려간다 (M5 실측 30×22). 같은 행의
- * `.track-controls button` 이 29px 이므로 그 값에 맞춘다 — 새 치수를 만들지
- * 않고 이웃과 나란해진다.
+ * 승인된 디자인의 `.track-play` 값을 따른다. 터치 목표 44×44 (M11 U16 — M5 의 30×29 에서 키웠다).
  */
 .track-play {
-  width: 30px;
-  min-height: 29px;
+  width: 44px;
+  min-height: 44px;
   flex: none;
   border: 0;
   background: transparent;
@@ -265,28 +311,41 @@ function requestRemove(trackId: string): void {
   font-size: 17px;
 }
 
-/* 승인된 디자인의 `.track-controls` 값을 따른다. */
-.track-controls {
-  display: flex;
+.track-manage {
+  min-width: 56px;
+  min-height: 44px;
   flex: none;
-  gap: 3px;
-}
-
-.track-controls button {
-  min-width: 28px;
-  height: 29px;
-  border: 0;
+  padding: 0 10px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--row-action-text-color);
+  font: 11px var(--font-mono);
 }
 
-.track-controls button:hover:not(:disabled) {
-  color: var(--row-action-hover-text-color);
+.track-manage[aria-expanded='true'] {
+  border-color: var(--row-selected-border-color);
+  background: var(--row-selected-surface-color);
+  color: var(--row-text-color);
+}
+
+/* 관리 줄 — 글자 이름이 있는 단추들. 삭제는 맨 끝으로 떨어진다. */
+.track-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--row-selected-border-color);
+  background: var(--row-selected-surface-color);
+}
+
+.track-controls .pill--danger {
+  margin-left: auto;
 }
 
 .track-controls button:disabled {
   cursor: not-allowed;
-  opacity: 0.3;
+  opacity: 0.35;
 }
 
 .track-id {
@@ -295,18 +354,8 @@ function requestRemove(trackId: string): void {
 }
 
 /*
- * 좁은 자리에서 영상 ID 를 접어 제목과 버튼을 확보한다.
- *
- * 두 질의를 **함께** 둔다. 컨테이너 질의가 실제 기준이고, 뷰포트 질의는
- * 컨테이너 질의를 모르는 브라우저를 위한 보루다. 둘 중 하나만 맞아도 접힌다.
- *
- * 왜 뷰포트 질의만으로는 모자랐는가 (2026-11-06 운영 배포 검증에서 발견):
- * 세로 화면에서는 드로어가 화면 폭을 다 쓰므로 둘이 같은 답을 낸다. 그러나
- * 가로 화면에서 드로어는 3열 위에 겹치는 **339px 짜리 좁은 열**이고 뷰포트는
- * 1440px 다. 뷰포트 질의는 "넓다"고 답하므로 ID 가 남고, 행이 목록보다 31px
- * 넓어져 `.drawer-body` 에 가로 스크롤바가 생겼다.
- * (`overflow-y: auto` 를 주면 `overflow-x: visible` 의 used value 가 `auto`
- * 로 바뀌므로, 가로로 넘치는 순간 스크롤바가 선다.)
+ * 좁은 자리에서 영상 ID 를 접는다. 컨테이너 질의가 실제 기준이고, 뷰포트 질의는 컨테이너 질의를
+ * 모르는 브라우저를 위한 보루다 (2026-11-06 운영 배포 검증에서 발견).
  */
 @container (max-width: 420px) {
   .track-id {
@@ -320,9 +369,9 @@ function requestRemove(trackId: string): void {
   }
 }
 
-/* 승인된 디자인의 `.pill` 값을 따른다. */
+/* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
 .pill {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -331,14 +380,26 @@ function requestRemove(trackId: string): void {
   font: 11px var(--font-mono);
 }
 
-.pill:hover {
-  background: var(--pill-surface-hover-color);
+/* 터치 뒤 hover 색이 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  .pill:hover:not(:disabled):not(.pill--strong) {
+    background: var(--pill-surface-hover-color);
+  }
+
+  .track-manage:hover {
+    color: var(--row-action-hover-text-color);
+  }
 }
 
 .pill--strong {
   border-color: var(--accent-strong-color);
   background: var(--accent-strong-color);
   color: var(--accent-strong-text-color);
+}
+
+.pill--danger {
+  border-color: var(--error-text-color);
+  color: var(--error-text-color);
 }
 
 .row-actions {
@@ -357,6 +418,7 @@ function requestRemove(trackId: string): void {
   margin: 0 0 10px;
   color: var(--row-text-color);
   font: 12px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
 }
 
 .rename-form {

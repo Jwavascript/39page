@@ -53,6 +53,17 @@ const editError = ref('')
 const pendingRemoveId = ref<string | null>(null)
 
 /**
+ * "관리" 가 펼쳐진 줄 (M11-3 U17). 메모 수정 · 삭제가 붙은 아이콘 둘(28×29, 3px 간격)이던 자리를,
+ * 글자 이름이 있는 44px 단추로 한 줄 아래에 펼친다. 한 번에 하나다.
+ */
+const managingId = ref<string | null>(null)
+
+function toggleManage(momentId: string): void {
+  pendingRemoveId.value = null
+  managingId.value = managingId.value === momentId ? null : momentId
+}
+
+/**
  * 목록 루트. 포커스를 옮길 때만 쓴다. `v-for` 안의 `ref` 는 배열이 되므로
  * 루트에서 찾는다 (`TrackList` 와 같은 이유).
  */
@@ -66,6 +77,7 @@ function focusIn(selector: string): void {
 
 function startEdit(momentId: string, note: string): void {
   pendingRemoveId.value = null
+  managingId.value = null
   editingId.value = momentId
   draftNote.value = note
   editError.value = ''
@@ -77,8 +89,8 @@ function closeEdit(): void {
   editingId.value = null
   draftNote.value = ''
   editError.value = ''
-  // 폼이 사라진 자리에 포커스가 떨어지지 않게 그 줄의 ✎ 로 돌려준다.
-  if (momentId !== null) focusIn(`[data-moment-edit="${momentId}"]`)
+  // 폼이 사라진 자리에 포커스가 떨어지지 않게 그 줄의 "관리" 로 돌려준다.
+  if (momentId !== null) focusIn(`[data-moment-manage="${momentId}"]`)
 }
 
 async function submitEdit(): Promise<void> {
@@ -120,6 +132,7 @@ function confirmRemove(): void {
   if (momentId === null) return
 
   pendingRemoveId.value = null
+  managingId.value = null
   emit('remove', momentId)
   // 지운 줄이 사라진다. 포커스를 목록의 첫 재생 버튼으로 옮긴다.
   focusIn('.moment-play')
@@ -175,26 +188,45 @@ function noteLabel(note: string): string {
               :title="moment.note"
               >{{ noteLabel(moment.note) }}</span
             >
-            <span class="moment-controls">
-              <button
-                type="button"
-                :data-moment-edit="moment.id"
-                :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 메모 수정`"
-                :title="`${formatMomentTime(moment.atSeconds)} 메모 수정`"
-                @click="startEdit(moment.id, moment.note)"
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                :data-moment-remove="moment.id"
-                :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 순간 삭제`"
-                :title="`${formatMomentTime(moment.atSeconds)} 순간 삭제`"
-                @click="requestRemove(moment.id)"
-              >
-                ×
-              </button>
-            </span>
+            <button
+              type="button"
+              class="moment-manage"
+              :data-moment-manage="moment.id"
+              :aria-expanded="managingId === moment.id"
+              :aria-controls="`${prefix()}-actions-${moment.id}`"
+              :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 관리`"
+              @click="toggleManage(moment.id)"
+            >
+              관리
+            </button>
+          </div>
+
+          <!-- 관리 — 메모 수정, 그리고 떨어진 자리의 삭제. 클래스 이름 `moment-controls` 는 M9 의 것을 잇는다. -->
+          <div
+            v-if="managingId === moment.id"
+            :id="`${prefix()}-actions-${moment.id}`"
+            class="moment-controls"
+            role="group"
+            :aria-label="`${formatMomentTime(moment.atSeconds)} 관리 메뉴`"
+          >
+            <button
+              type="button"
+              class="pill"
+              :data-moment-edit="moment.id"
+              :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 메모 수정`"
+              @click="startEdit(moment.id, moment.note)"
+            >
+              ✎ 메모 수정
+            </button>
+            <button
+              type="button"
+              class="pill pill--danger"
+              :data-moment-remove="moment.id"
+              :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 순간 삭제`"
+              @click="requestRemove(moment.id)"
+            >
+              삭제
+            </button>
           </div>
 
           <!-- 고치는 줄 **바로 아래**에 둔다. 무엇의 메모인지 자리가 말해준다. -->
@@ -280,8 +312,7 @@ function noteLabel(note: string): string {
   color: var(--drawer-section-title-text-color);
   font: 10px var(--font-mono);
   letter-spacing: 0.12em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .group-meta {
@@ -331,7 +362,8 @@ function noteLabel(note: string): string {
  */
 .moment-play {
   display: flex;
-  min-height: 29px;
+  /* 터치 목표 44px (M11 U16). */
+  min-height: 44px;
   flex: none;
   align-items: center;
   padding: 0 6px;
@@ -341,8 +373,29 @@ function noteLabel(note: string): string {
   gap: 6px;
 }
 
-.moment-play:hover {
-  color: var(--row-action-hover-text-color);
+@media (hover: hover) {
+  .moment-play:hover,
+  .moment-manage:hover {
+    color: var(--row-action-hover-text-color);
+  }
+}
+
+.moment-manage {
+  min-width: 56px;
+  min-height: 44px;
+  flex: none;
+  padding: 0 10px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--row-action-text-color);
+  font: 11px var(--font-mono);
+}
+
+.moment-manage[aria-expanded='true'] {
+  border-color: var(--row-selected-border-color);
+  background: var(--row-selected-surface-color);
+  color: var(--row-text-color);
 }
 
 .moment-time {
@@ -358,8 +411,7 @@ function noteLabel(note: string): string {
   color: var(--track-name-text-color);
   font-size: 12px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .moment-note.is-empty {
@@ -368,22 +420,24 @@ function noteLabel(note: string): string {
 }
 
 /* 승인된 디자인의 `.track-controls` 값을 따른다. */
+/* 관리 줄 — 글자 이름이 있는 단추. 삭제는 맨 끝으로 떨어진다. */
 .moment-controls {
   display: flex;
-  flex: none;
-  gap: 3px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--row-selected-border-color);
+  background: var(--row-selected-surface-color);
 }
 
-.moment-controls button {
-  min-width: 28px;
-  height: 29px;
-  border: 0;
-  background: transparent;
-  color: var(--row-action-text-color);
+.moment-controls .pill--danger {
+  margin-left: auto;
 }
 
-.moment-controls button:hover {
-  color: var(--row-action-hover-text-color);
+.pill--danger {
+  border-color: var(--error-text-color);
+  color: var(--error-text-color);
 }
 
 /* `TrackList` 의 이름 변경 폼·삭제 확인과 같은 값이다. */
@@ -446,7 +500,7 @@ function noteLabel(note: string): string {
 
 /* 승인된 디자인의 `.pill` 값을 따른다. */
 .pill {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -455,8 +509,10 @@ function noteLabel(note: string): string {
   font: 11px var(--font-mono);
 }
 
-.pill:hover {
-  background: var(--pill-surface-hover-color);
+@media (hover: hover) {
+  .pill:hover:not(.pill--strong) {
+    background: var(--pill-surface-hover-color);
+  }
 }
 
 .pill--strong {

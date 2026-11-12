@@ -1254,7 +1254,7 @@ describe('D. 드로어 연동', () => {
     expect(context.fake.calls.play).toBe(0)
   })
 
-  it('데크를 눌러도 재생이 끊기지 않는다 — 선반만 펼친다 (M7)', async () => {
+  it('데크를 눌러 보관함을 열어도 재생이 끊기지 않는다 (M11-3)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
@@ -1270,8 +1270,8 @@ describe('D. 드로어 연동', () => {
 
     expect(context.fake.calls.pause).toBe(0)
     expect(context.playback.playerState).toBe('playing')
-    // 드로어는 열리지 않는다.
-    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeDefined()
+    // M11-3: 데크가 음악 보관함을 연다. 덮지 않으므로 멈추지 않는다.
+    expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
   })
 
   /*

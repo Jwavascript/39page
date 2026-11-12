@@ -23,6 +23,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { openTrackManage } from '../support/trackManage'
 
 /** `main.ts` 가 하는 기본 플레이리스트 이름. */
 const DEFAULT_PLAYLIST_NAME = 'MY RECORDS'
@@ -437,17 +438,22 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
     expect(document.activeElement).toBe(trigger.element)
   })
 
-  it('데크를 누르면 드로어가 아니라 플레이리스트 위젯이 펼쳐진다 (M7)', async () => {
+  it('데크를 누르면 음악 보관함이 열린다 — 재생은 끊기지 않는다 (M11-3)', async () => {
     const session = boot()
+    await openDrawer(session)
+    await addTrack(session, VIDEO_URL, 'ONE')
+    await closeDrawer(session)
+    await startPlaying(session, 0)
     const deck = session.wrapper.get(`.deck-open--${session.theme.current}`)
-
-    expect(session.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+    expect(session.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
 
     await deck.trigger('click')
-    await nextTick()
+    await flushPromises()
 
-    expect(session.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
-    expect(session.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
+    expect(session.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(session.wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
+    expect(session.playback.playerState).toBe('playing')
+    expect(session.fake.calls.pause).toBe(0)
   })
 })
 
@@ -464,6 +470,7 @@ describe('9. 플레이리스트 편집 후 큐 안정성', () => {
     // 트랙 추가
     await addTrack(session, 'https://www.youtube.com/embed/aqz-KE-bpKQ', 'THREE')
     // 순서 변경
+    await openTrackManage(session.wrapper, 'TWO')
     await session.wrapper.get('[aria-label="TWO 위로"]').trigger('click')
     // 이름 변경
     const rename = session.wrapper
@@ -501,6 +508,7 @@ describe('10. 재생 중인 트랙 삭제', () => {
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
 
+    await openTrackManage(session.wrapper, 'ONE')
     await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
     await flushPromises()
     await session.wrapper.get('.confirm .pill--strong').trigger('click')
@@ -520,6 +528,7 @@ describe('10. 재생 중인 트랙 삭제', () => {
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
 
+    await openTrackManage(session.wrapper, 'ONE')
     await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
     await flushPromises()
     await session.wrapper.get('.confirm .pill--strong').trigger('click')

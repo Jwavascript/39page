@@ -23,6 +23,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { openTrackManage } from '../support/trackManage'
 
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
@@ -241,7 +242,8 @@ describe('A. 드로어에서 재생 시작', () => {
      * 레코드를 넣으러 들어갈 수 있다.
      */
     expect(wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('.playlist-open').attributes('aria-label')).toContain('트랙 편집')
+    // M11-3: 타일 본문은 보관함에서 그 목록을 편집한다.
+    expect(wrapper.get('.playlist-open').attributes('aria-label')).toContain('보관함에서 편집')
     expect(FakeYtPlayer.instances).toHaveLength(0)
   })
 
@@ -376,9 +378,11 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     const before = [...playback.queue]
 
     // 두 번째 트랙을 위로 올린다.
+    await openTrackManage(wrapper, 'Track 2')
     await wrapper.get('[aria-label="Track 2 위로"]').trigger('click')
     await nextTick()
     // 세 번째 트랙을 지운다. 행의 버튼은 ✎ ↑ ↓ × 네 개다 (M6-5).
+    await openTrackManage(wrapper, 'Track 3')
     await wrapper.get('[aria-label="Track 3 삭제"]').trigger('click')
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
     await nextTick()

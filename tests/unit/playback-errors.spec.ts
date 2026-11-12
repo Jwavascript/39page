@@ -26,6 +26,7 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { openTrackManage } from '../support/trackManage'
 
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
@@ -520,6 +521,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
 
     await editorTrigger(context.wrapper).trigger('click')
     await flushPromises()
+    await openTrackManage(context.wrapper, 'Track 1')
     await context.wrapper.get('[aria-label="Track 1 삭제"]').trigger('click')
     await flushPromises()
     await context.wrapper.get('.confirm .pill--strong').trigger('click')
@@ -538,6 +540,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
     await nextTick()
 
     await editorTrigger(context.wrapper).trigger('click')
+    await openTrackManage(context.wrapper, 'Track 2')
     await context.wrapper.get('[aria-label="Track 2 삭제"]').trigger('click')
     await context.wrapper.get('.confirm .pill--strong').trigger('click')
 

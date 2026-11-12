@@ -14,6 +14,7 @@ import type { Track } from '@/shared/types'
 import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
+import { openTrackManage } from '../support/trackManage'
 
 const KEY = STORAGE_KEYS.library
 const realLocalStorage = globalThis.localStorage
@@ -124,28 +125,27 @@ describe('A. 드로어 동작', () => {
    * "lp판을 누르면 최소화 되었던 playlist 위젯이 펼쳐지게" 로 바뀌었다.
    * 트랙 드로어는 플레이리스트 타일을 눌러서 연다.
    */
-  it('2. Mono Vinyl LP 트리거가 플레이리스트 위젯을 펼친다', async () => {
+  it('2. Mono Vinyl LP 트리거가 음악 보관함을 연다 (M11-3)', async () => {
     const { wrapper } = mountApp()
-
     await deckTrigger(wrapper, 'mono-vinyl').trigger('click')
-    await nextTick()
+    await flushPromises()
 
-    expect(wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+    expect(isOpen(wrapper)).toBe(true)
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
     expect(deckTrigger(wrapper, 'mono-vinyl').attributes('aria-expanded')).toBe('true')
-    // 트랙 드로어는 열리지 않는다.
-    expect(isOpen(wrapper)).toBe(false)
   })
 
-  it('2. 다시 누르면 접힌다', async () => {
+  it('2. 보관함이 열린 동안 데크는 CSS 로만 접히고, 닫으면 같은 노드가 돌아온다 (M11-3)', async () => {
     const { wrapper } = mountApp()
-    const trigger = deckTrigger(wrapper, 'mono-vinyl')
+    const deck = wrapper.get('.deck-widget').element
+    await deckTrigger(wrapper, 'mono-vinyl').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.workspace').classes()).toContain('is-archive-open')
 
-    await trigger.trigger('click')
-    await trigger.trigger('click')
-    await nextTick()
-
-    expect(wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
-    expect(trigger.attributes('aria-expanded')).toBe('false')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
+    await flushPromises()
+    expect(isOpen(wrapper)).toBe(false)
+    expect(wrapper.get('.deck-widget').element).toBe(deck)
   })
 
   it('3. Kawaii 카세트 트리거도 같은 선반을 펼친다', async () => {
@@ -170,13 +170,15 @@ describe('A. 드로어 동작', () => {
     expect(isOpen(wrapper)).toBe(true)
   })
 
-  it('3. 접힌 선반에서도 타일이 보인다 — 드로어로 가는 길이 막히지 않는다', async () => {
+  it('3. 타일 본문도 같은 보관함을 그 목록으로 연다 — 데크와 같은 곳 (M11-3)', async () => {
     const { wrapper } = mountApp()
     useLibraryStore().createPlaylist('A')
-    await nextTick()
+    await flushPromises()
 
-    expect(wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
-    expect(wrapper.findAll('.playlist-tile')).toHaveLength(1)
+    await openDrawer(wrapper)
+    await flushPromises()
+    expect(isOpen(wrapper)).toBe(true)
+    expect(wrapper.get('#playlist-editor-title').text()).toBe('A')
   })
 
   it('4. 닫기 버튼으로 닫힌다', async () => {
@@ -246,13 +248,12 @@ describe('A. 드로어 동작', () => {
     expect(drawer(wrapper).attributes('hidden')).toBeDefined()
   })
 
-  it('데크 트리거가 aria-controls 로 플레이리스트 선반을 가리킨다', () => {
+  it('데크 트리거가 aria-controls 로 보관함을 가리킨다 (M11-3)', () => {
     const { wrapper } = mountApp()
-
     for (const theme of ['mono-vinyl', 'kawaii-synth-cassette'] as const) {
-      expect(deckTrigger(wrapper, theme).attributes('aria-controls')).toBe('playlist-shelf')
+      expect(deckTrigger(wrapper, theme).attributes('aria-controls')).toBe('archive-panel')
+      expect(deckTrigger(wrapper, theme).attributes('aria-expanded')).toBe('false')
     }
-    expect(wrapper.get('.playlist-widget').attributes('id')).toBe('playlist-shelf')
   })
 
   it('포커스 가둠이 없으므로 aria-modal 을 선언하지 않는다', () => {
@@ -460,13 +461,12 @@ describe('B. 플레이리스트 UI', () => {
       'dQw4w9WgXcQ',
       'dQw4w9WgXcQ',
     ])
-    // M6-5 부터 각 행에 ✎ ↑ ↓ × 네 개가 있다. ▶ 는 `.track-play` 로 따로 있다.
-    expect(wrapper.findAll('.track .track-controls button')).toHaveLength(8)
+    // M11-3: 행에는 ▶ 재생과 "관리" 만 드러나 있다. 관리를 펼치면 글자 이름이 있는 단추 넷.
+    expect(wrapper.findAll('.track .track-manage').map((n) => n.text())).toEqual(['관리', '관리'])
+    expect(wrapper.find('.track-controls').exists()).toBe(false)
+    await openTrackManage(wrapper, 'Track t1')
     expect(
-      wrapper
-        .findAll('.track')[0]
-        ?.findAll('.track-controls button')
-        .map((node) => node.attributes('aria-label')),
+      wrapper.findAll('.track-controls button').map((node) => node.attributes('aria-label')),
     ).toEqual(['Track t1 이름 변경', 'Track t1 위로', 'Track t1 아래로', 'Track t1 삭제'])
   })
 
@@ -821,8 +821,8 @@ describe('F. 긴 이름·긴 제목이 드로어를 넓히지 않는다 (M9-6 �
     expect(archive()).toMatch(/\.close \{[^}]*flex: none/)
     // 탭 줄은 줄어들 수 있다 — 닫기(×)를 밀어내지 않는다.
     expect(archive()).toMatch(/\.tabs \{[^}]*min-width: 0/)
-    // 줄어든 자리에서 제목은 말줄임된다.
-    expect(editor()).toMatch(/\.drawer-title \{[^}]*text-overflow: ellipsis/)
+    // M11-3: 긴 이름은 잘리지 않고 줄을 바꾼다 (U12) — 목록 머리말이 보관함 폭을 넘지 않는다.
+    expect(editor()).toMatch(/\.drawer-title \{[^}]*overflow-wrap: anywhere/)
   })
 
   it('트랙 목록의 열이 목록 폭에 묶여 있다', () => {

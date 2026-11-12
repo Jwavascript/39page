@@ -18,7 +18,7 @@
  *   `DashboardShell`      → `PlaybackVisibility` (가리기 전 통지)
  *   Moments UI (M9-4)     → `PlaybackMoments` (시점 캡처 · Moment 재생)
  */
-import type { InjectionKey } from 'vue'
+import type { InjectionKey, Ref } from 'vue'
 
 import type { PlayerAdapter, PlayerAdapterEvents } from './PlayerAdapter'
 import type { PlayerPresence } from './playerVisibility'
@@ -257,8 +257,27 @@ export interface PlayerAttachment {
   detach(): void
 }
 
+/**
+ * 지금 큐의 곡 (M11-3). 라이브러리 화면이 "재생 중" 을 표시할 때 읽는다.
+ *
+ * 화면은 playback store 를 직접 보지 않는다 (ADR 0009 — 라이브러리가 아는 것은 이 계약뿐이다).
+ * 그래서 계약이 **읽기 전용 보기**를 내준다. 바꾸는 방법은 여전히 요청(`playTrack` 등)뿐이다.
+ */
+export interface NowPlaying {
+  /** 큐의 트랙 id — 라이브러리 트랙 id 와 같다. 라이브러리 밖 영상(Moment 재생)이면 라이브러리에 없을 수 있다. */
+  readonly trackId: string
+  readonly videoId: string
+  /** 실제로 소리가 나는 중인지. 일시정지 · 적재 중이면 `false` (그래도 "지금 곡" 이다). */
+  readonly playing: boolean
+}
+
+export interface PlaybackNowPlaying {
+  readonly nowPlaying: Readonly<Ref<NowPlaying | null>>
+}
+
 export interface PlaybackCoordinator
   extends
+    PlaybackNowPlaying,
     PlaybackRequests,
     PlaybackTransport,
     PlaybackLibraryNotices,

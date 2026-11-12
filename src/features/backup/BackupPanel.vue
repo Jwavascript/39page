@@ -374,9 +374,9 @@ function onFileChange(event: Event): void {
   letter-spacing: 0.12em;
 }
 
-/* 승인된 디자인의 `.pill` 값을 따른다. */
+/* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
 .pill {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -385,8 +385,10 @@ function onFileChange(event: Event): void {
   font: 11px var(--font-mono);
 }
 
-.pill:hover {
-  background: var(--pill-surface-hover-color);
+@media (hover: hover) {
+  .pill:hover {
+    background: var(--pill-surface-hover-color);
+  }
 }
 
 .pill--strong {
