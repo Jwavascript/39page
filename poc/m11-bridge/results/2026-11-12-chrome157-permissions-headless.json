@@ -1,0 +1,120 @@
+{
+  "env": {
+    "browser": "Chrome/157.0.8103.50",
+    "manifest": {
+      "permissions": ["activeTab", "scripting", "offscreen"],
+      "optional_host_permissions": ["http://127.0.0.1:4173/*"]
+    }
+  },
+  "results": [
+    {
+      "id": "Q1",
+      "title": "권한 없이 — contains · 확장 페이지 안 39page iframe",
+      "details": {
+        "contains": false,
+        "probe": {
+          "marker": null,
+          "sharedLocks": false,
+          "libraryLength": null
+        },
+        "partitioned": true
+      }
+    },
+    {
+      "id": "Q2",
+      "title": "permissions.request() — 사용자 제스처, 헤드리스 프롬프트",
+      "details": {
+        "request": {
+          "timedOut": true
+        },
+        "containsAfter": false
+      }
+    },
+    {
+      "id": "Q3",
+      "title": "다른 실제 부여 경로 — chrome://extensions 사이트 액세스 (developerPrivate)",
+      "details": {
+        "before": {
+          "hostAccess": "ON_ALL_SITES",
+          "hasAllHosts": false,
+          "hosts": []
+        },
+        "addHostPermission": "ok",
+        "hostsAfter": [],
+        "contains": false,
+        "events": []
+      }
+    },
+    {
+      "id": "Q4",
+      "title": "부여 직후 — 새 iframe · 부여 전부터 떠 있던 iframe",
+      "details": {
+        "contains": false,
+        "newIframe": {
+          "marker": null,
+          "sharedLocks": false,
+          "libraryLength": null
+        },
+        "preexistingIframe": {
+          "marker": null,
+          "sharedLocks": false,
+          "libraryLength": null
+        }
+      }
+    },
+    {
+      "id": "Q5",
+      "title": "부여 뒤 offscreen 브리지로 Library · Moments 조회 (실제 store)",
+      "details": {
+        "hello": {
+          "protocol": 1,
+          "library": {
+            "status": "ready",
+            "protectedReason": null,
+            "playlists": 0
+          },
+          "moments": {
+            "status": "ready",
+            "protectedReason": null,
+            "count": 0
+          }
+        },
+        "playlists": [],
+        "sameAsDashboard": false,
+        "momentsStatus": "ready"
+      }
+    },
+    {
+      "id": "Q6",
+      "title": "철회 — permissions.remove() 뒤 새 iframe · 이미 떠 있던 iframe · offscreen 브리지",
+      "details": {
+        "remove": {
+          "value": true
+        },
+        "contains": false,
+        "events": [],
+        "newIframe": {
+          "marker": null,
+          "sharedLocks": false,
+          "libraryLength": null
+        },
+        "iframeOpenedWhileGranted": {
+          "marker": null,
+          "sharedLocks": false,
+          "libraryLength": null
+        },
+        "staleOffscreenBridge": [],
+        "freshOffscreenBridge": []
+      }
+    },
+    {
+      "id": "Q7",
+      "title": "철회 상태의 폴백 — 기존 수집 화면(새 탭)은 권한 없이 동작",
+      "details": {
+        "collectView": "39page YOUTUBE 에서 담기 담을 영상 제목 없음 — “YouTube · dQw4w9WgXcQ” 로 저장됩니다 dQw4w9WgXc",
+        "firstPartyStorage": true,
+        "choices": 2
+      }
+    }
+  ]
+}

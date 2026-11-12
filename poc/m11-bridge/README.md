@@ -33,6 +33,11 @@ npx vue-tsc --noEmit -p poc/m11-bridge/tsconfig.json
 # 실제 Chrome 통합 (실제 YouTube 에 접속한다 · 격리된 임시 프로필)
 npx vite build --config poc/m11-bridge/vite.config.ts
 POC_CHROME=<Chrome for Testing 의 chrome.exe> node poc/m11-bridge/harness/run.mjs
+
+# 선택 호스트 권한 사전 검증 (M11 Batch A — 로컬 서버만 · 격리 프로필)
+# POC_HEADFUL=1 이면 창을 띄우고 실제 권한 프롬프트 단추를 Windows UI Automation 으로 누른다
+# (그 Chrome 프로세스의 창만 찾는다). 없으면 헤드리스 — 프롬프트에 답할 수 없다.
+POC_CHROME=<chrome.exe> POC_HEADFUL=1 node poc/m11-bridge/harness/permissions.mjs
 ```
 
 - **브라우저는 Chrome for Testing** 을 쓴다. 브랜드 Chrome 137+ 은 압축해제 확장 로드 명령줄 플래그를 막고, 이 기기(Windows)

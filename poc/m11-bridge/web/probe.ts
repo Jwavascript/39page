@@ -32,8 +32,16 @@ async function report(): Promise<Record<string, unknown>> {
   } catch {
     locks = null
   }
+  // 브리지가 스스로 "분할된 저장소" 를 알아챌 수 있는지 — 권한 상태별로 값을 본다 (M11 Batch A 지시 4).
+  let storageAccess: boolean | string | null = null
+  try {
+    storageAccess = (await document.hasStorageAccess?.()) ?? null
+  } catch (error) {
+    storageAccess = String(error)
+  }
   return {
     href: globalThis.location.href,
+    storageAccess,
     isTop: globalThis.top === globalThis.self,
     ancestors: globalThis.location.ancestorOrigins
       ? Array.from(globalThis.location.ancestorOrigins)
