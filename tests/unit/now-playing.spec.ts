@@ -174,10 +174,12 @@ describe('C. 데크 — 안내 문구가 실제 동작과 같다 (U2 · U3)', ()
     }
 
     const s = boot()
-    useThemeStore().setTheme('kawaii-synth-cassette')
-    await nextTick()
+    // 기본 테마(Kawaii Synth Cassette)의 안내를 먼저 보고, Mono Vinyl 로 바꿔 그 트리거를 누른다.
     expect(s.wrapper.get('.deck-hint').text()).toContain('믹스테이프 보관함이 열려요')
-    await s.wrapper.get('.deck-open--kawaii-synth-cassette').trigger('click')
+    useThemeStore().setTheme('mono-vinyl')
+    await nextTick()
+    expect(s.wrapper.get('.deck-hint').text()).toContain('음악 보관함이 열려요')
+    await s.wrapper.get('.deck-open--mono-vinyl').trigger('click')
     await flushPromises()
     expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
   })

@@ -1155,7 +1155,7 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     await nextTick()
     await s.wrapper.get('#moment-capture-note').setValue('쓰던 중')
 
-    s.theme.setTheme('kawaii-synth-cassette')
+    s.theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect((s.wrapper.get('#moment-capture-note').element as HTMLTextAreaElement).value).toBe(
@@ -1175,7 +1175,7 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     const panel = await openArchiveMoments(s)
     await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
-    s.theme.setTheme('kawaii-synth-cassette')
+    s.theme.setTheme('mono-vinyl')
     await nextTick()
     await s.wrapper.get('.drawer .close').trigger('click')
     await nextTick()

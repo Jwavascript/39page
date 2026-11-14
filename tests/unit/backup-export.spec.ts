@@ -538,7 +538,7 @@ describe('E. 데이터 대화상자의 백업 패널 (M11-2 에서 드로어 바
     const context = mountApp()
     expect(backupButton(context)?.exists()).toBe(true)
 
-    context.theme.setTheme('kawaii-synth-cassette')
+    context.theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(backupButton(context)?.exists()).toBe(true)
@@ -566,7 +566,7 @@ describe('E. 데이터 대화상자의 백업 패널 (M11-2 에서 드로어 바
   it('내려받은 파일이 지금 라이브러리와 테마를 담는다', async () => {
     const context = mountApp()
     await seed(context.library)
-    context.theme.setTheme('kawaii-synth-cassette')
+    context.theme.setTheme('mono-vinyl')
     await nextTick()
     const created = stubDownloadGlobals()
 
@@ -579,7 +579,7 @@ describe('E. 데이터 대화상자의 백업 패널 (M11-2 에서 드로어 바
       'TWO',
     ])
     expect(file.data.library.data.selectedPlaylistId).toBe(context.library.selectedPlaylistId)
-    expect(file.data.preferences?.theme?.data).toBe('kawaii-synth-cassette')
+    expect(file.data.preferences?.theme?.data).toBe('mono-vinyl')
   })
 
   it('내려받기가 실패하면 오류 어조로 알린다', async () => {

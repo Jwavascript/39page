@@ -5,7 +5,7 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { STORAGE_KEYS } from '@/shared/storage'
-import { DEFAULT_THEME_KEY } from '@/shared/types'
+import { DEFAULT_THEME_KEY, THEME_KEYS } from '@/shared/types'
 import { THEME_STORAGE_VERSION, useThemeStore } from '@/stores/theme'
 
 /**
@@ -59,24 +59,24 @@ afterEach(() => {
 })
 
 describe('1. 기본 테마', () => {
-  it('기본 테마는 mono-vinyl이다', () => {
+  it('기본 테마는 kawaii-synth-cassette 다 (M11-7B)', () => {
     const theme = useThemeStore()
-    expect(DEFAULT_THEME_KEY).toBe('mono-vinyl')
-    expect(theme.current).toBe('mono-vinyl')
+    expect(DEFAULT_THEME_KEY).toBe('kawaii-synth-cassette')
+    expect(theme.current).toBe('kawaii-synth-cassette')
   })
 
   it('store 생성 시점에 DOM에 기본 테마가 반영된다', () => {
     useThemeStore()
-    expect(domTheme()).toBe('mono-vinyl')
+    expect(domTheme()).toBe('kawaii-synth-cassette')
   })
 
   it('메타데이터를 레지스트리에서 가져온다', () => {
     const theme = useThemeStore()
-    expect(theme.metadata.name).toBe('Mono Vinyl')
-    expect(theme.metadata.label).toBe('01 / MONO VINYL')
+    expect(theme.metadata.name).toBe('Kawaii Synth Cassette')
+    expect(theme.metadata.label).toBe('01 / SYNTH CASSETTE')
     expect(theme.available.map((option) => option.key)).toEqual([
-      'mono-vinyl',
       'kawaii-synth-cassette',
+      'mono-vinyl',
     ])
   })
 })
@@ -132,7 +132,7 @@ describe('4. 저장된 테마 복원', () => {
   it('저장값이 없으면 기본 테마를 유지한다', () => {
     const theme = useThemeStore()
     expect(theme.restore()).toBe('empty')
-    expect(theme.current).toBe('mono-vinyl')
+    expect(theme.current).toBe('kawaii-synth-cassette')
   })
 
   it('복원은 저장소에 쓰지 않는다', () => {
@@ -151,6 +151,55 @@ describe('4. 저장된 테마 복원', () => {
   })
 })
 
+describe('4-1. 기본 테마 변경과 기존 사용자 (M11-7B)', () => {
+  it('저장값이 없는 새 사용자는 Kawaii Synth Cassette 로 시작하고, 읽기만으로 저장소에 쓰지 않는다', () => {
+    const theme = useThemeStore()
+    expect(theme.restore()).toBe('empty')
+    expect(theme.current).toBe('kawaii-synth-cassette')
+    expect(domTheme()).toBe('kawaii-synth-cassette')
+    expect(readRaw()).toBeNull()
+  })
+
+  it('Mono Vinyl 을 골라 둔 기존 사용자는 Mono Vinyl 그대로다 — 저장 원문도 그대로', () => {
+    const raw = envelope('mono-vinyl')
+    seedRaw(raw)
+    const theme = useThemeStore()
+
+    expect(theme.restore()).toBe('stored')
+    expect(theme.current).toBe('mono-vinyl')
+    expect(domTheme()).toBe('mono-vinyl')
+    expect(readRaw()).toBe(raw)
+  })
+
+  it('Kawaii Synth Cassette 를 골라 둔 기존 사용자도 그대로다', () => {
+    const raw = envelope('kawaii-synth-cassette')
+    seedRaw(raw)
+    const theme = useThemeStore()
+
+    expect(theme.restore()).toBe('stored')
+    expect(theme.current).toBe('kawaii-synth-cassette')
+    expect(readRaw()).toBe(raw)
+  })
+
+  it('전환 → 저장 → 새 store(새로고침)에서 복원된다. 키와 저장 형식은 그대로', () => {
+    useThemeStore().setTheme('mono-vinyl')
+    expect(readRaw()).toBe(envelope('mono-vinyl'))
+
+    setActivePinia(createPinia())
+    const reloaded = useThemeStore()
+    reloaded.restore()
+    expect(reloaded.current).toBe('mono-vinyl')
+  })
+
+  it('표시 순서는 Theme 1 = Kawaii Synth Cassette, Theme 2 = Mono Vinyl 이다', () => {
+    expect(THEME_KEYS).toEqual(['kawaii-synth-cassette', 'mono-vinyl'])
+    expect(useThemeStore().available.map((option) => option.label)).toEqual([
+      '01 / SYNTH CASSETTE',
+      '02 / MONO VINYL',
+    ])
+  })
+})
+
 describe('5. 알 수 없는 테마 키', () => {
   it.each([
     ['알 수 없는 문자열', envelope('neon-cyberpunk')],
@@ -164,8 +213,8 @@ describe('5. 알 수 없는 테마 키', () => {
     const theme = useThemeStore()
 
     expect(theme.restore()).toBe('invalid')
-    expect(theme.current).toBe('mono-vinyl')
-    expect(domTheme()).toBe('mono-vinyl')
+    expect(theme.current).toBe('kawaii-synth-cassette')
+    expect(domTheme()).toBe('kawaii-synth-cassette')
   })
 
   it('setTheme에 알 수 없는 값이 들어와도 기본 테마로 떨어진다', () => {
@@ -173,8 +222,8 @@ describe('5. 알 수 없는 테마 키', () => {
     // 런타임 입력(저장 데이터, DOM 속성 등)을 모사한다.
     theme.setTheme('neon-cyberpunk' as never)
 
-    expect(theme.current).toBe('mono-vinyl')
-    expect(domTheme()).toBe('mono-vinyl')
+    expect(theme.current).toBe('kawaii-synth-cassette')
+    expect(domTheme()).toBe('kawaii-synth-cassette')
   })
 })
 
@@ -224,7 +273,7 @@ describe('6. 저장소 오류에서도 전환은 동작한다', () => {
 
     expect(() => theme.restore()).not.toThrow()
     expect(theme.restore()).toBe('unavailable')
-    expect(theme.current).toBe('mono-vinyl')
+    expect(theme.current).toBe('kawaii-synth-cassette')
   })
 })
 
@@ -239,7 +288,7 @@ describe('7. 손상·미래 버전 데이터를 덮어쓰지 않는다', () => {
     const theme = useThemeStore()
 
     expect(theme.restore()).toBe(expected)
-    expect(theme.current).toBe('mono-vinyl')
+    expect(theme.current).toBe('kawaii-synth-cassette')
     // 복원이 기본값으로 떨어져도 원본은 그대로 남아야 한다.
     expect(readRaw()).toBe(raw)
   })
@@ -334,11 +383,14 @@ describe('초기 테마 적용 스크립트 (index.html)', () => {
     expect(INDEX_HTML).toContain(`data-theme="${DEFAULT_THEME_KEY}"`)
   })
 
-  it('검증 로직을 중복하지 않는다', () => {
-    // 테마 키 목록을 다시 적지 않는다. 알 수 없는 값은 CSS 가 되돌리고
-    // 마운트 시 store 가 검증된 값으로 덮어쓴다.
-    expect(INDEX_HTML).not.toContain('kawaii-synth-cassette')
-    expect(INDEX_HTML).not.toContain('THEME_KEYS')
+  it('알려진 테마 키만 적용하고, 그 목록이 THEME_KEYS 와 같다 (M11-7B)', () => {
+    // 기본 테마가 CSS 바탕 토큰(mono-vinyl)과 달라졌다 — 알 수 없는 값을 그대로 넣으면 바탕 테마가
+    // 한 프레임 보인다. 그래서 인라인 스크립트가 두 키만 받는다. 목록이 어긋나면 여기서 드러난다.
+    const script = /<script>([\s\S]*?)<\/script>/.exec(INDEX_HTML)?.[1] ?? ''
+    const code = script.replace(/\/\*[\s\S]*?\*\//g, '')
+    const keys = [...code.matchAll(/saved === '([a-z-]+)'/g)].map((match) => match[1])
+    expect([...keys].sort()).toEqual([...THEME_KEYS].sort())
+    expect(code).not.toMatch(/typeof saved === 'string'/)
   })
 
   it('저장값이 없거나 손상되어도 던지지 않는다', () => {

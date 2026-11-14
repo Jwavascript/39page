@@ -205,13 +205,14 @@ describe('A. 데크 렌더링', () => {
     const mono = () => wrapper.get('.deck-art--mono-vinyl')
     const kawaii = () => wrapper.get('.deck-art--kawaii-synth-cassette')
 
-    expect(mono().attributes('aria-hidden')).toBeUndefined()
-    expect(kawaii().attributes('aria-hidden')).toBe('true')
-
-    await switchTheme('kawaii-synth-cassette')
-
-    expect(mono().attributes('aria-hidden')).toBe('true')
+    // 기본 테마는 Kawaii Synth Cassette 다 (M11-7B).
     expect(kawaii().attributes('aria-hidden')).toBeUndefined()
+    expect(mono().attributes('aria-hidden')).toBe('true')
+
+    await switchTheme('mono-vinyl')
+
+    expect(kawaii().attributes('aria-hidden')).toBe('true')
+    expect(mono().attributes('aria-hidden')).toBeUndefined()
   })
 
   it('시각적 표시는 테마별 deck.css 가 전환한다', () => {
@@ -415,7 +416,7 @@ describe('B. 테마 전환 안정성', () => {
     const { wrapper } = mountAppWithFake()
     const root = wrapper.get('[data-instance-id="deck-main"]').element
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
     await switchTheme('mono-vinyl')
 
     expect(wrapper.get('[data-instance-id="deck-main"]').element).toBe(root)
@@ -441,7 +442,7 @@ describe('B. 테마 전환 안정성', () => {
       wrapper.findAll('[data-instance-id]').map((n) => n.attributes('data-instance-id'))
     const before = ids()
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(ids()).toEqual(before)
     expect(before).toEqual([
@@ -460,7 +461,7 @@ describe('B. 테마 전환 안정성', () => {
     const surface = wrapper.get('[data-instance-id="player-main"]').element
     const mountHost = wrapper.get('.player-mount').element
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
     await switchTheme('mono-vinyl')
 
     expect(wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)
@@ -486,7 +487,7 @@ describe('B. 테마 전환 안정성', () => {
     const host = wrapper.findComponent({ name: 'WidgetHost' })
     const layoutBefore = host.props('layout')
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(host.props('layout')).toBe(layoutBefore)
   })

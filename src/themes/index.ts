@@ -61,7 +61,8 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
   'mono-vinyl': {
     key: 'mono-vinyl',
     name: 'Mono Vinyl',
-    label: '01 / MONO VINYL',
+    // M11-7B: 표시 순서가 둘째가 됐다 (번호만 — 키와 디자인은 그대로).
+    label: '02 / MONO VINYL',
     description: '따뜻한 회갈색 금속 턴테이블. 검은 LP와 아이보리 도트.',
     mascot: { message: 'SIGNAL READY', sub: 'a little life inside your music' },
     footerLabel: 'MONO VINYL · ANALOG × DIGITAL',
@@ -77,7 +78,8 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
   'kawaii-synth-cassette': {
     key: 'kawaii-synth-cassette',
     name: 'Kawaii Synth Cassette',
-    label: '02 / SYNTH CASSETTE',
+    // M11-7B: Theme 1 · 새 사용자의 기본 테마.
+    label: '01 / SYNTH CASSETTE',
     description: '민트 카세트 데크에 분홍 포인트. 90s 신스 레트로 디지털.',
     mascot: { message: 'MIXTAPE READY', sub: 'a tiny melody from tomorrow' },
     footerLabel: 'SYNTH CASSETTE · PIXEL × KAWAII',

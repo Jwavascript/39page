@@ -463,6 +463,12 @@ describe('C. readBackup — 경고하고 가져온다', () => {
 
 function mountApp() {
   const fake = new FakePlayerAdapter()
+  /*
+   * 이 파일의 시나리오는 "Mono Vinyl 을 쓰던 사용자가 Kawaii 테마가 든 백업을 가져온다" 다. 기본 테마가
+   * Kawaii Synth Cassette 로 바뀐 뒤(M11-7B)에도 복원이 테마를 **바꾸는지** 볼 수 있게, 시작 테마를
+   * 저장소에 쓰지 않고 메모리에서만 Mono Vinyl 로 둔다.
+   */
+  useThemeStore().current = 'mono-vinyl'
   const wrapper = mount(App, {
     attachTo: document.body,
     global: { provide: { [PLAYER_ADAPTER_FACTORY as symbol]: () => fake } },

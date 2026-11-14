@@ -42,7 +42,8 @@ describe('ThemeSwitcher — 구조와 접근성', () => {
     const wrapper = mount(ThemeSwitcher)
     const labels = wrapper.findAll('button').map((button) => button.text())
 
-    expect(labels).toEqual(['01 / MONO VINYL', '02 / SYNTH CASSETTE'])
+    // M11-7B: Theme 1 = Synth Cassette, Theme 2 = Mono Vinyl.
+    expect(labels).toEqual(['01 / SYNTH CASSETTE', '02 / MONO VINYL'])
     expect(labels).toEqual(THEME_LIST.map((option) => option.label))
   })
 
@@ -92,22 +93,23 @@ describe('9. aria-pressed 가 현재 선택과 일치한다', () => {
 
   it('선택된 버튼에 시각적 구별 클래스가 붙는다', async () => {
     const wrapper = mount(ThemeSwitcher)
-    const [mono, kawaii] = wrapper.findAll('button')
+    // 첫 버튼이 기본 테마다 (M11-7B: Kawaii Synth Cassette).
+    const [kawaii, mono] = wrapper.findAll('button')
 
-    expect(mono?.classes()).toContain('is-active')
-    expect(kawaii?.classes()).not.toContain('is-active')
-
-    await kawaii?.trigger('click')
-
-    expect(mono?.classes()).not.toContain('is-active')
     expect(kawaii?.classes()).toContain('is-active')
+    expect(mono?.classes()).not.toContain('is-active')
+
+    await mono?.trigger('click')
+
+    expect(kawaii?.classes()).not.toContain('is-active')
+    expect(mono?.classes()).toContain('is-active')
   })
 
   it('store 에서 테마를 바꿔도 버튼 상태가 따라온다', async () => {
     const wrapper = mount(ThemeSwitcher)
     const theme = useThemeStore()
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await wrapper.vm.$nextTick()
 
     expect(wrapper.findAll('button')[1]?.attributes('aria-pressed')).toBe('true')
@@ -121,11 +123,11 @@ describe('ThemeSwitcher — 동작', () => {
 
     await wrapper.findAll('button')[1]?.trigger('click')
 
-    expect(theme.current).toBe('kawaii-synth-cassette')
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(theme.current).toBe('mono-vinyl')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
     expect(JSON.parse(globalThis.localStorage.getItem(STORAGE_KEYS.theme) as string)).toEqual({
       version: 1,
-      data: 'kawaii-synth-cassette',
+      data: 'mono-vinyl',
     })
   })
 
@@ -135,7 +137,7 @@ describe('ThemeSwitcher — 동작', () => {
 
     await wrapper.findAll('button')[0]?.trigger('click')
 
-    expect(theme.current).toBe('mono-vinyl')
+    expect(theme.current).toBe('kawaii-synth-cassette')
     expect(wrapper.findAll('button')[0]?.attributes('aria-pressed')).toBe('true')
   })
 })

@@ -105,8 +105,9 @@ describe('테마 CSS 파일 구조', () => {
     }
   })
 
-  it('mono-vinyl이 data-theme 없이도 기본 테마로 적용된다', () => {
-    // bare `:root`가 선택자에 함께 있어야 Theme Store 없이도 기본값이 걸린다.
+  it('mono-vinyl 토큰이 data-theme 없이도 CSS 바탕으로 적용된다', () => {
+    // bare `:root`가 선택자에 함께 있어야 kawaii 가 재정의하지 않은 값이 정의된 채로 남는다 (THEME_SYSTEM §4.7).
+    // 사용자에게 보이는 기본 테마와는 별개다 — 그것은 <html data-theme> 과 Theme Store 가 정한다 (M11-7B).
     expect(THEME_CSS['mono-vinyl']).toContain(':root,')
     expect(THEME_CSS['mono-vinyl']).toContain(":root[data-theme='mono-vinyl']")
   })
@@ -118,8 +119,8 @@ describe('테마 CSS 파일 구조', () => {
     expect(stripComments(css)).not.toMatch(/:root\s*\{/)
   })
 
-  it('기본 테마는 mono-vinyl이다', () => {
-    expect(DEFAULT_THEME_KEY).toBe('mono-vinyl')
+  it('기본 테마는 kawaii-synth-cassette 다 (M11-7B)', () => {
+    expect(DEFAULT_THEME_KEY).toBe('kawaii-synth-cassette')
   })
 })
 
@@ -328,11 +329,12 @@ describe('테마 레지스트리', () => {
     }
   })
 
-  it('레이블이 승인된 디자인 문구와 일치한다', () => {
-    expect(THEMES['mono-vinyl'].label).toBe('01 / MONO VINYL')
-    expect(THEMES['kawaii-synth-cassette'].label).toBe('02 / SYNTH CASSETTE')
+  it('레이블의 이름은 승인된 디자인 문구를 따르고, 번호만 표시 순서를 따른다 (M11-7B)', () => {
+    // 사용자 결정으로 Theme 1 이 Synth Cassette 가 됐다. 레퍼런스(v09)는 고치지 않았으므로 번호는 다르다.
+    expect(THEMES['kawaii-synth-cassette'].label).toBe('01 / SYNTH CASSETTE')
+    expect(THEMES['mono-vinyl'].label).toBe('02 / MONO VINYL')
     for (const meta of THEME_LIST) {
-      expect(REFERENCE_V09).toContain(meta.label)
+      expect(REFERENCE_V09).toContain(meta.label.replace(/^\d+ \/ /, ''))
     }
   })
 

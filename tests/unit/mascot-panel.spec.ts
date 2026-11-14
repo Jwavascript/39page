@@ -128,9 +128,10 @@ describe('C. 마스코트 렌더링', () => {
   it('패널에 레퍼런스의 라벨과 문구를 표시한다', () => {
     const wrapper = mount(MascotPanel)
 
+    // 기본 테마(M11-7B: Kawaii Synth Cassette)의 문구다.
     expect(wrapper.text()).toContain('COMPANION / 01')
-    expect(wrapper.get('.mascot-message').text()).toBe('SIGNAL READY')
-    expect(wrapper.get('.mascot-sub').text()).toBe('a little life inside your music')
+    expect(wrapper.get('.mascot-message').text()).toBe('MIXTAPE READY')
+    expect(wrapper.get('.mascot-sub').text()).toBe('a tiny melody from tomorrow')
   })
 
   it('15 · 16. 도트 색을 테마 토큰으로만 결정한다', () => {
@@ -187,12 +188,12 @@ describe('C. 마스코트와 테마 전환', () => {
   it('테마별 문구가 바뀐다', async () => {
     const wrapper = mount(MascotPanel)
 
-    expect(wrapper.get('.mascot-message').text()).toBe('SIGNAL READY')
-
-    await switchTheme('kawaii-synth-cassette')
-
     expect(wrapper.get('.mascot-message').text()).toBe('MIXTAPE READY')
-    expect(wrapper.get('.mascot-sub').text()).toBe('a tiny melody from tomorrow')
+
+    await switchTheme('mono-vinyl')
+
+    expect(wrapper.get('.mascot-message').text()).toBe('SIGNAL READY')
+    expect(wrapper.get('.mascot-sub').text()).toBe('a little life inside your music')
   })
 
   it('17. 테마 변경 시 패턴 데이터가 변하지 않는다', async () => {
@@ -200,7 +201,7 @@ describe('C. 마스코트와 테마 전환', () => {
     const before = wrapper.findAll('[data-on="true"]').length
     const patternBefore = MASCOT_PATTERNS['mono-vinyl']
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(wrapper.findAll('[data-on="true"]')).toHaveLength(before)
     expect(MASCOT_PATTERNS['kawaii-synth-cassette']).toBe(patternBefore)
@@ -214,7 +215,7 @@ describe('C. 마스코트와 테마 전환', () => {
     const adapterNode = fake.hostNode
 
     // 마스코트가 테마 전환으로 다시 렌더되어도 플레이어는 무관해야 한다.
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
     await switchTheme('mono-vinyl')
 
     expect(wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)
@@ -228,7 +229,7 @@ describe('C. 마스코트와 테마 전환', () => {
     const { wrapper } = mountAppWithFake()
     const root = wrapper.get('[data-instance-id="mascot-main"]').element
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(wrapper.get('[data-instance-id="mascot-main"]').element).toBe(root)
   })

@@ -215,7 +215,7 @@ describe('B. 저장 키가 서로를 건드리지 않는다', () => {
     moments.add({ videoId: VIDEO, atSeconds: 10 })
     const before = rawMoments()
 
-    useThemeStore().setTheme('kawaii-synth-cassette')
+    useThemeStore().setTheme('mono-vinyl')
 
     expect(rawMoments()).toBe(before)
   })

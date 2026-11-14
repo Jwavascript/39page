@@ -212,7 +212,7 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
       ]),
     )
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     // 같은 노드여야 한다. 새 노드면 iframe 이 재로드된다.
@@ -261,7 +261,7 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
       wrapper.findAll('[data-instance-id]').map((node) => node.attributes('data-instance-id'))
 
     const before = ids()
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(ids()).toEqual(before)
@@ -276,7 +276,7 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
     const hostElement = host.element
     const widgetElements = [...host.element.children]
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(host.element).toBe(hostElement)
@@ -288,11 +288,11 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
     const theme = useThemeStore()
     const shell = wrapper.get('.dashboard-shell').element
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(wrapper.get('.dashboard-shell').element).toBe(shell)
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
   })
 })
 
@@ -319,7 +319,7 @@ describe('7. 테마와 위젯의 책임 분리', () => {
     const host = wrapper.findComponent(WidgetHost)
 
     const before = host.props('layout')
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     // 같은 객체 참조여야 한다. 테마별 레이아웃을 만들지 않는다.

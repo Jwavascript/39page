@@ -302,15 +302,16 @@ describe('E. 장식과 상태', () => {
     const { wrapper } = mountApp()
     const theme = useThemeStore()
 
+    // DOM 순서는 [mono, kawaii] 그대로다. 기본 테마는 Kawaii Synth Cassette (M11-7B).
     const arts = wrapper.findAll('.deck-art')
-    expect(arts[0]?.attributes('aria-hidden')).toBeUndefined()
-    expect(arts[1]?.attributes('aria-hidden')).toBe('true')
+    expect(arts[0]?.attributes('aria-hidden')).toBe('true')
+    expect(arts[1]?.attributes('aria-hidden')).toBeUndefined()
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect(wrapper.findAll('.deck-art')[0]?.attributes('aria-hidden')).toBe('true')
-    expect(wrapper.findAll('.deck-art')[1]?.attributes('aria-hidden')).toBeUndefined()
+    expect(wrapper.findAll('.deck-art')[0]?.attributes('aria-hidden')).toBeUndefined()
+    expect(wrapper.findAll('.deck-art')[1]?.attributes('aria-hidden')).toBe('true')
   })
 
   it('상태 영역이 정중한 라이브 리전이다', () => {

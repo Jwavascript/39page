@@ -366,10 +366,11 @@ describe('7. 재생 중 테마 변경', () => {
       state: session.playback.playerState,
     }
 
+    // 둘째 버튼 = Mono Vinyl (M11-7B 부터 기본 · 첫 버튼은 Kawaii Synth Cassette).
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
 
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
     expect(session.fake.calls.mount).toBe(1)
     expect(session.fake.calls.destroy).toBe(0)
     expect(session.fake.hostNode).toBe(host)
@@ -388,14 +389,14 @@ describe('7. 재생 중 테마 변경', () => {
     await closeDrawer(session)
     await startPlaying(session, 0)
 
-    expect(session.wrapper.get('.mascot-message').text()).toBe('NOW SPINNING')
-    expect(session.wrapper.get('.footer-theme').text()).toContain('MONO VINYL')
+    expect(session.wrapper.get('.mascot-message').text()).toBe('TAPE ROLLING')
+    expect(session.wrapper.get('.footer-theme').text()).toContain('SYNTH CASSETTE')
 
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
 
-    expect(session.wrapper.get('.mascot-message').text()).toBe('TAPE ROLLING')
-    expect(session.wrapper.get('.footer-theme').text()).toContain('SYNTH CASSETTE')
+    expect(session.wrapper.get('.mascot-message').text()).toBe('NOW SPINNING')
+    expect(session.wrapper.get('.footer-theme').text()).toContain('MONO VINYL')
     expect(session.wrapper.get('.deck-widget').classes()).toContain('is-playing')
   })
 })
@@ -553,7 +554,7 @@ describe('11. 새로고침 후 복원', () => {
     // 새로고침: 같은 localStorage, 새 pinia, main.ts 와 같은 순서
     const second = boot()
 
-    expect(second.theme.current).toBe('kawaii-synth-cassette')
+    expect(second.theme.current).toBe('mono-vinyl')
     expect(second.library.selectedPlaylist?.tracks[0]?.title).toBe('KEEP ME')
     // 재생 상태는 영속화 대상이 아니다.
     expect(second.playback.queue).toEqual([])
@@ -678,7 +679,7 @@ describe('13. localStorage 손상과 저장 실패', () => {
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
 
-    expect(session.theme.current).toBe('kawaii-synth-cassette')
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(session.theme.current).toBe('mono-vinyl')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
   })
 })

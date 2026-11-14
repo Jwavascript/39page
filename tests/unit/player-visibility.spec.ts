@@ -1516,7 +1516,7 @@ describe('D. 드로어 연동', () => {
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(context.fake.calls.mount).toBe(1)

@@ -150,7 +150,7 @@ describe('A. 드로어 동작', () => {
 
   it('3. Kawaii 카세트 트리거도 같은 선반을 펼친다', async () => {
     const { wrapper } = mountApp()
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     await deckTrigger(wrapper, 'kawaii-synth-cassette').trigger('click')
     await nextTick()
@@ -235,7 +235,7 @@ describe('A. 드로어 동작', () => {
     await wrapper.findAll('.playlist-tile .playlist-open')[1]?.trigger('click')
     await nextTick()
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(isOpen(wrapper)).toBe(true)
     expect(library.selectedPlaylistId).toBe(b.ok ? b.playlistId : null)
@@ -263,10 +263,11 @@ describe('A. 드로어 동작', () => {
 
   it('데크 안내 문구가 테마에 따라 바뀐다', async () => {
     const { wrapper } = mountApp()
-    expect(wrapper.get('.deck-hint').text()).toContain('LP를 누르면')
-
-    await switchTheme('kawaii-synth-cassette')
+    // 기본 테마는 Kawaii Synth Cassette 다 (M11-7B).
     expect(wrapper.get('.deck-hint').text()).toContain('카세트를 누르면')
+
+    await switchTheme('mono-vinyl')
+    expect(wrapper.get('.deck-hint').text()).toContain('LP를 누르면')
   })
 })
 
@@ -710,7 +711,7 @@ describe('D. 플레이어 안정성', () => {
     const parent = (host as HTMLElement).parentElement
 
     await openDrawer(wrapper)
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
     await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
     await switchTheme('mono-vinyl')

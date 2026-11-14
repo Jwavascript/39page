@@ -56,7 +56,8 @@ describe('A. 푸터', () => {
   it('승인된 두 문구를 보여준다', () => {
     const wrapper = mount(AppFooter)
 
-    expect(wrapper.get('.footer-theme').text()).toBe('MONO VINYL · ANALOG × DIGITAL')
+    // 기본 테마(M11-7B: Kawaii Synth Cassette)의 문구.
+    expect(wrapper.get('.footer-theme').text()).toBe('SYNTH CASSETTE · PIXEL × KAWAII')
     expect(wrapper.get('.footer-tagline').text()).toBe('RECORD LIBRARY / PLAYLIST FIRST')
   })
 
@@ -64,10 +65,10 @@ describe('A. 푸터', () => {
     const wrapper = mount(AppFooter)
     const theme = useThemeStore()
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect(wrapper.get('.footer-theme').text()).toBe('SYNTH CASSETTE · PIXEL × KAWAII')
+    expect(wrapper.get('.footer-theme').text()).toBe('MONO VINYL · ANALOG × DIGITAL')
     // 오른쪽은 테마와 무관한 제품 문구다.
     expect(wrapper.get('.footer-tagline').text()).toBe('RECORD LIBRARY / PLAYLIST FIRST')
   })

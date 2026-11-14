@@ -20,6 +20,8 @@
  */
 import type { InjectionKey, Ref } from 'vue'
 
+import type { Track } from '@/shared/types'
+
 import type { PlayerAdapter, PlayerAdapterEvents } from './PlayerAdapter'
 import type { PlayerPresence } from './playerVisibility'
 
@@ -275,9 +277,85 @@ export interface PlaybackNowPlaying {
   readonly nowPlaying: Readonly<Ref<NowPlaying | null>>
 }
 
+/* ------------------------------------------------------------------ *
+ * 재생 큐 보기 (M11-7B, ADR 0030)
+ * ------------------------------------------------------------------ */
+
+/**
+ * 큐의 출처 목록이 지금 어떤 상태인가.
+ *
+ * | 값          | 뜻                                                                         |
+ * | ----------- | -------------------------------------------------------------------------- |
+ * | `unknown`   | 출처를 모른다 (목록 밖 영상의 Moment 재생 등). **목록 이름을 추정하지 않는다** |
+ * | `in-sync`   | 출처 목록이 큐와 같다 (트랙 id · 순서 · 영상 · 제목)                         |
+ * | `changed`   | 출처 목록이 큐를 뜬 뒤에 바뀌었다 — 큐는 **그대로**다 (스냅샷)               |
+ * | `deleted`   | 출처 목록이 지워졌다 — 큐는 끝까지 재생할 수 있다                            |
+ */
+export type QueueSourceState = 'unknown' | 'in-sync' | 'changed' | 'deleted'
+
+/**
+ * 지금 재생 큐의 **읽기 전용 보기**.
+ *
+ * "보관함에서 고른 목록" 과 다른 것이다 — 고른 목록을 바꿔도 이 보기는 바뀌지 않는다
+ * (`SYSTEM_DESIGN.md` §6.1). 화면은 playback store 를 직접 보지 않고 이것을 읽는다 (ADR 0009).
+ */
+export interface QueueView {
+  /** 큐의 트랙 — 재생을 시작할 때의 스냅샷, **실제 재생 순서**다. */
+  readonly tracks: readonly Track[]
+  /** 지금 곡의 큐 안 위치 (0 부터). */
+  readonly index: number
+  /**
+   * 출처 목록. 모르면 `null`.
+   * `name` 은 목록이 아직 있으면 **지금 이름**, 지워졌으면 큐를 뜬 순간의 이름이다.
+   */
+  readonly source: { readonly playlistId: string; readonly name: string } | null
+  readonly sourceState: QueueSourceState
+  /**
+   * `changed` 일 때, **지금 곡(트랙 id)이 바뀐 목록에 아직 있는가.** 있으면 `resyncQueueFromSource()` 로
+   * 끊지 않고 새 순서를 이어 갈 수 있다. 없으면 이어 갈 자리가 없다 — 목록을 새로 재생해야 한다.
+   */
+  readonly canResync: boolean
+}
+
+/** `resyncQueueFromSource()` 가 거절한 이유. 어느 경우에도 큐와 재생은 그대로다. */
+export type QueueResyncFailure =
+  /** 큐가 없거나 출처를 모른다 */
+  | 'no-source'
+  /** 출처 목록이 지워졌다 */
+  | 'playlist-not-found'
+  /** 지금 곡이 바뀐 목록에 없다 — 이어 갈 자리가 없다 */
+  | 'track-not-found'
+
+export type QueueResyncResult = { ok: true } | { ok: false; reason: QueueResyncFailure }
+
+export interface PlaybackQueue {
+  /** 지금 큐. 큐가 비어 있으면 `null` — 화면은 그때 고른 목록을 "재생 대기" 로 보인다. */
+  readonly queue: Readonly<Ref<QueueView | null>>
+
+  /**
+   * **큐 안의 그 자리**로 옮겨 처음부터 재생한다.
+   *
+   * 큐를 다시 뜨지 않는다 — 보이는 순서와 들리는 순서가 같다. 자리(인덱스)로 고르므로 같은 영상이
+   * 큐에 여러 번 있어도 누른 그 항목이 재생된다. 지금 곡의 자리를 주면 그 곡을 처음부터 다시 튼다.
+   * 다른 재생 요청과 같은 가시성 가드를 지난다 — 가려져 있으면 `player-hidden`, 위치는 그대로.
+   * 범위를 벗어나면 `track-not-found`.
+   */
+  playQueueIndex(index: number): PlayRequestResult
+
+  /**
+   * 큐를 **출처 목록의 지금 모습**으로 다시 뜬다 — 사용자가 명시적으로 고를 때만 부른다.
+   *
+   * 지금 곡은 **트랙 id** 로 찾는다 (영상 id 가 아니다 — 같은 영상이 여러 번 있을 수 있다). 찾으면
+   * 큐와 위치만 바꾸고 **플레이어에는 아무 명령도 보내지 않는다** — 소리 · 재생 위치가 끊기지 않고,
+   * 다음 · 이전 곡이 새 순서를 따른다. 찾지 못하면 아무것도 바꾸지 않고 거절한다.
+   */
+  resyncQueueFromSource(): QueueResyncResult
+}
+
 export interface PlaybackCoordinator
   extends
     PlaybackNowPlaying,
+    PlaybackQueue,
     PlaybackRequests,
     PlaybackTransport,
     PlaybackLibraryNotices,

@@ -173,6 +173,8 @@ describe('B. 마스코트 컴포넌트', () => {
 
   it('상태에 따라 문구가 바뀐다', async () => {
     const playback = usePlaybackStore()
+    // Mono Vinyl 의 문구를 본다 (기본 테마는 M11-7B 부터 Kawaii Synth Cassette 다).
+    useThemeStore().setTheme('mono-vinyl')
     const wrapper = mount(MascotPanel)
 
     expect(wrapper.get('.mascot-message').text()).toBe('SIGNAL READY')
@@ -193,12 +195,12 @@ describe('B. 마스코트 컴포넌트', () => {
 
     playback.setPlayerState('playing')
     await nextTick()
-    expect(wrapper.get('.mascot-message').text()).toBe('NOW SPINNING')
+    expect(wrapper.get('.mascot-message').text()).toBe('TAPE ROLLING')
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect(wrapper.get('.mascot-message').text()).toBe('TAPE ROLLING')
+    expect(wrapper.get('.mascot-message').text()).toBe('NOW SPINNING')
     // 테마 전환이 재생 상태를 건드리지 않는다 (규칙 5).
     expect(playback.playerState).toBe('playing')
   })
@@ -217,6 +219,7 @@ describe('B. 마스코트 컴포넌트', () => {
 
   it('보조 문구는 테마 값을 그대로 유지한다', async () => {
     const playback = usePlaybackStore()
+    useThemeStore().setTheme('mono-vinyl')
     const wrapper = mount(MascotPanel)
 
     playback.setPlayerState('playing')
@@ -274,7 +277,7 @@ describe('C. 데크 컴포넌트', () => {
 
     playback.setPlayerState('playing')
     await nextTick()
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(wrapper.get('.deck-widget').classes()).toContain('is-playing')
