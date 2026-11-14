@@ -10,12 +10,16 @@
  * - 끝에 닿으면 다음 묶음 30개를 그린다(`IntersectionObserver`). 같은 일을 하는 단추도 늘 있다 —
  *   키보드 · 화면 낭독기 사용자를 위해서, 그리고 관찰자가 없는 환경을 위해서.
  *
- * 저장(이 순간 저장)은 여기 없다 — 지금 재생 중인 곡을 보며 누르는 일이라 대시보드에 남는다.
+ * M11-7C (ADR 0030 · UAT) — 보기는 **이 곡 → 전체 → 최근** 순이고, 고르기 전에는 지금 곡이 있으면 "이 곡"
+ * 이다. "이 곡" 은 이 곡의 순간을 **관리하는 화면**이다: 머리에 "이 곡 · Moments N개" 와 **＋ 이 순간 저장**,
+ * 그 아래 시점 순 한 목록(재생 · 메모 수정 · 삭제). 곡 제목 · 목록 이름을 되풀이하지 않는다. 전체 · 최근은
+ * 여러 곡을 다루므로 곡 제목 · 목록을 그대로 보인다.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { MAX_MOMENT_NOTE_LENGTH } from '@/stores/moments'
 
+import MomentCapture from './MomentCapture.vue'
 import MomentList from './MomentList.vue'
 import MomentsStatusBanner from './MomentsStatusBanner.vue'
 import { GROUP_PAGE_SIZE, RECENT_PAGE_SIZE, SEARCH_ROW_LIMIT } from './momentsSearch'
@@ -37,16 +41,33 @@ watch(
   { immediate: true },
 )
 
+/** 보기 순서 — 이 곡 → 전체 → 최근 (M11-7C). */
 const VIEWS = [
+  { key: 'current', label: '이 곡' },
   { key: 'all', label: '전체' },
   { key: 'recent', label: '최근' },
-  { key: 'current', label: '이 곡' },
 ] as const
 
 function chipLabel(key: (typeof VIEWS)[number]['key']): string {
   if (key === 'all') return `전체 ${String(browser.total.value)}`
   if (key === 'current') return `이 곡 ${String(browser.currentCount.value)}`
   return '최근'
+}
+
+/** 이 곡 보기에서 방금 저장한 순간 — 그 줄을 강조하고 보이게 한다. 보기 · 곡이 바뀌면 거둔다. */
+const highlightId = ref<string | null>(null)
+watch([() => archive.view.value, () => browser.currentVideoId.value], () => {
+  highlightId.value = null
+})
+
+function onSaved(momentId: string): void {
+  browser.clearFeedback()
+  highlightId.value = momentId
+  void nextTick(() => {
+    const row = listRoot.value?.querySelector<HTMLElement>(`[data-moment-id="${momentId}"]`)
+    // 보관함 스크롤 안에서만 — 줄이 칸 밖일 때만 옮긴다.
+    if (typeof row?.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' })
+  })
 }
 
 /** 결과 한 줄 — 검색 · 한 곡 보기일 때만. 화면 낭독기에 알린다(polite). */
@@ -65,13 +86,20 @@ const summary = computed<string>(() => {
 })
 
 const emptyMessage = computed<string>(() => {
-  if (browser.total.value === 0 || archive.searching.value) return ''
+  if (archive.searching.value) return ''
   if (archive.view.value === 'current' && browser.currentVideoId.value === null)
-    return '지금 재생 중인 곡이 없어요.'
-  if (archive.view.value === 'current' || archive.view.value === 'video')
-    return '이 곡에 저장한 순간이 없어요.'
+    return '지금 재생 중인 곡이 없어요. 곡을 재생하면 이 곡의 순간을 여기서 저장하고 고칠 수 있어요.'
+  if (archive.view.value === 'current')
+    return '이 곡에 저장한 순간이 아직 없어요. 위의 ＋ 이 순간 저장으로 시작하세요.'
+  if (browser.total.value === 0) return ''
+  if (archive.view.value === 'video') return '이 곡에 저장한 순간이 없어요.'
   return ''
 })
+
+/** 이 곡 보기 — 곡이 재생 중이어야 저장 · 관리할 수 있다. */
+const showCurrentHead = computed<boolean>(
+  () => archive.view.value === 'current' && browser.currentVideoId.value !== null,
+)
 
 const moreLabel = computed<string>(() => {
   const left = archive.remaining.value
@@ -186,8 +214,9 @@ defineExpose({ archive })
 
       <MomentsStatusBanner />
 
-      <template v-if="browser.total.value > 0">
+      <template v-if="browser.total.value > 0 || browser.currentVideoId.value !== null">
         <input
+          v-if="browser.total.value > 0"
           id="archive-moments-search"
           ref="searchInput"
           v-model="archive.query.value"
@@ -222,6 +251,17 @@ defineExpose({ archive })
           >
           <button type="button" class="link" @click="archive.setView('all')">전체 보기</button>
         </p>
+        <!--
+          이 곡 — 관리 화면의 머리. 곡 제목 · 목록 이름을 되풀이하지 않는다 (그 곡을 듣고 있다). 저장은 여기서
+          한다 — 보관함이 열린 영상 띠에는 저장이 없다 (M11-7C).
+        -->
+        <div v-if="showCurrentHead" class="current-head">
+          <p class="current-count">
+            이 곡 · Moments <strong>{{ browser.currentCount.value }}</strong
+            >개
+          </p>
+          <MomentCapture id-prefix="archive-moment" @saved="onSaved" />
+        </div>
       </template>
 
       <p
@@ -235,8 +275,8 @@ defineExpose({ archive })
       </p>
     </div>
 
-    <p v-if="browser.total.value === 0" class="empty">
-      아직 저장한 순간이 없어요.<br />곡을 듣다가 대시보드의 ＋ 이 순간 저장을 눌러보세요.
+    <p v-if="browser.total.value === 0 && browser.currentVideoId.value === null" class="empty">
+      아직 저장한 순간이 없어요.<br />곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.
     </p>
     <p v-else-if="archive.sections.value.length === 0 && emptyMessage !== ''" class="empty">
       {{ emptyMessage }}
@@ -248,6 +288,7 @@ defineExpose({ archive })
       :terms="archive.terms.value"
       :max-note-length="MAX_MOMENT_NOTE_LENGTH"
       :save-note="browser.saveNote"
+      :highlight-id="highlightId"
       @play="(id) => void browser.play(id)"
       @remove="(id) => void browser.remove(id)"
       @toggle="archive.toggleGroup"
@@ -306,6 +347,28 @@ defineExpose({ archive })
     border-bottom: 1px solid var(--drawer-head-border-color);
     background: var(--drawer-surface-color);
   }
+}
+
+/* 이 곡 — 관리 화면의 머리 (M11-7C). */
+.current-head {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--drawer-head-border-color);
+}
+
+.current-count {
+  margin: 0;
+  color: var(--drawer-sub-text-color);
+  font: 11px var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.current-count strong {
+  color: var(--drawer-title-text-color);
+  font-weight: 400;
 }
 
 .section-title {

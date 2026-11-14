@@ -206,7 +206,7 @@ async function quickSave(s: Session): Promise<void> {
 async function addNote(s: Session, note: string): Promise<void> {
   await widget(s).get('.after-save .pill').trigger('click')
   await nextTick()
-  await s.wrapper.get('#moment-capture-note').setValue(note)
+  await s.wrapper.get('#dashboard-moment-capture-note').setValue(note)
   await s.wrapper.get('.note-form').trigger('submit')
   await flushPromises()
   await nextTick()
@@ -226,6 +226,16 @@ async function openArchiveMoments(s: Session) {
 }
 
 const archiveMoments = (s: Session) => s.wrapper.get('#archive-panel-moments')
+
+/** 보관함 Moments 의 보기를 고른다 — 이 곡 · 전체 · 최근 (M11-7C 순서). */
+async function chooseView(s: Session, label: '이 곡' | '전체' | '최근'): Promise<void> {
+  const chip = archiveMoments(s)
+    .findAll('.chip')
+    .find((c) => c.text().startsWith(label))
+  if (chip === undefined) throw new Error(`no chip ${label}`)
+  await chip.trigger('click')
+  await nextTick()
+}
 const archiveFeedback = (s: Session) => archiveMoments(s).get('.feedback')
 
 /** 보관함 Moment 줄의 "관리" 를 펼친다 (M11-3). 이미 펼쳐져 있으면 누르지 않는다. */
@@ -263,7 +273,7 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     const s = boot()
 
     expect(captureButton(s).attributes('disabled')).toBeDefined()
-    expect(s.wrapper.get('#moment-capture-hint').text()).toContain('곡을 재생하면')
+    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('곡을 재생하면')
   })
 
   it('재생을 요청해도 실제로 재생되기 전에는 꺼져 있다', async () => {
@@ -277,7 +287,7 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     // 불러오는 중이다. 플레이어가 0 을 보고해도 아직 믿지 않는다.
     expect(s.playback.playerState).toBe('loading')
     expect(captureButton(s).attributes('disabled')).toBeDefined()
-    expect(s.wrapper.get('#moment-capture-hint').text()).toContain('재생이 시작되면')
+    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('재생이 시작되면')
   })
 
   it('재생 중 누르면 그 순간이 바로 저장되고, 영속 저장 뒤에만 "저장했어요" 를 말한다', async () => {
@@ -285,7 +295,7 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     await playFromStart(s, 83.7)
 
     expect(captureButton(s).attributes('disabled')).toBeUndefined()
-    expect(s.wrapper.get('#moment-capture-hint').text()).toContain('바로 저장')
+    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('바로 저장')
     await quickSave(s)
 
     expect(s.moments.moments).toHaveLength(1)
@@ -434,11 +444,11 @@ describe('B. 저장 직후 메모를 붙인다', () => {
     await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
     // 메모 칸으로 바로 간다. 어느 순간의 메모인지 보인다.
-    expect(document.activeElement).toBe(s.wrapper.get('#moment-capture-note').element)
+    expect(document.activeElement).toBe(s.wrapper.get('#dashboard-moment-capture-note').element)
     expect(widget(s).get('.note-target').text()).toContain('0:42')
     expect(widget(s).get('.note-target').text()).toContain('Alpha')
 
-    await s.wrapper.get('#moment-capture-note').setValue('여기부터 좋다')
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('여기부터 좋다')
     await s.wrapper.get('.note-form').trigger('submit')
     await flushPromises()
     await nextTick()
@@ -457,10 +467,10 @@ describe('B. 저장 직후 메모를 붙인다', () => {
     await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
 
-    const field = s.wrapper.get('#moment-capture-note')
+    const field = s.wrapper.get('#dashboard-moment-capture-note')
     expect(field.attributes('maxlength')).toBe(String(MAX_MOMENT_NOTE_LENGTH))
     await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH + 1))
-    expect(s.wrapper.get('#moment-capture-count').text()).toContain('501 / 500')
+    expect(s.wrapper.get('#dashboard-moment-capture-count').text()).toContain('501 / 500')
     expect(s.wrapper.get('.note-form button[type="submit"]').attributes('disabled')).toBeDefined()
 
     await s.wrapper.get('.note-form').trigger('submit')
@@ -481,7 +491,7 @@ describe('B. 저장 직후 메모를 붙인다', () => {
     await quickSave(s)
     await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
-    await s.wrapper.get('#moment-capture-note').setValue('버릴 메모')
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('버릴 메모')
 
     const cancel = widget(s)
       .findAll('.note-form button')
@@ -501,7 +511,7 @@ describe('B. 저장 직후 메모를 붙인다', () => {
     await quickSave(s)
     await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
-    await s.wrapper.get('#moment-capture-note').setValue('A 의 메모')
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('A 의 메모')
 
     await nextTrack(s)
     s.fake.emitStateChange('playing')
@@ -523,7 +533,7 @@ describe('B. 저장 직후 메모를 붙인다', () => {
     const saved = s.moments.moments[0] as Moment
     await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
-    await s.wrapper.get('#moment-capture-note').setValue('이 탭의 메모')
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('이 탭의 메모')
 
     // 다른 탭이 Moments 를 저장했다 (이 탭은 아직 모른다).
     seedMoments([saved, moment({ id: 'other', videoId: B, note: '다른 탭' })])
@@ -534,9 +544,9 @@ describe('B. 저장 직후 메모를 붙인다', () => {
 
     expect(rawMoments()).toBe(before)
     expect(captureFeedback(s)?.text()).toContain('다른 탭에서 Moments 가 바뀌어')
-    expect((s.wrapper.get('#moment-capture-note').element as HTMLTextAreaElement).value).toBe(
-      '이 탭의 메모',
-    )
+    expect(
+      (s.wrapper.get('#dashboard-moment-capture-note').element as HTMLTextAreaElement).value,
+    ).toBe('이 탭의 메모')
     // 다시 누르면 최신 위에 저장된다.
     await s.wrapper.get('.note-form').trigger('submit')
     await flushPromises()
@@ -645,39 +655,75 @@ describe('C. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
  * D. 대시보드 미리보기
  * ================================================================== */
 
-describe('D. 대시보드 — 이 곡의 Moments 미리보기', () => {
-  it('지금 곡의 Moments 만, 시점 순으로 최대 3개 — 더 있으면 "N개 더"', async () => {
+describe('D. 대시보드 — 이 곡의 Moments (M11-7C: 모두 · 시점 순 · 지금 선)', () => {
+  const times = (s: Session) =>
+    widget(s)
+      .findAll('.moment-time')
+      .map((n) => n.text())
+
+  it('지금 곡의 Moments 를 시점 순으로 모두 보인다 — "N개 더 · 모두 보기" 로 자르지 않는다', async () => {
     seedMoments([
       moment({ id: 'a-90', atSeconds: 90 }),
       moment({ id: 'a-5', atSeconds: 5 }),
       moment({ id: 'a-30', atSeconds: 30 }),
       moment({ id: 'a-60', atSeconds: 60 }),
+      moment({ id: 'a-120', atSeconds: 120 }),
       moment({ id: 'b-1', videoId: B, title: 'Bravo', atSeconds: 1 }),
     ])
     const s = boot()
     await playFromStart(s, 1)
 
-    expect(
-      widget(s)
-        .findAll('.preview-time')
-        .map((n) => n.text()),
-    ).toEqual(['▶ 0:05', '▶ 0:30', '▶ 1:00'])
-    expect(widget(s).get('.more').text()).toContain('이 곡의 Moments 1개 더')
-    expect(widget(s).get('.widget-sub').text()).toBe('이 곡 4개 · 전체 5개')
+    expect(times(s)).toEqual(['▶ 0:05', '▶ 0:30', '▶ 1:00', '▶ 1:30', '▶ 2:00'])
+    expect(widget(s).find('.more').exists()).toBe(false)
+    expect(widget(s).get('.widget-title').text()).toContain('5개')
+    expect(widget(s).get('.widget-sub').text()).toBe('전체 6개')
+    // 넓은 화면은 칸 안 스크롤 — 높이를 묶고, 페이지로 새지 않는다.
+    const style = readSource('src/features/moments/CurrentMomentsList.vue')
+    expect(style).toMatch(/max-height:\s*var\(--current-moments-height\)/)
+    expect(style).toMatch(/overscroll-behavior:\s*contain/)
   })
 
-  it('메모는 글자로만 · 첫 줄만 · 없으면 "메모 없음"', async () => {
+  it('지금 위치를 순간들 사이의 선으로 보인다 — 재생이 흐르면 따라간다', async () => {
+    vi.useFakeTimers()
+    try {
+      seedMoments([
+        moment({ id: 'a-5', atSeconds: 5 }),
+        moment({ id: 'a-30', atSeconds: 30 }),
+        moment({ id: 'a-60', atSeconds: 60 }),
+      ])
+      const s = boot()
+      await playFromStart(s, 12)
+      const order = () =>
+        widget(s)
+          .findAll('.moment-rows > li')
+          .map((li) => (li.classes('now-marker') ? li.text() : li.attributes('data-moment-row')))
+      expect(order()).toEqual(['a-5', '지금 0:12', 'a-30', 'a-60'])
+
+      s.fake.emitPosition(75)
+      vi.advanceTimersByTime(1000)
+      await nextTick()
+      expect(order()).toEqual(['a-5', 'a-30', 'a-60', '지금 1:15'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('메모는 글자로만 · 첫 줄만 · 없으면 조용한 "—"', async () => {
     const note = '<b>굵게</b><img src=x onerror="window.__pwned=1">\n둘째 줄'
     seedMoments([moment({ id: 'x', note }), moment({ id: 'y', atSeconds: 20, note: '' })])
     const s = boot()
     await playFromStart(s, 1)
 
-    const notes = widget(s).findAll('.preview-note')
+    const notes = widget(s).findAll('.moment-note')
     expect(notes[0]?.text()).toBe('<b>굵게</b><img src=x onerror="window.__pwned=1">')
     expect(widget(s).findAll('b, img')).toHaveLength(0)
     expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined()
-    expect(notes[1]?.text()).toBe('메모 없음')
+    expect(notes[1]?.text()).toBe('—')
     expect(notes[1]?.classes()).toContain('is-empty')
+    // 낭독기에는 곡 · 시점 · 메모를 말한다.
+    expect(widget(s).get('[data-moment-play="x"]').attributes('aria-label')).toBe(
+      'Alpha 0:10 부터 재생 — <b>굵게</b><img src=x onerror="window.__pwned=1">',
+    )
   })
 
   it('"모두 보기" 는 보관함 Moments 탭을 연다', async () => {
@@ -692,15 +738,15 @@ describe('D. 대시보드 — 이 곡의 Moments 미리보기', () => {
 
   it('빈 상태 · 이 곡에 없을 때를 각각 안내한다', async () => {
     const s = boot()
-    expect(widget(s).get('.empty').text()).toContain('아직 저장한 순간이 없어요')
+    expect(widget(s).get('.empty').text()).toContain('곡을 재생하면')
 
     seedMoments([moment({ videoId: B, title: 'Bravo' })])
     s.moments.restore()
     await playFromStart(s, 3)
-    expect(widget(s).get('.empty').text()).toBe('이 곡에 저장한 순간이 없어요.')
+    expect(widget(s).get('.empty').text()).toBe('이 곡에 저장한 순간이 아직 없어요.')
   })
 
-  it('위젯에는 수정 · 삭제 · 거르기 · 안쪽 스크롤이 없다 — 관리는 보관함에서 (M11-3)', async () => {
+  it('위젯에는 수정 · 삭제 · 거르기가 없다 — 관리는 보관함 › 이 곡에서 (M11-3 · M11-7C)', async () => {
     seedMoments([moment({ id: 'x' })])
     const s = boot()
     await playFromStart(s, 1)
@@ -708,8 +754,6 @@ describe('D. 대시보드 — 이 곡의 Moments 미리보기', () => {
     expect(widget(s).find('[data-moment-edit]').exists()).toBe(false)
     expect(widget(s).find('[data-moment-remove]').exists()).toBe(false)
     expect(widget(s).find('.chip').exists()).toBe(false)
-    const style = readSource('src/features/moments/MomentsWidget.vue')
-    expect(style.slice(style.indexOf('<style'))).not.toMatch(/overflow-y:\s*(auto|scroll)/)
   })
 
   it('빈 상태의 위젯 단추는 모두 보기와 저장 둘뿐이다', () => {
@@ -720,6 +764,102 @@ describe('D. 대시보드 — 이 곡의 Moments 미리보기', () => {
         .map((b) => b.text().trim()),
     ).toEqual(['모두 보기 (0)', '＋ 이 순간 저장'])
   })
+
+  it('좁은 대시보드(700px 이하)는 안쪽 스크롤 대신 앞의 4개와 펼치기', async () => {
+    seedMoments(
+      [5, 10, 20, 30, 40, 50].map((at) => moment({ id: `a-${String(at)}`, atSeconds: at })),
+    )
+    const s = boot()
+    await playFromStart(s, 1)
+
+    const outside = widget(s)
+      .findAll('.moment-row')
+      .filter((r) => r.classes('is-outside'))
+      .map((r) => r.attributes('data-moment-row'))
+    expect(outside).toEqual(['a-40', 'a-50'])
+    const expand = widget(s).get('.expand')
+    expect(expand.attributes('aria-expanded')).toBe('false')
+    expect(expand.text()).toContain('6개 모두 펼치기')
+    await expand.trigger('click')
+    expect(expand.attributes('aria-expanded')).toBe('true')
+
+    const style = readSource('src/features/moments/CurrentMomentsList.vue')
+    const narrow = style.slice(style.indexOf('@media (max-width: 700px)'))
+    expect(narrow).toMatch(/overflow-y:\s*visible/)
+    expect(narrow).toMatch(/\.is-outside[\s\S]*display:\s*none/)
+  })
+
+  it('"이 곡" 은 실제로 재생 중인 영상이다 — 재생 전에는 어느 곡의 순간도 보이지 않는다', async () => {
+    seedMoments([moment({ id: 'a' }), moment({ id: 'b', videoId: B, title: 'Bravo' })])
+    const s = boot()
+    const ids = () =>
+      widget(s)
+        .findAll('.moment-row')
+        .map((r) => r.attributes('data-moment-row'))
+    expect(ids()).toEqual([])
+
+    await playFromStart(s, 1)
+    expect(ids()).toEqual(['a'])
+    await nextTrack(s)
+    expect(ids()).toEqual(['b'])
+  })
+})
+
+describe('D2. 보관함이 열린 영상 띠 — 보기 · 재생 전용 (M11-7C)', () => {
+  it('저장 · 모두 보기 · 관리가 없고, "이 곡의 Moments" 제목 · 개수 · 시점 · 메모만', async () => {
+    seedMoments([
+      moment({ id: 'a-30', atSeconds: 30, note: '후렴' }),
+      moment({ id: 'a-5', atSeconds: 5 }),
+    ])
+    const s = boot()
+    await playFromStart(s, 1)
+    await openArchiveMoments(s)
+
+    const strip = widget(s)
+    expect(strip.classes()).toContain('is-readonly')
+    expect(strip.get('.widget-title').text().replace(/\s+/g, ' ')).toBe('이 곡의 Moments 2개')
+    expect(strip.find('.capture-button').exists()).toBe(false)
+    expect(strip.find('.widget-head .pill').exists()).toBe(false)
+    expect(strip.find('[data-moment-edit]').exists()).toBe(false)
+    expect(strip.find('[data-moment-remove]').exists()).toBe(false)
+    expect(strip.find('.expand').exists()).toBe(false)
+    expect(strip.findAll('.moment-time').map((n) => n.text())).toEqual(['▶ 0:05', '▶ 0:30'])
+    expect(strip.findAll('.moment-note').map((n) => n.text())).toEqual(['—', '후렴'])
+    expect(strip.get('.current-moments').classes()).toContain('is-compact')
+  })
+
+  it('누르면 그 시점부터 재생한다', async () => {
+    seedMoments([moment({ id: 'a-30', atSeconds: 30 })])
+    const s = boot()
+    await playFromStart(s, 1)
+    await openArchiveMoments(s)
+
+    await widget(s).get('[data-moment-play="a-30"]').trigger('click')
+    await flushPromises()
+    expect(s.fake.calls.seek).toEqual([30])
+  })
+
+  it('재생 중인 곡이 없으면 짧게 말한다', async () => {
+    seedMoments([moment()])
+    const s = boot()
+    await openArchiveMoments(s)
+    expect(widget(s).get('.empty').text()).toBe('재생 중인 곡이 없어요.')
+    expect(widget(s).find('.moment-row').exists()).toBe(false)
+  })
+
+  it('보관함을 닫으면 대시보드의 저장 · 모두 보기가 돌아온다 — 같은 위젯 노드다', async () => {
+    const s = boot()
+    await playFromStart(s, 1)
+    const before = widget(s).element
+    await openArchiveMoments(s)
+    expect(widget(s).element).toBe(before)
+
+    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await flushPromises()
+    expect(widget(s).element).toBe(before)
+    expect(widget(s).classes()).not.toContain('is-readonly')
+    expect(widget(s).find('.capture-button').exists()).toBe(true)
+  })
 })
 
 /* ================================================================== *
@@ -727,21 +867,24 @@ describe('D. 대시보드 — 이 곡의 Moments 미리보기', () => {
  * ================================================================== */
 
 describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
-  it('개수와 거르기 — 이 곡 / 전체, 곡이 바뀌면 따라간다', async () => {
+  it('개수와 거르기 — 이 곡 → 전체 → 최근, 이 곡은 곡이 바뀌면 따라간다 (M11-7C)', async () => {
     seedMoments([moment({ id: '1' }), moment({ id: '2', videoId: B, title: 'Bravo' })])
     const s = boot()
     const panel = await openArchiveMoments(s)
-    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없다. (M11-4: 칩은 전체 · 최근 · 이 곡)
-    expect(panel.findAll('.chip')[2]?.attributes('disabled')).toBeDefined()
+    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없고, 처음 보기는 전체다.
+    expect(panel.findAll('.chip')[0]?.attributes('disabled')).toBeDefined()
+    expect(panel.get('.chip[aria-pressed="true"]').text()).toBe('전체 2')
 
     await playFromStart(s, 5)
-    expect(panel.findAll('.chip').map((chip) => chip.text())).toEqual(['전체 2', '최근', '이 곡 1'])
-    await panel.findAll('.chip')[2]?.trigger('click')
-    expect(panel.findAll('.group-title').map((t) => t.text())).toEqual(['Alpha'])
+    expect(panel.findAll('.chip').map((chip) => chip.text())).toEqual(['이 곡 1', '전체 2', '최근'])
+    await chooseView(s, '이 곡')
+    const rowIds = () => panel.findAll('.moment-item').map((r) => r.attributes('data-moment-id'))
+    expect(rowIds()).toEqual(['1'])
+    expect(panel.find('.group-title').exists()).toBe(false)
 
     await nextTrack(s)
-    expect(panel.findAll('.group-title').map((t) => t.text())).toEqual(['Bravo'])
-    await panel.findAll('.chip')[0]?.trigger('click')
+    expect(rowIds()).toEqual(['2'])
+    await chooseView(s, '전체')
     expect(panel.findAll('.group-title')).toHaveLength(2)
   })
 
@@ -750,6 +893,7 @@ describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
     const s = boot()
     await playFromStart(s, 5)
     const panel = await openArchiveMoments(s)
+    await chooseView(s, '전체')
 
     const current = panel
       .findAll('.moment-group')
@@ -1014,6 +1158,7 @@ describe('F. Moment 로 재생', () => {
     await playFromStart(s, 5)
     const queueBefore = s.playback.queue.map((track) => track.id)
     const panel = await openArchiveMoments(s)
+    await chooseView(s, '전체')
 
     await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
@@ -1112,7 +1257,10 @@ describe('F. Moment 로 재생', () => {
 
     expect(s.wrapper.get('.player-surface .status').text()).toContain('오류 150')
     expect(rawMoments()).toBe(before)
-    expect(captureButton(s).attributes('disabled')).toBeDefined()
+    // 저장은 보관함 › 이 곡에 있다(영상 띠에는 없다) — 재생되지 않은 곡이라 꺼져 있다.
+    expect(widget(s).find('.capture-button').exists()).toBe(false)
+    await chooseView(s, '이 곡')
+    expect(archiveMoments(s).get('.capture-button').attributes('disabled')).toBeDefined()
   })
 
   it('연달아 누르면 마지막 순간이 이긴다', async () => {
@@ -1154,14 +1302,14 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     await quickSave(s)
     await widget(s).get('.after-save .pill').trigger('click')
     await nextTick()
-    await s.wrapper.get('#moment-capture-note').setValue('쓰던 중')
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('쓰던 중')
 
     s.theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect((s.wrapper.get('#moment-capture-note').element as HTMLTextAreaElement).value).toBe(
-      '쓰던 중',
-    )
+    expect(
+      (s.wrapper.get('#dashboard-moment-capture-note').element as HTMLTextAreaElement).value,
+    ).toBe('쓰던 중')
     expect(widget(s).get('.note-target').text()).toContain('0:42')
   })
 
@@ -1174,6 +1322,7 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     await playFromStart(s, 12)
     await quickSave(s)
     const panel = await openArchiveMoments(s)
+    await chooseView(s, '전체')
     await panel.get('[data-moment-play="x"]').trigger('click')
     await flushPromises()
     s.theme.setTheme('mono-vinyl')

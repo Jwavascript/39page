@@ -37,6 +37,8 @@ const props = defineProps<{
   idPrefix: string
   maxNoteLength: number
   saveNote: (momentId: string, note: string) => Promise<boolean>
+  /** 방금 저장한 순간 — 테두리 · "방금 저장" 표 (M11-7C). */
+  highlighted?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -97,7 +99,11 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <li class="moment-item" :class="{ 'is-current': isCurrent }">
+  <li
+    class="moment-item"
+    :class="{ 'is-current': isCurrent, 'is-new': highlighted === true }"
+    :data-moment-id="moment.id"
+  >
     <div class="moment">
       <button
         type="button"
@@ -125,6 +131,7 @@ async function submit(): Promise<void> {
             ><template v-else>{{ part.text }}</template></template
           ></span
         >
+        <span v-if="highlighted === true" class="new-badge">방금 저장</span>
       </span>
       <button
         type="button"
@@ -238,6 +245,19 @@ async function submit(): Promise<void> {
 :global(.moment-group.is-current) .moment,
 .moment-item.is-current .moment {
   border-color: var(--track-current-border-color);
+}
+
+/* 방금 저장한 순간 (M11-7C) — 테두리와 글("방금 저장") 둘 다로 알린다. */
+.moment-item.is-new .moment {
+  border-color: var(--accent-strong-color);
+}
+
+.new-badge {
+  align-self: flex-start;
+  padding: 0 5px;
+  border: 1px solid var(--accent-strong-color);
+  color: var(--drawer-title-text-color);
+  font: 10px/1.6 var(--font-mono);
 }
 
 /* 시점이 버튼의 일부다 — 누르는 것이 "그 시점부터 재생" 이다. */

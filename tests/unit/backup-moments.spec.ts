@@ -319,7 +319,7 @@ describe('A. 내보내기', () => {
     await flushPromises()
     await s.wrapper.get('.moments-widget .after-save .pill').trigger('click')
     await nextTick()
-    await s.wrapper.get('#moment-capture-note').setValue('아직 저장 안 한 메모')
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('아직 저장 안 한 메모')
 
     const file = await exportFile(s, created)
 

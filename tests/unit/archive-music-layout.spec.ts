@@ -354,7 +354,7 @@ describe('C. 작은 영상 띠 (배치 C)', () => {
     expect(s.wrapper.get('.workspace').attributes('data-archive-layout')).toBe('stack')
   })
 
-  it('보관함이 열린 채로 재생하고, 같은 저장 명령으로 이 순간을 저장한다', async () => {
+  it('보관함이 열린 채로 재생하고, 보관함 Moments › 이 곡에서 같은 저장 명령으로 저장한다', async () => {
     installMatchMedia(false)
     const s = boot()
     await openArchive(s)
@@ -368,7 +368,11 @@ describe('C. 작은 영상 띠 (배치 C)', () => {
 
     expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
     expect(s.playback.playerState).toBe('playing')
-    await s.wrapper.get('[data-widget="moments"] .capture-button').trigger('click')
+    // M11-7C — 영상 띠는 보기 · 재생 전용이다. 저장은 보관함 Moments › 이 곡에서 한다.
+    expect(s.wrapper.find('[data-widget="moments"] .capture-button').exists()).toBe(false)
+    await s.wrapper.get('#archive-tab-moments').trigger('click')
+    await settle()
+    await s.wrapper.get('#archive-panel-moments .capture-button').trigger('click')
     await settle()
 
     const stored = JSON.parse(globalThis.localStorage.getItem(STORAGE_KEYS.moments) as string)

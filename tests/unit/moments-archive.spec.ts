@@ -527,7 +527,7 @@ describe('C. 검색 — 제목 · 메모, 150ms 뒤', () => {
     await openMoments(s)
     await search(s, 'note 1')
     await heads(s)[0]?.trigger('click')
-    await panel(s).findAll('.chip')[1]?.trigger('click')
+    await panel(s).findAll('.chip')[2]?.trigger('click')
     await searchBox(s).trigger('keydown', { key: 'Escape' })
     await settle()
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.moments)).toBe(before.moments)
@@ -539,15 +539,15 @@ describe('C. 검색 — 제목 · 메모, 150ms 뒤', () => {
  * D. 보기 — 최근 · 이 곡 · 한 곡
  * ================================================================== */
 
-describe('D. 보기 — 최근 · 이 곡 · 한 곡', () => {
+describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
   it('최근 — 묶지 않고 저장 시각 역순, 줄마다 곡 제목, 50줄씩', async () => {
     seedMoments(bulk(30, 3))
     const s = boot()
     await openMoments(s)
-    await panel(s).findAll('.chip')[1]?.trigger('click')
+    await panel(s).findAll('.chip')[2]?.trigger('click')
     await nextTick()
 
-    expect(panel(s).findAll('.chip')[1]?.attributes('aria-pressed')).toBe('true')
+    expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
     expect(heads(s)).toHaveLength(0)
     expect(rows(s)).toHaveLength(50)
     expect(rows(s)[0]?.get('[data-moment-play]').attributes('data-moment-play')).toBe('m89')
@@ -555,16 +555,86 @@ describe('D. 보기 — 최근 · 이 곡 · 한 곡', () => {
     expect(panel(s).get('.more button').text()).toBe('순간 40개 더 보기 · 남은 40개')
   })
 
-  it('이 곡 — 지금 곡의 묶음만, 펼친 채', async () => {
-    seedMoments([...bulk(10, 2), moment({ id: 'cur', videoId: A, atSeconds: 3 })])
+  it('보기 순서는 이 곡 → 전체 → 최근이고, 곡이 재생 중이면 처음 보기는 이 곡이다 (M11-7C)', async () => {
+    seedMoments([...bulk(3, 1), moment({ id: 'cur', videoId: A, atSeconds: 3 })])
+    const s = boot()
+    await openMoments(s)
+    const chips = () => panel(s).findAll('.chip')
+    expect(chips().map((c) => c.text())).toEqual(['이 곡 0', '전체 4', '최근'])
+    // 곡이 없으면 이 곡은 고를 수 없고 처음 보기는 전체다.
+    expect(chips()[0]?.attributes('disabled')).toBeDefined()
+    expect(chips()[1]?.attributes('aria-pressed')).toBe('true')
+
+    // 보는 중에 재생이 시작돼도 보기를 바꾸지 않는다 — 누르던 목록이 사라지지 않게.
+    await playFromStart(s)
+    expect(chips()[1]?.attributes('aria-pressed')).toBe('true')
+
+    // 다시 들어오면(닫고 열기) 지금 곡이 있으니 이 곡이다.
+    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await settle()
+    await openMoments(s)
+    expect(chips()[0]?.attributes('aria-pressed')).toBe('true')
+    expect(chips()[0]?.text()).toBe('이 곡 1')
+  })
+
+  it('사용자가 고른 보기는 이 세션 동안 탭을 오가도 남는다', async () => {
+    seedMoments([moment({ id: 'cur', videoId: A, atSeconds: 3 })])
     const s = boot()
     await playFromStart(s)
     await openMoments(s)
     await panel(s).findAll('.chip')[2]?.trigger('click')
     await nextTick()
-    expect(heads(s)).toHaveLength(1)
-    expect(heads(s)[0]?.attributes('aria-expanded')).toBe('true')
-    expect(heads(s)[0]?.text()).toContain('재생 중')
+
+    await s.wrapper.get('#archive-tab-music').trigger('click')
+    await settle()
+    await s.wrapper.get('#archive-tab-moments').trigger('click')
+    await settle()
+    expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
+
+    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await settle()
+    await openMoments(s)
+    expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
+  })
+
+  it('이 곡 — 한 목록: 묶음 머리 · 곡 제목 · 목록 이름 없이 시점 순, 머리에 개수와 저장', async () => {
+    seedMoments([
+      ...bulk(10, 2),
+      moment({ id: 'cur-60', videoId: A, atSeconds: 60, note: '브릿지' }),
+      moment({ id: 'cur-3', videoId: A, atSeconds: 3 }),
+    ])
+    const s = boot()
+    await playFromStart(s)
+    await openMoments(s)
+
+    expect(panel(s).findAll('.chip')[0]?.attributes('aria-pressed')).toBe('true')
+    expect(heads(s)).toHaveLength(0)
+    expect(panel(s).find('.group-lists').exists()).toBe(false)
+    expect(panel(s).find('.moment-song').exists()).toBe(false)
+    expect(rows(s).map((r) => r.attributes('data-moment-id'))).toEqual(['cur-3', 'cur-60'])
+    // 재생 · 메모 수정 · 삭제는 그대로다.
+    expect(rows(s)[0]?.find('[data-moment-play]').exists()).toBe(true)
+    expect(rows(s)[0]?.find('[data-moment-manage]').exists()).toBe(true)
+
+    const head = panel(s).get('.current-head')
+    expect(head.get('.current-count').text().replace(/\s+/g, ' ')).toBe('이 곡 · Moments 2개')
+    expect(head.get('.capture-button').text()).toContain('＋ 이 순간 저장')
+    expect(head.get('.capture-button').attributes('disabled')).toBeUndefined()
+  })
+
+  it('이 곡 — 이 곡에 순간이 없어도 저장 자리를 연다 · 곡이 없으면 이유를 말한다', async () => {
+    const s = boot()
+    await openMoments(s)
+    await panel(s).findAll('.chip')[0]?.trigger('click')
+    await nextTick()
+    expect(panel(s).find('.current-head').exists()).toBe(false)
+
+    await playFromStart(s)
+    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await settle()
+    await openMoments(s)
+    expect(panel(s).get('.current-head .capture-button').attributes('disabled')).toBeUndefined()
+    expect(panel(s).text()).toContain('이 곡에 저장한 순간이 아직 없어요')
   })
 
   it('음악 탭 곡 줄의 ◆ 배지 → Moments 탭이 그 곡으로 걸러져 열린다 · "전체 보기" 로 돌아간다', async () => {
@@ -596,15 +666,16 @@ describe('D. 보기 — 최근 · 이 곡 · 한 곡', () => {
     expect(panel(s).find('.focus-line').exists()).toBe(false)
   })
 
-  it('대시보드 "이 곡의 Moments N개 더 — 모두 보기" 는 그 곡으로 걸러 연다', async () => {
-    seedMoments(
-      [0, 1, 2, 3].map((i) => moment({ id: `a${String(i)}`, videoId: A, atSeconds: i * 10 })),
-    )
+  it('대시보드 "모두 보기" 를 곡 재생 중에 누르면 이 곡 보기로 열린다 (M11-7C)', async () => {
+    seedMoments([
+      ...[0, 1, 2, 3].map((i) => moment({ id: `a${String(i)}`, videoId: A, atSeconds: i * 10 })),
+      moment({ id: 'b', videoId: B, title: 'Bravo' }),
+    ])
     const s = boot()
     await playFromStart(s)
-    await s.wrapper.get('.moments-widget .more .link').trigger('click')
+    await s.wrapper.get('.moments-widget .widget-head .pill').trigger('click')
     await settle()
-    expect(panel(s).get('.focus-line').text()).toContain('Alpha')
+    expect(panel(s).findAll('.chip')[0]?.attributes('aria-pressed')).toBe('true')
     expect(rows(s)).toHaveLength(4)
   })
 })
@@ -752,8 +823,8 @@ describe('G. 플레이어 iframe · 접근성', () => {
     await search(s, 'song 3')
     await heads(s)[0]?.trigger('click')
     await searchBox(s).trigger('keydown', { key: 'Escape' })
+    await panel(s).findAll('.chip')[2]?.trigger('click')
     await panel(s).findAll('.chip')[1]?.trigger('click')
-    await panel(s).findAll('.chip')[0]?.trigger('click')
     await panel(s).get('.more button').trigger('click')
     await settle()
     expect(s.wrapper.get('.player-mount').element).toBe(mountNode)

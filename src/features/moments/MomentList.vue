@@ -28,6 +28,8 @@ const props = defineProps<{
   saveNote: (momentId: string, note: string) => Promise<boolean>
   /** DOM id 앞머리. */
   idPrefix?: string
+  /** 방금 저장한 순간 (M11-7C) — 그 줄을 강조하고, 칸 안에서 보이게 한다. */
+  highlightId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -204,14 +206,18 @@ function metaText(section: ArchiveSection): string {
         </button>
       </section>
 
-      <!-- 최근 보기 — 묶지 않은 한 목록. 줄마다 곡 제목을 적는다. -->
+      <!--
+        평면 보기 — 묶지 않은 한 목록. 최근 보기는 줄마다 곡 제목을 적고, 이 곡 보기는 적지 않는다(M11-7C —
+        듣고 있는 곡이라 되풀이하지 않는다).
+      -->
       <ul v-else class="moment-rows moment-rows--flat">
         <MomentRow
           v-for="row in section.rows"
           :key="row.moment.id"
           :moment="row.moment"
           :song-title="row.songTitle"
-          :show-song-title="true"
+          :show-song-title="section.showSongTitle !== false"
+          :highlighted="row.moment.id === highlightId"
           :terms="terms"
           :mode="modeOf(row.moment.id)"
           :id-prefix="prefix()"
