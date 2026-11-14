@@ -107,7 +107,7 @@ describe('B. 키보드 경로', () => {
     await seedLibrary()
     await nextTick()
     // M7: 트랙 드로어는 플레이리스트 타일 본문으로 연다.
-    const trigger = wrapper.get('.playlist-tile .playlist-open')
+    const trigger = wrapper.get('.now-playlist .open-archive')
 
     await trigger.trigger('click')
     await flushPromises()
@@ -179,7 +179,7 @@ describe('C. 컨트롤 이름과 크기', () => {
     const { wrapper } = mountApp()
     const library = await seedLibrary()
     await nextTick()
-    await wrapper.get('.playlist-play').trigger('click')
+    await wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
 
     expect(library.selectedPlaylist?.tracks).toHaveLength(2)
@@ -193,8 +193,10 @@ describe('C. 컨트롤 이름과 크기', () => {
     expect(list).toMatch(/\.track-manage \{[\s\S]*?min-height: 44px/)
     expect(list).toMatch(/\.pill \{[\s\S]*?min-height: 44px/)
 
-    const tile = readSource('src/features/library/PlaylistTile.vue')
-    expect(tile).toMatch(/\.playlist-play \{[\s\S]*?width: 44px;[\s\S]*?height: 44px/)
+    // M11-7B: NOW PLAYLIST 의 곡 줄 · 목록 줄 · 단추.
+    const nowPlaylist = readSource('src/features/library/NowPlaylistWidget.vue')
+    expect(nowPlaylist).toMatch(/\.track-row,\s*\.picker-row \{[\s\S]*?min-height: 44px/)
+    expect(nowPlaylist).toMatch(/\.pill \{[\s\S]*?min-height: 44px/)
 
     expect(readSource('src/components/ui/ThemeSwitcher.vue')).toMatch(
       /\.theme-button \{[\s\S]*?min-height: 44px/,
@@ -217,8 +219,8 @@ describe('C. 컨트롤 이름과 크기', () => {
       'src/features/deck/DeckWidget.vue',
       'src/features/library/ArchivePlaylistNav.vue',
       'src/features/library/PlaylistEditor.vue',
-      'src/features/library/PlaylistTile.vue',
-      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/useNowPlaylist.ts',
+      'src/features/library/NowPlaylistWidget.vue',
       'src/features/library/TrackList.vue',
       'src/features/moments/MomentList.vue',
       'src/features/moments/MomentRow.vue',
@@ -237,7 +239,7 @@ describe('C. 컨트롤 이름과 크기', () => {
     const { wrapper } = mountApp()
     await seedLibrary()
     await nextTick()
-    await wrapper.get('.playlist-play').trigger('click')
+    await wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
 
     const link = wrapper.get('.action-row a')
@@ -269,8 +271,8 @@ describe('D. 포커스 링', () => {
       'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/backup/DataDialog.vue',
       'src/components/layout/AppNav.vue',
-      'src/features/library/PlaylistWidget.vue',
-      'src/features/library/PlaylistTile.vue',
+      'src/features/library/NowPlaylistWidget.vue',
+      'src/features/library/useNowPlaylist.ts',
       'src/features/library/TrackList.vue',
       'src/features/deck/DeckWidget.vue',
     ]) {

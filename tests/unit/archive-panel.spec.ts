@@ -44,6 +44,16 @@ const nav = (wrapper: Wrapper, label: string) => {
 }
 const archive = (wrapper: Wrapper) => wrapper.get('#archive-panel')
 const isArchiveOpen = (wrapper: Wrapper) => archive(wrapper).attributes('hidden') === undefined
+/**
+ * 보관함을 Moments 탭으로 연다 (M11-7B) — 헤더에는 "보관함" 하나뿐이고 탭은 보관함 안에서 고른다.
+ * 이미 열려 있으면 탭만 바꾼다.
+ */
+async function openMoments(wrapper: Wrapper): Promise<void> {
+  if (!isArchiveOpen(wrapper)) await nav(wrapper, '보관함').trigger('click')
+  await settle()
+  await wrapper.get('#archive-tab-moments').trigger('click')
+  await settle()
+}
 const dialogBackdrop = (wrapper: Wrapper) => wrapper.get('.data-backdrop')
 const isDataOpen = (wrapper: Wrapper) => dialogBackdrop(wrapper).attributes('hidden') === undefined
 
@@ -92,10 +102,11 @@ afterEach(() => {
 })
 
 describe('A. 전역 입구 — 헤더', () => {
-  it('음악 · Moments · 데이터 세 입구가 글자 이름과 함께 있다', () => {
+  it('보관함 · 데이터 · 백업 두 입구가 글자 이름과 함께 있다 (M11-7B · H1)', () => {
     const { wrapper } = mountApp()
     const buttons = wrapper.findAll('.app-nav button')
-    expect(buttons.map((b) => b.text())).toEqual(['♪ 음악', '◆ Moments', '⇩ 데이터'])
+    // 음악 · Moments 를 따로 두지 않는다 — 같은 보관함의 두 탭이다 (UAT U8).
+    expect(buttons.map((b) => b.text())).toEqual(['▤ 보관함', '⇩ 데이터 · 백업'])
     // 기호는 장식이다 — 이름은 글자가 말한다.
     for (const button of buttons) {
       expect(button.find('[aria-hidden="true"]').exists()).toBe(true)
@@ -105,41 +116,73 @@ describe('A. 전역 입구 — 헤더', () => {
 
   it('입구가 연 것을 aria-expanded · aria-controls 로 알린다', async () => {
     const { wrapper } = mountApp()
-    const music = nav(wrapper, '음악')
-    expect(music.attributes('aria-controls')).toBe('archive-panel')
-    expect(music.attributes('aria-expanded')).toBe('false')
+    const entry = nav(wrapper, '보관함')
+    expect(entry.attributes('aria-controls')).toBe('archive-panel')
+    expect(entry.attributes('aria-expanded')).toBe('false')
 
-    await music.trigger('click')
+    await entry.trigger('click')
     await settle()
-    expect(music.attributes('aria-expanded')).toBe('true')
-    expect(nav(wrapper, 'Moments').attributes('aria-expanded')).toBe('false')
+    expect(entry.attributes('aria-expanded')).toBe('true')
+    // 탭을 바꿔도 "보관함이 열려 있다" 는 그대로다.
+    await wrapper.get('#archive-tab-moments').trigger('click')
+    await settle()
+    expect(entry.attributes('aria-expanded')).toBe('true')
 
     const data = nav(wrapper, '데이터')
     expect(data.attributes('aria-haspopup')).toBe('dialog')
     expect(data.attributes('aria-controls')).toBe('data-dialog')
   })
 
-  it('같은 입구를 다시 누르면 닫고, 다른 입구는 탭만 바꾼다', async () => {
+  it('입구를 다시 누르면 닫고, 다시 열면 마지막으로 쓰던 탭이다', async () => {
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
     expect(isArchiveOpen(wrapper)).toBe(true)
+    // 처음에는 음악 탭이다.
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
 
-    await nav(wrapper, 'Moments').trigger('click')
+    await wrapper.get('#archive-tab-moments').trigger('click')
     await settle()
     expect(isArchiveOpen(wrapper)).toBe(true)
     expect(wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
 
-    await nav(wrapper, 'Moments').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
     expect(isArchiveOpen(wrapper)).toBe(false)
+
+    // 마지막 탭(Moments)으로 다시 열린다 — 저장하지 않고 메모리에만 기억한다.
+    await nav(wrapper, '보관함').trigger('click')
+    await settle()
+    expect(wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
+    expect(Object.keys(globalThis.localStorage).filter((key) => /tab|archive/i.test(key))).toEqual(
+      [],
+    )
+  })
+
+  it('문맥이 있는 입구는 그 탭으로 연다 — 데크는 음악, Moments 위젯의 "모두 보기" 는 Moments', async () => {
+    const { wrapper } = mountApp()
+    await openMoments(wrapper)
+    await nav(wrapper, '보관함').trigger('click')
+    await settle()
+    expect(isArchiveOpen(wrapper)).toBe(false)
+
+    // 마지막 탭이 Moments 여도 데크는 음악 탭으로 연다.
+    await wrapper.get('.deck-open--kawaii-synth-cassette').trigger('click')
+    await settle()
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
+
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
+    await settle()
+    await wrapper.get('.moments-widget .widget-head .pill').trigger('click')
+    await settle()
+    expect(wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
   })
 })
 
 describe('B. 보관함 탭', () => {
   it('탭은 WAI-ARIA 탭 패턴이다 — 선택된 탭만 Tab 순서에 있고 패널을 가리킨다', async () => {
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     const music = wrapper.get('#archive-tab-music')
@@ -156,7 +199,7 @@ describe('B. 보관함 탭', () => {
 
   it('화살표 · Home · End 로 탭을 옮기면 바로 바뀌고 포커스가 따라간다', async () => {
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     await wrapper.get('#archive-tab-music').trigger('keydown', { key: 'ArrowRight' })
@@ -177,7 +220,7 @@ describe('B. 보관함 탭', () => {
   it('탭을 오가도 쓰던 양식이 남는다 — 두 패널은 마운트된 채 숨기기만 한다', async () => {
     seed([{ id: 'p1', name: 'ONE', videoIds: [] }], 'p1')
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     const addLink = wrapper
@@ -201,15 +244,14 @@ describe('B. 보관함 탭', () => {
     const { wrapper } = mountApp()
     expect(wrapper.find('#archive-panel-moments .moments-browser').exists()).toBe(false)
 
-    await nav(wrapper, 'Moments').trigger('click')
-    await settle()
+    await openMoments(wrapper)
     expect(wrapper.find('#archive-panel-moments .moments-browser').exists()).toBe(true)
 
     // 닫았다 열어도 다시 만들지 않는다.
     const node = wrapper.get('#archive-panel-moments .moments-browser').element
-    await nav(wrapper, 'Moments').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
-    await nav(wrapper, 'Moments').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
     expect(wrapper.get('#archive-panel-moments .moments-browser').element).toBe(node)
   })
@@ -218,8 +260,7 @@ describe('B. 보관함 탭', () => {
     const { wrapper } = mountApp()
     const moments = useMomentsStore()
     await moments.add({ videoId: 'dQw4w9WgXcQ', atSeconds: 83, note: '처음', title: 'Song' })
-    await nav(wrapper, 'Moments').trigger('click')
-    await settle()
+    await openMoments(wrapper)
 
     const panel = wrapper.get('#archive-panel-moments')
     expect(panel.text()).toContain('처음')
@@ -240,7 +281,7 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
       'p1',
     )
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
     expect(wrapper.get('#playlist-editor-title').text()).toBe('ONE')
 
@@ -257,7 +298,7 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
   it('보관함에서 새 목록을 만들면 바로 그 목록의 링크 입력으로 이어진다', async () => {
     seed([{ id: 'p1', name: 'ONE', videoIds: [] }], 'p1')
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     await wrapper.get('.archive-lists .pill--strong').trigger('click')
@@ -273,7 +314,7 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
   it('빈 목록의 ▶ 는 꺼져 있고 이유를 이름이 말한다', async () => {
     seed([{ id: 'p1', name: 'ONE', videoIds: [] }], 'p1')
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     const play = wrapper.get('.archive-lists .list-play')
@@ -283,7 +324,7 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
 
   it('편집 표면에 백업이 없다 — 데이터 대화상자로 옮겼다는 안내가 있다', async () => {
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     expect(archive(wrapper).find('.backup').exists()).toBe(false)
@@ -294,7 +335,7 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
 describe('D. 닫기 · Escape · 포커스', () => {
   it('Escape 는 바깥 것부터 — 데이터 대화상자, 그다음 보관함', async () => {
     const { wrapper } = mountApp()
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
     await nav(wrapper, '데이터').trigger('click')
     await settle()
@@ -312,11 +353,11 @@ describe('D. 닫기 · Escape · 포커스', () => {
 
   it('보관함을 닫으면 연 입구로 포커스가 돌아온다', async () => {
     const { wrapper } = mountApp()
-    const trigger = nav(wrapper, 'Moments').element as HTMLElement
+    const trigger = nav(wrapper, '보관함').element as HTMLElement
     trigger.focus()
-    await nav(wrapper, 'Moments').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
-    expect(document.activeElement).toBe(wrapper.get('#archive-tab-moments').element)
+    expect(document.activeElement).toBe(wrapper.get('#archive-tab-music').element)
 
     await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await settle()
@@ -417,7 +458,7 @@ describe('F. 플레이어 영속성 — 보관함 · 테마', () => {
   it('보관함을 열고 닫고 탭을 바꾸고 테마를 바꿔도 플레이어 DOM 과 어댑터가 그대로다', async () => {
     seed([{ id: 'p1', name: 'ONE', videoIds: ['aaaaaaaaaaa'] }], 'p1')
     const { wrapper, fake } = mountApp()
-    await wrapper.get('.playlist-play').trigger('click')
+    await wrapper.get('.now-playlist .play-all').trigger('click')
     await settle()
     fake.emitReady()
     fake.emitStateChange('playing')
@@ -427,7 +468,7 @@ describe('F. 플레이어 영속성 — 보관함 · 테마', () => {
     const host = fake.hostNode
 
     for (let round = 0; round < 3; round += 1) {
-      await nav(wrapper, '음악').trigger('click')
+      await nav(wrapper, '보관함').trigger('click')
       await settle()
       await wrapper.get('#archive-tab-moments').trigger('click')
       useThemeStore().setTheme(round % 2 === 0 ? 'kawaii-synth-cassette' : 'mono-vinyl')
@@ -447,7 +488,7 @@ describe('F. 플레이어 영속성 — 보관함 · 테마', () => {
     const { wrapper } = mountApp()
     const widgetsBefore = wrapper.findAll('.widget-host > [data-widget]').map((w) => w.element)
 
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
     expect(wrapper.get('.workspace').classes()).toContain('is-archive-open')
 
@@ -460,7 +501,7 @@ describe('F. 플레이어 영속성 — 보관함 · 테마', () => {
     installMatchMedia(true)
     const { wrapper } = mountApp()
 
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     expect(document.documentElement.style.overflow).toBe('hidden')
@@ -489,7 +530,7 @@ describe('F. 플레이어 영속성 — 보관함 · 테마', () => {
     })) as unknown as typeof window.matchMedia
     try {
       const { wrapper } = mountApp()
-      await nav(wrapper, '음악').trigger('click')
+      await nav(wrapper, '보관함').trigger('click')
       await settle()
 
       const workspace = wrapper.get('.workspace')
@@ -509,7 +550,7 @@ describe('F. 플레이어 영속성 — 보관함 · 테마', () => {
     installMatchMedia(false)
     const { wrapper } = mountApp()
 
-    await nav(wrapper, '음악').trigger('click')
+    await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     expect(document.documentElement.style.overflow).toBe('')

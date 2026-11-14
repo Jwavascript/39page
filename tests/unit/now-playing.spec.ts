@@ -68,7 +68,7 @@ function boot() {
 }
 
 async function playOne(s: ReturnType<typeof boot>): Promise<void> {
-  await s.wrapper.findAll('.playlist-tile .playlist-play')[0]?.trigger('click')
+  await s.wrapper.findAll('.now-playlist .play-all')[0]?.trigger('click')
   await flushPromises()
   s.fake.emitReady()
   s.fake.emitStateChange('playing')
@@ -104,9 +104,9 @@ describe('A. 지금 곡 — 코디네이터의 읽기 전용 보기', () => {
   it('라이브러리 UI 는 playback store 를 보지 않는다 — 계약만 본다', () => {
     for (const file of [
       'src/features/library/PlaylistEditor.vue',
-      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/NowPlaylistWidget.vue',
       'src/features/library/TrackList.vue',
-      'src/features/library/PlaylistTile.vue',
+      'src/features/library/useNowPlaylist.ts',
     ]) {
       const code = readFileSync(resolve(process.cwd(), file), 'utf8')
       expect({ file, store: code.includes('usePlaybackStore') }).toEqual({ file, store: false })
@@ -118,7 +118,7 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
   it('보관함의 트랙 행 — 테두리와 함께 "재생 중" 글 · aria-current', async () => {
     const s = boot()
     await playOne(s)
-    await s.wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    await s.wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
     await flushPromises()
 
     const rows = s.wrapper.findAll('.track')
@@ -133,7 +133,7 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
     await playOne(s)
     s.fake.emitStateChange('paused')
     await nextTick()
-    await s.wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    await s.wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
     await flushPromises()
 
     expect(s.wrapper.get('.track.is-current .track-badge').text()).toBe('지금 곡')
@@ -142,7 +142,7 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
   it('다음 곡으로 넘어가면 표시가 따라간다', async () => {
     const s = boot()
     await playOne(s)
-    await s.wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    await s.wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
     await flushPromises()
     await s.wrapper.get('button[aria-label="다음 곡"]').trigger('click')
     await nextTick()
@@ -152,16 +152,25 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
     expect(rows[1]?.classes()).toContain('is-current')
   })
 
-  it('지금 곡이 든 플레이리스트 타일에 "재생 중" — 같은 영상의 다른 목록에는 붙지 않는다', async () => {
+  it('NOW PLAYLIST 가 재생을 시작한 목록을 "재생 중" 으로 말한다 — 같은 영상이 든 다른 목록은 아니다', async () => {
     const s = boot()
     await playOne(s)
 
-    const tiles = s.wrapper.findAll('.playlist-tile')
-    expect(tiles[0]?.classes()).toContain('is-playing')
-    expect(tiles[0]?.get('.pmeta').text()).toContain('재생 중')
-    expect(tiles[0]?.get('.playlist-open').attributes('aria-label')).toContain('재생 중')
-    // TWO 에도 같은 영상(A)이 있지만, 큐의 곡은 ONE 의 트랙(t-a)이다.
-    expect(tiles[1]?.classes()).not.toContain('is-playing')
+    const widget = s.wrapper.get('.now-playlist')
+    expect(widget.attributes('data-view')).toBe('queue')
+    expect(widget.get('.list-name').text()).toBe('ONE')
+    expect(widget.get('.state-chip').text()).toBe('재생 중')
+    // 지금 곡 줄 — 색만이 아니라 글과 aria-current 로 알린다.
+    const current = widget.get('.track-row.is-current')
+    expect(current.text()).toContain('Alpha')
+    expect(current.text()).toContain('재생 중')
+    expect(current.attributes('aria-current')).toBe('true')
+
+    // TWO 에도 같은 영상(A)이 있지만, 큐는 ONE 에서 떴다 — 출처는 추정이 아니라 기록이다 (M11-7B).
+    await widget.get('.switch-list').trigger('click')
+    const choices = widget.findAll('.picker-row').map((row) => row.text())
+    expect(choices[0]).toContain('재생 중인 목록')
+    expect(choices[1]).not.toContain('재생 중인 목록')
   })
 })
 
@@ -199,7 +208,7 @@ describe('C. 데크 — 안내 문구가 실제 동작과 같다 (U2 · U3)', ()
   it('빈 플레이어 안내가 두 테마와 실제 입구에 맞다', async () => {
     const s = boot()
     expect(s.wrapper.get('.now-sub').text()).toBe(
-      'LP · 카세트나 ♪ 음악에서 곡을 고르거나 링크를 추가할 수 있어요.',
+      '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.',
     )
   })
 })

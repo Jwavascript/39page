@@ -308,7 +308,7 @@ describe('A. 내보내기', () => {
     seedStorage({ moments: [] })
     const s = boot()
     const created = stubDownloads()
-    await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+    await s.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     s.fake.emitReady()
     s.fake.emitStateChange('playing')
@@ -752,7 +752,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
   it('Moments 만 교체하면 라이브러리·재생을 건드리지 않는다', async () => {
     seedStorage()
     const s = boot()
-    await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+    await s.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     s.fake.emitReady()
     s.fake.emitStateChange('playing')

@@ -409,7 +409,7 @@ type Wrapper = ReturnType<typeof mountApp>['wrapper']
  * 데크는 이제 플레이리스트 위젯을 펼친다. 드로어는 **타일 본문**으로 연다.
  */
 function editorTrigger(wrapper: Wrapper) {
-  return wrapper.get('.playlist-tile .playlist-open')
+  return wrapper.get('.now-playlist .open-archive')
 }
 
 async function seeded(trackCount = 2) {
@@ -441,7 +441,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
   it('트랙을 고르면 그 영상의 YouTube 주소를 띄운다', async () => {
     const context = await seeded()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     const link = context.wrapper.get('.action-row a')
     expect(link.attributes('href')).toBe(`https://www.youtube.com/watch?v=${VIDEOS[0]}`)
@@ -451,7 +451,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
   it('새 창으로 열고 opener 를 넘기지 않는다', async () => {
     const context = await seeded()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     const link = context.wrapper.get('.action-row a')
     expect(link.attributes('target')).toBe('_blank')
@@ -460,7 +460,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
 
   it('오류가 나도 링크는 그대로 있다', async () => {
     const context = await seeded()
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     context.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
     await nextTick()
@@ -472,7 +472,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
 
   it('다음 곡으로 넘기면 링크도 그 곡을 가리킨다', async () => {
     const context = await seeded()
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     await context.wrapper.get('[aria-label="다음 곡"]').trigger('click')
 
@@ -505,7 +505,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
   it('트랙을 고르면 안내를 숨긴다 — DOM 에서 지우지는 않는다', async () => {
     const context = await seeded()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     const placeholder = context.wrapper.get('.video-placeholder')
     expect(placeholder.classes()).toContain('is-hidden')
@@ -513,7 +513,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
 
   it('드로어에서 재생 중인 트랙을 지우면 멈추고 안내한다', async () => {
     const context = await seeded()
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -534,7 +534,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
 
   it('드로어에서 다른 트랙을 지우면 재생이 계속된다', async () => {
     const context = await seeded()
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
     await nextTick()

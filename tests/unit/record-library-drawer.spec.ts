@@ -69,7 +69,15 @@ function deckTrigger(wrapper: Wrapper, theme: 'mono-vinyl' | 'kawaii-synth-casse
  */
 async function openDrawer(wrapper: Wrapper, index = 0) {
   await nextTick()
-  await wrapper.findAll('.playlist-tile .playlist-open')[index]?.trigger('click')
+  // M11-7B: 목록은 보관함의 목록 칸에서 고른다. 그 목록을 고르고(있으면) 보관함을 연다.
+  await wrapper.findAll('.archive-lists .list-select')[index]?.trigger('click')
+  await flushPromises()
+  if (wrapper.get('#archive-panel').attributes('hidden') !== undefined) {
+    await wrapper
+      .get('.now-playlist .open-archive, .now-playlist .widget-foot .pill')
+      .trigger('click')
+  }
+  await flushPromises()
   await nextTick()
 }
 
@@ -79,18 +87,19 @@ async function openDrawer(wrapper: Wrapper, index = 0) {
  * `＋ 새 목록` 은 플레이리스트가 사는 위젯에, `＋ YouTube 링크 추가` 는 트랙이
  * 사는 드로어에 있다. 위계가 공간에 드러나야 한다는 보고 6a 의 답이다.
  */
-const createButton = (wrapper: Wrapper) => wrapper.get('.playlist-widget .pill--strong')
+const createButton = (wrapper: Wrapper) => wrapper.get('.archive-lists .pill--strong')
 
-/** 위젯의 생성 폼으로 플레이리스트를 만든다. */
+/** 보관함 목록 칸의 생성 폼으로 플레이리스트를 만든다 (M11-7B — 만드는 곳은 보관함 하나다). */
 async function createPlaylistViaUi(wrapper: Wrapper, name: string) {
   await createButton(wrapper).trigger('click')
-  await wrapper.get('#new-playlist-name').setValue(name)
-  await wrapper.get('form.create-form').trigger('submit')
+  await wrapper.get('#archive-new-playlist-name').setValue(name)
+  await wrapper.get('.archive-lists form.create-form').trigger('submit')
+  await flushPromises()
   await nextTick()
 }
 
-/** 타일의 `⋯` — 그 목록을 선택하고 편집 오버레이를 연다. */
-const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.playlist-tile .playlist-open')
+/** 보관함 목록 칸의 행 — 누르면 그 목록을 고른다. */
+const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.archive-lists .list-select')
 
 async function switchTheme(key: 'mono-vinyl' | 'kawaii-synth-cassette') {
   useThemeStore().setTheme(key)
@@ -152,10 +161,13 @@ describe('A. 드로어 동작', () => {
     const { wrapper } = mountApp()
     await switchTheme('mono-vinyl')
 
+    await switchTheme('kawaii-synth-cassette')
     await deckTrigger(wrapper, 'kawaii-synth-cassette').trigger('click')
     await nextTick()
 
-    expect(wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+    // 데크는 음악 보관함을 연다 (M11-3) — 두 테마가 같다.
+    expect(isOpen(wrapper)).toBe(true)
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
   })
 
   it('3. 타일 본문이 트랙 드로어를 연다', async () => {
@@ -163,7 +175,7 @@ describe('A. 드로어 동작', () => {
     useLibraryStore().createPlaylist('A')
     await nextTick()
 
-    await wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await wrapper.get('.now-playlist .open-archive').trigger('click')
     await flushPromises()
     await nextTick()
 
@@ -208,7 +220,7 @@ describe('A. 드로어 동작', () => {
     await nextTick()
 
     // 트리거는 이제 타일 본문이다 (M7).
-    const trigger = wrapper.get('.playlist-tile .playlist-open').element as HTMLElement
+    const trigger = wrapper.get('.now-playlist .open-archive').element as HTMLElement
     trigger.focus()
 
     trigger.click()
@@ -231,9 +243,8 @@ describe('A. 드로어 동작', () => {
     library.createPlaylist('A')
     const b = await library.createPlaylist('B')
     await nextTick()
-    // 두 번째 타일(=B)을 열어 선택을 B 로 맞춘다.
-    await wrapper.findAll('.playlist-tile .playlist-open')[1]?.trigger('click')
-    await nextTick()
+    // 두 번째 목록(=B)을 골라 보관함을 연다.
+    await openDrawer(wrapper, 1)
 
     await switchTheme('mono-vinyl')
 
@@ -279,8 +290,8 @@ describe('B. 플레이리스트 UI', () => {
     library.createPlaylist('NIGHT DRIVE')
     await openDrawer(wrapper)
 
-    // 목록은 이제 위젯의 타일 격자다 (M6-4).
-    const names = wrapper.findAll('.playlist-tile .pname').map((node) => node.text())
+    // 목록은 보관함의 목록 칸에 있다 (M11-7B).
+    const names = wrapper.findAll('.archive-lists .list-name').map((node) => node.text())
     expect(names).toEqual(['MY RECORDS', 'NIGHT DRIVE'])
   })
 
@@ -395,15 +406,18 @@ describe('B. 플레이리스트 UI', () => {
     // 저장된 선택은 p2(=B) 다. 그 타일을 열어 선택을 유지한다.
     await openDrawer(wrapper, 1)
 
-    const tiles = wrapper.findAll('.playlist-tile')
-    expect(tiles[0]?.find('.pmeta').text()).toBe('2 TRACKS')
+    const tiles = wrapper.findAll('.archive-lists .list-row')
+    expect(tiles[0]?.find('.list-meta').text()).toBe('2곡')
     // 빈 목록은 트랙 수 대신 비었음을 말한다 (M6-4).
-    expect(tiles[1]?.find('.pmeta').text()).toBe('EMPTY')
+    expect(tiles[1]?.find('.list-meta').text()).toBe('비어 있음')
     expect(tiles[1]?.classes()).toContain('is-selected')
-    expect(tiles[1]?.find('.playlist-open').attributes('aria-current')).toBe('true')
-    expect(tiles[0]?.find('.playlist-open').attributes('aria-current')).toBeUndefined()
+    expect(tiles[1]?.find('.list-select').attributes('aria-current')).toBe('true')
+    expect(tiles[0]?.find('.list-select').attributes('aria-current')).toBeUndefined()
     // 빈 목록은 재생할 수 없다.
-    expect(tiles[1]?.find('.playlist-play').attributes('disabled')).toBeDefined()
+    expect(tiles[1]?.find('.list-play').attributes('disabled')).toBeDefined()
+    // 대시보드의 NOW PLAYLIST 는 고른 목록(B)을 "재생 대기" 로 보인다 — 재생 중이라고 하지 않는다.
+    expect(wrapper.get('.now-playlist').attributes('data-view')).toBe('standby')
+    expect(wrapper.get('.now-playlist .state-chip').text()).toBe('재생 대기')
 
     // 드로어 머리말이 **무엇을 편집하는지** 말한다 (보고 6b).
     expect(wrapper.get('#playlist-editor-title').text()).toBe('B')
@@ -431,12 +445,12 @@ describe('B. 플레이리스트 UI', () => {
     const { wrapper } = mountApp()
 
     /*
-     * 목록이 없으면 열 타일도 없다 — 드로어로 가는 길이 애초에 없다 (M7).
-     * 위젯이 시작점을 안내한다.
+     * 목록이 없으면 NOW PLAYLIST 가 시작점을 안내한다 — 보관함에서 목록을 만든다 (M11-7B).
      */
-    expect(wrapper.findAll('.playlist-tile')).toHaveLength(0)
-    expect(wrapper.get('.playlist-widget').text()).toContain('아직 플레이리스트가 없습니다')
-    expect(wrapper.get('.playlist-widget').text()).toContain('새 목록')
+    expect(wrapper.findAll('.now-playlist .track-row')).toHaveLength(0)
+    expect(wrapper.get('.now-playlist').attributes('data-view')).toBe('none')
+    expect(wrapper.get('.now-playlist').text()).toContain('아직 플레이리스트가 없어요')
+    expect(wrapper.get('.now-playlist').text()).toContain('보관함에서 목록 만들기')
     // 드로어 자체의 빈 상태 문구는 그대로 둔다 (선택이 없을 때의 방어선).
     expect(wrapper.get('.track-list').text()).toContain('플레이리스트를 선택하면')
   })
@@ -572,7 +586,7 @@ describe('C. 영속화와 보호', () => {
 
     expect(second.playlists.map((playlist) => playlist.name)).toEqual(expectedNames)
     expect(second.selectedPlaylistId).toBe(expectedSelected)
-    expect(wrapper.findAll('.playlist-tile .pname').map((n) => n.text())).toEqual(expectedNames)
+    expect(wrapper.findAll('.archive-lists .list-name').map((n) => n.text())).toEqual(expectedNames)
   })
 
   it('20. protected 상태를 경고로 알린다', async () => {
@@ -608,8 +622,8 @@ describe('C. 영속화와 보호', () => {
     await createPlaylistViaUi(wrapper, 'IN MEMORY ONLY')
 
     expect(library.playlists).toHaveLength(1)
-    // 만든 자리에서 알린다. 생성은 이제 위젯의 일이다 (M6-4).
-    expect(wrapper.get('.widget-notice').text()).toContain('저장되지 않았습니다')
+    // 만든 자리에서 알린다 — 보관함의 목록 칸 (M11-7B).
+    expect(wrapper.get('.archive-lists .notice').text()).toContain('저장되지 않았습니다')
   })
 
   it('23. 보호 상태에서 원본이 보존된다', async () => {

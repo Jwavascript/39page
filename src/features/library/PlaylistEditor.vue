@@ -112,7 +112,7 @@ const playbackNotice = ref('')
 /**
  * 거절 사유별 안내.
  *
- * `player-hidden` 문구는 `PlaylistWidget` · `useDeckTransport` 와 **공유한다**
+ * `player-hidden` 문구는 `NowPlaylistWidget` · `useDeckTransport` 와 **공유한다**
  * (`PLAY_REFUSED_HIDDEN_MESSAGE`). 재생을 요청하는 세 표면이 같은 말을 해야
  * 사용자가 같은 사정을 두 가지 문제로 읽지 않는다.
  */
@@ -401,7 +401,7 @@ function clearTransientState(): void {
 /**
  * 편집 대상이 바뀌면 작성 중인 것을 닫는다 (M6-5).
  *
- * 선택을 바꾸는 곳이 이제 **이 컴포넌트 밖**(`PlaylistWidget`)이다. 머리말은
+ * 선택을 바꾸는 곳이 이제 **이 컴포넌트 밖**(보관함의 목록 칸 · `NowPlaylistWidget`)이다. 머리말은
  * 새 목록을 가리키는데 폼이 옛 목록을 겨냥한 채 열려 있으면 사용자가 어디에
  * 쓰는지 알 수 없다. `createPlaylist` 도 선택을 옮기므로 새 목록을 만들 때도
  * 함께 닫힌다.

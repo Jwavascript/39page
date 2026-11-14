@@ -207,8 +207,8 @@ describe('A. 드로어에서 재생 시작', () => {
     library.addTrack(otherId, { videoId: VIDEOS[2], title: 'Only' })
     await nextTick()
 
-    // 두 번째 목록 행의 ▶.
-    await wrapper.findAll('.playlist-play')[1]?.trigger('click')
+    // 보관함 목록 칸에서 두 번째 목록 행의 ▶.
+    await wrapper.findAll('.archive-lists .list-play')[1]?.trigger('click')
     await flush()
 
     expect(library.selectedPlaylistId).toBe(otherId)
@@ -236,22 +236,20 @@ describe('A. 드로어에서 재생 시작', () => {
 
     expect(byText(wrapper, '.pill', '▶ 목록 전체 재생')?.attributes('disabled')).toBeDefined()
     /*
-     * M7 — 타일의 `▶` 는 전체 재생 전용이고 빈 목록에서 비활성이다.
-     *
-     * 타일 **본문**은 트랙 편집을 열므로 막다른 길이 아니다 — 비워 둔 목록에
-     * 레코드를 넣으러 들어갈 수 있다.
+     * M11-7B — NOW PLAYLIST 는 빈 목록에 "처음부터 재생" 을 내놓지 않는다. 막다른 길이 아니다 —
+     * 링크 추가와 보관함 편집으로 갈 수 있다.
      */
-    expect(wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
-    // M11-3: 타일 본문은 보관함에서 그 목록을 편집한다.
-    expect(wrapper.get('.playlist-open').attributes('aria-label')).toContain('보관함에서 편집')
+    expect(wrapper.find('.now-playlist .play-all').exists()).toBe(false)
+    expect(wrapper.get('.now-playlist .add-link').text()).toContain('YouTube 링크 추가')
+    expect(wrapper.get('.now-playlist .open-archive').text()).toContain('보관함에서 편집')
     expect(FakeYtPlayer.instances).toHaveLength(0)
   })
 
   it('재생 버튼에 접근성 이름이 있다', async () => {
     const { wrapper } = await setup()
 
-    expect(wrapper.get('.playlist-play').attributes('aria-label')).toBe(
-      'MY RECORDS 전체 재생 (3곡)',
+    expect(wrapper.get('.now-playlist .play-all').attributes('aria-label')).toBe(
+      'MY RECORDS 처음부터 재생 (3곡)',
     )
     expect(wrapper.findAll('.track-play').map((node) => node.attributes('aria-label'))).toEqual([
       'Track 1 재생',

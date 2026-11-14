@@ -89,22 +89,26 @@ const placed = computed<PlacedWidget[]>(() =>
   --host-gap: clamp(20px, 2.3vw, 39px);
 
   display: grid;
+  /*
+   * M11-7B: NOW PLAYLIST(`playlist`)가 **데크 바로 아래**에서 3·4 행을 쓴다 (ADR 0030). M11-6 까지는
+   * 데크가 1~3 행을 가로질렀고 그 높이를 플레이어가 정해, 데크 아래에 빈자리가 남은 뒤에야 4 행의
+   * 플레이리스트가 왔다. 그 빈자리가 지금 재생목록의 자리다.
+   */
   grid-template-areas:
     'deck player clock'
     'deck player weather'
-    'deck player moments'
+    'playlist player moments'
     'playlist mascot moments';
   /*
-   * 1·2 행은 **콘텐츠 높이**(`auto`)다. 그래야 시계와 날씨가 서로 붙는다.
-   * 3 행이 `1fr` 로 남은 높이를 모두 먹으므로 정보 열의 빈자리가 **아래**에
-   * 모인다 — 다른 위젯을 더할 자리다 (M7 요청 4). M9-4 에서 그 자리(3·4 행)를
-   * Music Moments 가 쓴다.
+   * 1 행은 **콘텐츠 높이**(`auto`), 2 행이 `1fr` 다. 데크는 1·2 행을 가로지르고 그 남는 높이를 2 행이
+   * 받는다 — 시계(1 행)와 날씨(2 행 위쪽)는 서로 붙어 있고, 벌어지는 자리는 날씨 **아래**다.
+   * 3·4 행은 콘텐츠 높이다: NOW PLAYLIST 와 Music Moments 가 두 행을 가로지르고, 마스코트는 플레이어
+   * 아래 4 행에 선다.
    *
-   * 이전에는 행이 둘뿐이어서 행 높이를 데크·플레이어가 지배했고, 시계가
-   * 1 행 위쪽에 붙은 뒤 **아래로 빈 공간이 생긴 다음** 날씨가 2 행 시작에
-   * 붙었다. 둘 사이가 벌어져 보인 원인이다.
+   * (M7 까지는 행이 둘뿐이어서 시계가 1 행 위쪽에 붙은 뒤 아래로 빈 공간이 생긴 다음 날씨가 2 행
+   * 시작에 붙었다. 그 벌어짐을 다시 만들지 않는다.)
    */
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   /*
    * 3열의 최소값이 둘 다 근거가 있는 값이다.
    *

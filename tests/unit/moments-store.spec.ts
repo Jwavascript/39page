@@ -1205,7 +1205,7 @@ describe('G. 소스 수준 보장', () => {
       'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/backup/DataDialog.vue',
       'src/components/layout/AppNav.vue',
-      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/NowPlaylistWidget.vue',
       'src/features/library/TrackList.vue',
       'src/features/playback/createPlaybackCoordinator.ts',
       'src/components/layout/DashboardShell.vue',

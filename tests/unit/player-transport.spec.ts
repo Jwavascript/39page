@@ -303,7 +303,7 @@ describe('D. 현재 트랙과 상태 표시', () => {
     expect(wrapper.get('.now-title').text()).toBe('재생할 음악을 선택하세요')
     // M11-3: 두 테마에 맞고 실제 입구(데크 · ♪ 음악)를 말하는 문구로 고쳤다 (U3).
     expect(wrapper.get('.now-sub').text()).toBe(
-      'LP · 카세트나 ♪ 음악에서 곡을 고르거나 링크를 추가할 수 있어요.',
+      '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.',
     )
     expect(wrapper.get('.status').text()).toBe('재생 목록을 만들고 YouTube 링크를 추가해 보세요.')
   })

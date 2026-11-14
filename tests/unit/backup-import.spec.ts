@@ -1350,7 +1350,7 @@ describe('H. 앱 상태와 경계', () => {
     await nextTick()
 
     // 재생을 시작한다.
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1374,7 +1374,7 @@ describe('H. 앱 상태와 경계', () => {
     const context = mountApp()
     await seed(context)
     await nextTick()
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1418,10 +1418,9 @@ describe('H. 앱 상태와 경계', () => {
     await nextTick()
 
     // 타일이 새 목록을 보여준다.
-    expect(context.wrapper.findAll('.playlist-tile .pname').map((node) => node.text())).toEqual([
-      'NIGHT DRIVE',
-      'MORNING',
-    ])
+    expect(context.wrapper.findAll('.archive-lists .list-name').map((node) => node.text())).toEqual(
+      ['NIGHT DRIVE', 'MORNING'],
+    )
     // 선택된 목록이 표시된다.
     expect(context.wrapper.get('#playlist-editor-title').text()).toBe('MORNING')
     // 테마가 문서에 반영된다.
@@ -1445,8 +1444,8 @@ describe('H. 앱 상태와 경계', () => {
       'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/backup/DataDialog.vue',
       'src/components/layout/AppNav.vue',
-      'src/features/library/PlaylistWidget.vue',
-      'src/features/library/PlaylistTile.vue',
+      'src/features/library/NowPlaylistWidget.vue',
+      'src/features/library/useNowPlaylist.ts',
       'src/features/library/TrackList.vue',
       'src/features/deck/DeckWidget.vue',
       'src/features/deck/useDeckTransport.ts',

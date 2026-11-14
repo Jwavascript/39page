@@ -10,8 +10,8 @@
  *
  * ## M11-2 — 통합 보관함 (ADR 0027 C안)
  *
- * M2 ~ M10 의 오른쪽 드로어(한 플레이리스트 편집)가 **보관함**(음악 · Moments 두 탭)이 됐다. 헤더에
- * 이름 있는 입구 셋(음악 · Moments · 데이터)을 둔다.
+ * M2 ~ M10 의 오른쪽 드로어(한 플레이리스트 편집)가 **보관함**(음악 · Moments 두 탭)이 됐다. 헤더의
+ * 이름 있는 입구는 M11-7B 부터 둘이다 — 보관함 · 데이터 · 백업 (ADR 0030, `AppNav`).
  *
  * **보관함은 플레이어를 가리지 않는다 — 레이아웃이 그것을 보장한다.** 가시성 측정은 다른 요소에
  * 덮인 것을 감지하지 못하므로(`playerVisibility.ts`), 덮을 수 있는 배치를 만들지 않는다.
@@ -202,13 +202,16 @@ async function closeArchive(): Promise<void> {
   archiveTrigger = null
 }
 
-/** 헤더 입구: 같은 탭이 열려 있으면 닫고, 아니면 그 탭으로 연다. */
-function toggleArchive(tab: ArchiveTab): void {
-  if (isArchiveOpen.value && archiveTab.value === tab) {
+/**
+ * 헤더의 "보관함" (M11-7B): 열려 있으면 닫고, 닫혀 있으면 **마지막으로 쓰던 탭**으로 연다.
+ * 마지막 탭은 이 셸의 메모리에만 있다 — 저장하지 않는다 (새로고침하면 음악 탭).
+ */
+function toggleArchive(): void {
+  if (isArchiveOpen.value) {
     void closeArchive()
     return
   }
-  openArchive(tab)
+  openArchive()
 }
 
 /**
@@ -315,7 +318,6 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
         <AppNav
           :archive-id="ARCHIVE_ID"
           :archive-open="isArchiveOpen"
-          :archive-tab="archiveTab"
           :data-dialog-id="DATA_DIALOG_ID"
           :data-open="isDataOpen"
           @archive="toggleArchive"

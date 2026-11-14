@@ -182,7 +182,7 @@ const previewFeedback = (s: Session) => s.wrapper.findAll('.moments-widget .feed
 
 /** 목록 전체 재생 → 플레이어 준비 → 실제 재생 → 위치 보고. */
 async function playFromStart(s: Session, seconds: number): Promise<void> {
-  await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+  await s.wrapper.get('.now-playlist .play-all').trigger('click')
   await flushPromises()
   s.fake.emitReady()
   s.fake.emitStateChange('playing')
@@ -214,11 +214,12 @@ async function addNote(s: Session, note: string): Promise<void> {
 
 /** 보관함의 Moments 탭을 연다 — 헤더 입구로. */
 async function openArchiveMoments(s: Session) {
+  // M11-7B: 헤더에는 "보관함" 하나다 — 열고, 탭을 고른다.
   if (s.wrapper.get('#archive-panel').attributes('hidden') !== undefined) {
-    await s.wrapper.findAll('.app-nav button')[1]?.trigger('click')
-  } else {
-    await s.wrapper.get('#archive-tab-moments').trigger('click')
+    await s.wrapper.findAll('.app-nav button')[0]?.trigger('click')
+    await flushPromises()
   }
+  await s.wrapper.get('#archive-tab-moments').trigger('click')
   await flushPromises()
   await nextTick()
   return s.wrapper.get('#archive-panel-moments')
@@ -267,7 +268,7 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
 
   it('재생을 요청해도 실제로 재생되기 전에는 꺼져 있다', async () => {
     const s = boot()
-    await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+    await s.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     s.fake.emitReady()
     s.fake.emitPosition(0)

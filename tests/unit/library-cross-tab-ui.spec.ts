@@ -61,7 +61,7 @@ function stored(): LibraryData {
 
 async function openDrawer(wrapper: Wrapper): Promise<void> {
   await nextTick()
-  await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+  await wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
   await nextTick()
 }
 
@@ -140,26 +140,33 @@ describe('이벤트보다 먼저 누르면 — 충돌 안내 · 입력 유지 ·
     wrapper.unmount()
   })
 
-  it('플레이리스트 위젯에서 목록을 열 때(선택 저장) 충돌하면 그렇다고 알린다', async () => {
+  it('NOW PLAYLIST 에서 볼 목록을 바꿀 때(선택 저장) 충돌하면 그렇다고 알린다', async () => {
     const { wrapper, library } = boot()
+    // 고를 다른 목록이 있어야 한다. 새 목록을 만들면 그것이 선택된다 — 첫 목록으로 돌아가려 한다.
+    await library.createPlaylist('SECOND')
     await nextTick()
-    otherTab().renamePlaylist(library.playlists[0]?.id as string, '다른 탭 이름')
+    const firstId = library.playlists[0]?.id as string
+    const secondId = library.selectedPlaylistId
+    otherTab().renamePlaylist(firstId, '다른 탭 이름')
 
-    await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    await wrapper.get('.now-playlist .switch-list').trigger('click')
+    await wrapper.findAll('.now-playlist .picker-row')[0]?.trigger('click')
     await flushPromises()
     await nextTick()
 
-    expect(wrapper.get('.widget-notice').text()).toBe(LIBRARY_CONFLICT_MESSAGE)
+    expect(wrapper.get('.now-playlist .widget-notice').text()).toBe(LIBRARY_CONFLICT_MESSAGE)
     expect(stored().playlists[0]?.name).toBe('다른 탭 이름')
     expect(library.playlists[0]?.name).toBe('다른 탭 이름')
-    // 선택이 거절됐으므로 편집 오버레이를 열지 않는다 — 고르지 않은 목록이 열리지 않게 (ADR 0025).
-    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
+    // 선택이 거절됐으므로 보이는 목록이 바뀌지 않는다 — 고르지 않은 목록이 고른 것처럼 보이지 않게 (ADR 0025).
+    expect(library.selectedPlaylistId).toBe(secondId)
+    expect(wrapper.get('.now-playlist .list-name').text()).toBe('SECOND')
 
-    // 최신을 보고 다시 누르면 선택이 저장된 뒤에 열린다.
-    await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    // 최신을 보고 다시 누르면 선택이 저장되고 그 목록이 보인다.
+    await wrapper.findAll('.now-playlist .picker-row')[0]?.trigger('click')
     await flushPromises()
     await nextTick()
-    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(library.selectedPlaylistId).toBe(firstId)
+    expect(wrapper.get('.now-playlist .list-name').text()).toBe('다른 탭 이름')
     wrapper.unmount()
   })
 })

@@ -232,14 +232,17 @@ describe('B. 정보 열 구분선', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
 
-    expect(wide).toContain('grid-template-rows: auto auto 1fr auto')
+    // M11-7B: 데크가 1·2 행, NOW PLAYLIST 가 그 아래 3·4 행이다. 남는 높이는 2 행(`1fr`)이 받아
+    // 시계(1 행)와 날씨(2 행 위쪽)가 붙어 있다.
+    expect(wide).toContain('grid-template-rows: auto 1fr auto auto')
+    expect(wide).toContain("'deck player weather'")
     /*
      * 그 빈자리(3·4 행)를 M9-4 부터 Music Moments 가 쓴다. 시계 · 날씨는 1 · 2 행(`auto`)이라 늘
      * 붙어 있다. M11-3 에서 Moments 가 "이 곡의 Moments" 미리보기(안쪽 스크롤 없음)가 되어
      * `contain: size` 를 풀었다 — 칸보다 길어지면(메모를 쓰는 동안) 아래 행(플레이리스트 ·
      * 마스코트)이 내려간다. 데크 · 플레이어는 위쪽 정렬이라 움직이지 않는다.
      */
-    expect(wide).toContain("'deck player moments'")
+    expect(wide).toContain("'playlist player moments'")
     expect(wide).toContain("'playlist mascot moments'")
     expect(source).toMatch(/\[data-widget='moments'\]\s*\{[^}]*align-self: stretch;/)
     expect(source).not.toMatch(/contain: size;/)

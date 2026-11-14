@@ -83,7 +83,7 @@ async function openDrawer(session: Session) {
   if (session.library.playlists.length === 0) session.library.createPlaylist('MY RECORDS')
   await nextTick()
 
-  await session.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+  await session.wrapper.get('.now-playlist .open-archive').trigger('click')
   await nextTick()
 }
 
@@ -93,15 +93,16 @@ async function closeDrawer(session: Session) {
 }
 
 /**
- * 플레이리스트 위젯으로 새 목록을 만든다.
+ * 보관함의 목록 칸에서 새 목록을 만든다.
  *
- * M6-4 에서 `＋ 새 목록` 이 드로어에서 위젯으로 옮겼다. 플레이리스트가 사는
- * 곳에서 만든다 (보고 6a).
+ * M11-7B 에서 `＋ 새 목록` 은 보관함 한 곳에만 있다 — 대시보드의 NOW PLAYLIST 는 듣는 곳이고
+ * 목록을 만들고 고치는 일은 보관함의 일이다 (ADR 0030).
  */
 async function createPlaylist(session: Session, name: string) {
-  await session.wrapper.get('.playlist-widget .pill--strong').trigger('click')
-  await session.wrapper.get('#new-playlist-name').setValue(name)
-  await session.wrapper.get('form.create-form').trigger('submit')
+  await session.wrapper.get('.archive-lists .pill--strong').trigger('click')
+  await session.wrapper.get('#archive-new-playlist-name').setValue(name)
+  await session.wrapper.get('.archive-lists form.create-form').trigger('submit')
+  await flushPromises()
   await nextTick()
 }
 
@@ -155,12 +156,13 @@ describe('1. 최초 실행 → 기본 라이브러리 생성', () => {
     await openDrawer(session)
 
     /*
-     * M7 — 타일의 `▶`(전체 재생)가 비활성이고, 본문은 트랙 편집을 연다.
-     * 드로어의 `▶ 목록 전체 재생` 도 그대로 비활성이다.
+     * M11-7B — NOW PLAYLIST 는 빈 목록에 "처음부터 재생" 을 내놓지 않고 링크 추가로 안내한다.
+     * 보관함의 `▶ 목록 전체 재생` 은 그대로 비활성이다.
      */
-    expect(session.wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
+    expect(session.wrapper.find('.now-playlist .play-all').exists()).toBe(false)
+    expect(session.wrapper.get('.now-playlist').text()).toContain('이 목록은 비어 있어요')
 
-    await session.wrapper.get('.playlist-open').trigger('click')
+    await session.wrapper.get('.now-playlist .open-archive').trigger('click')
     await nextTick()
 
     expect(session.playback.queue).toEqual([])
@@ -424,7 +426,7 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
   it('닫으면 포커스가 트리거로 돌아온다', async () => {
     const session = boot()
     // M7: 드로어를 여는 트리거는 플레이리스트 타일 본문이다.
-    const trigger = session.wrapper.get('.playlist-tile .playlist-open')
+    const trigger = session.wrapper.get('.now-playlist .open-archive')
     ;(trigger.element as HTMLElement).focus()
 
     await trigger.trigger('click')

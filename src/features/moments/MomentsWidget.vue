@@ -229,7 +229,7 @@ function openCurrent(): void {
 
 <style scoped>
 /*
- * 색 · 치수는 기존 토큰만 쓴다. 머리말은 `PlaylistWidget` 과 같은 조판이다. **위젯 안 스크롤이 없다** —
+ * 색 · 치수는 기존 토큰만 쓴다. 머리말은 `NowPlaylistWidget` 과 같은 조판이다. **위젯 안 스크롤이 없다** —
  * 미리보기는 최대 3행이고 나머지는 보관함이다 (M11-3).
  */
 .moments-widget {

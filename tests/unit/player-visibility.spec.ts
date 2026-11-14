@@ -968,7 +968,7 @@ function deckTrigger(wrapper: Wrapper) {
  * 데크는 이제 플레이리스트 위젯을 펼친다. 드로어는 **타일 본문**으로 연다.
  */
 function editorTrigger(wrapper: Wrapper) {
-  return wrapper.get('.playlist-tile .playlist-open')
+  return wrapper.get('.now-playlist .open-archive')
 }
 
 async function seedPlaying(trackCount = 3) {
@@ -1015,13 +1015,13 @@ describe('D. 드로어 연동', () => {
     // 플레이어는 top 120 ~ bottom 425 다. 시트를 그 아래에서만 올린다.
     setRectOverride('#archive-panel', sheetRect(300))
 
-    context.wrapper.get('.playlist-play').trigger('click')
+    context.wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
@@ -1045,13 +1045,13 @@ describe('D. 드로어 연동', () => {
     installMatchMedia(true)
     const context = await seedPlaying()
 
-    context.wrapper.get('.playlist-play').trigger('click')
+    context.wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
@@ -1075,13 +1075,13 @@ describe('D. 드로어 연동', () => {
     // 측면 열이어도 스텁 사각형은 화면 하단까지 내려와 있다.
     setRectOverride('#archive-panel', sheetRect(700))
 
-    context.wrapper.get('.playlist-play').trigger('click')
+    context.wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
     await nextTick()
     await nextTick()
 
@@ -1119,7 +1119,7 @@ describe('D. 드로어 연동', () => {
     const context = await seedPlaying()
 
     // 1곡을 재생 중이다.
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1233,7 +1233,7 @@ describe('D. 드로어 연동', () => {
     installMatchMedia(true)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
     await flushPromises()
     await nextTick()
     expect(document.documentElement.style.overflow).toBe('hidden')
@@ -1259,7 +1259,7 @@ describe('D. 드로어 연동', () => {
     installMatchMedia(true)
     const context = await seedPlaying()
 
-    context.wrapper.get('.playlist-play').trigger('click')
+    context.wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1341,7 +1341,7 @@ describe('D. 드로어 연동', () => {
     installMatchMedia(false)
     const context = await seedPlaying()
 
-    context.wrapper.get('.playlist-play').trigger('click')
+    context.wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1356,7 +1356,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(VISIBLE_RECT)
     const context = await seedPlaying()
 
-    context.wrapper.get('.playlist-play').trigger('click')
+    context.wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1406,7 +1406,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     expect(context.wrapper.get('.widget-notice').text()).toContain('영상이 가려져')
     expect(context.playback.currentTrack).toBeNull()
@@ -1416,7 +1416,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(HIDDEN_RECT)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     const widgetNotice = context.wrapper.get('.widget-notice').text()
 
     await editorTrigger(context.wrapper).trigger('click')
@@ -1496,7 +1496,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(VISIBLE_RECT)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
 
@@ -1512,7 +1512,7 @@ describe('D. 드로어 연동', () => {
     const context = await seedPlaying()
     const theme = useThemeStore()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
 
@@ -1532,7 +1532,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(VISIBLE_RECT)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
 
@@ -1548,7 +1548,7 @@ describe('D. 드로어 연동', () => {
     installPlayerRect(TOO_SMALL_RECT)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     expect(context.fake.calls.load).toEqual([])
     expect(context.wrapper.get('.status').text()).toContain('200×200')

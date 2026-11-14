@@ -142,8 +142,13 @@ async function settle(): Promise<void> {
   await nextTick()
 }
 
+/** 헤더의 "보관함" 으로 열고 Moments 탭을 고른다 (M11-7B — 헤더에 Moments 입구가 따로 없다). */
 async function openMoments(s: Session) {
-  await s.wrapper.findAll('.app-nav button')[1]?.trigger('click')
+  if (s.wrapper.get('#archive-panel').attributes('hidden') !== undefined) {
+    await s.wrapper.findAll('.app-nav button')[0]?.trigger('click')
+    await settle()
+  }
+  await s.wrapper.get('#archive-tab-moments').trigger('click')
   await settle()
   return s.wrapper.get('#archive-panel-moments')
 }
@@ -161,7 +166,7 @@ async function search(s: Session, text: string): Promise<void> {
 }
 
 async function playFromStart(s: Session): Promise<void> {
-  await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+  await s.wrapper.get('.now-playlist .play-all').trigger('click')
   await flushPromises()
   s.fake.emitReady()
   s.fake.emitStateChange('playing')

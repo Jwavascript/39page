@@ -60,24 +60,27 @@ describe('1. DashboardShell 렌더링', () => {
     }
   })
 
-  it('헤더의 버튼은 전역 입구 셋과 테마 전환 둘이다 — 모두 동작한다 (M11-2)', async () => {
+  it('헤더의 버튼은 전역 입구 둘과 테마 전환 둘이다 — 모두 동작한다 (M11-7B · H1)', async () => {
     const wrapper = mountApp()
     const header = wrapper.findComponent(AppHeader)
 
-    // M11-2: 음악 · Moments · 데이터 입구가 헤더로 왔다 (ADR 0027). 링크 추가는 보관함 안에 있다.
+    // M11-7B: 음악 · Moments 입구를 "보관함" 하나로 합쳤다 (ADR 0030). 링크 추가는 보관함 안에 있다.
     const buttons = header.findAll('button')
-    expect(buttons).toHaveLength(5)
+    expect(buttons).toHaveLength(4)
     const nav = header.findAll('.app-nav button')
-    expect(nav.map((button) => button.text())).toEqual(['♪ 음악', '◆ Moments', '⇩ 데이터'])
+    expect(nav.map((button) => button.text())).toEqual(['▤ 보관함', '⇩ 데이터 · 백업'])
     expect(header.text()).not.toContain('링크 추가')
+    // 테마 전환은 Theme 1 = Synth Cassette, Theme 2 = Mono Vinyl 순서다.
+    expect(header.findAll('.theme-button').map((button) => button.text())).toEqual([
+      '01 / SYNTH CASSETTE',
+      '02 / MONO VINYL',
+    ])
 
     // 동작하지 않는 버튼이 없다 — 각 입구가 실제로 무언가를 연다.
     await nav[0]?.trigger('click')
     expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
     expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
     await nav[1]?.trigger('click')
-    expect(wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
-    await nav[2]?.trigger('click')
     expect(wrapper.get('.data-backdrop').attributes('hidden')).toBeUndefined()
   })
 

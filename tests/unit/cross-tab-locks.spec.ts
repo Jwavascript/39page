@@ -576,7 +576,7 @@ describe('어떤 호출부도 잠금을 건너 쓰지 않는다', () => {
       'src/features/moments/MomentsBrowserPanel.vue',
       'src/features/backup/DataDialog.vue',
       'src/components/layout/AppNav.vue',
-      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/NowPlaylistWidget.vue',
       'src/features/moments/useMomentCapture.ts',
       'src/features/moments/useMomentsBrowser.ts',
       'src/features/moments/useMomentsArchive.ts',

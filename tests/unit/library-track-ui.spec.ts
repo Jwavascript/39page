@@ -195,8 +195,9 @@ describe('B. 링크 등록 UI', () => {
     await openLinkForm(wrapper)
     expect(wrapper.find('form.link-form').exists()).toBe(true)
 
-    // 선택은 이제 플레이리스트 위젯의 타일에서 바뀐다 (M6-4).
-    await wrapper.findAll('.playlist-tile .playlist-open')[0]?.trigger('click')
+    // 선택은 보관함의 목록 칸에서 바뀐다 (M11-7B). 새로 만든 OTHER 가 골라져 있으므로 첫 목록을 고른다.
+    await wrapper.findAll('.archive-lists .list-select')[0]?.trigger('click')
+    await flushPromises()
     await nextTick()
 
     // 등록 대상이 모호해지지 않도록 닫는다.
