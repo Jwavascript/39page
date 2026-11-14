@@ -56,6 +56,7 @@
 | [0027](0027-m11-information-architecture.md)   | M11 정보 구조 — 대시보드 유지, 라이브러리·Moments 를 한 보관함의 두 탭으로, 데이터는 헤더 대화상자로   | 채택 (M11-2)        |
 | [0028](0028-extension-save-bridge.md)          | 확장 저장은 offscreen 안 39page 브리지 페이지가 기존 store 로 하고, 새 탭 수집 화면은 대체 경로로 둔다 | 채택 (M11-5)        |
 | [0029](0029-track-title-oembed-prefill.md)     | 링크로 곡을 추가할 때 제목 칸만 YouTube oEmbed 로 미리 채운다 — 사용자 제목 · 저장된 제목은 그대로     | 채택 (M11-4 후속)   |
+| [0030](0030-m11-7-dashboard-archive-roles.md)  | 대시보드는 지금 재생 큐와 이 곡의 Moments, 관리는 보관함 한 곳 — 헤더 · 위젯 · 저장 모델 재설계        | **제안** (M11-7A)   |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

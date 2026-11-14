@@ -2430,6 +2430,23 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 - [ ] 운영 HTTPS 에서의 브리지 저장 분할 실측 (배포 뒤)
 - [ ] P3 기록: 재생 중 넣은 곡과 큐 스냅샷 안내 · 자동 채운 제목 포커스 선택 · 기본 목록 두 개 · 패널 끌어 옮기기
 
+### M11-7A. UAT 기반 UX 재설계 · 비교 시안 — 완료 (2026-11-14, 브랜치 `m11-7a-ux-redesign` · 앱 코드 변경 없음)
+
+설계: [`../product/M11_7_UX_REDESIGN.md`](../product/M11_7_UX_REDESIGN.md) · 결정: ADR 0030 (**Proposed**) · 시안:
+[`design/mockups/m11-7a/`](../../design/mockups/m11-7a/README.md) (조작 가능 · 두 테마 · 데스크톱/모바일).
+
+- UAT U1–U8 · Claude for Chrome 발견을 코드 · 실측으로 확인해 사실/설계 동작/제안으로 나눴다 (§1). 원본 평가 보고서는 저장소에 없어 읽지 못했다.
+- 추천: 헤더 보관함 · 데이터 · 백업 · 테마 / PLAYLISTS 카드 → NOW PLAYLIST(지금 큐) / 이 곡 Moments 전체(데스크톱 안쪽 스크롤) / 보관함 2열 ·
+  모바일 두 단계 / 보관함 열림 배치 B / Moment B(잡고 저장) / 트랙 편집 C(혼합 · 직접 구현) / 모바일 영상 먼저.
+- 시안 검증: 20화면 렌더링 — 콘솔 오류 · 외부 요청 · 저장소 접근 · 넘침 0, 인터랙션 18/18 (실제 Chrome, 임시 프로필).
+
+**남긴 TODO (사용자 선택 뒤)**
+
+- [ ] §12 의 결정 10개 선택 → ADR 0030 채택 · 수정
+- [ ] M11-7B — 코디네이터 큐 보기 · 출처, NOW PLAYLIST, 배치, 헤더, 보관함 2열 · 모바일 단계, 열림 배치, 데크 누름 영역
+- [ ] M11-7C — Moment 저장 모델, 이 곡 Moments, `library.moveTrackTo`, 트랙 끌기 · 키보드 · 메뉴 · 편집 모드, 같은 영상 제목 정책
+- [ ] M11-7D — 브랜드 Chrome 직접 사용 · Claude for Chrome 재평가 · 실기기 · 데이터 회귀 · 배포 판단
+
 ---
 
 ## 선행 결정 사항
