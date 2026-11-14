@@ -98,6 +98,16 @@ async function createPlaylistViaUi(wrapper: Wrapper, name: string) {
   await nextTick()
 }
 
+/**
+ * 고른 목록의 "관리" 를 편다 (M11-7B) — 이름 수정 · 목록 삭제는 목록 칸의 그 행 아래에 있다.
+ * 이미 펴져 있으면 그대로 둔다.
+ */
+async function openListManage(wrapper: Wrapper) {
+  const toggle = wrapper.get('.archive-lists .list-row.is-selected .list-manage')
+  if (toggle.attributes('aria-expanded') !== 'true') await toggle.trigger('click')
+  await nextTick()
+}
+
 /** 보관함 목록 칸의 행 — 누르면 그 목록을 고른다. */
 const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.archive-lists .list-select')
 
@@ -326,6 +336,7 @@ describe('B. 플레이리스트 UI', () => {
     await openDrawer(wrapper)
 
     // 이름 수정 → 저장
+    await openListManage(wrapper)
     await wrapper
       .findAll('.pill')
       .filter((b) => b.text() === '이름 수정')[0]
@@ -338,6 +349,7 @@ describe('B. 플레이리스트 UI', () => {
     expect(library.getPlaylist(id)?.name).toBe('RENAMED')
 
     // 다시 열고 취소
+    await openListManage(wrapper)
     await wrapper
       .findAll('.pill')
       .filter((b) => b.text() === '이름 수정')[0]
@@ -360,8 +372,9 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     library.createPlaylist('A')
     library.createPlaylist('B')
-    // 두 번째 타일(=B)을 열어 B 를 편집 대상으로 둔다.
+    // 두 번째 목록(=B)을 골라 그 행의 관리를 편다.
     await openDrawer(wrapper, 1)
+    await openListManage(wrapper)
 
     await wrapper
       .findAll('.pill')
@@ -384,6 +397,7 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     library.createPlaylist('ONLY')
     await openDrawer(wrapper)
+    await openListManage(wrapper)
 
     const deleteButton = wrapper.findAll('.pill').filter((b) => b.text() === '목록 삭제')[0]
     expect(deleteButton?.attributes('disabled')).toBeDefined()
@@ -413,8 +427,11 @@ describe('B. 플레이리스트 UI', () => {
     expect(tiles[1]?.classes()).toContain('is-selected')
     expect(tiles[1]?.find('.list-select').attributes('aria-current')).toBe('true')
     expect(tiles[0]?.find('.list-select').attributes('aria-current')).toBeUndefined()
-    // 빈 목록은 재생할 수 없다.
-    expect(tiles[1]?.find('.list-play').attributes('disabled')).toBeDefined()
+    // 목록 칸에는 재생 단추가 없다 (M11-7B) — 상세 칸의 전체 재생이 빈 목록에서 꺼져 있다.
+    expect(tiles[1]?.find('.list-play').exists()).toBe(false)
+    expect(
+      wrapper.get('.playlist-editor .head-actions .pill--strong').attributes('disabled'),
+    ).toBeDefined()
     // 대시보드의 NOW PLAYLIST 는 고른 목록(B)을 "재생 대기" 로 보인다 — 재생 중이라고 하지 않는다.
     expect(wrapper.get('.now-playlist').attributes('data-view')).toBe('standby')
     expect(wrapper.get('.now-playlist .state-chip').text()).toBe('재생 대기')
@@ -769,6 +786,8 @@ describe('D. 플레이어 안정성', () => {
 
     await openDrawer(wrapper)
     await tileOpenButtons(wrapper)[0]?.trigger('click')
+    await flushPromises()
+    await openListManage(wrapper)
     await wrapper
       .findAll('.pill')
       .filter((p) => p.text() === '목록 삭제')[0]

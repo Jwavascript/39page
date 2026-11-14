@@ -10,6 +10,17 @@
  * - 열리면 고른 탭 단추로 포커스가 온다. 닫으면 셸이 연 버튼으로 되돌린다.
  * - 포커스 가둠이 없는 비모달 영역이다 — 플레이어 · 헤더를 계속 쓸 수 있다. 그래서 `aria-modal`
  *   을 선언하지 않는다 (M2 드로어와 같은 판단).
+ *
+ * ## 음악 탭의 배치 (M11-7B, ADR 0030 · UAT U3)
+ *
+ * | 보관함의 폭        | 배치                                                                   |
+ * | ------------------ | ---------------------------------------------------------------------- |
+ * | 넓다 (641px 이상)  | **두 칸** — 왼쪽 목록 칸(`ArchivePlaylistNav`) · 오른쪽 상세 칸(`PlaylistEditor`) |
+ * | 좁다               | **두 단계** — 목록 → 상세. 상세에 "목록으로" 와 위치 표시가 있다         |
+ *
+ * 두 칸은 **각자** 스크롤한다 — 목록이 50개여도 상세 칸의 곡은 그 자리다. 음악 탭의 본문 자체는
+ * 스크롤하지 않는다 (스크롤이 겹치지 않게). 폭은 화면이 아니라 **보관함 자신의 폭**으로 본다
+ * (컨테이너 쿼리) — 보관함이 화면의 일부만 쓰는 배치가 있기 때문이다.
  */
 import { nextTick, ref, watch } from 'vue'
 
@@ -30,6 +41,8 @@ const props = defineProps<{
   momentsFocusRequest?: { videoId: string; seq: number } | null
   /** 음악 탭에서 그 영상의 곡 줄을 보인다 (`ArchiveOpenOptions.revealVideoId`). */
   revealRequest?: { videoId: string; seq: number } | null
+  /** 바뀔 때마다 음악 탭을 고른 목록의 상세 단계로 맞춘다 (`ArchiveOpenOptions.showDetail`). */
+  detailRequest?: number
 }>()
 
 const emit = defineEmits<{
@@ -66,9 +79,45 @@ function onTabKeydown(event: KeyboardEvent): void {
   focusTab(target.key)
 }
 
-/** 새 목록을 만들면 곡 추가로 바로 이어 준다 — 편집 표면의 "링크 추가" 로 포커스 (M11 U15). */
+/* ---------- 음악 탭: 목록 → 상세 (좁은 화면의 두 단계) ---------- */
+
+/**
+ * 좁은 화면에서 지금 보이는 단계. 넓은 화면에서는 두 칸이 함께 보이므로 쓰이지 않는다 — 그래도 값은
+ * 늘 유지한다 (창을 줄이면 그 단계가 보인다). 화면 하나의 UI 상태라 저장하지 않는다.
+ */
+type MusicStep = 'lists' | 'detail'
+const musicStep = ref<MusicStep>('lists')
+
+const lists = ref<InstanceType<typeof ArchivePlaylistNav> | null>(null)
 const editor = ref<InstanceType<typeof PlaylistEditor> | null>(null)
+
+/** 포커스가 화면에 없는 요소(가려진 단계)에 남았는지. 넓은 화면에서는 늘 `false` 다. */
+function focusIsHidden(): boolean {
+  const active = document.activeElement
+  if (!(active instanceof HTMLElement) || active === document.body) return true
+  return active.offsetParent === null
+}
+
+/**
+ * 단계를 바꾼다. 좁은 화면에서는 누른 단추가 사라지므로(`display: none`) 포커스를 새 단계로 옮긴다 —
+ * 넓은 화면에서는 단추가 그대로 보이므로 포커스를 건드리지 않는다.
+ */
+async function showStep(step: MusicStep): Promise<void> {
+  musicStep.value = step
+  await nextTick()
+  if (!props.open || props.tab !== 'music' || !focusIsHidden()) return
+  if (step === 'detail') editor.value?.focusHead()
+  else lists.value?.focusSelected()
+}
+
+/** 목록을 골랐다 — 그 목록의 곡이 곧바로 보인다. */
+function onPlaylistSelected(): void {
+  void showStep('detail')
+}
+
+/** 새 목록을 만들면 곡 추가로 바로 이어 준다 — 상세 칸의 "링크 추가" 로 포커스 (M11 U15). */
 function onPlaylistCreated(): void {
+  musicStep.value = 'detail'
   void nextTick(() => editor.value?.startAddLink())
 }
 
@@ -76,6 +125,7 @@ watch(
   () => props.addLinkRequest,
   (now, before) => {
     if (now !== undefined && now !== before && now > 0) {
+      musicStep.value = 'detail'
       void nextTick(() => editor.value?.startAddLink())
     }
   },
@@ -85,7 +135,16 @@ watch(
   () => props.revealRequest?.seq,
   () => {
     const request = props.revealRequest
-    if (request != null) void nextTick(() => editor.value?.revealVideo(request.videoId))
+    if (request == null) return
+    musicStep.value = 'detail'
+    void nextTick(() => editor.value?.revealVideo(request.videoId))
+  },
+)
+
+watch(
+  () => props.detailRequest,
+  (now, before) => {
+    if (now !== undefined && now !== before && now > 0) musicStep.value = 'detail'
   },
 )
 
@@ -140,13 +199,29 @@ watch(
 
     <div
       id="archive-panel-music"
-      class="archive-body"
+      class="archive-body archive-body--music"
       role="tabpanel"
       aria-labelledby="archive-tab-music"
       :hidden="tab !== 'music'"
     >
-      <ArchivePlaylistNav @created="onPlaylistCreated" />
-      <PlaylistEditor ref="editor" :active="open" />
+      <!--
+        두 칸 / 두 단계. 두 컴포넌트는 **늘 마운트**되어 있다 — 단계를 바꿔도 쓰던 양식이 남는다.
+      -->
+      <div class="music-layout" :data-step="musicStep">
+        <ArchivePlaylistNav
+          ref="lists"
+          class="music-lists"
+          :active="open"
+          @created="onPlaylistCreated"
+          @selected="onPlaylistSelected"
+        />
+        <PlaylistEditor
+          ref="editor"
+          class="music-detail"
+          :active="open"
+          @back="showStep('lists')"
+        />
+      </div>
     </div>
 
     <div
@@ -264,6 +339,59 @@ watch(
   display: none;
 }
 
+/*
+ * 음악 탭 (M11-7B) — 본문은 스크롤하지 않고 **두 칸이 각자** 스크롤한다. 본문이 함께 스크롤하면
+ * 목록 칸을 내릴 때 상세 칸의 머리말(목록 이름 · 전체 재생)이 화면 밖으로 나간다.
+ */
+.archive-body--music {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+  container: archive-music / inline-size;
+}
+
+.music-layout {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  /* 목록 칸은 이름 두 줄이 읽히는 폭, 상세 칸이 나머지를 쓴다. */
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.6fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.music-lists,
+.music-detail {
+  padding: 14px 12px 14px 16px;
+}
+
+.music-lists {
+  border-right: 1px solid var(--drawer-head-border-color);
+}
+
+/*
+ * 좁은 보관함 — **두 단계.** 두 칸을 나란히 두면 곡 제목이 몇 글자 폭으로 눌린다. 한 번에 한 단계만
+ * 보이고, 상세 단계의 "목록으로" 로 돌아온다. 화면 폭이 아니라 보관함의 폭으로 판단한다.
+ */
+@container archive-music (max-width: 640px) {
+  .music-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .music-lists {
+    border-right: 0;
+  }
+
+  .music-layout[data-step='lists'] > .music-detail,
+  .music-layout[data-step='detail'] > .music-lists {
+    display: none;
+  }
+
+  .music-detail :deep(.step-nav) {
+    display: flex;
+  }
+}
+
 .archive-foot {
   flex: none;
   margin: 0;
@@ -276,5 +404,30 @@ watch(
 .archive-foot strong {
   color: var(--drawer-title-text-color);
   font-weight: 400;
+}
+
+/*
+ * 작은 화면에서는 바닥 안내를 접는다 (M11-7B) — 재생 띠가 위를 쓰므로 보관함의 높이가 귀하다. 닫기(×)와
+ * 탭은 머리말에 그대로 있고, 백업 입구는 헤더에 이름으로 있다.
+ */
+@media (max-height: 720px), (max-width: 700px) {
+  .archive-foot {
+    display: none;
+  }
+}
+
+/* 아주 좁은 화면: 탭 둘이 한 줄에 들어가게 "보관함" 제목을 접고(이름은 `aria-labelledby` 로 남는다) 여백을 줄인다. */
+@media (max-width: 360px) {
+  .archive-title {
+    display: none;
+  }
+
+  .archive-head {
+    padding-left: 12px;
+  }
+
+  .tab {
+    padding: 6px 4px;
+  }
 }
 </style>

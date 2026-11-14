@@ -200,15 +200,20 @@ describe('A. 드로어에서 재생 시작', () => {
     expect(player().options.videoId).toBe(VIDEOS[1])
   })
 
-  it('목록 행의 ▶ 가 그 목록을 선택하고 재생한다', async () => {
+  it('목록 칸에서 다른 목록을 고르고 상세 칸의 전체 재생으로 재생한다 (M11-7B)', async () => {
     const { wrapper, library, playback } = await setup()
     const other = await library.createPlaylist('OTHER')
     const otherId = other.ok ? other.playlistId : ''
     library.addTrack(otherId, { videoId: VIDEOS[2], title: 'Only' })
     await nextTick()
 
-    // 보관함 목록 칸에서 두 번째 목록 행의 ▶.
-    await wrapper.findAll('.archive-lists .list-play')[1]?.trigger('click')
+    // 새로 만든 OTHER 가 골라져 있다 — 첫 목록으로 갔다가 목록 칸에서 다시 OTHER 를 고른다.
+    await wrapper.findAll('.archive-lists .list-select')[0]?.trigger('click')
+    await flush()
+    expect(library.selectedPlaylistId).not.toBe(otherId)
+    await wrapper.findAll('.archive-lists .list-select')[1]?.trigger('click')
+    await flush()
+    await wrapper.get('.playlist-editor .head-actions .pill--strong').trigger('click')
     await flush()
 
     expect(library.selectedPlaylistId).toBe(otherId)

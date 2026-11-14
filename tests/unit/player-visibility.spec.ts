@@ -1172,7 +1172,7 @@ describe('D. 드로어 연동', () => {
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('보관함 목록의 ▶ 도 보관함을 연 채 재생한다 (M11-2)', async () => {
+  it('보관함 상세 칸의 전체 재생도 보관함을 연 채 재생한다 (M11-2 · M11-7B)', async () => {
     installPlayerRect(VISIBLE_RECT)
     installMatchMedia(true)
     const context = await seedPlaying()
@@ -1181,7 +1181,7 @@ describe('D. 드로어 연동', () => {
     await flushPromises()
     await nextTick()
 
-    await context.wrapper.get('.archive-lists .list-play').trigger('click')
+    await context.wrapper.get('.playlist-editor .head-actions .pill--strong').trigger('click')
     await flushPromises()
 
     expect(context.wrapper.get('.drawer').attributes('hidden')).toBeUndefined()
@@ -1308,8 +1308,14 @@ describe('D. 드로어 연동', () => {
     expect(stacked).toContain('inset: var(--archive-sheet-top, 50dvh) 0 0')
     // 짧은 페이지에서도 영상을 화면 위로 올릴 수 있다.
     expect(stacked).toContain('padding-bottom: 100dvh')
-    // 플레이어 외 위젯은 display: none 으로만 — v-if 로 지우지 않는다 (ADR 0002).
-    expect(style).toContain(":deep(.widget-host > :not([data-widget='player']))")
+    // 재생 띠(플레이어 · Moments 저장 줄) 외 위젯은 display: none 으로만 — v-if 로 지우지 않는다 (ADR 0002).
+    expect(style).toContain(
+      ":deep(.widget-host > :not([data-widget='player'], [data-widget='moments']))",
+    )
+    // 쌓기에서는 재생 띠가 영상 → 조작 → 저장 순으로 한 열이다.
+    expect(style).toMatch(
+      /\.is-stacked > :deep\(\.widget-host\),[\s\S]*?grid-template-areas:\s*'player'\s*'moments'/,
+    )
     expect(shell).not.toMatch(/<WidgetHost[^>]*v-if/)
     // M7 에서 되돌린 우회를 다시 쓰지 않는다.
     expect(style).not.toContain('position: sticky')
@@ -1322,18 +1328,43 @@ describe('D. 드로어 연동', () => {
    * 피해 2 행으로 밀린다 — "드로어가 위쪽에 별도 공간으로 생긴다" 로 보고된
    * 증상이다. jsdom 은 그리드를 계산하지 않으므로 이 보장은 소스로 고정한다.
    */
-  it('나란히 배치 — 플레이어 열(최소 360px)과 보관함 열이 겹치지 않는다 (M11-2)', () => {
+  it('띠 배치 — 재생 띠가 위, 보관함이 아래의 일반 흐름이라 겹칠 수 없다 (M11-7B · 배치 C)', () => {
     const shell = readFileSync(
       resolve(process.cwd(), 'src/components/layout/DashboardShell.vue'),
       'utf8',
     )
     const style = shell.slice(shell.indexOf('<style scoped>'))
 
+    // 워크스페이스는 한 열 — 위젯 호스트(재생 띠) 다음 행에 보관함이 온다.
     expect(style).toMatch(
-      /\.workspace\.is-archive-open \{[^}]*grid-template-columns: minmax\(360px, 0\.9fr\) minmax\(0, 1\.1fr\);/,
+      /\.workspace\.is-archive-open \{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
     )
+    // 띠 배치의 보관함은 고정 위치가 아니다 — 영상 위에 뜰 수 없다.
+    const base = /\.workspace\.is-archive-open > \.archive \{([^}]*)\}/.exec(style)?.[1] ?? ''
+    expect(base).toContain('height: var(--archive-height')
+    expect(base).not.toContain('position')
     // 같은 셀에 겹쳐 놓는 M6-2 의 오버레이 규칙은 없다.
     expect(style).not.toContain('grid-area: 1 / 1')
+
+    /*
+     * 띠 안의 영상은 384px 이상 × 16:9 (= 216px) — 공식 최소 200×200 에 여유가 있다. 영상 상자의
+     * `display` · `visibility` 는 어느 배치에서도 건드리지 않는다.
+     */
+    const player = readFileSync(
+      resolve(process.cwd(), 'src/features/playback/PlayerSurface.vue'),
+      'utf8',
+    )
+    const compact = player.slice(player.lastIndexOf('<style>'))
+    expect(compact).toContain('grid-template-columns: clamp(384px, 34%, 480px) minmax(0, 1fr)')
+    const holderRules = [...compact.matchAll(/\.video-holder \{([^}]*)\}/g)].map((m) => m[1] ?? '')
+    expect(holderRules.length).toBeGreaterThan(0)
+    for (const rule of holderRules) {
+      expect(rule).not.toMatch(/display|visibility|opacity|width|height/)
+    }
+    // 영상 상자의 최소 크기(200 + 테두리)는 스코프 스타일에 그대로다.
+    expect(player).toContain(
+      'min-height: calc(var(--size-video-min) + 2 * var(--video-border-width))',
+    )
   })
 
   it('넓은 화면에서는 드로어를 열어도 멈추지 않는다', async () => {

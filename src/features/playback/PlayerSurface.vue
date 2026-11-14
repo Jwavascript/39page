@@ -27,6 +27,10 @@
  * 포함, `<Teleport>`로 이동, 마운트된 노드의 부모 변경.
  *
  * 단일 루트 요소를 유지한다. `WidgetHost`가 `grid-area`를 루트에 적용한다.
+ *
+ * M11-7B — 보관함이 열려 있는 동안(조상의 `data-archive-layout`) 이 영역은 **작은 재생 띠**가 된다.
+ * 같은 노드들을 CSS 그리드로 다시 놓을 뿐이다: 조건부 렌더 · 이동 · 복제가 없고, 영상은 숨기지도
+ * 덮지도 않으며 200×200 아래로 줄지 않는다. 규칙은 이 파일 맨 아래의 비스코프 스타일에 있다.
  */
 import { computed, inject, onMounted, onUnmounted, useTemplateRef } from 'vue'
 
@@ -325,5 +329,132 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   padding-top: 5px;
   color: var(--mute-note-text-color);
   font: 10px var(--font-mono);
+}
+</style>
+
+<!--
+  보관함이 열렸을 때의 작은 배치 (M11-7B · 배치 C).
+
+  **비스코프**다 — 조상(`DashboardShell` 의 워크스페이스)이 다는 `data-archive-layout` 을 봐야 하는데,
+  스코프 스타일은 조상의 속성으로 시작하는 규칙을 쓸 수 없다. 이 컴포넌트의 클래스만 겨냥하고
+  `.player-surface` 아래로 한정한다.
+
+  영상(`.video-holder`)은 어느 배치에서도 `display` · `visibility` 를 건드리지 않고, 폭은 384px 이상
+  (세로 16:9 → 216px) 또는 열 전체다. `min-width` / `min-height` 202px 은 그대로 남는다.
+-->
+<style>
+/* ---- 띠 (넓은 화면): 왼쪽 영상, 오른쪽에 지금 곡 · 조작 · 상태 ---- */
+[data-archive-layout='strip'] .player-surface {
+  display: grid;
+  align-items: start;
+  column-gap: clamp(14px, 1.8vw, 24px);
+  grid-template-areas:
+    'video eyebrow'
+    'video title'
+    'video sub'
+    'video controls'
+    'video status';
+  /* 영상은 384px 이상 — 16:9 로 216px, 공식 최소(200px)에 여유를 둔다. */
+  grid-template-columns: clamp(384px, 34%, 480px) minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto 1fr;
+}
+
+[data-archive-layout='strip'] .player-surface > .video-holder {
+  grid-area: video;
+}
+
+[data-archive-layout='strip'] .player-surface > .eyebrow {
+  grid-area: eyebrow;
+}
+
+/* 제목은 두 줄까지 — 옆 칸이 좁아도 무엇을 듣는지 읽힌다. */
+[data-archive-layout='strip'] .player-surface > .now-title {
+  display: -webkit-box;
+  grid-area: title;
+  margin-top: 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+[data-archive-layout='strip'] .player-surface > .now-sub {
+  grid-area: sub;
+  margin-bottom: 0;
+}
+
+[data-archive-layout='strip'] .player-surface > .action-row {
+  grid-area: controls;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+
+[data-archive-layout='strip'] .player-surface > .status {
+  grid-area: status;
+  min-height: 0;
+}
+
+[data-archive-layout='strip'] .player-surface > .mute-note {
+  display: none;
+}
+
+/* ---- 쌓기 · 옆 (좁은 화면): 영상이 먼저, 그 아래 한 줄에 제목과 조작 ---- */
+[data-archive-layout='stack'] .player-surface,
+[data-archive-layout='side'] .player-surface {
+  display: grid;
+  align-items: center;
+  column-gap: 10px;
+  grid-template-areas:
+    'video video'
+    'title controls'
+    'status status';
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+[data-archive-layout='stack'] .player-surface > .video-holder,
+[data-archive-layout='side'] .player-surface > .video-holder {
+  grid-area: video;
+}
+
+[data-archive-layout='stack'] .player-surface > .now-title,
+[data-archive-layout='side'] .player-surface > .now-title {
+  grid-area: title;
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+[data-archive-layout='stack'] .player-surface > .action-row,
+[data-archive-layout='side'] .player-surface > .action-row {
+  grid-area: controls;
+  padding-top: 6px;
+}
+
+/* 한 줄에 조작 셋만 둔다 — "YOUTUBE에서 열기" 는 보관함을 닫으면 그대로 있다. */
+[data-archive-layout='stack'] .player-surface .external,
+[data-archive-layout='side'] .player-surface .external {
+  display: none;
+}
+
+/* 안내가 있을 때만 줄을 차지한다 — 비어 있으면 보관함에 그 높이를 준다. */
+[data-archive-layout='stack'] .player-surface > .status,
+[data-archive-layout='side'] .player-surface > .status {
+  grid-area: status;
+  min-height: 0;
+  padding-top: 4px;
+}
+
+[data-archive-layout='stack'] .player-surface > .status:empty,
+[data-archive-layout='side'] .player-surface > .status:empty {
+  display: none;
+}
+
+[data-archive-layout='stack'] .player-surface > .eyebrow,
+[data-archive-layout='stack'] .player-surface > .now-sub,
+[data-archive-layout='stack'] .player-surface > .mute-note,
+[data-archive-layout='side'] .player-surface > .eyebrow,
+[data-archive-layout='side'] .player-surface > .now-sub,
+[data-archive-layout='side'] .player-surface > .mute-note {
+  display: none;
 }
 </style>

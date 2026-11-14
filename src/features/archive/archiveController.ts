@@ -28,6 +28,12 @@ export interface ArchiveOpenOptions {
    * 머리의 "목록: A". 목록을 고르는 일은 부르는 쪽이 먼저 한다.
    */
   readonly revealVideoId?: string
+  /**
+   * 음악 탭을 **고른 목록의 상세**로 연다 (M11-7B). 좁은 화면의 음악 탭은 목록 → 상세 두 단계인데,
+   * "이 목록 편집" 처럼 목록이 이미 정해진 입구는 목록 단계를 건너뛴다. 넓은 화면에서는 두 칸이
+   * 함께 보이므로 차이가 없다.
+   */
+  readonly showDetail?: boolean
 }
 
 export interface ArchiveController {

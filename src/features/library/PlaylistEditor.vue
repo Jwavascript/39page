@@ -6,9 +6,12 @@
  * 드로어의 틀(머리말 · 닫기 · 바닥 안내)은 통합 보관함(`ArchivePanel`)으로 올라갔고, 이 컴포넌트는
  * **한 플레이리스트를 고치는 일**만 남았다. 위계는 그대로다 (보고 6a·6b).
  *
- *   보관함 위쪽 목록   플레이리스트를 만들고 고른다
- *   이 컴포넌트        고른 목록의 머리말에서 이름을 바꾸고 지운다
- *                      트랙 목록 **바로 위**에서 트랙을 추가한다
+ *   보관함의 목록 칸   플레이리스트를 만들고 · 고르고 · 이름을 바꾸고 · 지운다 (`ArchivePlaylistNav`)
+ *   이 컴포넌트        고른 목록을 **전체 재생**하고, 링크를 추가하고, 곡을 다룬다
+ *
+ * M11-7B (ADR 0030, UAT U3 · U4): 이름 수정 · 목록 삭제는 목록 칸으로 옮겼다 — 재생과 목록 관리는 다른
+ * 일이다. 머리말(목록 이름 · 곡 수 · 전체 재생 · 링크 추가)은 **늘 보이고**, 그 아래(안내 · 링크 양식 ·
+ * 곡 줄)만 이 칸 안에서 스크롤한다. 좁은 화면에서는 두 단계 중 둘째 단계라 "목록으로" 가 있다.
  *
  * JSON 백업은 **여기서 빠졌다** — 한 목록의 기능이 아니라 앱 전체 데이터 관리이므로 헤더의
  * "데이터" 대화상자로 옮겼다 (ADR 0027 결정 7, `BackupPanel` 은 그대로).
@@ -35,7 +38,6 @@ import { parseYouTubeVideoId } from '@/shared/utils/youtube'
 import { useMomentsStore } from '@/stores/moments'
 import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import {
-  MAX_PLAYLIST_NAME_LENGTH,
   MAX_TRACK_TITLE_LENGTH,
   useLibraryStore,
   type LibraryMutationResult,
@@ -46,6 +48,11 @@ import {
  * 남는다 — 탭 전환은 닫기가 아니다.
  */
 const props = defineProps<{ active: boolean }>()
+
+const emit = defineEmits<{
+  /** 좁은 화면의 "목록으로" — 목록 단계로 돌아간다 (`ArchivePanel`). */
+  back: []
+}>()
 
 const library = useLibraryStore()
 
@@ -67,9 +74,7 @@ const playback = inject(PLAYBACK_COORDINATOR, null)
  */
 const archive = inject(ARCHIVE, null)
 
-/** 이름 변경 폼이 열려 있는 대상. 열릴 때 정한 id 를 끝까지 쓴다. */
-const renamingId = ref<string | null>(null)
-const draftName = ref('')
+/** 곡 편집(순서 · 이름 · 삭제)이 거절됐을 때의 안내. */
 const formError = ref('')
 /**
  * 양식(이름 · 링크 · 삭제 확인)이 저장을 기다리는 중 (M10-3 안정화, ADR 0025).
@@ -79,9 +84,6 @@ const formError = ref('')
 const isSaving = ref(false)
 /** 마지막 동작이 저장되지 않았는지. `persisted: false` 를 알린다. */
 const unsavedNotice = ref('')
-
-/** 마지막 목록은 지울 수 없다. 전부 사라지면 돌아갈 자리가 없다. */
-const canDelete = computed<boolean>(() => library.playlists.length > 1)
 
 const trackCount = computed<number>(() => library.selectedPlaylist?.tracks.length ?? 0)
 
@@ -154,7 +156,18 @@ async function startAddLink(): Promise<void> {
   addedNotice.value = ''
   // 링크 입력란으로 바로 간다 — 새 목록을 만든 뒤에도 같은 길이다 (M11 U15).
   await nextTick()
-  document.getElementById('track-url')?.focus()
+  focusLinkInput()
+}
+
+/**
+ * 링크 입력란에 포커스를 준다 — **페이지를 움직이지 않고** (M11-7B). 기본 `focus()` 는 입력란이 보이도록
+ * 페이지까지 스크롤해, 보관함을 열자마자 화면이 튀었다. 양식은 이 칸의 스크롤 영역 맨 위에 있으므로 그
+ * 영역만 맨 위로 올린다.
+ */
+const body = ref<HTMLElement | null>(null)
+function focusLinkInput(): void {
+  if (body.value !== null) body.value.scrollTop = 0
+  document.getElementById('track-url')?.focus({ preventScroll: true })
 }
 
 /** 곡 줄 — "Moments 에서 목록으로" 가 그 곡을 보이게 할 때 쓴다 (M11-4). */
@@ -165,7 +178,13 @@ function revealVideo(videoId: string): boolean {
   return trackList.value?.reveal(videoId) ?? false
 }
 
-defineExpose({ startAddLink, revealVideo })
+/** "목록으로" 단추 — 좁은 화면에서 상세 단계로 들어올 때 포커스를 받는다 (`ArchivePanel`). */
+const backButton = ref<HTMLButtonElement | null>(null)
+function focusHead(): void {
+  backButton.value?.focus({ preventScroll: true })
+}
+
+defineExpose({ startAddLink, revealVideo, focusHead })
 
 /**
  * 영상별 Moment 수 — 곡 줄의 `◆ N` 배지 (M11-4 §5-4). 라이브러리는 Moments 를 모르고(ADR 0019),
@@ -228,7 +247,7 @@ async function submitLink(): Promise<void> {
   // 늦게 오는 조회가 다음 링크의 칸을 채우지 않게 — 조회도 처음 상태로.
   titleLookup.reset()
   await nextTick()
-  document.getElementById('track-url')?.focus()
+  focusLinkInput()
 }
 
 /** 지금 곡 — 코디네이터 계약의 읽기 전용 보기 (ADR 0009). playback store 를 보지 않는다. */
@@ -270,8 +289,6 @@ async function removeTrack(trackId: string): Promise<void> {
 }
 
 function resetForm(): void {
-  renamingId.value = null
-  draftName.value = ''
   formError.value = ''
 }
 
@@ -309,41 +326,6 @@ function reportResult(result: { ok: boolean; persisted?: boolean; reason?: strin
 
   reportPersisted(result)
   return true
-}
-
-/* ---------- 플레이리스트 자체 ---------- */
-
-function startRename(): void {
-  const current = library.selectedPlaylist
-  if (current === null) return
-
-  renamingId.value = current.id
-  draftName.value = current.name
-  formError.value = ''
-}
-
-async function submitForm(): Promise<void> {
-  const id = renamingId.value
-  if (id === null || isSaving.value) return
-
-  if (reportResult(await saving(library.renamePlaylist(id, draftName.value)))) resetForm()
-}
-
-/** 삭제 확인. `confirm()` 대신 인라인으로 받는다. */
-const pendingDeleteId = ref<string | null>(null)
-
-function requestDelete(): void {
-  const current = library.selectedPlaylist
-  if (current === null || !canDelete.value) return
-  pendingDeleteId.value = current.id
-}
-
-async function confirmDelete(): Promise<void> {
-  const id = pendingDeleteId.value
-  if (id === null || isSaving.value) return
-
-  reportResult(await saving(library.deletePlaylist(id)))
-  pendingDeleteId.value = null
 }
 
 /* ---------- 재생 요청 ---------- */
@@ -393,7 +375,6 @@ const canPlaySelected = computed<boolean>(() => trackCount.value > 0)
 function clearTransientState(): void {
   resetForm()
   closeLinkForm()
-  pendingDeleteId.value = null
   addedNotice.value = ''
   playbackNotice.value = ''
 }
@@ -421,21 +402,51 @@ watch(
 
 <template>
   <section class="playlist-editor" aria-labelledby="playlist-editor-title">
+    <!--
+      머리말은 **늘 보인다** — 무엇을 보고 있는지(목록 이름 · 곡 수)와 이 목록의 주요 동작(전체 재생 ·
+      링크 추가). 스크롤은 아래 `.editor-body` 안에서만 한다 (M11-7B).
+    -->
     <div class="editor-head">
-      <!--
-        머리말이 **무엇을 편집하는지** 말한다. `이름 수정` 이 이 아래에 있으므로 무엇의 이름인지
-        자명하다 (보고 6b).
-      -->
-      <h3 id="playlist-editor-title" class="drawer-title">
-        {{ library.selectedPlaylist?.name ?? '플레이리스트' }}
-      </h3>
-      <p class="drawer-sub">
-        {{ library.selectedPlaylist === null ? '선택한 목록 없음' : `${trackCount} TRACKS` }} /
-        YOUTUBE ONLY
-      </p>
+      <!-- 좁은 화면(두 단계)에서만 보인다. 넓은 화면에서는 목록 칸이 옆에 있다. -->
+      <div class="step-nav">
+        <button ref="backButton" type="button" class="pill back-to-lists" @click="emit('back')">
+          ‹ 목록으로
+        </button>
+        <p class="crumb" aria-hidden="true">보관함 › 음악 › 이 목록</p>
+      </div>
+      <div class="head-main">
+        <div class="head-text">
+          <h3 id="playlist-editor-title" class="drawer-title">
+            {{ library.selectedPlaylist?.name ?? '플레이리스트' }}
+          </h3>
+          <p class="drawer-sub">
+            {{ library.selectedPlaylist === null ? '선택한 목록 없음' : `${trackCount} TRACKS` }} /
+            YOUTUBE ONLY
+          </p>
+        </div>
+        <!-- 이 목록을 **듣고 채우는** 동작. 이름 수정 · 삭제는 목록 칸의 "관리" 에 있다 (UAT U4). -->
+        <div class="drawer-actions head-actions">
+          <button
+            type="button"
+            class="pill pill--strong"
+            :disabled="!canPlaySelected"
+            @click="requestPlaySelected"
+          >
+            ▶ 목록 전체 재생
+          </button>
+          <button
+            type="button"
+            class="pill"
+            :disabled="library.selectedPlaylist === null"
+            @click="startAddLink"
+          >
+            ＋ YouTube 링크 추가
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="editor-body">
+    <div ref="body" class="editor-body">
       <LibraryStatusBanner />
 
       <p v-if="unsavedNotice !== ''" class="unsaved" role="status">{{ unsavedNotice }}</p>
@@ -443,96 +454,15 @@ watch(
       <p v-if="playbackNotice !== ''" class="play-notice" role="status" aria-live="polite">
         {{ playbackNotice }}
       </p>
-
-      <!-- 이 목록 자체에 대한 동작. 트랙 목록에서 멀리 떨어뜨린다 (보고 6b). -->
-      <div class="drawer-actions">
-        <button
-          type="button"
-          class="pill pill--strong"
-          :disabled="!canPlaySelected"
-          @click="requestPlaySelected"
-        >
-          ▶ 목록 전체 재생
-        </button>
-        <button
-          type="button"
-          class="pill"
-          :disabled="library.selectedPlaylist === null"
-          @click="startRename"
-        >
-          이름 수정
-        </button>
-        <button
-          type="button"
-          class="pill"
-          :disabled="library.selectedPlaylist === null || !canDelete"
-          @click="requestDelete"
-        >
-          목록 삭제
-        </button>
-      </div>
-
-      <form v-if="renamingId !== null" class="name-form" @submit.prevent="submitForm">
-        <label class="label" for="playlist-name">플레이리스트 이름 수정</label>
-        <input
-          id="playlist-name"
-          v-model="draftName"
-          class="field"
-          type="text"
-          :maxlength="MAX_PLAYLIST_NAME_LENGTH"
-          autocomplete="off"
-        />
-        <p class="error-msg">{{ formError }}</p>
-        <div class="drawer-actions">
-          <button type="submit" class="pill pill--strong" :disabled="isSaving">저장</button>
-          <button type="button" class="pill" @click="resetForm">취소</button>
-        </div>
-      </form>
-
-      <div
-        v-if="pendingDeleteId !== null"
-        class="confirm"
-        role="alertdialog"
-        aria-label="삭제 확인"
-      >
-        <p class="confirm-text">“{{ library.getPlaylist(pendingDeleteId)?.name }}”을 삭제할까요?</p>
-        <div class="drawer-actions">
-          <button
-            type="button"
-            class="pill pill--strong"
-            :disabled="isSaving"
-            @click="confirmDelete"
-          >
-            삭제
-          </button>
-          <button type="button" class="pill" @click="pendingDeleteId = null">취소</button>
-        </div>
-      </div>
+      <p v-if="formError !== ''" class="play-notice" role="status" aria-live="polite">
+        {{ formError }}
+      </p>
 
       <p v-if="library.selectedPlaylist === null" class="muted">
         플레이리스트를 먼저 만들거나 선택하면 링크를 추가할 수 있어요.
       </p>
 
-      <div class="rule" />
-
-      <h3 class="drawer-section-title">TRACKS</h3>
-
-      <!--
-        트랙 목록 **바로 위**에 있는 동작은 트랙 추가뿐이다. 자리가 무엇에
-        대한 동작인지 말해준다 (보고 6a·6b).
-      -->
-      <div class="drawer-actions">
-        <button
-          type="button"
-          class="pill"
-          :disabled="library.selectedPlaylist === null"
-          @click="startAddLink"
-        >
-          ＋ YouTube 링크 추가
-        </button>
-      </div>
-
-      <!-- YouTube 링크 등록 폼. 대상 플레이리스트를 라벨에 명시한다. -->
+      <!-- YouTube 링크 등록 폼. 대상 플레이리스트를 라벨에 명시한다. 스크롤 영역의 맨 위다. -->
       <form v-if="linkTarget !== null" class="link-form" @submit.prevent="submitLink">
         <p class="form-target">
           <strong>{{ linkTarget.name }}</strong
@@ -584,6 +514,8 @@ watch(
         </div>
       </form>
 
+      <h3 class="drawer-section-title">TRACKS</h3>
+
       <TrackList
         ref="trackList"
         :moment-counts="momentCounts"
@@ -616,15 +548,58 @@ watch(
   color: var(--status-warning-text-color);
 }
 
+/*
+ * 칸 전체가 세로 플렉스다 (M11-7B) — 머리말은 그 자리에 있고 `.editor-body` 만 스크롤한다. 높이는
+ * 보관함(`ArchivePanel` 의 음악 탭 배치)이 준다.
+ */
 .playlist-editor {
+  display: flex;
   min-width: 0;
+  min-height: 0;
+  flex-direction: column;
 }
 
 .editor-head {
   min-width: 0;
+  flex: none;
   padding-bottom: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--drawer-head-border-color);
+}
+
+/* 좁은 화면의 "목록으로" · 위치 표시. 넓은 화면에서는 `ArchivePanel` 이 숨긴다 — 목록 칸이 옆에 있다. */
+.step-nav {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.crumb {
+  min-width: 0;
+  margin: 0;
+  color: var(--drawer-sub-text-color);
+  font: 11px var(--font-mono);
+}
+
+/* 이름이 길면 단추가 이름 **아래로** 내려간다 — 단추가 잘리거나 이름을 한 글자 폭으로 누르지 않게. */
+.head-main {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+
+.head-text {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.head-actions {
+  flex: none;
+  margin-bottom: 0;
 }
 
 /*
@@ -652,8 +627,18 @@ watch(
   font: 11px var(--font-mono);
 }
 
+/* 이 칸의 스크롤은 여기 **한 곳**이다. 끝까지 스크롤해도 페이지 · 목록 칸으로 넘어가지 않는다. */
 .editor-body {
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--line-color) transparent;
+  /* 내용이 바뀔 때 폭이 흔들리지 않게 스크롤바 자리를 비워 둔다 (M9-6 과 같은 이유). */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
 }
 
 /* 승인된 디자인의 `.pill` 값을 따른다. */
@@ -694,17 +679,11 @@ watch(
 }
 
 .drawer-section-title {
-  margin: 14px 0 8px;
+  margin: 4px 0 8px;
   color: var(--drawer-section-title-text-color);
   font: 10px var(--font-mono);
   font-weight: 400;
   letter-spacing: 0.12em;
-}
-
-.rule {
-  height: 1px;
-  margin-top: 4px;
-  background: var(--rule-color);
 }
 
 .label {
@@ -736,19 +715,6 @@ watch(
   margin: 0 0 12px;
   color: var(--status-warning-text-color);
   font: 10px/1.6 var(--font-mono);
-}
-
-.confirm {
-  margin-bottom: 13px;
-  padding: 10px 12px;
-  border: 1px solid var(--row-selected-border-color);
-  background: var(--row-selected-surface-color);
-}
-
-.confirm-text {
-  margin: 0 0 10px;
-  color: var(--row-text-color);
-  font: 12px/1.5 var(--font-mono);
 }
 
 .form-target {

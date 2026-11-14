@@ -279,7 +279,8 @@ export function useNowPlaylist(): NowPlaylistModel {
         return
       }
     }
-    archive?.open('music')
+    // 목록이 이미 정해졌다 — 좁은 화면에서도 목록 단계를 건너뛰고 그 목록의 곡으로 간다.
+    archive?.open('music', { showDetail: true })
   }
 
   function addLink(): void {

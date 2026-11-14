@@ -257,8 +257,11 @@ const placed = computed<PlacedWidget[]>(() =>
  * 700px 이하: **한 열** (M11-3, U20 · U21).
  *
  * 두 열을 360px 까지 끌고 가면 데크 옆 반 칸(약 140px)에 플레이리스트가 끼고, 시계 · 날씨가 반 칸씩
- * 나눠 글자가 빽빽했다. 순서는 듣는 흐름이다 — 데크 → 영상 → **이 곡의 Moments(빠른 저장)** →
- * 플레이리스트 → 시계 → 날씨 → 마스코트. 빠른 저장이 영상 바로 아래에 있어 세로 화면에서도 닿는다.
+ * 나눠 글자가 빽빽했다. 순서는 듣는 흐름이다 — **작은 데크 띠** → 영상 → **이 곡의 Moments(저장)** →
+ * NOW PLAYLIST → 시계 → 날씨 → 마스코트. 저장이 영상 바로 아래에 있어 세로 화면에서도 닿는다.
+ *
+ * M11-7B: 데크는 여기서 **작은 띠**다 (`DeckWidget` — 아트를 통째로 줄여 왼쪽에, 안내를 옆에). M11-6
+ * 까지는 화면 폭의 데크(390px 에서 약 220px 높이)가 영상을 첫 화면 아래로 밀었다 (ADR 0030).
  *
  * `grid-template-areas` 만 바꾼다. DOM 부모 · 순서 · 인스턴스는 그대로다 (ADR 0002).
  */
@@ -281,11 +284,55 @@ const placed = computed<PlacedWidget[]>(() =>
     display: none;
   }
 
-  /* 데크가 화면 폭 전체를 쓰면 너무 크다 — 영상과 같은 상한으로 가운데에 둔다. */
+  /* 데크는 작은 띠다 — 폭 전체를 쓰고, 크기는 `DeckWidget` 이 정한다 (M11-7B). */
+  .widget-host > [data-widget='deck'] {
+    width: 100%;
+  }
+
+  /* 띠와 영상 사이는 위젯 사이의 기본 간격보다 좁게 — 띠는 영상의 머리말처럼 붙는다. */
+  .widget-host {
+    row-gap: 14px;
+  }
+}
+
+/*
+ * 낮은 가로 화면 (폰 가로 — 높이 560px 이하, M11-7B).
+ *
+ * 폭으로는 두 열(1100px 이하) 배치지만 그 배치는 데크 · NOW PLAYLIST 가 첫 행을 차지해 **영상이 첫 화면
+ * 아래**로 밀린다 (844×390 실측: 영상 위 끝 586px). 가시성 가드는 영상이 화면과 전혀 겹치지 않으면
+ * 재생을 멈추므로(`playerVisibility.ts`), 폰을 가로로 돌리기만 해도 음악이 멈췄다. 여기서는 영상을 첫
+ * 행 왼쪽에 두고 이 곡의 Moments · NOW PLAYLIST 를 그 옆에 둔다 — 데크는 그 아래다.
+ *
+ * `grid-template-areas` 만 바꾼다. DOM 부모 · 순서 · 인스턴스는 그대로다 (ADR 0002). 보관함 쪽의 같은
+ * 조건(옆 배치)은 `DashboardShell` 의 `SIDE_QUERY` 다.
+ */
+@media (max-height: 560px) and (orientation: landscape) and (max-width: 1100px) {
+  .widget-host {
+    grid-template-areas:
+      'player moments'
+      'player playlist'
+      'deck playlist'
+      'clock weather'
+      'mascot mascot';
+    /* 왼쪽 열 360px 이상 — 16:9 영상이 202px 을 지킬 수 있는 폭 (위 머리말과 같은 근거). */
+    grid-template-columns: minmax(360px, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+  }
+
+  .widget-host > [data-widget='player'] {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  /* 데크는 영상 아래 왼쪽 열 — 너무 크지 않게 영상 폭 안에서. */
   .widget-host > [data-widget='deck'] {
     width: 100%;
     max-width: 420px;
-    justify-self: center;
+  }
+
+  .widget-host::before {
+    display: none;
   }
 }
 </style>

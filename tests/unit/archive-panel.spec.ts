@@ -311,15 +311,23 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
     expect(document.activeElement).toBe(wrapper.get('#track-url').element)
   })
 
-  it('빈 목록의 ▶ 는 꺼져 있고 이유를 이름이 말한다', async () => {
+  it('목록 칸에는 재생 단추가 없다 — 재생은 상세 칸의 일이고, 빈 목록의 전체 재생은 꺼져 있다 (M11-7B)', async () => {
     seed([{ id: 'p1', name: 'ONE', videoIds: [] }], 'p1')
     const { wrapper } = mountApp()
     await nav(wrapper, '보관함').trigger('click')
     await settle()
 
-    const play = wrapper.get('.archive-lists .list-play')
-    expect(play.attributes('disabled')).toBeDefined()
-    expect(play.attributes('aria-label')).toBe('ONE — 재생할 곡이 없음')
+    // 목록 칸: 고르기와 관리(이름 수정 · 삭제)만.
+    const row = wrapper.get('.archive-lists .list-row')
+    expect(row.findAll('button').map((button) => button.text())).toEqual(['ONE비어 있음', '관리'])
+    expect(wrapper.find('.archive-lists .list-play').exists()).toBe(false)
+    // 상세 칸: 전체 재생 · 링크 추가. 이름 수정 · 삭제는 없다.
+    const actions = wrapper.findAll('.playlist-editor .head-actions button')
+    expect(actions.map((button) => button.text())).toEqual([
+      '▶ 목록 전체 재생',
+      '＋ YouTube 링크 추가',
+    ])
+    expect(actions[0]?.attributes('disabled')).toBeDefined()
   })
 
   it('편집 표면에 백업이 없다 — 데이터 대화상자로 옮겼다는 안내가 있다', async () => {

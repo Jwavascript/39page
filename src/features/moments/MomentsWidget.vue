@@ -480,3 +480,89 @@ function openCurrent(): void {
   text-decoration: underline;
 }
 </style>
+
+<!--
+  보관함이 열렸을 때의 작은 배치 (M11-7B · 배치 C) — 재생 띠 안의 **저장 줄**.
+
+  보관함이 열려 있어도 "이 순간 저장" 에 닿아야 한다 (ADR 0030). 같은 위젯 인스턴스가 작게 놓일
+  뿐이다 — 저장 명령 · 메모 양식 · 결과 안내는 대시보드와 같은 것이다. 이 곡의 미리보기는 접는다:
+  보관함의 Moments 탭이 바로 아래에 있다.
+
+  비스코프인 이유는 `PlayerSurface` 와 같다 (조상의 `data-archive-layout` 을 본다).
+-->
+<style>
+[data-archive-layout] .moments-widget .preview,
+[data-archive-layout] .moments-widget .capture-hint {
+  display: none;
+}
+
+/*
+ * 한 줄 모양 — 좁은 띠 · 쌓기 · 옆 배치. [＋ 이 순간 저장] [모두 보기] 가 한 줄이고, 결과 안내와 메모
+ * 양식은 그 아래로 내려간다.
+ */
+[data-archive-layout='stack'] .moments-widget,
+[data-archive-layout='side'] .moments-widget {
+  flex-flow: row wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+[data-archive-layout='stack'] .moments-widget .head-text,
+[data-archive-layout='side'] .moments-widget .head-text {
+  display: none;
+}
+
+[data-archive-layout='stack'] .moments-widget .widget-head,
+[data-archive-layout='side'] .moments-widget .widget-head {
+  flex: none;
+  order: 2;
+}
+
+[data-archive-layout='stack'] .moments-widget .capture-row,
+[data-archive-layout='side'] .moments-widget .capture-row {
+  flex: 1 1 140px;
+  order: 1;
+}
+
+[data-archive-layout='stack'] .moments-widget .capture-button,
+[data-archive-layout='side'] .moments-widget .capture-button {
+  width: 100%;
+}
+
+[data-archive-layout='stack'] .moments-widget > :not(.widget-head, .capture-row),
+[data-archive-layout='side'] .moments-widget > :not(.widget-head, .capture-row) {
+  flex: 1 1 100%;
+  order: 3;
+}
+
+@media (max-width: 1000px) {
+  [data-archive-layout='strip'] .moments-widget {
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+
+  [data-archive-layout='strip'] .moments-widget .head-text {
+    display: none;
+  }
+
+  [data-archive-layout='strip'] .moments-widget .widget-head {
+    flex: none;
+    order: 2;
+  }
+
+  [data-archive-layout='strip'] .moments-widget .capture-row {
+    flex: 1 1 140px;
+    order: 1;
+  }
+
+  [data-archive-layout='strip'] .moments-widget .capture-button {
+    width: 100%;
+  }
+
+  [data-archive-layout='strip'] .moments-widget > :not(.widget-head, .capture-row) {
+    flex: 1 1 100%;
+    order: 3;
+  }
+}
+</style>

@@ -33,6 +33,12 @@
  * 수정하지 않았다 (규칙 6). 판단은 `useDeckTransport` 가 하고 이 컴포넌트는
  * 자리와 이름만 정한다 (규칙 3).
  *
+ * M11-7B — 한 열 배치(700px 이하)에서는 **작은 데크 띠**가 된다 (ADR 0030 · 모바일). 승인된 아트를
+ * 자르거나 고치지 않고 **통째로 줄여** 왼쪽에 두고, 안내 문구가 그 옆에 선다. 영상과 재생 조작이 첫
+ * 화면에 들어오게 하면서 테마의 얼굴(LP · 카세트, 회전 연출)은 남긴다. 줄어든 아트 위의 재생 키는
+ * 12px 남짓이라 누를 수 없으므로 띠에서는 끈다 — 재생 조작은 바로 아래 영상 밑에 있다. 띠 전체가
+ * "음악 보관함 열기" 다.
+ *
  * 단일 루트를 유지한다. `WidgetHost` 가 `grid-area` 를 루트에 적용한다.
  */
 import { computed, inject } from 'vue'
@@ -390,5 +396,58 @@ function openLibrary(): void {
   color: var(--status-warning-text-color);
   font: 11px/1.6 var(--font-mono);
   text-align: center;
+}
+
+/*
+ * 700px 이하 — **작은 데크 띠** (M11-7B). `WidgetHost` 의 한 열 배치와 같은 경계다.
+ *
+ * 아트는 SVG 통째로 줄어든다(자르지 않는다 — viewBox 가 비율을 지킨다). 회전 · 릴 연출은 그대로다.
+ */
+@media (max-width: 700px) {
+  .deck-widget {
+    display: grid;
+    align-items: center;
+    column-gap: 12px;
+    grid-template-columns: clamp(118px, 36%, 164px) minmax(0, 1fr);
+  }
+
+  .deck-graphic {
+    grid-row: 1 / span 2;
+  }
+
+  /* 띠의 아트 전체가 "음악 보관함 열기" 다. 두 테마 모두 아트 전체를 덮는다. */
+  :root[data-theme='mono-vinyl'] .deck-open--mono-vinyl,
+  :root[data-theme='kawaii-synth-cassette'] .deck-open--kawaii-synth-cassette {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-control);
+  }
+
+  /* 툴팁은 아트보다 크다 — 옆의 안내 문구가 같은 말을 한다. */
+  .deck-open-hint {
+    display: none;
+  }
+
+  /*
+   * 줄어든 아트 위의 재생 키는 누를 수 없는 크기다(약 12px). 44px 누름 영역을 그대로 두면 "보관함
+   * 열기" 와 겹쳐 잘못 눌린다. 띠에서는 끈다 — 재생 · 일시정지는 바로 아래 영상 밑에 있다.
+   */
+  :root[data-theme='mono-vinyl'] .deck-key--mono-vinyl,
+  :root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-stop,
+  :root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-play {
+    display: none;
+  }
+
+  .deck-hint,
+  .deck-notice {
+    margin: 0;
+    text-align: left;
+  }
+
+  .deck-hint {
+    line-height: 1.5;
+  }
 }
 </style>

@@ -475,13 +475,16 @@ describe('9. 플레이리스트 편집 후 큐 안정성', () => {
     // 순서 변경
     await openTrackManage(session.wrapper, 'TWO')
     await session.wrapper.get('[aria-label="TWO 위로"]').trigger('click')
-    // 이름 변경
+    // 이름 변경 — 목록 칸의 "관리" 안에 있다 (M11-7B).
+    await session.wrapper.get('.archive-lists .list-row.is-selected .list-manage').trigger('click')
     const rename = session.wrapper
-      .findAll('.drawer-actions button')
+      .findAll('.archive-lists .manage-panel button')
       .find((button) => button.text().includes('이름 수정'))
     await rename?.trigger('click')
+    await flushPromises()
     await session.wrapper.get('#playlist-name').setValue('RENAMED')
-    await session.wrapper.get('.name-form button[type="submit"]').trigger('click')
+    await session.wrapper.get('form.name-form').trigger('submit')
+    await flushPromises()
     await nextTick()
 
     expect(session.playback.queue.map((track) => track.id)).toEqual(queueBefore)
