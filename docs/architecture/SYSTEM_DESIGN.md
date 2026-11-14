@@ -597,6 +597,12 @@ Playlist A 재생 중  →  Library 에서 B 선택  →  B 이름 변경 · 삭
 누르는 흐름은 **상위 UI 계층**이 두 store 를 조립해 만든다
 (`library` 에서 트랙을 읽어 `playback.setQueue()` 에 넘긴다).
 
+**큐의 출처 (M11-7B, ADR 0030).** 큐는 트랙만으로는 어느 목록에서 왔는지 알 수 없다. 큐를 만드는 쪽(Playback
+Coordinator)이 `playback.queueSource`(`{ playlistId, name }`, **메모리만**)를 큐와 함께 적고, 목록 밖 영상(Moment
+재생)이면 `null` 이다 — 출처를 추정하지 않는다. 화면은 코디네이터 계약의 읽기 전용 보기 `queue`(트랙 · 위치 · 출처 ·
+출처 상태 `in-sync | changed | deleted | unknown`)만 읽는다. 출처 목록을 고쳐도 큐는 그대로이고, 사용자가 "새 순서로 이어
+재생"(`resyncQueueFromSource()` — 지금 곡을 트랙 id 로 찾고 플레이어에 명령하지 않는다)을 고를 때만 새 순서를 따른다.
+
 #### Playback Coordinator — 구현 완료 (M3-2)
 
 **애플리케이션 계층이 조립하고, 소비자는 `provide`/`inject` 로 받는다.**

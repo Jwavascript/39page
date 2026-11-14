@@ -21,7 +21,7 @@
 | **M8**   | JSON 백업·복원                                                             | **운영 배포 완료** — 실기기 수동 확인 대기            |
 | **M9**   | Music Moments                                                              | **운영 배포 완료** — 실기기 확인 대기                 |
 | **M10**  | Chrome 확장을 통한 음악·Moment 수집                                        | 웹앱 **운영 배포** · 확장 스토어 출시 **보류**        |
-| **M11**  | 통합 UX 재설계 · 확장 저장 브리지                                          | M11-6 까지 완료 — **M11-7 UAT 재설계 진행** (7A 시안) |
+| **M11**  | 통합 UX 재설계 · 확장 저장 브리지                                          | M11-6 까지 완료 — **M11-7 UAT 재설계 진행** (7B 구현) |
 
 ### M0 — 프로젝트 초기화 (완료)
 
@@ -283,8 +283,8 @@ Moments, 작은 터치 영역, 담을 때마다 열리는 새 탭 — 를 고친
 | M11-5  | ✔ YouTube 위 플로팅 패널 + offscreen 저장 브리지 — 음악 담기 · 즉석 목록 · Moment, 새 탭 없음, 정확히 한 번(요청 ID 기반 id), 권한 세대. 실제 Chrome 브리지 15/15 · 패널 12/12. 운영 브리지는 확장 ID 확정 뒤 켠다                                       |
 | M11-6  | ✔ 통합 검증 · 출시 준비 — 실제 Chrome 웹앱 11/11 · 브리지 15/15 · 패널 12/12 · 결함 P1 1건 등 수정 · 판단: 웹앱 CONDITIONAL · 확장 로컬 CONDITIONAL · 운영 직접 저장 · 스토어 NO ([`M11_RELEASE_READINESS.md`](../development/M11_RELEASE_READINESS.md)) |
 | M11-7A | ✔ UAT 기반 UX 재설계 · 비교 시안 — NOW PLAYLIST · 이 곡 Moments · 보관함 2열 · Moment 저장 A/B · 트랙 정렬 A/B/C. 앱 코드 변경 없음, 사용자 선택 대기 ([`M11_7_UX_REDESIGN.md`](M11_7_UX_REDESIGN.md))                                                   |
-| M11-7B | 대시보드 · 보관함 구조 (선택 뒤)                                                                                                                                                                                                                         |
-| M11-7C | Moment 저장 · 트랙 편집 (선택 뒤)                                                                                                                                                                                                                        |
+| M11-7B | ✔ 대시보드 · 보관함 개편 — 기본 테마 Kawaii · NOW PLAYLIST(재생 큐 우선) · 헤더 보관함 · 데이터 · 백업 · 보관함 목록 칸 \| 상세 칸 · 작은 영상 띠 · 모바일 데크 띠. 실제 YouTube 26/26                                                                   |
+| M11-7C | Moment 저장 B · 트랙 편집 C (채택, 미구현)                                                                                                                                                                                                               |
 | M11-7D | 최종 UAT · 배포 준비                                                                                                                                                                                                                                     |
 
 설계: [`M11_UX_DESIGN.md`](M11_UX_DESIGN.md) · [`../architecture/M11_BRIDGE_POC.md`](../architecture/M11_BRIDGE_POC.md).

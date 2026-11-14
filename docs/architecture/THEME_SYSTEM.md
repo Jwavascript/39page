@@ -17,12 +17,17 @@
 
 ## 2. 테마 목록
 
-| 테마                  | 키                      | 모티프                            | 상태   |
-| --------------------- | ----------------------- | --------------------------------- | ------ |
-| Mono Vinyl            | `mono-vinyl`            | LP / 턴테이블. 따뜻한 회갈색 금속 | 미구현 |
-| Kawaii Synth Cassette | `kawaii-synth-cassette` | 카세트. 민트 + 분홍 포인트        | 미구현 |
+| 순서 | 테마                  | 키                      | 모티프                            | 상태 |
+| ---- | --------------------- | ----------------------- | --------------------------------- | ---- |
+| 01   | Kawaii Synth Cassette | `kawaii-synth-cassette` | 카세트. 민트 + 분홍 포인트        | 구현 |
+| 02   | Mono Vinyl            | `mono-vinyl`            | LP / 턴테이블. 따뜻한 회갈색 금속 | 구현 |
 
-기본값은 `mono-vinyl`이다. 저장된 값이 알려진 키가 아니면 기본값으로 되돌린다.
+**기본값은 `kawaii-synth-cassette`다 (M11-7B, ADR 0031).** M11-6 까지는 `mono-vinyl` 이 01 이자 기본값이었다. 키는 바꾸지
+않았으므로 저장된 테마 · 백업은 그대로 읽힌다 — 저장된 값이 있는 사용자는 그 테마로 남고, 저장된 값이 없거나 알려진 키가
+아니면 기본값으로 되돌린다. 표시 순서는 `THEME_KEYS` 의 순서다.
+
+CSS 의 **바탕 토큰**(bare `:root`)은 여전히 Mono Vinyl 이다 — kawaii 가 재정의하지 않은 값(§4.7)의 바탕이라 바꾸지 않았다.
+사용자에게 보이는 기본 테마는 `<html data-theme>` 과 Theme Store 가 정한다.
 
 소스 디렉터리는 키와 1:1로 대응한다: `src/themes/mono-vinyl/`,
 `src/themes/kawaii-synth-cassette/` (M1-0에서 통일 완료).
@@ -37,8 +42,8 @@ M0에서 후보 A/B/C로 남겨둔 결정을 **프로토타입이 이미 확정�
 전환한다. 제품에서는 `data-theme` 속성을 쓴다 (값이 2개 이상으로 늘어날 때 깔끔하다).
 
 ```html
-<html data-theme="mono-vinyl">
-  <!-- 또는 "kawaii-synth-cassette" -->
+<html data-theme="kawaii-synth-cassette">
+  <!-- 또는 "mono-vinyl" — 기본값은 M11-7B 부터 kawaii-synth-cassette (ADR 0031) -->
 </html>
 ```
 
@@ -74,17 +79,19 @@ Vite는 앱을 `<script type="module">`로 넣는다. 이 스크립트는 **`fir
 ```js
 try {
   var saved = JSON.parse(localStorage.getItem('39page.theme')).data
-  if (typeof saved === 'string') document.documentElement.dataset.theme = saved
+  if (saved === 'kawaii-synth-cassette' || saved === 'mono-vinyl') {
+    document.documentElement.dataset.theme = saved
+  }
 } catch (error) {}
 ```
 
-**검증 로직을 중복하지 않는다.** 이 스크립트는 테마 키 목록을 모른다.
+**M11-7B 에서 바뀌었다 — 알려진 두 키만 적용한다 (ADR 0031).** M11-6 까지는 이 스크립트가 키 목록을 몰랐고, 알 수 없는 값은
+CSS 의 바탕 토큰(= 기본 테마 Mono Vinyl)이 되돌렸다. 기본 테마가 Kawaii 로 바뀐 뒤에는 바탕 토큰과 기본 테마가 달라, 알 수
+없는 값을 그대로 넣으면 Mono 배경이 한 프레임 비친다. 그래서 키 목록이 여기에 한 번 더 적힌다.
 
-- 알 수 없는 값이 들어가도 CSS가 기본 테마로 되돌린다 (§3의 특이도 규칙,
-  M1-2에서 브라우저로 확인).
+- 중복되는 지식은 저장 키 이름과 **테마 키 두 개**다. 시험이 store 의 `STORAGE_KEYS.theme` 와 `THEME_KEYS` 와 일치하는지
+  검사한다 (`theme-store.spec.ts`).
 - 마운트 시 Theme Store가 `isThemeKey`로 검증한 값으로 속성을 덮어쓴다.
-- 따라서 중복되는 지식은 **저장 키 이름 하나뿐**이고, 테스트가 store의
-  `STORAGE_KEYS.theme`와 일치하는지 검사한다.
 
 테마의 단일 진실 공급원은 Theme Store다. 인라인 스크립트는 첫 페인트를 위한
 선반영일 뿐이며, store가 항상 최종 상태를 결정한다.
