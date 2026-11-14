@@ -195,21 +195,33 @@ async function nextTrack(s: Session): Promise<void> {
   await nextTick()
 }
 
-/** ＋ 이 순간 저장 — 누르면 바로 저장한다. 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025). */
-async function quickSave(s: Session): Promise<void> {
+/** ＋ 이 순간 저장 — 시점을 잡는다 (아직 저장하지 않는다 · M11-7C 저장 모델 B). */
+async function captureNow(s: Session): Promise<void> {
   await captureButton(s).trigger('click')
+  await nextTick()
+}
+
+const draftForm = (s: Session) => widget(s).get('.draft-form')
+const noteField = (s: Session) => s.wrapper.get('#dashboard-moment-capture-note')
+
+/** 초안의 Moment 저장. 저장은 탭 간 잠금을 지나 끝난다 (ADR 0025). */
+async function saveDraft(s: Session): Promise<void> {
+  await draftForm(s).trigger('submit')
   await flushPromises()
   await nextTick()
 }
 
-/** 방금 저장한 순간에 메모를 붙인다. */
-async function addNote(s: Session, note: string): Promise<void> {
-  await widget(s).get('.after-save .pill').trigger('click')
-  await nextTick()
-  await s.wrapper.get('#dashboard-moment-capture-note').setValue(note)
-  await s.wrapper.get('.note-form').trigger('submit')
-  await flushPromises()
-  await nextTick()
+/** 잡고 바로 저장한다 (메모 없음). */
+async function quickSave(s: Session): Promise<void> {
+  await captureNow(s)
+  await saveDraft(s)
+}
+
+/** 잡고 메모를 써서 저장한다. */
+async function saveWithNote(s: Session, note: string): Promise<void> {
+  await captureNow(s)
+  await noteField(s).setValue(note)
+  await saveDraft(s)
 }
 
 /** 보관함의 Moments 탭을 연다 — 헤더 입구로. */
@@ -265,10 +277,10 @@ afterEach(() => {
 })
 
 /* ================================================================== *
- * A. 빠른 저장 (F13 · D2)
+ * A. 잡기 → 저장 (M11-7C 저장 모델 B)
  * ================================================================== */
 
-describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
+describe('A. 잡기 → Moment 저장 — 누르면 시점만 잡고, 저장은 따로 누른다', () => {
   it('곡이 없으면 저장 버튼이 꺼져 있고 왜 꺼졌는지 말한다', () => {
     const s = boot()
 
@@ -290,29 +302,53 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('재생이 시작되면')
   })
 
-  it('재생 중 누르면 그 순간이 바로 저장되고, 영속 저장 뒤에만 "저장했어요" 를 말한다', async () => {
+  it('누르면 시점을 잡을 뿐 저장하지 않고 음악은 계속된다 — Moment 저장 뒤에만 "저장했어요"', async () => {
     const s = boot()
     await playFromStart(s, 83.7)
+    const pausesBefore = s.fake.calls.pause
+    const add = vi.spyOn(s.moments, 'add')
 
-    expect(captureButton(s).attributes('disabled')).toBeUndefined()
-    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('바로 저장')
-    await quickSave(s)
+    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('시점을 잡아요')
+    await captureNow(s)
+
+    // 아직 아무것도 만들지 않았다.
+    expect(s.moments.moments).toEqual([])
+    expect(rawMoments()).toBeNull()
+    expect(add).not.toHaveBeenCalled()
+    expect(s.fake.calls.pause).toBe(pausesBefore)
+    expect(s.playback.playerState).toBe('playing')
+    // 저장 전 초안 — 시점 · 곡이 보이고 메모 칸으로 간다.
+    const target = draftForm(s).get('.note-target').text()
+    expect(target).toContain('저장 전')
+    expect(target).toContain('1:23')
+    expect(target).toContain('Alpha')
+    expect(document.activeElement).toBe(noteField(s).element)
+    expect(captureFeedback(s)?.text()).toBe(
+      '1:23 을 잡았어요 — 메모를 쓰고(선택) Moment 저장을 누르세요.',
+    )
+    expect(widget(s).find('.capture-button').exists()).toBe(false)
+
+    await saveDraft(s)
 
     expect(s.moments.moments).toHaveLength(1)
-    expect(s.moments.moments[0]).toMatchObject({
-      videoId: A,
-      atSeconds: 83,
-      title: 'Alpha',
-      note: '',
-    })
+    const saved = s.moments.moments[0] as Moment
+    expect(saved).toMatchObject({ videoId: A, atSeconds: 83, title: 'Alpha', note: '' })
+    // 초안의 요청 id 로 저장한다 — store 의 호출자 id 계약 (한 번만).
+    expect(saved.id).toMatch(/^ext-web-[A-Za-z0-9]{16,}$/)
+    expect(add).toHaveBeenCalledTimes(1)
     // 저장소에도 들어갔다 — 메모리만이 아니다.
     expect(JSON.parse(rawMoments() as string).data).toHaveLength(1)
     const feedback = captureFeedback(s)
-    expect(feedback?.text()).toBe('1:23 을 저장했어요 — Alpha')
+    expect(feedback?.text()).toBe('1:23 Moment 를 저장했어요 — Alpha')
     expect(feedback?.classes()).not.toContain('is-warning')
-    // 메모는 그다음에 붙인다.
-    expect(widget(s).get('.after-save .pill').text()).toContain('메모 추가')
-    expect(widget(s).find('.note-form').exists()).toBe(false)
+    // 양식이 닫히고 포커스가 저장 단추로 돌아온다. 새 줄이 목록에 바로 보이고 강조된다.
+    expect(widget(s).find('.draft-form').exists()).toBe(false)
+    expect(document.activeElement).toBe(captureButton(s).element)
+    const row = widget(s).get(`[data-moment-row="${saved.id}"]`)
+    expect(row.classes()).toContain('is-new')
+    expect(row.text()).toContain('방금 저장')
+    // 메모가 없으면 조용히 "—".
+    expect(row.get('.moment-note').text()).toBe('—')
   })
 
   it('정상적으로 확인된 0초는 유효한 순간이다', async () => {
@@ -326,9 +362,9 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
 
   /*
    * M9-3 실측: 새 영상을 적재하면 플레이어는 지정 시점으로 가기 전 약 200ms 동안 `0` 을 보고한다 —
-   * 영상은 맞고 시간만 틀리다. 그 사이 저장되면 0초짜리 순간이 생긴다.
+   * 영상은 맞고 시간만 틀리다. 그 사이 잡히면 0초짜리 순간이 생긴다.
    */
-  it('곡을 바꾸는 중에 보고되는 가짜 0초로는 저장할 수 없다', async () => {
+  it('곡을 바꾸는 중에 보고되는 가짜 0초로는 잡을 수 없다', async () => {
     const s = boot()
     await playFromStart(s, 30)
     await nextTrack(s)
@@ -342,9 +378,10 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     await nextTick()
     expect(captureButton(s).attributes('disabled')).toBeDefined()
 
-    // 버튼을 우회해 눌러도(이벤트 직접 발생) 저장되지 않는다.
+    // 버튼을 우회해 눌러도(이벤트 직접 발생) 잡히지 않는다.
     captureButton(s).element.dispatchEvent(new MouseEvent('click'))
     await flushPromises()
+    expect(widget(s).find('.draft-form').exists()).toBe(false)
     expect(s.moments.moments).toEqual([])
 
     // 실제로 재생이 시작된 뒤에는 그 영상의 위치로 저장된다.
@@ -356,27 +393,107 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     expect(s.moments.moments[0]).toMatchObject({ videoId: B, atSeconds: 0, title: 'Bravo' })
   })
 
-  it('버튼이 켜진 뒤 누르기 전에 위치를 잃으면 0 으로 바꾸지 않고 거절한다', async () => {
+  it('버튼이 켜진 뒤 누르기 전에 위치를 잃으면 0 으로 바꾸지 않고 잡지 않는다', async () => {
     const s = boot()
     await playFromStart(s, 30)
     s.fake.emitPosition(null)
 
-    await quickSave(s)
+    await captureNow(s)
 
     expect(captureFeedback(s)?.text()).toContain('재생 위치를 확인하지 못했어요')
+    expect(widget(s).find('.draft-form').exists()).toBe(false)
     expect(s.moments.moments).toEqual([])
   })
 
-  it('같은 순간을 연달아 누르면 한 번만 저장하고 이미 저장했다고 알린다', async () => {
+  it('시점은 누른 순간에 고정된다 — 메모를 쓰는 사이 재생이 흘러도 잡은 초로 저장한다', async () => {
     const s = boot()
-    await playFromStart(s, 50.2)
-    await quickSave(s)
-    await quickSave(s)
-    await quickSave(s)
+    await playFromStart(s, 10)
+    await captureNow(s)
+    s.fake.emitPosition(50)
+    await nextTick()
+    await noteField(s).setValue('도입부')
+    await saveDraft(s)
 
     expect(s.moments.moments).toHaveLength(1)
-    expect(captureFeedback(s)?.text()).toContain('0:50 은 방금 저장했어요')
-    expect(captureFeedback(s)?.text()).toContain('두 번 저장하지 않았어요')
+    expect(s.moments.moments[0]).toMatchObject({ atSeconds: 10, note: '도입부' })
+  })
+
+  it('↻ 다시 잡기는 쓰던 메모를 지키고 시점만 지금으로 바꾼다', async () => {
+    const s = boot()
+    await playFromStart(s, 10)
+    await captureNow(s)
+    await noteField(s).setValue('후렴 직전')
+    s.fake.emitPosition(50)
+    await nextTick()
+
+    await draftForm(s).get('.draft-recapture').trigger('click')
+    await nextTick()
+    expect(draftForm(s).get('.note-target').text()).toContain('0:50')
+    expect((noteField(s).element as HTMLTextAreaElement).value).toBe('후렴 직전')
+    expect(captureFeedback(s)?.text()).toBe(
+      '시점을 0:50 으로 다시 잡았어요 — 아직 저장하지 않았어요.',
+    )
+    expect(s.moments.moments).toEqual([])
+
+    await saveDraft(s)
+    expect(s.moments.moments).toHaveLength(1)
+    expect(s.moments.moments[0]).toMatchObject({ atSeconds: 50, note: '후렴 직전' })
+  })
+
+  it('취소하면 아무것도 만들지 않는다 — 쓰던 메모도 버린다', async () => {
+    const s = boot()
+    await playFromStart(s, 10)
+    await captureNow(s)
+    await noteField(s).setValue('버릴 메모')
+
+    await draftForm(s).get('.draft-cancel').trigger('click')
+    await nextTick()
+
+    expect(s.moments.moments).toEqual([])
+    expect(rawMoments()).toBeNull()
+    expect(widget(s).find('.draft-form').exists()).toBe(false)
+    expect(document.activeElement).toBe(captureButton(s).element)
+    expect(captureFeedback(s)?.text()).toBe('취소했어요 — 저장하지 않았어요.')
+
+    // 다시 잡으면 빈 메모로 시작한다.
+    await captureNow(s)
+    expect((noteField(s).element as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('저장이 끝나기 전에는 "저장 중…" 이고, 여러 번 눌러도 한 번만 저장한다 (초안 D)', async () => {
+    const s = boot()
+    await playFromStart(s, 40)
+    let release: (() => void) | undefined
+    const original = s.moments.add
+    const gate = new Promise<void>((resolveGate) => {
+      release = resolveGate
+    })
+    const add = vi.spyOn(s.moments, 'add').mockImplementation(async (input) => {
+      await gate
+      return original(input)
+    })
+
+    await captureNow(s)
+    await draftForm(s).trigger('submit')
+    await nextTick()
+    const save = draftForm(s).get('.draft-save')
+    expect(save.text()).toBe('저장 중…')
+    expect(save.attributes('disabled')).toBeDefined()
+    expect(save.attributes('aria-busy')).toBe('true')
+    expect(draftForm(s).get('.draft-cancel').attributes('disabled')).toBeDefined()
+    expect(draftForm(s).get('.draft-recapture').attributes('disabled')).toBeDefined()
+    // 막힌 단추를 우회해도(제출 · Enter) 두 번째 요청은 가지 않는다.
+    await draftForm(s).trigger('submit')
+    await noteField(s).trigger('keydown', { key: 'Enter' })
+    await nextTick()
+    expect(add).toHaveBeenCalledTimes(1)
+
+    release?.()
+    await flushPromises()
+    await nextTick()
+    expect(captureButton(s).text()).toBe('＋ 이 순간 저장')
+    expect(captureFeedback(s)?.text()).toContain('저장했어요')
+    expect(s.moments.moments).toHaveLength(1)
   })
 
   it('재생이 흘러 다른 초가 되면 또 저장된다 — 한 영상에 여러 순간', async () => {
@@ -388,170 +505,175 @@ describe('A. 빠른 저장 — 누르면 바로 저장한다', () => {
     await quickSave(s)
 
     expect(s.moments.moments.map((m) => m.atSeconds)).toEqual([10, 50])
+    expect(new Set(s.moments.moments.map((m) => m.id)).size).toBe(2)
   })
 
-  it('지운 뒤에는 같은 초를 다시 저장할 수 있다 — 막는 것은 남아 있는 중복뿐이다', async () => {
+  it('같은 초를 일부러 다시 잡아 저장하면 다른 순간이다 — 메모가 다를 수 있다 (ADR 0019)', async () => {
     const s = boot()
     await playFromStart(s, 20)
-    await quickSave(s)
-    const id = s.moments.moments[0]?.id ?? ''
-    await s.moments.remove(id)
-    await quickSave(s)
+    await saveWithNote(s, '처음 느낌')
+    await saveWithNote(s, '다시 들어 보니')
 
-    expect(s.moments.moments).toHaveLength(1)
-    expect(s.moments.moments[0]?.id).not.toBe(id)
-  })
-
-  it('저장이 끝나기 전에는 "저장 중…" 이고 다시 누를 수 없다', async () => {
-    const s = boot()
-    await playFromStart(s, 40)
-    let release: (() => void) | undefined
-    const original = s.moments.add
-    const gate = new Promise<void>((resolveGate) => {
-      release = resolveGate
-    })
-    vi.spyOn(s.moments, 'add').mockImplementation(async (input) => {
-      await gate
-      return original(input)
-    })
-
-    await captureButton(s).trigger('click')
-    await nextTick()
-    expect(captureButton(s).text()).toBe('저장 중…')
-    expect(captureButton(s).attributes('disabled')).toBeDefined()
-    expect(captureButton(s).attributes('aria-busy')).toBe('true')
-    expect(captureFeedback(s)?.text()).toBe('')
-
-    release?.()
-    await flushPromises()
-    await nextTick()
-    expect(captureButton(s).text()).toBe('＋ 이 순간 저장')
-    expect(captureFeedback(s)?.text()).toContain('저장했어요')
-    expect(s.moments.moments).toHaveLength(1)
+    expect(s.moments.moments.map((m) => [m.atSeconds, m.note])).toEqual([
+      [20, '처음 느낌'],
+      [20, '다시 들어 보니'],
+    ])
   })
 })
 
 /* ================================================================== *
- * B. 저장 뒤 메모
+ * B. 초안의 메모 · 초안 사례
  * ================================================================== */
 
-describe('B. 저장 직후 메모를 붙인다', () => {
-  it('메모 추가 → 쓰고 저장 → 그 순간의 메모가 되고, 단추는 "메모 고치기" 가 된다', async () => {
+describe('B. 초안의 메모 — 저장 전에 쓰고, 초안은 하나다', () => {
+  it('메모를 쓰고 저장하면 그 메모로 한 번에 저장된다', async () => {
     const s = boot()
     await playFromStart(s, 42)
-    await quickSave(s)
+    await saveWithNote(s, '여기부터 좋다')
 
-    await widget(s).get('.after-save .pill').trigger('click')
-    await nextTick()
-    // 메모 칸으로 바로 간다. 어느 순간의 메모인지 보인다.
-    expect(document.activeElement).toBe(s.wrapper.get('#dashboard-moment-capture-note').element)
-    expect(widget(s).get('.note-target').text()).toContain('0:42')
-    expect(widget(s).get('.note-target').text()).toContain('Alpha')
-
-    await s.wrapper.get('#dashboard-moment-capture-note').setValue('여기부터 좋다')
-    await s.wrapper.get('.note-form').trigger('submit')
-    await flushPromises()
-    await nextTick()
-
+    expect(s.moments.moments).toHaveLength(1)
     expect(s.moments.moments[0]).toMatchObject({ atSeconds: 42, note: '여기부터 좋다' })
-    expect(captureFeedback(s)?.text()).toBe('0:42 에 메모를 붙였어요.')
-    expect(widget(s).find('.note-form').exists()).toBe(false)
-    expect(document.activeElement).toBe(captureButton(s).element)
-    expect(widget(s).get('.after-save .pill').text()).toContain('메모 고치기')
+    expect(widget(s).get('.moment-row.is-new .moment-note').text()).toBe('여기부터 좋다')
   })
 
-  it('메모는 500자까지다 — 입력란이 막고, 넘긴 값은 저장하지 않는다', async () => {
+  it('Enter 는 저장, Shift+Enter 와 한글 조합 중의 Enter 는 저장하지 않는다', async () => {
+    const s = boot()
+    await playFromStart(s, 42)
+    await captureNow(s)
+    await noteField(s).setValue('한 줄')
+
+    await noteField(s).trigger('keydown', { key: 'Enter', shiftKey: true })
+    await noteField(s).trigger('keydown', { key: 'Enter', isComposing: true })
+    await noteField(s).trigger('keydown', { key: 'Enter', keyCode: 229 })
+    await flushPromises()
+    expect(s.moments.moments).toEqual([])
+
+    await noteField(s).trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    await nextTick()
+    expect(s.moments.moments[0]?.note).toBe('한 줄')
+  })
+
+  it('메모는 500자까지다 — 입력란이 막고, 넘긴 값은 저장하지 않고 초안을 지킨다', async () => {
     const s = boot()
     await playFromStart(s, 10)
-    await quickSave(s)
-    await widget(s).get('.after-save .pill').trigger('click')
-    await nextTick()
+    await captureNow(s)
 
-    const field = s.wrapper.get('#dashboard-moment-capture-note')
+    const field = noteField(s)
     expect(field.attributes('maxlength')).toBe(String(MAX_MOMENT_NOTE_LENGTH))
     await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH + 1))
     expect(s.wrapper.get('#dashboard-moment-capture-count').text()).toContain('501 / 500')
-    expect(s.wrapper.get('.note-form button[type="submit"]').attributes('disabled')).toBeDefined()
+    expect(draftForm(s).get('.draft-save').attributes('disabled')).toBeDefined()
 
-    await s.wrapper.get('.note-form').trigger('submit')
-    await flushPromises()
-    expect(s.moments.moments[0]?.note).toBe('')
-    // 폼은 남는다 — 쓴 메모를 잃지 않는다.
-    expect(widget(s).find('.note-form').exists()).toBe(true)
+    await saveDraft(s)
+    expect(s.moments.moments).toEqual([])
+    expect(widget(s).find('.draft-form').exists()).toBe(true)
 
     await field.setValue('가'.repeat(MAX_MOMENT_NOTE_LENGTH))
-    await s.wrapper.get('.note-form').trigger('submit')
-    await flushPromises()
+    await saveDraft(s)
     expect(s.moments.moments[0]?.note).toHaveLength(MAX_MOMENT_NOTE_LENGTH)
   })
 
-  it('메모를 취소하면 순간은 남고 메모는 비어 있다', async () => {
-    const s = boot()
-    await playFromStart(s, 10)
-    await quickSave(s)
-    await widget(s).get('.after-save .pill').trigger('click')
-    await nextTick()
-    await s.wrapper.get('#dashboard-moment-capture-note').setValue('버릴 메모')
-
-    const cancel = widget(s)
-      .findAll('.note-form button')
-      .find((b) => b.text() === '취소')
-    await cancel?.trigger('click')
-    await nextTick()
-
-    expect(s.moments.moments).toHaveLength(1)
-    expect(s.moments.moments[0]?.note).toBe('')
-    expect(widget(s).find('.note-form').exists()).toBe(false)
-    expect(document.activeElement).toBe(captureButton(s).element)
-  })
-
-  it('메모를 쓰는 중에 곡이 바뀌어도 그 순간에 붙고, 바뀌었다고 알린다', async () => {
+  it('초안 A — 쓰는 중에 곡이 바뀌어도 처음 곡 · 시점으로 저장하고, 바뀌었다고 알린다', async () => {
     const s = boot()
     await playFromStart(s, 42)
-    await quickSave(s)
-    await widget(s).get('.after-save .pill').trigger('click')
-    await nextTick()
-    await s.wrapper.get('#dashboard-moment-capture-note').setValue('A 의 메모')
+    await captureNow(s)
+    await noteField(s).setValue('A 의 메모')
 
     await nextTrack(s)
     s.fake.emitStateChange('playing')
     s.fake.emitPosition(5)
     await nextTick()
 
-    expect(widget(s).get('.stale-note').text()).toContain('곡이 바뀌었어요')
-    expect(widget(s).get('.note-target').text()).toContain('Alpha')
-    await s.wrapper.get('.note-form').trigger('submit')
-    await flushPromises()
+    expect(draftForm(s).get('.stale-note').text()).toContain('곡이 바뀌었어요')
+    expect(draftForm(s).get('.note-target').text()).toContain('Alpha')
+    expect(draftForm(s).get('.note-target').text()).toContain('0:42')
+    await saveDraft(s)
 
     expect(s.moments.moments[0]).toMatchObject({ videoId: A, atSeconds: 42, note: 'A 의 메모' })
+    expect(captureFeedback(s)?.text()).toBe('0:42 Moment 를 저장했어요 — Alpha')
   })
 
-  it('다른 탭이 먼저 바꿨으면 메모를 저장하지 않고 폼과 쓴 메모를 지킨다 (ADR 0025)', async () => {
+  it('초안 C — 다른 탭이 먼저 바꿨으면 저장하지 않고 초안과 메모를 지킨다 · 다시 저장하면 한 번만 (ADR 0025)', async () => {
     const s = boot()
     await playFromStart(s, 30)
-    await quickSave(s)
-    const saved = s.moments.moments[0] as Moment
-    await widget(s).get('.after-save .pill').trigger('click')
-    await nextTick()
-    await s.wrapper.get('#dashboard-moment-capture-note').setValue('이 탭의 메모')
+    await captureNow(s)
+    await noteField(s).setValue('이 탭의 메모')
 
     // 다른 탭이 Moments 를 저장했다 (이 탭은 아직 모른다).
-    seedMoments([saved, moment({ id: 'other', videoId: B, note: '다른 탭' })])
+    seedMoments([moment({ id: 'other', videoId: B, note: '다른 탭' })])
     const before = rawMoments()
-    await s.wrapper.get('.note-form').trigger('submit')
-    await flushPromises()
-    await nextTick()
+    await saveDraft(s)
 
     expect(rawMoments()).toBe(before)
     expect(captureFeedback(s)?.text()).toContain('다른 탭에서 Moments 가 바뀌어')
-    expect(
-      (s.wrapper.get('#dashboard-moment-capture-note').element as HTMLTextAreaElement).value,
-    ).toBe('이 탭의 메모')
-    // 다시 누르면 최신 위에 저장된다.
-    await s.wrapper.get('.note-form').trigger('submit')
+    expect(captureFeedback(s)?.text()).toContain('초안과 메모는 그대로')
+    expect(captureFeedback(s)?.text()).not.toContain('저장했어요')
+    expect((noteField(s).element as HTMLTextAreaElement).value).toBe('이 탭의 메모')
+    // 다시 누르면 최신 위에 한 번만 저장된다.
+    await saveDraft(s)
+    expect(s.moments.moments.map((m) => m.note)).toEqual(['다른 탭', '이 탭의 메모'])
+  })
+
+  it('초안 C — 다른 탭이 저장하는 중(잠금 대기)이면 성공으로 보이지 않고 초안을 지킨다', async () => {
+    const s = boot()
+    await playFromStart(s, 30)
+    await captureNow(s)
+    await noteField(s).setValue('기다린 메모')
+    vi.spyOn(s.moments, 'add').mockResolvedValueOnce({ ok: false, reason: 'busy' })
+
+    await saveDraft(s)
+    expect(captureFeedback(s)?.text()).toContain('다른 39page 탭이 저장하는 중')
+    expect(captureFeedback(s)?.classes()).toContain('is-warning')
+    expect(s.moments.moments).toEqual([])
+    expect((noteField(s).element as HTMLTextAreaElement).value).toBe('기다린 메모')
+
+    await saveDraft(s)
+    expect(s.moments.moments.map((m) => m.note)).toEqual(['기다린 메모'])
+  })
+
+  it('초안 E · B — 대시보드에서 잡은 초안을 보관함 이 곡에서 이어 쓰고, 닫아도 잃지 않는다', async () => {
+    const s = boot()
+    await playFromStart(s, 42)
+    await captureNow(s)
+    await noteField(s).setValue('대시보드에서')
+
+    // 보관함을 연다 — 영상 띠에는 저장이 없지만 초안이 있다고 말한다.
+    await openArchiveMoments(s)
+    await chooseView(s, '전체')
+    const notice = widget(s).get('.draft-notice')
+    expect(notice.text()).toContain('저장 전 초안 0:42')
+    await notice.get('button').trigger('click')
     await flushPromises()
-    expect(s.moments.getMoment(saved.id)?.note).toBe('이 탭의 메모')
-    expect(s.moments.getMoment('other')?.note).toBe('다른 탭')
+    await nextTick()
+
+    // 이 곡 보기로 와서 같은 초안의 메모 칸에 포커스가 있다.
+    const archiveNote = archiveMoments(s).get('#archive-moment-capture-note')
+    expect(archiveMoments(s).get('.chip[aria-pressed="true"]').text()).toContain('이 곡')
+    expect(document.activeElement).toBe(archiveNote.element)
+    expect((archiveNote.element as HTMLTextAreaElement).value).toBe('대시보드에서')
+    await archiveNote.setValue('보관함에서 고침')
+
+    // 닫아도 초안은 남는다 — 대시보드가 그대로 보인다.
+    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await flushPromises()
+    expect((noteField(s).element as HTMLTextAreaElement).value).toBe('보관함에서 고침')
+    expect(s.moments.moments).toEqual([])
+
+    // 다시 열어 보관함에서 저장한다 — 그 줄이 강조되고, 영상 띠에도 바로 보인다.
+    await openArchiveMoments(s)
+    await archiveMoments(s).get('.current-head .draft-form').trigger('submit')
+    await flushPromises()
+    await nextTick()
+    const saved = s.moments.moments[0] as Moment
+    expect(saved).toMatchObject({ atSeconds: 42, note: '보관함에서 고침' })
+    expect(archiveMoments(s).get(`[data-moment-id="${saved.id}"]`).classes()).toContain('is-new')
+    expect(archiveMoments(s).get('.current-head .feedback').text()).toBe(
+      '0:42 Moment 를 저장했어요 — Alpha',
+    )
+    expect(widget(s).find(`[data-moment-row="${saved.id}"]`).exists()).toBe(true)
+    expect(widget(s).find('.draft-notice').exists()).toBe(false)
+    expect(archiveMoments(s).get('.current-count').text()).toContain('1')
   })
 })
 
@@ -571,7 +693,7 @@ describe('C. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
     expect(feedback?.text()).toContain('저장하지 못했어요')
     expect(feedback?.text()).toContain('저장 공간이 부족')
     expect(feedback?.text()).toContain('새로고침하면 사라집니다')
-    expect(feedback?.text()).not.toContain('을 저장했어요')
+    expect(feedback?.text()).not.toContain('Moment 를 저장했어요')
     expect(s.wrapper.get('.moments-status').text()).toContain('저장에 실패했습니다')
   })
 
@@ -631,18 +753,25 @@ describe('C. 저장되지 않은 상태를 저장된 것처럼 보이지 않는�
     expect(captureFeedback(s)?.text()).toContain('브라우저 저장소를 쓸 수 없어요')
   })
 
-  it('곡이 바뀌면 지난 곡의 저장 안내를 지운다 — 다음 곡에서 헷갈리지 않게 (M11-3)', async () => {
+  it('곡이 바뀌면 지난 곡의 저장 안내를 지운다 — 초안이 없을 때만 (M11-3)', async () => {
     const s = boot()
     await playFromStart(s, 30)
     await quickSave(s)
     expect(captureFeedback(s)?.text()).toContain('저장했어요')
-    expect(widget(s).find('.after-save').exists()).toBe(true)
 
     await nextTrack(s)
     await nextTick()
-
     expect(captureFeedback(s)?.text()).toBe('')
-    expect(widget(s).find('.after-save').exists()).toBe(false)
+
+    // 초안이 있으면 지우지 않는다 — 어느 곡 · 몇 초의 초안인지가 남아야 한다.
+    s.fake.emitStateChange('playing')
+    s.fake.emitPosition(7)
+    await nextTick()
+    await captureNow(s)
+    await nextTrack(s)
+    await nextTick()
+    expect(captureFeedback(s)?.text()).toContain('0:07 을 잡았어요')
+    expect(widget(s).find('.draft-form').exists()).toBe(true)
   })
 
   it('정상 상태에서는 배너가 비어 있다', () => {
@@ -1286,8 +1415,7 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
   it('저장한 순간과 메모가 새로고침 뒤에도 돌아온다', async () => {
     const s = boot()
     await playFromStart(s, 42)
-    await quickSave(s)
-    await addNote(s, '다시 보자')
+    await saveWithNote(s, '다시 보자')
     s.wrapper.unmount()
 
     const again = boot()
@@ -1296,21 +1424,23 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     expect(panel.get('.moment-time').text()).toBe('0:42')
   })
 
-  it('테마를 바꿔도 쓰던 메모와 방금 저장한 순간이 그대로다', async () => {
+  it('테마를 바꿔도 저장 전 초안 · 쓰던 메모와 방금 저장한 순간이 그대로다', async () => {
     const s = boot()
     await playFromStart(s, 42)
     await quickSave(s)
-    await widget(s).get('.after-save .pill').trigger('click')
+    const savedId = s.moments.moments[0]?.id ?? ''
+    s.fake.emitPosition(50)
     await nextTick()
-    await s.wrapper.get('#dashboard-moment-capture-note').setValue('쓰던 중')
+    await captureNow(s)
+    await noteField(s).setValue('쓰던 중')
 
     s.theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect(
-      (s.wrapper.get('#dashboard-moment-capture-note').element as HTMLTextAreaElement).value,
-    ).toBe('쓰던 중')
-    expect(widget(s).get('.note-target').text()).toContain('0:42')
+    expect((noteField(s).element as HTMLTextAreaElement).value).toBe('쓰던 중')
+    expect(draftForm(s).get('.note-target').text()).toContain('0:50')
+    expect(widget(s).find(`[data-moment-row="${savedId}"]`).exists()).toBe(true)
+    expect(s.moments.moments).toHaveLength(1)
   })
 
   it('저장 · 재생 · 테마 전환 · 보관함을 거쳐도 플레이어 DOM 은 하나이고 같은 노드다', async () => {
@@ -1340,8 +1470,7 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     const s = boot()
     const before = rawLibrary()
     await playFromStart(s, 10)
-    await quickSave(s)
-    await addNote(s, '하나')
+    await saveWithNote(s, '하나')
     const id = s.moments.moments[0]?.id ?? ''
     const panel = await openArchiveMoments(s)
     await openMomentManage(s, id)
@@ -1370,6 +1499,11 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
       'src/features/moments/momentsView.ts',
       'src/features/moments/momentsSearch.ts',
       'src/features/moments/momentFeedback.ts',
+      // M11-7C
+      'src/features/moments/MomentCapture.vue',
+      'src/features/moments/CurrentMomentsList.vue',
+      'src/features/moments/usePlaybackPosition.ts',
+      'src/stores/momentDraft.ts',
     ]) {
       const code = stripComments(readSource(file))
       const found = [
@@ -1396,6 +1530,8 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
       'src/features/moments/useMomentsBrowser.ts',
       'src/features/moments/useMomentCapture.ts',
       'src/features/moments/MomentsWidget.vue',
+      'src/features/moments/MomentCapture.vue',
+      'src/stores/momentDraft.ts',
     ]) {
       const code = stripComments(readSource(file))
       for (const action of [

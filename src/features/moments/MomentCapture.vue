@@ -1,16 +1,28 @@
 <script setup lang="ts">
 /**
- * "＋ 이 순간 저장" 과 그 메모 양식 (M11-7C 에서 대시보드 위젯에서 떼어 냈다).
+ * "＋ 이 순간 저장" — **잡기 → 메모 → Moment 저장** (M11-7C · 저장 모델 B, ADR 0030).
  *
  * 두 자리에서 쓴다 — **대시보드 Moments 위젯**(빠른 저장)과 **보관함 Moments › 이 곡**(이 곡의 순간 관리).
- * 보관함이 열린 영상 띠에는 없다 — 거기는 보기 · 재생 전용이다 (ADR 0030 · M11-7C).
+ * 보관함이 열린 영상 띠에는 없다 — 거기는 보기 · 재생 전용이다. 두 자리는 **같은 초안**을 본다
+ * (`useMomentDraftStore`) — 대시보드에서 잡고 보관함에서 이어 써도 된다.
  *
- * 저장의 판단은 `useMomentCapture` 가 한다. 이 컴포넌트는 보여 주고 누름을 넘긴다 (`AGENTS.md` 규칙 3).
+ * 두 상태가 눈에 다르게 보인다.
+ *
+ * | 상태     | 보이는 것                                                                        |
+ * | -------- | -------------------------------------------------------------------------------- |
+ * | 초안 없음 | ＋ 이 순간 저장 단추와 안내                                                        |
+ * | 저장 전  | "저장 전" 표시 · 잡은 시점 · 곡, 메모 입력란, **Moment 저장** · 취소 · ↻ 다시 잡기 |
+ *
+ * 저장한 뒤의 메모 고치기는 여기서 하지 않는다 — 보관함 Moments › 이 곡의 줄에서 한다(저장 전 메모와
+ * 저장된 메모 고치기를 섞지 않는다).
+ *
+ * 키보드: 메모 입력란에서 Enter = 저장, Shift+Enter = 줄바꿈. 한글 조합 중의 Enter 는 저장하지 않는다.
+ * 저장 판단은 `useMomentCapture` 가 한다. 이 컴포넌트는 보여 주고 누름을 넘긴다 (`AGENTS.md` 규칙 3).
  * 같은 화면에 두 개가 함께 있을 수 있으므로 DOM id 앞머리(`idPrefix`)를 받는다.
  */
-import { computed, nextTick, ref } from 'vue'
+import { nextTick, ref } from 'vue'
 
-import { MAX_MOMENT_NOTE_LENGTH, useMomentsStore } from '@/stores/moments'
+import { MAX_MOMENT_NOTE_LENGTH } from '@/stores/moments'
 
 import { useMomentCapture } from './useMomentCapture'
 
@@ -25,105 +37,93 @@ const emit = defineEmits<{
 }>()
 
 const capture = useMomentCapture()
-const moments = useMomentsStore()
 
 const captureButton = ref<HTMLButtonElement | null>(null)
 const noteField = ref<HTMLTextAreaElement | null>(null)
 
-/** 방금 저장한 Moment 에 이미 메모가 있는지 — 단추 이름이 "메모 고치기" 가 된다. */
-const lastSavedHasNote = computed<boolean>(() => {
-  const saved = capture.lastSaved.value
-  return saved !== null && (moments.getMoment(saved.id)?.note ?? '') !== ''
-})
-
-async function save(): Promise<void> {
-  if (await capture.save()) {
-    const saved = capture.lastSaved.value
-    if (saved !== null) emit('saved', saved.id)
-  }
-}
-
-function startNote(): void {
-  capture.startNote()
+function focusNote(): void {
   void nextTick(() => noteField.value?.focus())
 }
 
 function backToCapture(): void {
-  // 폼이 사라진다. 포커스를 저장 단추로 되돌린다.
+  // 양식이 사라진다. 포커스를 저장 단추로 되돌린다.
   void nextTick(() => captureButton.value?.focus())
 }
 
-async function submitNote(): Promise<void> {
-  if (await capture.submitNote()) backToCapture()
+function onCapture(): void {
+  if (capture.capture()) focusNote()
 }
 
-function cancelNote(): void {
-  capture.cancelNote()
+function onRecapture(): void {
+  if (capture.capture()) focusNote()
+}
+
+async function onSave(): Promise<void> {
+  const id = await capture.save()
+  if (id === null) return
+  emit('saved', id)
   backToCapture()
 }
 
-defineExpose({ capture })
+function onCancel(): void {
+  capture.cancel()
+  backToCapture()
+}
+
+/** Enter = 저장, Shift+Enter = 줄바꿈. 한글 등 조합 중의 Enter 는 글자를 확정할 뿐이다. */
+function onNoteKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  void onSave()
+}
+
+defineExpose({ capture, focusNote })
 </script>
 
 <template>
-  <div class="moment-capture">
-    <!-- ── ＋ 이 순간 저장 (F13 · 빠른 저장) ─────────────────────────────── -->
-    <div class="capture-row">
+  <div class="moment-capture" :class="{ 'has-draft': capture.draft.value !== null }">
+    <!-- ── ＋ 이 순간 저장 — 시점을 잡는다 (아직 저장하지 않는다) ─────────────── -->
+    <div v-if="capture.draft.value === null" class="capture-row">
       <button
         ref="captureButton"
         type="button"
         class="pill pill--strong capture-button"
         :disabled="!capture.canCapture.value"
-        :aria-busy="capture.saving.value ? 'true' : 'false'"
         :aria-describedby="`${idPrefix}-capture-hint`"
-        @click="save"
+        @click="onCapture"
       >
-        {{ capture.saving.value ? '저장 중…' : '＋ 이 순간 저장' }}
+        ＋ 이 순간 저장
       </button>
       <p :id="`${idPrefix}-capture-hint`" class="capture-hint">{{ capture.hint.value }}</p>
     </div>
 
-    <!-- 저장 결과. 라이브 영역은 늘 있다 — 비어 있으면 자리를 차지하지 않는다. -->
-    <p
-      class="feedback"
-      :class="{ 'is-warning': capture.feedback.value?.tone === 'warning' }"
-      role="status"
-      aria-live="polite"
-    >
-      {{ capture.feedback.value?.text ?? '' }}
-    </p>
-
-    <!-- 방금 저장한 순간에 메모를 붙이는 길 (저장 직후) -->
-    <div v-if="capture.lastSaved.value !== null && !capture.noteOpen.value" class="after-save">
-      <button type="button" class="pill" @click="startNote">
-        {{ lastSavedHasNote ? '메모 고치기' : '메모 추가' }}
-        <span class="after-save-time">{{ capture.lastSavedTime.value }}</span>
-      </button>
-    </div>
-
+    <!-- ── 저장 전 초안 — 메모(선택) → Moment 저장 ─────────────────────────── -->
     <form
-      v-if="capture.noteOpen.value && capture.lastSaved.value !== null"
-      class="note-form"
+      v-else
+      class="note-form draft-form"
       :aria-labelledby="`${idPrefix}-note-target`"
-      @submit.prevent="submitNote"
+      @submit.prevent="onSave"
     >
       <p :id="`${idPrefix}-note-target`" class="note-target">
-        <span class="target-time">{{ capture.lastSavedTime.value }}</span>
-        <span class="target-title">{{ capture.lastSaved.value.title }}</span>
+        <span class="draft-state">저장 전</span>
+        <span class="target-time">{{ capture.draftTime.value }}</span>
+        <span class="target-title">{{ capture.draft.value.title }}</span>
       </p>
-      <p v-if="capture.isLastSavedStale.value" class="stale-note">
-        재생 중인 곡이 바뀌었어요. 메모는 위에 적힌 순간에 붙어요.
+      <p v-if="capture.isDraftStale.value" class="stale-note">
+        재생 중인 곡이 바뀌었어요. 이 초안은 위에 적힌 곡 · 시점으로 저장돼요. 지금 곡으로 바꾸려면
+        ↻ 다시 잡기를 누르세요.
       </p>
       <label class="label" :for="`${idPrefix}-capture-note`">메모 (선택)</label>
       <textarea
         :id="`${idPrefix}-capture-note`"
         ref="noteField"
-        v-model="capture.draftNote.value"
+        v-model="capture.note.value"
         class="field field--area"
-        rows="3"
+        rows="2"
         :maxlength="MAX_MOMENT_NOTE_LENGTH"
         :aria-invalid="capture.isNoteTooLong.value || undefined"
         :aria-describedby="`${idPrefix}-capture-count`"
+        @keydown="onNoteKeydown"
       />
       <p
         :id="`${idPrefix}-capture-count`"
@@ -134,19 +134,45 @@ defineExpose({ capture })
         <template v-if="capture.isNoteTooLong.value">
           · 메모는 {{ MAX_MOMENT_NOTE_LENGTH }}자까지 쓸 수 있어요</template
         >
+        <template v-else> · Enter 저장 · Shift+Enter 줄바꿈</template>
       </p>
       <div class="row-actions">
         <button
           type="submit"
-          class="pill pill--strong"
-          :disabled="capture.isNoteTooLong.value || capture.noteSaving.value"
-          :aria-busy="capture.noteSaving.value ? 'true' : 'false'"
+          class="pill pill--strong draft-save"
+          :disabled="capture.isNoteTooLong.value || capture.saving.value"
+          :aria-busy="capture.saving.value ? 'true' : 'false'"
         >
-          {{ capture.noteSaving.value ? '저장 중…' : '메모 저장' }}
+          {{ capture.saving.value ? '저장 중…' : 'Moment 저장' }}
         </button>
-        <button type="button" class="pill" @click="cancelNote">취소</button>
+        <button
+          type="button"
+          class="pill draft-cancel"
+          :disabled="capture.saving.value"
+          @click="onCancel"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          class="pill draft-recapture"
+          :disabled="!capture.canCapture.value"
+          @click="onRecapture"
+        >
+          ↻ 지금 시점으로 다시 잡기
+        </button>
       </div>
     </form>
+
+    <!-- 잡기 · 저장 결과. 라이브 영역은 늘 있다 — 비어 있으면 자리를 차지하지 않는다. -->
+    <p
+      class="feedback"
+      :class="{ 'is-warning': capture.feedback.value?.tone === 'warning' }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ capture.feedback.value?.text ?? '' }}
+    </p>
   </div>
 </template>
 
@@ -196,12 +222,6 @@ defineExpose({ capture })
   color: var(--accent-strong-text-color);
 }
 
-.after-save-time {
-  margin-left: 4px;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.8;
-}
-
 .feedback {
   margin: 0;
   color: var(--status-text-color);
@@ -218,7 +238,7 @@ defineExpose({ capture })
 
 .note-form {
   padding: 10px 12px;
-  border: 1px solid var(--row-selected-border-color);
+  border: 1px dashed var(--row-selected-border-color);
   background: var(--row-selected-surface-color);
 }
 
@@ -229,6 +249,15 @@ defineExpose({ capture })
   align-items: baseline;
   margin: 0 0 10px;
   gap: 4px 8px;
+}
+
+/* 저장 전 — 저장된 줄의 "방금 저장" 과 다른 모양 (점선). */
+.draft-state {
+  flex: none;
+  padding: 0 5px;
+  border: 1px dashed var(--accent-strong-color);
+  color: var(--drawer-title-text-color);
+  font: 10px/1.6 var(--font-mono);
 }
 
 .target-time {

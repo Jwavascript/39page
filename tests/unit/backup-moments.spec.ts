@@ -304,7 +304,7 @@ describe('A. 내보내기', () => {
     expect(panel(s).text()).toContain('Moment 2개')
   })
 
-  it('쓰던 메모는 담지 않는다 — store 의 영속 필드만 (M11-3 빠른 저장)', async () => {
+  it('저장 전 초안 · 쓰던 메모는 담지 않는다 — store 의 영속 필드만 (M11-7C 저장 모델 B)', async () => {
     seedStorage({ moments: [] })
     const s = boot()
     const created = stubDownloads()
@@ -314,10 +314,14 @@ describe('A. 내보내기', () => {
     s.fake.emitStateChange('playing')
     s.fake.emitPosition(42)
     await nextTick()
-    // 빠른 저장 — 순간은 바로 저장된다. 메모는 쓰는 중이고 아직 저장하지 않았다.
+    // 하나는 저장하고, 하나는 잡아 메모를 쓰는 중이다 — 저장 전 초안은 백업에 들어가지 않는다 (M11-7C).
     await s.wrapper.get('.capture-button').trigger('click')
+    await nextTick()
+    await s.wrapper.get('.moments-widget .draft-form').trigger('submit')
     await flushPromises()
-    await s.wrapper.get('.moments-widget .after-save .pill').trigger('click')
+    s.fake.emitPosition(50)
+    await nextTick()
+    await s.wrapper.get('.capture-button').trigger('click')
     await nextTick()
     await s.wrapper.get('#dashboard-moment-capture-note').setValue('아직 저장 안 한 메모')
 

@@ -17,6 +17,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { useMomentDraftStore } from '@/stores/momentDraft'
 import { MAX_MOMENT_NOTE_LENGTH } from '@/stores/moments'
 
 import MomentCapture from './MomentCapture.vue'
@@ -32,6 +33,10 @@ const props = defineProps<{
 
 const archive = useMomentsArchive()
 const browser = archive.browser
+/** 저장 전 초안 — 대시보드와 같은 하나 (M11-7C). 있으면 곡이 없어도 이 곡 보기에서 이어 쓸 수 있다. */
+const draftStore = useMomentDraftStore()
+const hasDraft = computed<boolean>(() => draftStore.draft !== null)
+const archiveCapture = ref<InstanceType<typeof MomentCapture> | null>(null)
 
 watch(
   () => props.focusRequest?.seq,
@@ -96,9 +101,24 @@ const emptyMessage = computed<string>(() => {
   return ''
 })
 
-/** 이 곡 보기 — 곡이 재생 중이어야 저장 · 관리할 수 있다. */
+/** 이 곡 보기 — 곡이 재생 중이어야 저장 · 관리할 수 있다. 저장 전 초안이 있으면 그것을 이어 쓴다. */
 const showCurrentHead = computed<boolean>(
-  () => archive.view.value === 'current' && browser.currentVideoId.value !== null,
+  () =>
+    archive.view.value === 'current' && (browser.currentVideoId.value !== null || hasDraft.value),
+)
+
+/*
+ * 영상 띠의 "이 곡에서 이어 쓰기" (M11-7C) — 이 곡 보기로 와서 초안의 메모 입력란으로 간다. 보관함이
+ * 이 패널을 처음 그리는 경우에도 받도록 즉시 본다.
+ */
+watch(
+  () => draftStore.resumeRequest,
+  (seq, before) => {
+    if (seq === 0 || seq === before || !hasDraft.value) return
+    archive.setView('current')
+    void nextTick(() => archiveCapture.value?.focusNote())
+  },
+  { immediate: true },
 )
 
 const moreLabel = computed<string>(() => {
@@ -214,7 +234,7 @@ defineExpose({ archive })
 
       <MomentsStatusBanner />
 
-      <template v-if="browser.total.value > 0 || browser.currentVideoId.value !== null">
+      <template v-if="browser.total.value > 0 || browser.currentVideoId.value !== null || hasDraft">
         <input
           v-if="browser.total.value > 0"
           id="archive-moments-search"
@@ -238,7 +258,7 @@ defineExpose({ archive })
             class="pill chip"
             :class="{ 'pill--strong': archive.view.value === item.key }"
             :aria-pressed="archive.view.value === item.key"
-            :disabled="item.key === 'current' && browser.currentVideoId.value === null"
+            :disabled="item.key === 'current' && browser.currentVideoId.value === null && !hasDraft"
             @click="archive.setView(item.key)"
           >
             {{ chipLabel(item.key) }}
@@ -260,7 +280,7 @@ defineExpose({ archive })
             이 곡 · Moments <strong>{{ browser.currentCount.value }}</strong
             >개
           </p>
-          <MomentCapture id-prefix="archive-moment" @saved="onSaved" />
+          <MomentCapture ref="archiveCapture" id-prefix="archive-moment" @saved="onSaved" />
         </div>
       </template>
 
@@ -275,7 +295,10 @@ defineExpose({ archive })
       </p>
     </div>
 
-    <p v-if="browser.total.value === 0 && browser.currentVideoId.value === null" class="empty">
+    <p
+      v-if="browser.total.value === 0 && browser.currentVideoId.value === null && !hasDraft"
+      class="empty"
+    >
       아직 저장한 순간이 없어요.<br />곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.
     </p>
     <p v-else-if="archive.sections.value.length === 0 && emptyMessage !== ''" class="empty">

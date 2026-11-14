@@ -22,16 +22,19 @@ import { computed, inject, ref, watch } from 'vue'
 
 import { ARCHIVE } from '@/features/archive/archiveController'
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
+import { useMomentDraftStore } from '@/stores/momentDraft'
 import { useMomentsStore } from '@/stores/moments'
 
 import CurrentMomentsList from './CurrentMomentsList.vue'
 import MomentCapture from './MomentCapture.vue'
 import MomentsStatusBanner from './MomentsStatusBanner.vue'
+import { formatMomentTime } from './momentsView'
 import { useMomentsBrowser } from './useMomentsBrowser'
 import { usePlaybackPosition } from './usePlaybackPosition'
 
 const browser = useMomentsBrowser()
 const moments = useMomentsStore()
+const draftStore = useMomentDraftStore()
 const archive = inject(ARCHIVE, null)
 const coordinator = inject(PLAYBACK_COORDINATOR, null)
 const { position } = usePlaybackPosition()
@@ -71,6 +74,17 @@ function onSaved(momentId: string): void {
 function openAll(): void {
   archive?.open('moments')
 }
+
+/** 영상 띠의 초안 알림 — 저장 전 초안이 있다(대시보드에서 잡고 보관함을 열었다). */
+const draftTime = computed<string>(() =>
+  draftStore.draft === null ? '' : formatMomentTime(draftStore.draft.atSeconds),
+)
+
+/** 보관함 Moments › 이 곡으로 가서 이어 쓴다. */
+function resumeDraft(): void {
+  draftStore.requestResume()
+  archive?.open('moments')
+}
 </script>
 
 <template>
@@ -93,6 +107,15 @@ function openAll(): void {
     </div>
 
     <MomentsStatusBanner v-if="!readonlyMode" />
+
+    <!--
+      영상 띠에는 저장이 없다. 대시보드에서 잡아 둔 초안이 있으면 잃지 않았다는 것과 이어 쓰는 길만
+      보인다 (M11-7C 초안 B).
+    -->
+    <p v-if="readonlyMode && draftStore.draft !== null" class="draft-notice">
+      저장 전 초안 <strong>{{ draftTime }}</strong> 이 있어요.
+      <button type="button" class="link" @click="resumeDraft">이 곡 탭에서 이어 쓰기</button>
+    </p>
 
     <!-- 빠른 저장 — 대시보드에서만. 영상 띠(보관함이 열림)에서는 보관함 Moments › 이 곡에서 한다. -->
     <MomentCapture v-if="!readonlyMode" id-prefix="dashboard-moment" @saved="onSaved" />
@@ -208,6 +231,30 @@ function openAll(): void {
   color: var(--drawer-muted-text-color);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.draft-notice {
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px dashed var(--accent-strong-color);
+  color: var(--drawer-sub-text-color);
+  font: 11px/1.6 var(--font-mono);
+}
+
+.draft-notice strong {
+  color: var(--drawer-title-text-color);
+  font-weight: 400;
+}
+
+.link {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent-color);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* 영상 띠 안(보기 전용) — 머리말과 목록 사이를 좁힌다. */

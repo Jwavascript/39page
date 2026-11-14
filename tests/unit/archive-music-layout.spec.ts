@@ -374,6 +374,10 @@ describe('C. 작은 영상 띠 (배치 C)', () => {
     await settle()
     await s.wrapper.get('#archive-panel-moments .capture-button').trigger('click')
     await settle()
+    // 잡기만 했다 — Moment 저장을 눌러야 저장된다 (M11-7C 저장 모델 B).
+    expect(globalThis.localStorage.getItem(STORAGE_KEYS.moments)).toBeNull()
+    await s.wrapper.get('#archive-panel-moments .draft-form').trigger('submit')
+    await settle()
 
     const stored = JSON.parse(globalThis.localStorage.getItem(STORAGE_KEYS.moments) as string)
     expect(stored.data).toHaveLength(1)
