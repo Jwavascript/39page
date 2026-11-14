@@ -348,6 +348,34 @@ describe('D. 큐는 스냅샷 — 출처 목록이 바뀌면 알리고, 고를 �
     expect(s.playback.playerState).toBe('playing')
   })
 
+  it('보관함의 끌어 놓기 · 맨 위/아래(moveTrackTo)도 같다 — 큐 · 위치 · 플레이어는 그대로, 고를 때만 새 순서 (M11-7C)', async () => {
+    const s = boot()
+    await startPlaying(s, 0)
+    s.fake.emitPosition(37)
+    await settle()
+    const calls = JSON.stringify(s.fake.calls)
+    const queueBefore = s.playback.queue.map((t) => t.id)
+
+    // Alpha(t1) 를 맨 아래로 — 트랙 id 로 옮긴다(같은 영상 A 가 둘이다).
+    expect(await s.library.moveTrackTo('one', 't1', 2)).toMatchObject({ ok: true })
+    await settle()
+
+    expect(s.playback.queue.map((t) => t.id)).toEqual(queueBefore)
+    expect(s.playback.currentTrack?.id).toBe('t1')
+    expect(JSON.stringify(s.fake.calls)).toBe(calls)
+    const notice = widget(s).get('.source-notice')
+    expect(notice.text()).toContain('목록이 변경됐어요')
+
+    await notice.get('.pill').trigger('click')
+    await settle()
+    expect(s.playback.queue.map((t) => t.id)).toEqual(['t2', 't3', 't1'])
+    expect(s.playback.currentTrack?.id).toBe('t1')
+    expect(s.playback.queueIndex).toBe(2)
+    // 다시 맞춰도 플레이어에 명령이 가지 않는다 — 재생 위치가 처음으로 돌아가지 않는다.
+    expect(JSON.stringify(s.fake.calls)).toBe(calls)
+    expect(s.playback.playerState).toBe('playing')
+  })
+
   it('지금 곡이 목록에서 빠졌으면 이어 재생 대신 "바뀐 목록을 처음부터 재생" 을 준다', async () => {
     const s = boot()
     await startPlaying(s, 0)

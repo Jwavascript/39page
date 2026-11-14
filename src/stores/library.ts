@@ -246,6 +246,11 @@ export type LibraryMutationFailure =
    * 있다 (M11-5). 아무것도 바꾸지 않았다.
    */
   | 'duplicate-id'
+  /**
+   * 저장소에 남길 수 없어(보호 · 사용 불가 · 쓰기 실패) **바꾸지 않았다** — 메모리에도 반영하지 않는다
+   * (M11-7C `moveTrackTo`). 다른 액션은 이 경우 메모리에만 반영하고 `persisted: false` 를 돌려준다.
+   */
+  | 'not-persisted'
 
 export type LibraryMutationResult =
   | {
@@ -530,6 +535,33 @@ export const useLibraryStore = defineStore('library', () => {
       return 'failed'
     }
 
+    afterWrite()
+    return 'written'
+  }
+
+  /**
+   * **저장된 경우에만** 바꾼다 (M11-7C `moveTrackTo`). 먼저 저장소에 쓰고, 쓰기에 성공했을 때만
+   * 메모리를 `next` 로 바꾼다 — 메모리에만 반영된 "성공" 이 없다. 보호 · 사용 불가 상태에서는 쓰지 않는다.
+   */
+  function commitIfPersisted(next: Playlist[]): 'written' | 'refused' | 'conflict' {
+    if (!canPersist.value) return 'refused'
+
+    if (baseline.changedExternally()) {
+      reload()
+      return 'conflict'
+    }
+
+    const result = libraryStorage.write({ playlists: next, selectedPlaylistId: selectedId.value })
+    lastWriteFailure.value = result.ok ? null : result.reason
+    if (!result.ok) return 'refused'
+
+    items.value = next
+    afterWrite()
+    return 'written'
+  }
+
+  /** 쓰기 성공 뒤의 기록 — 기준 원문 · 영수증 · 안내 정리. */
+  function afterWrite(): void {
     baseline.recordWrite()
     wroteInCommand = true
     // 저장에 성공했다 — "사라졌다 / 덮였을 수 있다" 안내는 할 일을 다 했다.
@@ -540,7 +572,6 @@ export const useLibraryStore = defineStore('library', () => {
         possiblyOverwritten: false,
       }
     }
-    return 'written'
   }
 
   function success(playlistId: string, trackId?: string): LibraryMutationResult {
@@ -788,6 +819,49 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   /**
+   * 트랙 하나를 목록의 `toIndex` 자리로 옮긴다 (M11-7C — 끌어 놓기 · 맨 위/아래 · 한 칸).
+   *
+   * - **트랙 id** 로 찾는다(videoId 가 아니다 — 한 목록에 같은 영상이 여러 번 있을 수 있다).
+   * - `toIndex` 는 옮긴 **뒤** 그 트랙의 자리(0 부터). 나머지 트랙의 상대 순서 · id · 내용은 그대로다.
+   * - 한 번에 바꾼다(원자적) — 탭 간 잠금과 리비전(`mutation` · `staleGuard`)을 다른 변경과 같이 지난다.
+   * - 저장소에 남길 수 없으면(보호 · 사용 불가 · 쓰기 실패) `not-persisted` 로 거절하고 **메모리도 그대로**
+   *   둔다. 순서 바꾸기는 되돌리기 쉬운 화면 동작처럼 보이지만, 새로고침하면 사라지는 순서를 성공으로
+   *   보이면 사용자가 다시 정리해야 한다.
+   * - 이미 그 자리면 쓰지 않는다(`existed: true`).
+   */
+  function moveTrackToNow(
+    playlistId: string,
+    trackId: string,
+    toIndex: number,
+  ): LibraryMutationResult {
+    const stale = staleGuard()
+    if (stale !== null) return stale
+
+    const index = items.value.findIndex((playlist) => playlist.id === playlistId)
+    if (index === -1) return failure('not-found')
+    const playlist = items.value[index]
+    if (playlist === undefined) return failure('not-found')
+
+    const from = playlist.tracks.findIndex((track) => track.id === trackId)
+    if (from === -1) return failure('not-found')
+    if (!Number.isInteger(toIndex) || toIndex < 0 || toIndex >= playlist.tracks.length)
+      return failure('out-of-range')
+    if (toIndex === from) return unchanged(playlistId, trackId)
+
+    const tracks = [...playlist.tracks]
+    const [moved] = tracks.splice(from, 1)
+    if (moved === undefined) return failure('not-found')
+    tracks.splice(toIndex, 0, moved)
+
+    const next = [...items.value]
+    next[index] = { ...playlist, tracks }
+    const outcome = commitIfPersisted(next)
+    if (outcome === 'conflict') return failure('conflict')
+    if (outcome === 'refused') return failure('not-persisted')
+    return { ok: true, playlistId, trackId, persisted: true }
+  }
+
+  /**
    * 트랙의 표시 이름을 바꾼다 (M6-5).
    *
    * `id` · `videoId` · 순서는 그대로다. 이름만 바뀐다. 다른 플레이리스트는
@@ -1016,6 +1090,14 @@ export const useLibraryStore = defineStore('library', () => {
     return mutation(() => moveTrackNow(playlistId, trackId, direction))
   }
 
+  function moveTrackTo(
+    playlistId: string,
+    trackId: string,
+    toIndex: number,
+  ): Promise<LibraryMutationResult> {
+    return mutation(() => moveTrackToNow(playlistId, trackId, toIndex))
+  }
+
   function renameTrack(
     playlistId: string,
     trackId: string,
@@ -1103,6 +1185,7 @@ export const useLibraryStore = defineStore('library', () => {
     addTrack,
     removeTrack,
     moveTrack,
+    moveTrackTo,
     renameTrack,
 
     // ⚠ 보호 우회. 백업 가져오기 경로에서만 부른다 (ADR 0007 · 0018).

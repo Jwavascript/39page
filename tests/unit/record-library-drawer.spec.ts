@@ -493,13 +493,20 @@ describe('B. 플레이리스트 UI', () => {
       'dQw4w9WgXcQ',
       'dQw4w9WgXcQ',
     ])
-    // M11-3: 행에는 ▶ 재생과 "관리" 만 드러나 있다. 관리를 펼치면 글자 이름이 있는 단추 넷.
+    // M11-3: 행에는 ▶ 재생과 "관리" 만 드러나 있다. 관리를 펼치면 글자 이름이 있는 단추들 (M11-7C: 맨 위 · 맨 아래 추가).
     expect(wrapper.findAll('.track .track-manage').map((n) => n.text())).toEqual(['관리', '관리'])
     expect(wrapper.find('.track-controls').exists()).toBe(false)
     await openTrackManage(wrapper, 'Track t1')
     expect(
       wrapper.findAll('.track-controls button').map((node) => node.attributes('aria-label')),
-    ).toEqual(['Track t1 이름 변경', 'Track t1 위로', 'Track t1 아래로', 'Track t1 삭제'])
+    ).toEqual([
+      'Track t1 이름 변경',
+      'Track t1 맨 위로',
+      'Track t1 위로',
+      'Track t1 아래로',
+      'Track t1 맨 아래로',
+      'Track t1 삭제',
+    ])
   })
 
   it('빈 플레이리스트를 안내한다', async () => {

@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { STORAGE_KEYS } from '@/shared/storage'
 import {
@@ -41,6 +41,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   stubLocalStorage({ value: realLocalStorage, writable: true })
   globalThis.localStorage.clear()
 })
@@ -263,6 +264,163 @@ describe('A. moveTrack', () => {
 
     expect(await library.moveTrack(id, 'ghost', 'up')).toEqual({ ok: false, reason: 'not-found' })
     expect(await library.moveTrack('ghost', 'x', 'up')).toEqual({ ok: false, reason: 'not-found' })
+  })
+})
+
+describe('A. moveTrackTo (M11-7C — 끌어 놓기 · 맨 위/아래)', () => {
+  async function fiveTracks() {
+    const { library, id } = await withPlaylist()
+    // 같은 영상을 여러 번 — 트랙 id 로만 구별된다.
+    for (const title of ['1', '2', '3', '4', '5'])
+      await library.addTrack(id, { videoId: VIDEO_A, title })
+    return { library, id, ids: library.getPlaylist(id)?.tracks.map((t) => t.id) ?? [] }
+  }
+  const titles = (library: ReturnType<typeof useLibraryStore>, id: string) =>
+    library.getPlaylist(id)?.tracks.map((t) => t.title)
+
+  it('트랙 id 로 찾아 옮긴 뒤의 자리(toIndex)에 놓는다 — 나머지 상대 순서는 그대로', async () => {
+    const { library, id, ids } = await fiveTracks()
+
+    expect(await library.moveTrackTo(id, ids[3] ?? '', 0)).toEqual({
+      ok: true,
+      playlistId: id,
+      trackId: ids[3],
+      persisted: true,
+    })
+    expect(titles(library, id)).toEqual(['4', '1', '2', '3', '5'])
+
+    await library.moveTrackTo(id, ids[3] ?? '', 4)
+    expect(titles(library, id)).toEqual(['1', '2', '3', '5', '4'])
+
+    await library.moveTrackTo(id, ids[0] ?? '', 2)
+    expect(titles(library, id)).toEqual(['2', '3', '1', '5', '4'])
+  })
+
+  it('한 번에 저장한다 — 저장소의 순서 · id · 내용이 메모리와 같고 형식은 그대로다', async () => {
+    const { library, id, ids } = await fiveTracks()
+    const before = library.getPlaylist(id)?.tracks.map((t) => ({ ...t })) ?? []
+    const writes = vi.spyOn(Storage.prototype, 'setItem')
+
+    await library.moveTrackTo(id, ids[4] ?? '', 1)
+
+    expect(writes.mock.calls.filter(([key]) => key === KEY)).toHaveLength(1)
+    const stored = JSON.parse(readRaw() as string)
+    expect(stored.version).toBe(LIBRARY_STORAGE_VERSION)
+    const storedTracks = stored.data.playlists[0].tracks as { id: string; title: string }[]
+    expect(storedTracks.map((t) => t.title)).toEqual(['1', '5', '2', '3', '4'])
+    expect([...storedTracks].sort((a, b) => a.id.localeCompare(b.id))).toEqual(
+      [...before].sort((a, b) => a.id.localeCompare(b.id)),
+    )
+  })
+
+  it('이미 그 자리면 쓰지 않는다', async () => {
+    const { library, id, ids } = await fiveTracks()
+    const raw = readRaw()
+    const writes = vi.spyOn(Storage.prototype, 'setItem')
+
+    expect(await library.moveTrackTo(id, ids[2] ?? '', 2)).toMatchObject({
+      ok: true,
+      existed: true,
+    })
+    expect(writes).not.toHaveBeenCalledWith(KEY, expect.anything())
+    expect(readRaw()).toBe(raw)
+  })
+
+  it('경계 밖 · 정수가 아닌 자리 · 없는 트랙 · 없는 목록은 거절하고 아무것도 바꾸지 않는다', async () => {
+    const { library, id, ids } = await fiveTracks()
+    const raw = readRaw()
+
+    for (const to of [-1, 5, 1.5, Number.NaN]) {
+      expect(await library.moveTrackTo(id, ids[0] ?? '', to)).toEqual({
+        ok: false,
+        reason: 'out-of-range',
+      })
+    }
+    expect(await library.moveTrackTo(id, 'ghost', 0)).toEqual({ ok: false, reason: 'not-found' })
+    expect(await library.moveTrackTo('ghost', ids[0] ?? '', 0)).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
+    expect(titles(library, id)).toEqual(['1', '2', '3', '4', '5'])
+    expect(readRaw()).toBe(raw)
+  })
+
+  it('쓰기에 실패하면 not-persisted — 메모리도 그대로다 (메모리만의 성공이 없다)', async () => {
+    const { library, id, ids } = await fiveTracks()
+    const raw = readRaw()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError')
+    })
+
+    expect(await library.moveTrackTo(id, ids[4] ?? '', 0)).toEqual({
+      ok: false,
+      reason: 'not-persisted',
+    })
+    expect(titles(library, id)).toEqual(['1', '2', '3', '4', '5'])
+    expect(readRaw()).toBe(raw)
+    expect(library.lastWriteFailure).toBe('quota-exceeded')
+  })
+
+  it('저장소를 쓸 수 없는 상태(unavailable)면 not-persisted — 메모리도 그대로다', async () => {
+    stubLocalStorage({
+      get() {
+        throw new Error('blocked')
+      },
+    })
+    const library = useLibraryStore()
+    library.restore()
+    expect(library.status).toBe('unavailable')
+    const created = await library.createPlaylist('MEM')
+    const id = created.ok ? created.playlistId : ''
+    for (const title of ['1', '2']) await library.addTrack(id, { videoId: VIDEO_A, title })
+    const second = library.getPlaylist(id)?.tracks[1]?.id ?? ''
+
+    expect(await library.moveTrackTo(id, second, 0)).toEqual({
+      ok: false,
+      reason: 'not-persisted',
+    })
+    expect(titles(library, id)).toEqual(['1', '2'])
+  })
+
+  it('보호 상태(protected)면 not-persisted — 원본을 덮어쓰지 않는다', async () => {
+    const raw = envelope(
+      {
+        playlists: [
+          {
+            id: 'p',
+            name: 'P',
+            tracks: [
+              { id: 't1', source: 'youtube', videoId: VIDEO_A, title: '1' },
+              { id: 't2', source: 'youtube', videoId: VIDEO_B, title: '2' },
+            ],
+          },
+        ],
+        selectedPlaylistId: 'p',
+      },
+      LIBRARY_STORAGE_VERSION + 1,
+    )
+    globalThis.localStorage.setItem(KEY, raw)
+    const library = useLibraryStore()
+    library.restore()
+    expect(library.status).toBe('protected')
+
+    expect(await library.moveTrackTo('p', 't2', 0)).toMatchObject({ ok: false })
+    expect(readRaw()).toBe(raw)
+  })
+
+  it('다른 탭이 먼저 바꿨으면 conflict — 최신을 다시 읽고 이번 이동은 하지 않는다', async () => {
+    const { library, id, ids } = await fiveTracks()
+    // 다른 탭이 마지막 곡을 지웠다.
+    const stored = JSON.parse(readRaw() as string)
+    stored.data.playlists[0].tracks.pop()
+    globalThis.localStorage.setItem(KEY, JSON.stringify(stored))
+
+    expect(await library.moveTrackTo(id, ids[0] ?? '', 3)).toEqual({
+      ok: false,
+      reason: 'conflict',
+    })
+    expect(titles(library, id)).toEqual(['1', '2', '3', '4'])
+    expect(JSON.parse(readRaw() as string).data.playlists[0].tracks).toHaveLength(4)
   })
 })
 

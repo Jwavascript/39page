@@ -4,11 +4,12 @@ import { nextTick } from 'vue'
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/app/App.vue'
 import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import { PLAYER_ADAPTER_FACTORY } from '@/features/playback/PlayerAdapter'
+import { STORAGE_KEYS } from '@/shared/storage'
 import type { Track } from '@/shared/types'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
@@ -385,14 +386,18 @@ describe('B. 트랙 목록 UI', () => {
     const buttons = group.findAll('button')
     expect(buttons.map((node) => node.attributes('aria-label'))).toEqual([
       'One 이름 변경',
+      'One 맨 위로',
       'One 위로',
       'One 아래로',
+      'One 맨 아래로',
       'One 삭제',
     ])
     expect(buttons.map((node) => node.text())).toEqual([
       '✎ 이름 바꾸기',
+      '⤒ 맨 위로',
       '↑ 위로',
       '↓ 아래로',
+      '⤓ 맨 아래로',
       '삭제',
     ])
   })
@@ -462,6 +467,269 @@ describe('B. 트랙 목록 UI', () => {
     const rowsAfter = wrapper.findAll('.track').map((row) => row.element)
     expect(rowsAfter[0]).toBe(rowsBefore[1])
     expect(rowsAfter[1]).toBe(rowsBefore[0])
+  })
+})
+
+describe('B2. 순서 편집 — 끌기 · 키보드 · 맨 위/아래 · 편집 모드 (M11-7C)', () => {
+  async function withTracks(names = ['One', 'Two', 'Three', 'Four']) {
+    const ctx = await setup()
+    for (const title of names) await ctx.library.addTrack(ctx.id, { videoId: VIDEO_A, title })
+    await flushPromises()
+    return ctx
+  }
+
+  const titles = (wrapper: Wrapper) =>
+    wrapper.findAll('.track .track-name').map((node) => node.text())
+  const row = (wrapper: Wrapper, title: string) =>
+    wrapper.findAll('.track').find((node) => node.get('.track-name').text() === title)
+  const handle = (wrapper: Wrapper, title: string) => {
+    const found = row(wrapper, title)
+    if (found === undefined) throw new Error(`no row ${title}`)
+    return found.get('.track-handle')
+  }
+  const status = (wrapper: Wrapper) => wrapper.get('.move-status')
+  const storedTitles = () =>
+    (
+      JSON.parse(globalThis.localStorage.getItem(STORAGE_KEYS.library) as string).data.playlists[0]
+        .tracks as Track[]
+    ).map((t) => t.title)
+
+  /** 행마다 높이 44, 간격 6 — 위에서부터 차례로 놓인 것처럼. */
+  function layoutRows(wrapper: Wrapper): void {
+    wrapper.findAll('.track').forEach((node, index) => {
+      const top = index * 50
+      ;(node.element as HTMLElement).getBoundingClientRect = () =>
+        ({
+          top,
+          bottom: top + 44,
+          height: 44,
+          left: 0,
+          right: 300,
+          width: 300,
+          x: 0,
+          y: top,
+        }) as DOMRect
+    })
+  }
+
+  /** jsdom 에는 PointerEvent 가 없다 — 같은 모양의 MouseEvent 에 pointerId 를 붙인다. */
+  async function pointer(target: ReturnType<Wrapper['get']>, type: string, clientY: number) {
+    const event = new MouseEvent(type, { button: 0, clientY, bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'pointerId', { value: 7 })
+    target.element.dispatchEvent(event)
+    await nextTick()
+  }
+
+  it('손잡이를 끌면 놓일 자리에 선이 보이고, 놓으면 그 자리로 저장된다 — 결과를 알린다', async () => {
+    const { wrapper } = await withTracks()
+    layoutRows(wrapper)
+    const grip = handle(wrapper, 'One')
+
+    await pointer(grip, 'pointerdown', 20)
+    await pointer(grip, 'pointermove', 140)
+    // Two(25) · Three(125) 의 가운데를 지났다 → 옮긴 뒤 2번째 자리(index 2) — Three 아래에 선.
+    expect(row(wrapper, 'One')?.classes()).toContain('is-dragging')
+    expect(row(wrapper, 'Three')?.classes()).toContain('drop-after')
+    expect(titles(wrapper)).toEqual(['One', 'Two', 'Three', 'Four'])
+
+    await pointer(grip, 'pointerup', 140)
+    await flushPromises()
+
+    expect(titles(wrapper)).toEqual(['Two', 'Three', 'One', 'Four'])
+    expect(storedTitles()).toEqual(['Two', 'Three', 'One', 'Four'])
+    expect(status(wrapper).text()).toBe('“One” 을(를) 3번째로 옮겼어요 (4곡 중).')
+    expect(status(wrapper).attributes('role')).toBe('status')
+    expect(row(wrapper, 'One')?.classes()).toContain('is-moved')
+    expect(wrapper.find('.drop-after, .drop-before, .is-dragging').exists()).toBe(false)
+  })
+
+  it('위로 끌면 그 자리 행의 위에 선이 보인다', async () => {
+    const { wrapper } = await withTracks()
+    layoutRows(wrapper)
+    const grip = handle(wrapper, 'Four')
+
+    await pointer(grip, 'pointerdown', 170)
+    await pointer(grip, 'pointermove', 10)
+    expect(row(wrapper, 'One')?.classes()).toContain('drop-before')
+    await pointer(grip, 'pointerup', 10)
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['Four', 'One', 'Two', 'Three'])
+  })
+
+  it('조금만 움직이면(누르기) 옮기지 않는다 · Esc 로 끌기를 그만둔다', async () => {
+    const { wrapper, library, id } = await withTracks()
+    layoutRows(wrapper)
+    const move = vi.spyOn(library, 'moveTrackTo')
+    const grip = handle(wrapper, 'One')
+
+    await pointer(grip, 'pointerdown', 20)
+    await pointer(grip, 'pointermove', 22)
+    await pointer(grip, 'pointerup', 22)
+
+    await pointer(grip, 'pointerdown', 20)
+    await pointer(grip, 'pointermove', 160)
+    expect(row(wrapper, 'One')?.classes()).toContain('is-dragging')
+    await grip.trigger('keydown', { key: 'Escape' })
+    expect(row(wrapper, 'One')?.classes()).not.toContain('is-dragging')
+    await pointer(grip, 'pointerup', 160)
+    await flushPromises()
+
+    expect(move).not.toHaveBeenCalled()
+    expect(library.getPlaylist(id)?.tracks.map((t) => t.title)).toEqual([
+      'One',
+      'Two',
+      'Three',
+      'Four',
+    ])
+  })
+
+  it('키보드 — 손잡이에서 ↑ ↓ 한 칸, Home End 맨 위 · 맨 아래, 옮긴 뒤에도 그 곡에 포커스', async () => {
+    const { wrapper } = await withTracks()
+
+    ;(handle(wrapper, 'Three').element as HTMLElement).focus()
+    await handle(wrapper, 'Three').trigger('keydown', { key: 'ArrowUp' })
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Three', 'Two', 'Four'])
+    expect(document.activeElement).toBe(handle(wrapper, 'Three').element)
+    expect(status(wrapper).text()).toBe('“Three” 을(를) 2번째로 옮겼어요 (4곡 중).')
+
+    await handle(wrapper, 'Three').trigger('keydown', { key: 'End' })
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Two', 'Four', 'Three'])
+    expect(document.activeElement).toBe(handle(wrapper, 'Three').element)
+
+    await handle(wrapper, 'Three').trigger('keydown', { key: 'Home' })
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['Three', 'One', 'Two', 'Four'])
+
+    await handle(wrapper, 'Three').trigger('keydown', { key: 'ArrowDown' })
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Three', 'Two', 'Four'])
+    expect(handle(wrapper, 'Three').attributes('aria-label')).toBe('Three 순서 옮기기 (2번째)')
+    expect(handle(wrapper, 'Three').attributes('aria-describedby')).toBe('track-handle-help')
+  })
+
+  it('경계의 화살표는 아무것도 하지 않는다 — 페이지도 굴리지 않는다', async () => {
+    const { wrapper, library } = await withTracks()
+    const move = vi.spyOn(library, 'moveTrackTo')
+    const event = new KeyboardEvent('keydown', { key: 'ArrowUp', cancelable: true })
+    handle(wrapper, 'One').element.dispatchEvent(event)
+    await flushPromises()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(move).not.toHaveBeenCalled()
+  })
+
+  it('관리 메뉴의 맨 위로 · 맨 아래로 — 같은 단추에 포커스가 남고, 꺼지면 손잡이로', async () => {
+    const { wrapper } = await withTracks()
+
+    await openTrackManage(wrapper, 'Two')
+    await wrapper.get('[aria-label="Two 맨 아래로"]').trigger('click')
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Three', 'Four', 'Two'])
+    // 맨 아래가 되어 단추가 꺼졌다 — 그 곡의 손잡이로.
+    expect(document.activeElement).toBe(handle(wrapper, 'Two').element)
+
+    await wrapper.get('[aria-label="Two 위로"]').trigger('click')
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Three', 'Two', 'Four'])
+    expect(document.activeElement).toBe(wrapper.get('[aria-label="Two 위로"]').element)
+
+    await wrapper.get('[aria-label="Two 맨 위로"]').trigger('click')
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['Two', 'One', 'Three', 'Four'])
+  })
+
+  it('편집 모드 — 손잡이 · ↑ · ↓ · 이름 · 삭제가 행마다 드러나고 ▶ · 관리는 숨는다. 완료로 돌아온다', async () => {
+    const { wrapper } = await withTracks(['One', 'Two', 'Three'])
+    const toggle = wrapper.get('.edit-toggle')
+    expect(toggle.text()).toBe('✎ 편집')
+    expect(toggle.attributes('aria-pressed')).toBe('false')
+
+    await toggle.trigger('click')
+    expect(toggle.text()).toBe('완료')
+    expect(toggle.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.track-list').classes()).toContain('is-editing')
+    expect(wrapper.find('.track .track-play').exists()).toBe(false)
+    expect(wrapper.find('.track .track-manage').exists()).toBe(false)
+    const actions = row(wrapper, 'Two')?.get('.edit-actions')
+    expect(actions?.attributes('role')).toBe('group')
+    expect(actions?.findAll('button').map((b) => b.attributes('aria-label'))).toEqual([
+      'Two 위로',
+      'Two 아래로',
+      'Two 이름 변경',
+      'Two 삭제',
+    ])
+    expect(row(wrapper, 'One')?.get('.edit-up').attributes('disabled')).toBeDefined()
+
+    await row(wrapper, 'Three')?.get('.edit-up').trigger('click')
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Three', 'Two'])
+    expect(document.activeElement).toBe(row(wrapper, 'Three')?.get('.edit-up').element)
+
+    await toggle.trigger('click')
+    expect(wrapper.get('.track-list').classes()).not.toContain('is-editing')
+    expect(wrapper.findAll('.track .track-play')).toHaveLength(3)
+  })
+
+  it('손잡이는 손잡이에서만 터치 스크롤을 끄고, 터치 화면에서는 편집 모드에서만 보인다', () => {
+    const css = readFileSync('src/features/library/TrackList.vue', 'utf8')
+    const handleBlock = /\.track-handle \{[^}]*\}/.exec(css)?.[0] ?? ''
+    expect(handleBlock).toContain('touch-action: none')
+    expect(css).toMatch(
+      /@media \(hover: none\), \(pointer: coarse\) \{\s*\.track-list:not\(\.is-editing\) \.track-handle \{\s*display: none;/,
+    )
+    // 행 전체 · 목록은 터치 스크롤을 막지 않는다.
+    expect(/\.track \{[^}]*\}/.exec(css)?.[0] ?? '').not.toContain('touch-action')
+  })
+
+  it('저장소를 쓸 수 없으면 순서를 바꾸지 않고 경고한다 — 메모리만의 성공이 없다', async () => {
+    const { wrapper } = await withTracks(['One', 'Two'])
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError')
+    })
+
+    await handle(wrapper, 'Two').trigger('keydown', { key: 'ArrowUp' })
+    await flushPromises()
+
+    expect(titles(wrapper)).toEqual(['One', 'Two'])
+    expect(status(wrapper).classes()).toContain('is-warning')
+    expect(status(wrapper).text()).toContain('순서를 바꾸지 않았어요')
+    vi.restoreAllMocks()
+  })
+
+  it('다른 탭이 먼저 바꿨으면 최신을 보이고 다시 하라고 알린다', async () => {
+    const { wrapper } = await withTracks(['One', 'Two', 'Three'])
+    const raw = JSON.parse(globalThis.localStorage.getItem(STORAGE_KEYS.library) as string)
+    raw.data.playlists[0].tracks.pop()
+    globalThis.localStorage.setItem(STORAGE_KEYS.library, JSON.stringify(raw))
+
+    await handle(wrapper, 'Two').trigger('keydown', { key: 'ArrowUp' })
+    await flushPromises()
+
+    expect(titles(wrapper)).toEqual(['One', 'Two'])
+    expect(status(wrapper).classes()).toContain('is-warning')
+  })
+
+  it('삭제 — 확인을 받고, 지우면 다음 곡으로 · 취소하면 삭제 단추로 포커스가 돌아온다', async () => {
+    const { wrapper } = await withTracks(['One', 'Two', 'Three'])
+
+    await openTrackManage(wrapper, 'Two')
+    await wrapper.get('[aria-label="Two 삭제"]').trigger('click')
+    await nextTick()
+    expect(document.activeElement).toBe(
+      wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').element,
+    )
+    await byText(wrapper, '[aria-label="트랙 삭제 확인"] .pill', '취소')?.trigger('click')
+    await nextTick()
+    expect(document.activeElement).toBe(wrapper.get('[aria-label="Two 삭제"]').element)
+
+    await wrapper.get('[aria-label="Two 삭제"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Three'])
+    expect(document.activeElement).toBe(row(wrapper, 'Three')?.get('.track-play').element)
   })
 })
 

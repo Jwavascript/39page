@@ -256,11 +256,43 @@ const nowPlayingActive = computed<boolean>(() => playback?.nowPlaying.value?.pla
 
 /* ---------- 트랙 편집 ---------- */
 
-async function moveTrack(trackId: string, direction: 'up' | 'down'): Promise<void> {
+/** 순서 바꾸기 결과 — 트랙 목록 바로 위에 보이고 낭독기에도 알린다 (M11-7C). */
+const moveStatus = ref<{ text: string; tone: 'info' | 'warning' } | null>(null)
+
+const MOVE_REFUSED: Record<string, string> = {
+  'not-found': '그 곡을 찾을 수 없어요. 다른 탭에서 지워졌을 수 있어요.',
+  'out-of-range': '더 옮길 수 없어요.',
+  'not-persisted':
+    '라이브러리를 저장할 수 없는 상태라 순서를 바꾸지 않았어요. 새로고침하면 사라질 순서는 만들지 않아요.',
+  conflict: LIBRARY_CONFLICT_MESSAGE,
+  busy: LIBRARY_BUSY_MESSAGE,
+}
+
+/**
+ * 트랙을 목록의 `toIndex` 자리로 (끌어 놓기 · 키보드 · 관리 메뉴 · 편집 모드). 트랙 id 로 옮긴다.
+ *
+ * 재생은 건드리지 않는다 — 큐는 재생을 시작할 때의 스냅샷이다. NOW PLAYLIST 가 "목록이 바뀌었어요" 를
+ * 보이고, 큐를 새 순서로 맞출지는 사용자가 고른다 (ADR 0030 · M11-7B).
+ */
+async function reorderTrack(trackId: string, toIndex: number): Promise<void> {
   const target = library.selectedPlaylist
   if (target === null) return
+  const title = target.tracks.find((track) => track.id === trackId)?.title ?? ''
+  const total = target.tracks.length
 
-  reportResult(await library.moveTrack(target.id, trackId, direction))
+  const result = await library.moveTrackTo(target.id, trackId, toIndex)
+  if (!result.ok) {
+    moveStatus.value = {
+      tone: 'warning',
+      text: MOVE_REFUSED[result.reason] ?? '순서를 바꾸지 못했어요.',
+    }
+    return
+  }
+  if (result.existed === true) return
+  moveStatus.value = {
+    tone: 'info',
+    text: `“${title}” 을(를) ${String(toIndex + 1)}번째로 옮겼어요 (${String(total)}곡 중).`,
+  }
 }
 
 /** 트랙 이름 변경 (M6-5, 보고 6c). 확인은 `TrackList` 가 받는다. */
@@ -377,6 +409,7 @@ function clearTransientState(): void {
   closeLinkForm()
   addedNotice.value = ''
   playbackNotice.value = ''
+  moveStatus.value = null
 }
 
 /**
@@ -522,8 +555,9 @@ watch(
         :now-playing-track-id="nowPlayingTrackId"
         :now-playing-active="nowPlayingActive"
         :tracks="library.selectedPlaylist === null ? null : library.selectedPlaylist.tracks"
+        :status="moveStatus"
         @play="requestPlayTrack"
-        @move="moveTrack"
+        @reorder="reorderTrack"
         @remove="removeTrack"
         @rename="renameTrack"
         @moments="openMoments"
