@@ -18,8 +18,8 @@ defineProps<{ shortcut: string | undefined }>()
 <style scoped>
 .shortcut {
   margin: 0;
-  color: var(--text-dim-color);
-  font-size: 11px;
+  color: var(--text-muted-color);
+  font-size: 12px;
 }
 
 .key {

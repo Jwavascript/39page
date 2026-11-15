@@ -1,0 +1,75 @@
+/* 승인된 Cassette 토큰을 두 확장 진입에서 공유한다. 색·도트는 웹앱의 토큰이다. */
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--workspace-background);
+  color: var(--text-color);
+  font: 13px/1.5 var(--font-body);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+input,
+textarea,
+fieldset {
+  min-width: 0;
+}
+
+button {
+  overflow-wrap: anywhere;
+}
+
+input[type='radio'],
+input[type='checkbox'] {
+  accent-color: var(--accent-color);
+  flex: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--deck-open-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.brand-header::after {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background-image: radial-gradient(var(--artwork-dot-color) 1px, transparent 1px);
+  background-size: 4px 4px;
+  content: '';
+}
+
+.feedback-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 브라우저 200% 확대처럼 패널 내부가 매우 좁으면 장식을 줄여 이름을 보존한다. */
+@media (max-width: 260px) {
+  .brand-header .cassette-mark,
+  .brand-header::after {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  button,
+  .feedback,
+  .notice,
+  .access,
+  .list-row:has(input:checked) {
+    border: 1px solid ButtonText;
+  }
+}

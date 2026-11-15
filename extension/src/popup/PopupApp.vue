@@ -93,15 +93,17 @@ watch(
   display: grid;
   gap: 10px;
   padding: 14px 16px 16px;
+  overflow-wrap: anywhere;
 }
 
 /* 보조 링크 모양의 버튼 — 단축키 설정 화면을 연다 (M10-5). */
 .settings {
+  min-height: 44px;
   justify-self: start;
   padding: 2px 0;
   border: 0;
   background: none;
-  color: var(--text-dim-color);
+  color: var(--text-muted-color);
   font: inherit;
   font-size: 11px;
   text-decoration: underline;
@@ -114,6 +116,7 @@ watch(
 
 /* 웹앱의 quiet-btn 과 같은 토큰. */
 .retry {
+  min-height: 44px;
   justify-self: start;
   margin-top: 4px;
   padding: 5px 12px;

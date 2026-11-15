@@ -44,6 +44,7 @@ const busy = computed(() => props.state.kind === 'busy')
   padding: 12px 14px;
   border: 1px solid var(--info-border-color);
   border-radius: var(--radius-modal);
+  background: var(--drawer-surface-color);
 }
 
 .quick-add-title {
@@ -55,7 +56,7 @@ const busy = computed(() => props.state.kind === 'busy')
 
 /* 웹앱의 `.pill--strong` 과 같은 토큰 — 주된 동작. */
 .add {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--accent-strong-color);
   border-radius: var(--radius-control);
@@ -73,8 +74,8 @@ const busy = computed(() => props.state.kind === 'busy')
 
 .quick-add-help {
   margin: 0;
-  color: var(--text-dim-color);
-  font-size: 11px;
+  color: var(--text-muted-color);
+  font-size: 12px;
 }
 
 .quick-add-message {
@@ -84,6 +85,8 @@ const busy = computed(() => props.state.kind === 'busy')
 }
 
 .quick-add-message.is-error {
-  color: var(--text-color);
+  padding-left: 8px;
+  border-left: 3px solid var(--error-text-color);
+  color: var(--error-text-color);
 }
 </style>

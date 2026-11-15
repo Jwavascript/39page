@@ -39,7 +39,7 @@ const WEB_IMPORT_ALLOWLIST = [
   '@web/shared/utils/youtube',
   '@web/shared/utils/time',
   '@web/styles/tokens.css',
-  '@web/themes/mono-vinyl/tokens.css',
+  '@web/themes/kawaii-synth-cassette/tokens.css',
 ]
 
 describe('구조 규칙', () => {

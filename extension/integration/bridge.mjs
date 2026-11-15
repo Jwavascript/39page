@@ -61,7 +61,9 @@ try {
   )
   await h.cdp.send('Page.reload', {}, dash.session)
   // M11-7B 부터 대시보드의 재생 입구는 NOW PLAYLIST 의 곡 줄이다 (옛 PLAYLISTS 카드 `.playlist-play` 는 없어졌다).
-  await waitFor(() => dash.ev(`!!document.querySelector('.now-playlist .track-row')`), { label: 'dashboard' })
+  await waitFor(() => dash.ev(`!!document.querySelector('.now-playlist .track-row')`), {
+    label: 'dashboard',
+  })
   await dash.ev(`document.querySelector('.now-playlist .track-row').click(); true`)
   await waitFor(() => dash.ev(`!!document.querySelector('.player-mount iframe')`), {
     timeout: 30_000,

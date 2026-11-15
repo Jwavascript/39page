@@ -109,6 +109,27 @@ afterEach(() => {
 })
 
 describe('패널 — 접근 · 목록', () => {
+  it('권한 요청 중에는 상태를 알리고, 거부 후에는 안내와 폴백을 유지하며 쓰지 않는다', async () => {
+    const f = fake({ granted: false })
+    let resolvePermission!: (granted: boolean) => void
+    vi.mocked(f.bridge.requestPermission).mockImplementation(
+      () => new Promise<boolean>((resolve) => (resolvePermission = resolve)),
+    )
+    const w = await boot(f)
+    const grant = w.get('.access .btn.primary')
+    await grant.trigger('click')
+    expect(grant.attributes('aria-busy')).toBe('true')
+    expect(grant.text()).toBe('권한 요청 중…')
+    expect(grant.attributes('disabled')).toBeDefined()
+    resolvePermission(false)
+    await flushPromises()
+    expect(grant.attributes('aria-busy')).toBe('false')
+    expect(grant.text()).toBe('39page 접근 허용')
+    expect(w.get('.access').text()).toContain('수집 화면(새 탭)')
+    expect(f.writes()).toHaveLength(0)
+    w.unmount()
+  })
+
   it('권한이 없으면 목적을 설명하고, 허용을 누르면 묻고 목록을 불러온다 · 그 전에는 저장 단추가 꺼져 있다', async () => {
     const f = fake({ granted: false })
     const w = await boot(f)
@@ -157,7 +178,8 @@ describe('패널 — 음악 담기', () => {
       title: 'Title aaaaaaaaaaa',
       allowDuplicate: false,
     })
-    expect(w.get('.feedback.ok').text()).toBe('‘드라이브’ 에 담았어요 · 1번째.')
+    expect(w.get('.feedback.ok .feedback-heading').text()).toContain('저장 완료')
+    expect(w.get('.feedback.ok').text()).toContain('‘드라이브’ 에 담았어요 · 1번째.')
     expect(w.text()).toContain('이 순간도 Moment 로 저장')
   })
 

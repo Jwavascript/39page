@@ -21,18 +21,41 @@ const emit = defineEmits<{ check: []; retry: []; collect: []; reconnect: [] }>()
 const tone = computed(() =>
   props.state.phase === 'done' ? 'ok' : props.state.phase === 'idle' ? 'none' : 'warn',
 )
+const heading = computed(() => {
+  switch (props.state.phase) {
+    case 'error':
+    case 'not-saved':
+      return '저장하지 못했어요'
+    case 'partial':
+      return '일부만 저장됐어요'
+    case 'unavailable':
+      return '바로 저장을 사용할 수 없어요'
+    default:
+      return '저장 여부를 확인해 주세요'
+  }
+})
 </script>
 
 <template>
   <div v-if="state.phase === 'saving' || state.phase === 'checking'" class="feedback" role="status">
+    <p class="feedback-heading"><span aria-hidden="true">…</span> 저장 확인 중</p>
     {{
       state.phase === 'saving'
         ? '저장하는 중… 39page 가 저장을 확인하면 알려 드려요.'
         : '저장됐는지 확인하는 중…'
     }}
   </div>
-  <div v-else-if="state.phase === 'done'" class="feedback ok" role="status">{{ success }}</div>
-  <div v-else-if="tone === 'warn'" class="feedback warn" role="alert">
+  <div v-else-if="state.phase === 'done'" class="feedback ok" role="status">
+    <p class="feedback-heading"><span aria-hidden="true">✓</span> 저장 완료</p>
+    <p>{{ success }}</p>
+  </div>
+  <div
+    v-else-if="tone === 'warn'"
+    class="feedback warn"
+    :class="{ error: state.phase === 'error' || state.phase === 'not-saved' }"
+    role="alert"
+  >
+    <p class="feedback-heading"><span aria-hidden="true">!</span> {{ heading }}</p>
     <template v-if="state.phase === 'uncertain'">
       <p>{{ UNCERTAIN_COPY[state.reason] }}</p>
       <p class="hint">{{ UNCERTAIN_HINT }}</p>

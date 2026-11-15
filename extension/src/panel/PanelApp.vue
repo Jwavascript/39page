@@ -107,6 +107,7 @@ watch(granted, (now) => {
       <p v-else class="muted" role="status">영상을 확인하는 중…</p>
 
       <section v-if="saves.access.value && !granted" class="access" aria-labelledby="access-title">
+        <p class="access-label"><span aria-hidden="true">◇</span> 접근 권한 필요</p>
         <h3 id="access-title">{{ ACCESS_COPY.title }}</h3>
         <p>{{ ACCESS_COPY.body }}</p>
         <div class="actions">
@@ -114,9 +115,10 @@ watch(granted, (now) => {
             type="button"
             class="btn primary"
             :disabled="saves.granting.value"
+            :aria-busy="saves.granting.value"
             @click="saves.grant()"
           >
-            {{ ACCESS_COPY.grant }}
+            {{ saves.granting.value ? '권한 요청 중…' : ACCESS_COPY.grant }}
           </button>
         </div>
         <p class="muted">{{ ACCESS_COPY.denied }}</p>

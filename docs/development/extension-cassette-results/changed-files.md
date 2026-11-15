@@ -1,0 +1,55 @@
+# Changed files
+
+Baseline: `80a4cd3`. No deleted files or added dependencies.
+
+- `docs/architecture/THEME_SYSTEM.md`
+- `docs/decisions/0022-extension-repository-and-build.md`
+- `docs/decisions/0037-extension-cassette-design.md`
+- `docs/decisions/README.md`
+- `docs/development/EXTENSION_CASSETTE_REPORT.md`
+- `docs/development/extension-cassette-results/changed-files.md`
+- `docs/development/extension-cassette-results/panel-1440x900-zoom1.png`
+- `docs/development/extension-cassette-results/panel-360x780-zoom1.png`
+- `docs/development/extension-cassette-results/panel-360x780-zoom2.png`
+- `docs/development/extension-cassette-results/panel-390x844-zoom1.png`
+- `docs/development/extension-cassette-results/panel-720x780-zoom2.png`
+- `docs/development/extension-cassette-results/panel-844x390-zoom1.png`
+- `docs/development/extension-cassette-results/panel-moment-note.png`
+- `docs/development/extension-cassette-results/panel-moment-saved.png`
+- `docs/development/extension-cassette-results/panel-music-saved.png`
+- `docs/development/extension-cassette-results/panel-music.png`
+- `docs/development/extension-cassette-results/panel-permission-denied.png`
+- `docs/development/extension-cassette-results/panel-permission.png`
+- `docs/development/extension-cassette-results/panel-save-error.png`
+- `docs/development/extension-cassette-results/popup-toolbar.png`
+- `docs/development/extension-cassette-results/real-chrome-run1.json`
+- `docs/development/extension-cassette-results/real-chrome-run2.json`
+- `docs/development/extension-cassette-results/real-chrome-run3.json`
+- `docs/development/extension-cassette-results/real-chrome.json`
+- `extension/README.md`
+- `extension/icons/icon-128.png`
+- `extension/icons/icon-16.png`
+- `extension/icons/icon-32.png`
+- `extension/icons/icon-48.png`
+- `extension/integration/bridge.mjs`
+- `extension/integration/cassette-design.mjs`
+- `extension/src/panel/PanelApp.vue`
+- `extension/src/panel/components/SaveFeedback.vue`
+- `extension/src/panel/index.html`
+- `extension/src/panel/main.ts`
+- `extension/src/panel/panel.css`
+- `extension/src/popup/PopupApp.vue`
+- `extension/src/popup/components/BrandHeader.vue`
+- `extension/src/popup/components/MomentCapturePanel.vue`
+- `extension/src/popup/components/QuickAddPanel.vue`
+- `extension/src/popup/components/ShortcutHint.vue`
+- `extension/src/popup/components/StatusNotice.vue`
+- `extension/src/popup/components/VideoCard.vue`
+- `extension/src/popup/index.html`
+- `extension/src/popup/main.ts`
+- `extension/src/popup/popup.css`
+- `extension/src/ui/cassette.css`
+- `extension/src/ui/cassette.svg`
+- `extension/tests/boundaries.spec.ts`
+- `extension/tests/cassette-design.spec.ts`
+- `extension/tests/panelApp.spec.ts`

@@ -1,0 +1,10 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "id": "setup",
+      "pass": false,
+      "error": "Error: timeout waiting for condition\n    at waitFor (file:///C:/Users/phoria/39page/extension/integration/cdp.mjs:105:9)\n    at async file:///C:/Users/phoria/39page/extension/integration/cassette-design.mjs:68:5"
+    }
+  ]
+}

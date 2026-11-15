@@ -506,3 +506,11 @@ CSS 로드 실패 시에도 두 데크가 동시에 읽히지 않게 하고 jsdo
 데크를 눌러 Record Library 를 여는 동작은 M2 다. 지금은 동작하지 않는
 버튼이나 "LP 를 누르면 …" 안내 문구를 만들지 않는다. M2 는 `DeckWidget` 에
 접근 가능한 트리거를 더하면 되고, `DeckArt` 컴포넌트는 건드리지 않는다.
+
+## 9. Chrome 확장 기본 외형 (출시 전 정리, 2026-11-15)
+
+확장의 팝업과 YouTube 패널도 Kawaii Synth Cassette를 기본 외형으로 사용한다.
+공통 토큰과 Cassette 토큰 CSS를 그대로 가져오며 두 HTML에 테마 속성을 정적으로 둔다.
+웹앱의 테마 선택과 자동 동기화하거나 테마 설정 저장소를 추가하지 않는다.
+확장은 웹앱 Vue/store를 가져오지 않고, 승인된 카세트의 정적 도형과 의미 토큰만 재사용한다.
+[ADR 0037](../decisions/0037-extension-cassette-design.md) · [검증 보고서](../development/EXTENSION_CASSETTE_REPORT.md).
