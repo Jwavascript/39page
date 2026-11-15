@@ -58,6 +58,7 @@ describe('헤더 접기', () => {
     const themeNode = wrapper.get('.theme-switch').element
     expect(button.attributes('aria-expanded')).toBe('true')
     expect(button.attributes('aria-label')).toBe('헤더 접기')
+    expect(button.get('path').attributes('d')).toBe('m4 10 4-4 4 4')
     expect(button.text()).toBe('')
     expect(button.get('svg').attributes('aria-hidden')).toBe('true')
     expect(button.attributes('aria-controls')).toBe(content.attributes('id'))
@@ -65,6 +66,7 @@ describe('헤더 접기', () => {
       await button.trigger('click')
       await flushPromises()
       expect(button.attributes('aria-label')).toBe('헤더 펼치기')
+      expect(button.get('path').attributes('d')).toBe('m4 6 4 4 4-4')
       expect(button.text()).toBe('')
       expect(button.attributes('aria-expanded')).toBe('false')
       expect(content.attributes('hidden')).toBeDefined()
@@ -73,6 +75,7 @@ describe('헤더 접기', () => {
       await button.trigger('click')
       await flushPromises()
       expect(button.attributes('aria-expanded')).toBe('true')
+      expect(button.get('path').attributes('d')).toBe('m4 10 4-4 4 4')
       expect(content.attributes('hidden')).toBeUndefined()
     }
     await button.trigger('click')

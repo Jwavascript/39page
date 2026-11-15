@@ -41,7 +41,12 @@ const emit = defineEmits<{ toggle: [] }>()
       @click="emit('toggle')"
     >
       <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16">
-        <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" />
+        <path
+          :d="expanded ? 'm4 10 4-4 4 4' : 'm4 6 4 4 4-4'"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
       </svg>
     </button>
   </header>

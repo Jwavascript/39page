@@ -77,7 +77,8 @@ Chrome 157.0.8103.51 headless, 로컬 production build, 격리 임시 프로필,
 
 ## 후속 — 화살표만 표시 (2026-11-15)
 
-사용자 요청으로 접기/펼치기 버튼의 보이는 글자·테두리·배경을 없애고 두 상태 모두 아래 화살표만 표시한다.
+사용자 요청으로 접기/펼치기 버튼의 보이는 글자·테두리·배경을 없앴다.
+추가 요청을 반영해 펼쳐져 있을 때는 접기를 뜻하는 위 화살표, 접혀 있을 때는 펼치기를 뜻하는 아래 화살표를 표시한다.
 44px 클릭 영역, 동적 aria-label·aria-expanded, title, 키보드 포커스 표시는 유지한다.
 화살표 SVG는 장식이므로 aria-hidden·focusable=false로 두고 버튼이 이름과 상태를 전달한다.
 
@@ -87,3 +88,8 @@ Chrome 157.0.8103.51 headless, 로컬 production build, 격리 임시 프로필,
   장식 SVG의 숨김과 비포커스 여부를 별도로 검증하고 정보 SVG의 역할·이름 검사는 유지한 뒤 전체 재실행으로 통과했다.
 - 위 Chrome 43개 검사와 스크린샷은 화살표 변경 전 결과다. 이번 변경에서는 Chrome 검사를 다시 실행하지 않았다.
 - TODO: 위 실제 F11·실기기·화면 낭독기 UAT는 유지한다.
+
+화살표 방향 보정 후에는 `npm run type-check`, `npm run lint`, `npm run format:check`와
+`npm test -- tests/unit/header-collapse.spec.ts tests/unit/dashboard-shell.spec.ts tests/unit/accessibility.spec.ts`
+(3파일 / 46개)를 통과했다. 방향 보정의 변경 파일은 AppHeader.vue, header-collapse.spec.ts, 이 보고서다.
+전체 Vitest·build·Chrome은 방향 보정 후 다시 실행하지 않았다.
