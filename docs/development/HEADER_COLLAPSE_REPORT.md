@@ -74,3 +74,16 @@ Chrome 157.0.8103.51 headless, 로컬 production build, 격리 임시 프로필,
 - 사용자 최종 UAT, 실제 F11 키·브라우저 UI, Android/iOS 터치, 화면 낭독기 확인.
 - 숨긴 메뉴는 헤더 펼치기로 복원한다. 펼치기 버튼은 페이지 헤더의 정상 흐름 안에 있으며 플레이어 위의 떠 있는 버튼이 아니다.
 - 운영 배포·Git push·main 통합·Web Store 업로드는 하지 않았다.
+
+## 후속 — 화살표만 표시 (2026-11-15)
+
+사용자 요청으로 접기/펼치기 버튼의 보이는 글자·테두리·배경을 없애고 두 상태 모두 아래 화살표만 표시한다.
+44px 클릭 영역, 동적 aria-label·aria-expanded, title, 키보드 포커스 표시는 유지한다.
+화살표 SVG는 장식이므로 aria-hidden·focusable=false로 두고 버튼이 이름과 상태를 전달한다.
+
+- 변경: AppHeader.vue, header-collapse.spec.ts, accessibility.spec.ts, 이 보고서. 의존성 추가 없음.
+- `npm run build` 통과 (type-check 포함), `npm run lint` 통과, `npm run format:check` 통과.
+- `npm test`: 67파일 / 2,127 통과. 첫 실행은 모든 SVG에 이미지 이름을 요구하던 기존 검사 1개가 실패했다.
+  장식 SVG의 숨김과 비포커스 여부를 별도로 검증하고 정보 SVG의 역할·이름 검사는 유지한 뒤 전체 재실행으로 통과했다.
+- 위 Chrome 43개 검사와 스크린샷은 화살표 변경 전 결과다. 이번 변경에서는 Chrome 검사를 다시 실행하지 않았다.
+- TODO: 위 실제 F11·실기기·화면 낭독기 UAT는 유지한다.

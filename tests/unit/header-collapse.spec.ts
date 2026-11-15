@@ -57,11 +57,15 @@ describe('헤더 접기', () => {
     const content = wrapper.get('#dashboard-header-content')
     const themeNode = wrapper.get('.theme-switch').element
     expect(button.attributes('aria-expanded')).toBe('true')
+    expect(button.attributes('aria-label')).toBe('헤더 접기')
+    expect(button.text()).toBe('')
+    expect(button.get('svg').attributes('aria-hidden')).toBe('true')
     expect(button.attributes('aria-controls')).toBe(content.attributes('id'))
     for (let i = 0; i < 3; i++) {
       await button.trigger('click')
       await flushPromises()
       expect(button.attributes('aria-label')).toBe('헤더 펼치기')
+      expect(button.text()).toBe('')
       expect(button.attributes('aria-expanded')).toBe('false')
       expect(content.attributes('hidden')).toBeDefined()
       expect(document.activeElement).toBe(button.element)

@@ -40,8 +40,9 @@ const emit = defineEmits<{ toggle: [] }>()
       :title="expanded ? '상단 메뉴를 접어 감상 공간 넓히기' : '보관함 · 데이터 · 테마 메뉴 펼치기'"
       @click="emit('toggle')"
     >
-      <span aria-hidden="true">{{ expanded ? '⌃' : '⌄' }}</span>
-      {{ expanded ? '헤더 접기' : '헤더 펼치기' }}
+      <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16">
+        <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
     </button>
   </header>
 </template>
@@ -65,17 +66,16 @@ const emit = defineEmits<{ toggle: [] }>()
   display: none;
 }
 .header-toggle {
+  display: grid;
+  place-items: center;
   grid-column: 3;
   grid-row: 1;
   min-width: 44px;
   min-height: 44px;
   padding: 6px 10px;
-  border: 1px solid var(--pill-border-color);
-  border-radius: var(--radius-control);
-  background: var(--pill-surface-color);
+  border: 0;
+  background: transparent;
   color: var(--pill-text-color);
-  font: 11px var(--font-mono);
-  white-space: nowrap;
 }
 .app-header.is-collapsed {
   padding-bottom: 0;

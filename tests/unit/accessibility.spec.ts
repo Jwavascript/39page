@@ -290,12 +290,15 @@ describe('E. 장식과 상태', () => {
     // M12-2: 마스코트 코너 장식 대신 기본 앨범아트 — 곡 제목이 옆에 있다.
     expect(wrapper.get('.default-artwork').attributes('aria-hidden')).toBe('true')
     expect(wrapper.get('.wxicon').attributes('aria-hidden')).toBe('true')
+    const headerArrow = wrapper.get('.header-toggle svg')
+    expect(headerArrow.attributes('aria-hidden')).toBe('true')
+    expect(headerArrow.attributes('focusable')).toBe('false')
   })
 
-  it('SVG 는 역할과 이름을 갖는다', () => {
+  it('정보를 전달하는 SVG는 역할과 이름을 갖는다', () => {
     const { wrapper } = mountApp()
 
-    for (const svg of wrapper.findAll('svg')) {
+    for (const svg of wrapper.findAll('svg:not([aria-hidden="true"])')) {
       expect(svg.attributes('role')).toBe('img')
       expect(svg.attributes('aria-label')).toBeTruthy()
     }
