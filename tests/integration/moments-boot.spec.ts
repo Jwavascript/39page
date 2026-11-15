@@ -28,6 +28,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const DEFAULT_PLAYLIST_NAME = 'MY RECORDS'
 const VIDEO = 'jNQXAC9IVRw'
@@ -92,7 +93,7 @@ async function openDrawer(session: Session) {
 }
 
 async function closeDrawer(session: Session) {
-  await session.wrapper.get('.drawer .close').trigger('click')
+  await archiveCloseButton(session.wrapper).trigger('click')
   await nextTick()
 }
 

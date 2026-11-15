@@ -43,6 +43,11 @@ const props = defineProps<{
   revealRequest?: { videoId: string; seq: number } | null
   /** 바뀔 때마다 음악 탭을 고른 목록의 상세 단계로 맞춘다 (`ArchiveOpenOptions.showDetail`). */
   detailRequest?: number
+  /**
+   * 머리말 오른쪽의 닫기(×)를 보일지. 기본 `true`. 가로 화면의 띠 배치에서는 셸이 영상 띠 오른쪽 위에
+   * "보관함 닫기" 를 따로 두므로 `false` 다 (M11-7C UAT). 쌓기 · 옆 배치는 그대로 여기 있다.
+   */
+  showClose?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -194,7 +199,15 @@ watch(
           <span v-if="item.key === 'moments'" class="tab-count">{{ moments.count }}</span>
         </button>
       </div>
-      <button type="button" class="close" aria-label="보관함 닫기" @click="emit('close')">×</button>
+      <button
+        v-if="showClose !== false"
+        type="button"
+        class="close"
+        aria-label="보관함 닫기"
+        @click="emit('close')"
+      >
+        ×
+      </button>
     </div>
 
     <div

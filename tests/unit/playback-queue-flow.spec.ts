@@ -24,6 +24,7 @@ import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
 import { openTrackManage } from '../support/trackManage'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
@@ -363,7 +364,7 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     const iframe = player().iframe
 
     for (let round = 0; round < 2; round += 1) {
-      await wrapper.get('.drawer .close').trigger('click')
+      await archiveCloseButton(wrapper).trigger('click')
       await nextTick()
       await wrapper.get('.deck-open--mono-vinyl').trigger('click')
       await nextTick()

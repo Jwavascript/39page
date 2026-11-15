@@ -51,6 +51,7 @@ import {
   uninstallPlayerRect,
   VISIBLE_RECT,
 } from '../support/playerLayout'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const A = 'aaaaaaaaaaa'
 const B = 'bbbbbbbbbbb'
@@ -655,7 +656,7 @@ describe('B. 초안의 메모 — 저장 전에 쓰고, 초안은 하나다', ()
     await archiveNote.setValue('보관함에서 고침')
 
     // 닫아도 초안은 남는다 — 대시보드가 그대로 보인다.
-    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await archiveCloseButton(s.wrapper).trigger('click')
     await flushPromises()
     expect((noteField(s).element as HTMLTextAreaElement).value).toBe('보관함에서 고침')
     expect(s.moments.moments).toEqual([])
@@ -983,7 +984,7 @@ describe('D2. 보관함이 열린 영상 띠 — 보기 · 재생 전용 (M11-7C
     await openArchiveMoments(s)
     expect(widget(s).element).toBe(before)
 
-    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await archiveCloseButton(s.wrapper).trigger('click')
     await flushPromises()
     expect(widget(s).element).toBe(before)
     expect(widget(s).classes()).not.toContain('is-readonly')
@@ -1457,7 +1458,7 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     await flushPromises()
     s.theme.setTheme('mono-vinyl')
     await nextTick()
-    await s.wrapper.get('.drawer .close').trigger('click')
+    await archiveCloseButton(s.wrapper).trigger('click')
     await nextTick()
 
     expect(s.fake.hostNode).toBe(host)

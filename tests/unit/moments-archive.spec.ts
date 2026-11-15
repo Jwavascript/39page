@@ -37,6 +37,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const A = 'aaaaaaaaaaa'
 const B = 'bbbbbbbbbbb'
@@ -570,7 +571,7 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     expect(chips()[1]?.attributes('aria-pressed')).toBe('true')
 
     // 다시 들어오면(닫고 열기) 지금 곡이 있으니 이 곡이다.
-    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await archiveCloseButton(s.wrapper).trigger('click')
     await settle()
     await openMoments(s)
     expect(chips()[0]?.attributes('aria-pressed')).toBe('true')
@@ -591,7 +592,7 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     await settle()
     expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
 
-    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await archiveCloseButton(s.wrapper).trigger('click')
     await settle()
     await openMoments(s)
     expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
@@ -630,7 +631,7 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     expect(panel(s).find('.current-head').exists()).toBe(false)
 
     await playFromStart(s)
-    await s.wrapper.get('#archive-panel [aria-label="보관함 닫기"]').trigger('click')
+    await archiveCloseButton(s.wrapper).trigger('click')
     await settle()
     await openMoments(s)
     expect(panel(s).get('.current-head .capture-button').attributes('disabled')).toBeUndefined()

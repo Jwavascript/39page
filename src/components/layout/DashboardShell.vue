@@ -471,6 +471,22 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
       :data-archive-layout="archiveLayout"
       :inert="behindDialog"
     >
+      <!--
+        가로 화면(띠 배치)의 "보관함 닫기" — 영상 띠 오른쪽 위 (M11-7C UAT). 늘 DOM 에 있고 띠 배치에서만
+        보인다 — 열고 닫을 때 WidgetHost 앞에 노드를 넣고 빼지 않는다(플레이어 노드는 그대로, ADR 0002).
+        쌓기 · 옆 배치는 보관함 머리말의 × 를 그대로 쓴다. Esc 는 셸이 그대로 받는다.
+      -->
+      <button
+        type="button"
+        class="strip-close"
+        aria-label="보관함 닫기"
+        title="보관함 닫기 (Esc)"
+        :aria-controls="ARCHIVE_ID"
+        :hidden="archiveLayout !== 'strip'"
+        @click="closeArchive"
+      >
+        보관함 닫기 <span class="strip-close-mark" aria-hidden="true">×</span>
+      </button>
       <WidgetHost :layout="layout" />
       <ArchivePanel
         :open="isArchiveOpen"
@@ -480,6 +496,7 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
         :moments-focus-request="momentsFocusRequest"
         :reveal-request="revealRequest"
         :detail-request="detailRequest"
+        :show-close="archiveLayout !== 'strip'"
         @close="closeArchive"
         @select-tab="(tab) => (archiveTab = tab)"
       />
@@ -556,6 +573,42 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
 
 .workspace.is-archive-open > :deep(.widget-host > [data-widget='moments']) {
   align-self: start;
+}
+
+/*
+ * 띠 배치의 "보관함 닫기" (M11-7C UAT) — 재생 띠 위 오른쪽 끝. 자기 줄을 갖는다: 영상 · 조작 · 이 곡의
+ * Moments 를 덮지 않는다. 워크스페이스 위 여백과 줄 간격을 반쯤 빌려 띠가 많이 내려가지 않게 한다.
+ * 터치 목표 44px. 색은 다른 글자 단추(`.pill`)와 같은 토큰.
+ */
+.strip-close {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  margin: calc(clamp(18px, 2.6vw, 36px) * -0.5) 0 calc(clamp(12px, 1.6vw, 20px) * -0.5);
+  padding: 6px 14px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: var(--pill-surface-color);
+  color: var(--pill-text-color);
+  font: 12px var(--font-mono);
+}
+
+.strip-close[hidden] {
+  display: none;
+}
+
+.strip-close-mark {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .strip-close:hover {
+    background: var(--pill-surface-hover-color);
+  }
 }
 
 /*

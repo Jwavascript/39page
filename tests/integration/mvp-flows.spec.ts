@@ -24,6 +24,7 @@ import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
 import { openTrackManage } from '../support/trackManage'
+import { archiveCloseButton } from '../support/archiveClose'
 
 /** `main.ts` 가 하는 기본 플레이리스트 이름. */
 const DEFAULT_PLAYLIST_NAME = 'MY RECORDS'
@@ -88,7 +89,7 @@ async function openDrawer(session: Session) {
 }
 
 async function closeDrawer(session: Session) {
-  await session.wrapper.get('.drawer .close').trigger('click')
+  await archiveCloseButton(session.wrapper).trigger('click')
   await nextTick()
 }
 

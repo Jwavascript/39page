@@ -22,6 +22,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
@@ -464,7 +465,7 @@ describe('F. 안정성 (ADR 0002)', () => {
     const mountHost = wrapper.get('.player-mount').element
 
     for (let round = 0; round < 2; round += 1) {
-      await wrapper.get('.drawer .close').trigger('click')
+      await archiveCloseButton(wrapper).trigger('click')
       await nextTick()
       await wrapper.get('.deck-open--mono-vinyl').trigger('click')
       await nextTick()

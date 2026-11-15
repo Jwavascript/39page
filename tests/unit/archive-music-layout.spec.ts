@@ -347,6 +347,100 @@ describe('C. 작은 영상 띠 (배치 C)', () => {
     expect(s.fake.calls.destroy).toBe(0)
   })
 
+  /* ── 보관함 닫기 자리 (M11-7C UAT) ─────────────────────────────── */
+
+  it('가로 화면(띠)에서는 "보관함 닫기" 가 영상 띠 오른쪽 위에 있고, 탭 줄에는 × 가 없다', async () => {
+    installMatchMedia(false)
+    const s = boot()
+    const button = s.wrapper.get('.strip-close')
+    // 닫혀 있으면 숨어 있다 — 노드는 늘 있다(열고 닫을 때 플레이어 앞에 노드를 넣고 빼지 않는다).
+    expect(button.attributes('hidden')).toBeDefined()
+
+    await openArchive(s)
+    expect(button.attributes('hidden')).toBeUndefined()
+    expect(button.text().replace(/\s+/g, ' ')).toBe('보관함 닫기 ×')
+    expect(button.attributes('aria-label')).toBe('보관함 닫기')
+    expect(button.attributes('aria-controls')).toBe('archive-panel')
+    expect(s.wrapper.find('#archive-panel .archive-head .close').exists()).toBe(false)
+    // 재생 띠(위젯 호스트) 앞, 보관함 밖 — 영상 · 조작 · Moments 위젯 안에 들어가지 않는다.
+    const host = s.wrapper.get('.widget-host').element
+    expect(button.element.nextElementSibling).toBe(host)
+    expect(s.wrapper.get('[data-widget="moments"]').find('.strip-close').exists()).toBe(false)
+  })
+
+  it('띠의 "보관함 닫기" 로 닫으면 플레이어 · 재생은 그대로이고 포커스가 연 단추로 돌아온다', async () => {
+    installMatchMedia(false)
+    const s = boot()
+    await s.wrapper.get('.playlist-play, .now-playlist .track-row').trigger('click')
+    await settle()
+    s.fake.emitReady()
+    s.fake.emitStateChange('playing')
+    await settle()
+    const mountNode = s.wrapper.get('.player-mount').element
+    const opener = s.wrapper.get('.app-nav button').element as HTMLElement
+    opener.focus()
+    await openArchive(s)
+    const calls = JSON.stringify(s.fake.calls)
+
+    await s.wrapper.get('.strip-close').trigger('click')
+    await settle()
+
+    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
+    expect(s.wrapper.get('.strip-close').attributes('hidden')).toBeDefined()
+    expect(s.wrapper.get('.player-mount').element).toBe(mountNode)
+    expect(JSON.stringify(s.fake.calls)).toBe(calls)
+    expect(s.playback.playerState).toBe('playing')
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('Esc 로 닫는 것은 그대로다 (띠 배치)', async () => {
+    installMatchMedia(false)
+    const s = boot()
+    await openArchive(s)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await settle()
+    expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
+  })
+
+  it('세로(쌓기) · 낮은 가로(옆) 배치는 보관함 머리말의 × 를 그대로 쓴다', async () => {
+    installMatchMedia(true)
+    const stack = boot()
+    await openArchive(stack)
+    expect(stack.wrapper.get('.workspace').attributes('data-archive-layout')).toBe('stack')
+    expect(stack.wrapper.get('.strip-close').attributes('hidden')).toBeDefined()
+    const headClose = stack.wrapper.get('#archive-panel .archive-head .close')
+    expect(headClose.attributes('aria-label')).toBe('보관함 닫기')
+    await headClose.trigger('click')
+    await settle()
+    expect(stack.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
+    stack.wrapper.unmount()
+    document.body.innerHTML = ''
+
+    // 낮은 가로 화면 — 옆 배치 질의만 맞는다.
+    installMatchMedia(false)
+    const plain = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      ...plain(query),
+      matches: query.includes('max-height: 560px'),
+    })) as typeof window.matchMedia
+    const side = boot()
+    await openArchive(side)
+    expect(side.wrapper.get('.workspace').attributes('data-archive-layout')).toBe('side')
+    expect(side.wrapper.get('.strip-close').attributes('hidden')).toBeDefined()
+    expect(side.wrapper.find('#archive-panel .archive-head .close').exists()).toBe(true)
+  })
+
+  it('띠의 닫기는 44px 터치 목표 · 글자 단추 토큰 · 자기 줄(오른쪽 끝)', () => {
+    const shell = styleOf('src/components/layout/DashboardShell.vue')
+    const block = /\.strip-close \{[^}]*\}/.exec(shell)?.[0] ?? ''
+    expect(block).toContain('min-height: 44px')
+    expect(block).toContain('min-width: 44px')
+    expect(block).toContain('justify-self: end')
+    expect(block).toContain('var(--pill-border-color)')
+    expect(block).not.toMatch(/position:\s*(absolute|fixed)/)
+    expect(shell).toMatch(/\.strip-close\[hidden\] \{\s*display: none;/)
+  })
+
   it('세로 화면에서는 쌓기 배치다', async () => {
     installMatchMedia(true)
     const s = boot()

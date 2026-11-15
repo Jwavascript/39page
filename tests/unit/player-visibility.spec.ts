@@ -49,6 +49,7 @@ import {
   uninstallPlayerRect,
   VISIBLE_RECT,
 } from '../support/playerLayout'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const VIEWPORT = { width: 1024, height: 768 }
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
@@ -1239,7 +1240,7 @@ describe('D. 드로어 연동', () => {
     expect(document.documentElement.style.overflow).toBe('hidden')
     expect(context.wrapper.get('.workspace').classes()).toContain('is-stacked')
 
-    await context.wrapper.get('.drawer .close').trigger('click')
+    await archiveCloseButton(context.wrapper).trigger('click')
     await flushPromises()
     await nextTick()
 
@@ -1500,7 +1501,7 @@ describe('D. 드로어 연동', () => {
 
     for (let round = 0; round < 3; round += 1) {
       await editorTrigger(context.wrapper).trigger('click')
-      await context.wrapper.get('.drawer .close').trigger('click')
+      await archiveCloseButton(context.wrapper).trigger('click')
     }
 
     expect(context.fake.calls.mount).toBe(1)
@@ -1516,7 +1517,7 @@ describe('D. 드로어 연동', () => {
 
     for (let round = 0; round < 3; round += 1) {
       await editorTrigger(context.wrapper).trigger('click')
-      await context.wrapper.get('.drawer .close').trigger('click')
+      await archiveCloseButton(context.wrapper).trigger('click')
     }
 
     expect(context.fake.calls.load).toEqual([])
