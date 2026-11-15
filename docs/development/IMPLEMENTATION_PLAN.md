@@ -2542,9 +2542,18 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 - 새 런타임 의존성 `fflate@0.8.2` (ADR 0034 검토). 시험 65 파일 · 2,103. 실제 Chrome 세 프로필 7/7
   (`m12-results/real-chrome-transfer-m12-4.json`).
 
-### M12-5
+### M12-5. 최종 통합 검증 — 완료 (2026-11-15)
 
-(이 절에 통합 검증 결과를 덧붙인다.)
+판단 · 점검표: [`M12_RELEASE_READINESS.md`](M12_RELEASE_READINESS.md).
+
+- 웹앱 65 파일 · 2,103, 확장 25 · 408. 실제 Chrome: 배치 36/36 · 그림 7/7 · 백업 · 공유(세 프로필) 7/7 · 마무리 7/7 ·
+  M11-7C 시나리오 27/27. 확장 브리지는 부분(1회차 13/15, 그 뒤 권한 프롬프트 UI 자동화 실패 — 환경).
+- 성능: Moments 5,000 회귀 없음(순서를 바꾼 같은 세션 비교), 연결 120 읽기 ≤ 2 ms, Object URL 누수 0, 30 MB ZIP 187 ms · 힙 최고
+  64 MB, 30 MB 복원 0.45 초. 번들 main JS gzip 61.3 → 88.0 KB.
+- 하네스 정비: M11-7C `real.mjs` 의 보관함 닫기 선택자(1db699e 뒤 숨은 단추를 누름), 확장 `bridge.mjs` 의 옛 대시보드 선택자
+  (`.playlist-play` · `.playlist-tile` — M11-7B 에서 없어짐).
+
+**남긴 TODO**: 실기기(Android · iOS) · 다른 브라우저 왕복 · 사람의 UAT · 브리지 15 단계 수동 · 움직이는 WebP · GIF 래스터 측정.
 
 ---
 

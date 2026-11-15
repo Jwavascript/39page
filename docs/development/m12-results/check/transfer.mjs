@@ -229,7 +229,7 @@ await session(async (t) => {
   const notice = await t.ev(`document.querySelector('.full-result')?.textContent.trim()`)
   record(
     'A: 전체 백업 ZIP 만들기',
-    /\.zip$/.test(fullZip.name) && notice.includes('이미지 2개') && !notice.includes('완료되지'),
+    fullZip.name.endsWith('.zip') && notice.includes('이미지 2개') && !notice.includes('완료되지'),
     { name: fullZip.name, bytes: fullZip.bytes.length, ms, notice },
   )
 

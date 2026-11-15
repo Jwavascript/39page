@@ -179,7 +179,8 @@ try {
   }
   const closeArchive = async () => {
     if ((await appState()).archiveOpen) {
-      await click('[aria-label="보관함 닫기"]')
+      // 보이는 닫기만 — 1db699e(UAT) 부터 띠 배치의 "보관함 닫기" 가 늘 DOM 에 있고 다른 배치에서는 hidden 이다.
+      await click('.strip-close:not([hidden]), #archive-panel .archive-head .close')
       await sleep(500)
     }
   }

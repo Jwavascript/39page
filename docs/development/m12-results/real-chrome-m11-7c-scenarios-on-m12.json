@@ -1,0 +1,607 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "name": "1 Cassette 기본 테마로 실행 (빈 프로필)",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "s": {
+          "theme": "kawaii-synth-cassette",
+          "layout": null,
+          "archiveOpen": false,
+          "nowView": "standby",
+          "nowChip": "재생 대기",
+          "title": "재생할 음악을 선택하세요",
+          "overflowX": 0
+        }
+      }
+    },
+    {
+      "name": "준비 — 목록을 만들고 실제 링크 4개(같은 영상의 다른 트랙 포함) 추가",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "tracks": [
+          {
+            "id": "7e9980d1-406c-44bf-a9c4-c204a6b58961",
+            "v": "M7lc1UVf-VE",
+            "title": "YouTube Developers Live: Embedded Web Player Customization"
+          },
+          {
+            "id": "36c31e7f-dd4d-4285-9e90-b4b429891187",
+            "v": "aqz-KE-bpKQ",
+            "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film"
+          },
+          {
+            "id": "86274ac6-dbca-4cbd-a205-5d74ec440e46",
+            "v": "jNQXAC9IVRw",
+            "title": "Me at the zoo"
+          },
+          {
+            "id": "4e6551f8-32b9-4cf3-a5df-1f56f24f5eb1",
+            "v": "aqz-KE-bpKQ",
+            "title": "Big Buck Bunny (다시)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "2 음악 재생 — NOW PLAYLIST 둘째 줄(Big Buck Bunny)",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "s": {
+          "theme": "kawaii-synth-cassette",
+          "layout": null,
+          "archiveOpen": false,
+          "nowView": "queue",
+          "nowChip": "재생 중",
+          "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "overflowX": 0
+        }
+      }
+    },
+    {
+      "name": "15 대시보드 — 잡기 → 메모 → Moment 저장 (같은 B 흐름) · Enter 저장",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "draftTime": "0:03",
+        "saved1": {
+          "id": "ext-web-17d4d69bad344ba9ac603a4803131d89",
+          "source": "youtube",
+          "videoId": "aqz-KE-bpKQ",
+          "atSeconds": 3,
+          "note": "대시보드에서 잡은 순간",
+          "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "createdAt": "2026-11-15T06:45:02.605Z",
+          "updatedAt": "2026-11-15T06:45:02.605Z"
+        },
+        "count": 2,
+        "feedback": "0:09 Moment 를 저장했어요 — Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+        "rows": ["▶ 0:03", "▶ 0:09"]
+      }
+    },
+    {
+      "name": "안전성 — 저장 중 중복 클릭: 한 번만 저장된다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "before": 2,
+        "after": 3
+      }
+    },
+    {
+      "name": "3 보관함 열기 — 작은 영상 띠, 같은 iframe, 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "s": {
+          "theme": "kawaii-synth-cassette",
+          "layout": "strip",
+          "archiveOpen": true,
+          "nowView": "queue",
+          "nowChip": "재생 중",
+          "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "overflowX": 0
+        },
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 382,
+          "h": 214,
+          "top": 82,
+          "inView": true,
+          "covered": 0
+        },
+        "r": {
+          "a": {
+            "t": 15.330395,
+            "paused": false,
+            "d": 634.601
+          },
+          "b": {
+            "t": 17.837122,
+            "paused": false,
+            "d": 634.601
+          },
+          "advancing": true
+        }
+      }
+    },
+    {
+      "name": "4 영상 띠 Moments — 저장 · 모두 보기 · 관리 단추가 없다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "info": {
+          "readonly": true,
+          "title": "이 곡의 Moments 3개",
+          "capture": false,
+          "all": false,
+          "manage": false
+        }
+      }
+    },
+    {
+      "name": "5 영상 띠에서 여러 시점 확인 · 재생 — 시점 순, 누르면 그 시점부터",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "rows": [
+          {
+            "id": "ext-web-17d4d69bad344ba9ac603a4803131d89",
+            "t": "▶ 0:03"
+          },
+          {
+            "id": "ext-web-44faf954c20b49ad98564bee0e784584",
+            "t": "▶ 0:09"
+          },
+          {
+            "id": "ext-web-1710ce18f55f4473b129243a10365d46",
+            "t": "▶ 0:12"
+          }
+        ],
+        "v": {
+          "t": 5.648849,
+          "paused": false,
+          "d": 634.601
+        },
+        "marker2": "지금 0:05"
+      }
+    },
+    {
+      "name": "6 · 7 Moments 탭 — 이 곡이 맨 앞이고 기본으로 골라져 있다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "chips": [
+          {
+            "text": "이 곡 3",
+            "pressed": "true"
+          },
+          {
+            "text": "전체 3",
+            "pressed": "false"
+          },
+          {
+            "text": "최근",
+            "pressed": "false"
+          }
+        ]
+      }
+    },
+    {
+      "name": "8 이 곡 화면 — 곡명 · 목록 · 묶음 머리를 되풀이하지 않는다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "info": {
+          "song": 0,
+          "lists": 0,
+          "heads": 0,
+          "rows": 3,
+          "count": "이 곡 · Moments 3개",
+          "save": true
+        }
+      }
+    },
+    {
+      "name": "9 · 10 · 11 이 순간 저장 — 시점이 고정되고, 메모를 쓰는 동안 저장되지 않는다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "archiveDraftTime": "0:06",
+        "later": "0:06",
+        "v1": {
+          "t": 7.556141,
+          "paused": false,
+          "d": 634.601
+        },
+        "v2": {
+          "t": 10.562506,
+          "paused": false,
+          "d": 634.601
+        },
+        "stillCount": 3
+      }
+    },
+    {
+      "name": "12 Moment 저장 — 생성 · 강조 · 목록 · 영상 띠 갱신",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "saved": {
+          "id": "ext-web-98f7016a95bc4089b9629d574d793a48",
+          "source": "youtube",
+          "videoId": "aqz-KE-bpKQ",
+          "atSeconds": 6,
+          "note": "보관함에서 쓴 메모",
+          "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "createdAt": "2026-11-15T06:45:22.354Z",
+          "updatedAt": "2026-11-15T06:45:22.354Z"
+        },
+        "ui": {
+          "newRow": "ext-web-98f7016a95bc4089b9629d574d793a48",
+          "badge": "방금 저장",
+          "feedback": "0:06 Moment 를 저장했어요 — Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "stripRows": 4,
+          "chip": "이 곡 4"
+        }
+      }
+    },
+    {
+      "name": "13 저장 취소 — 데이터가 남지 않는다",
+      "pass": true,
+      "detail": {
+        "pass": true
+      }
+    },
+    {
+      "name": "안전성 — 다른 탭이 먼저 저장하면 거절하고 초안 · 메모를 지킨다, 다시 저장하면 둘 다 남는다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "route": "picked-up",
+        "first": {
+          "feedback": "0:13 Moment 를 저장했어요 — Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "form": false,
+          "note": null
+        },
+        "countOther": 5,
+        "final": 6
+      }
+    },
+    {
+      "name": "14 노래가 바뀌어도 초안은 처음 영상 · 시점으로 저장된다",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "stale": "재생 중인 곡이 바뀌었어요. 이 초안은 위에 적힌 곡 · 시점으로 저장돼요. 지금 곡으로 바꾸려면 ↻ 다시 잡기를 누르세요.",
+        "target": "저장 전0:15Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+        "saved": {
+          "id": "ext-web-ca006e9d91fa43deb6165a774f8a7b18",
+          "source": "youtube",
+          "videoId": "aqz-KE-bpKQ",
+          "atSeconds": 15,
+          "note": "곡이 바뀌기 전의 순간",
+          "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "createdAt": "2026-11-15T06:45:29.596Z",
+          "updatedAt": "2026-11-15T06:45:29.596Z"
+        }
+      }
+    },
+    {
+      "name": "16 데스크톱 끌어 놓기 — 손잡이로 첫 곡을 셋째 아래로, 재생은 그대로",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "during": {
+          "dragging": true,
+          "line": true
+        },
+        "after": [
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Me at the zoo",
+          "YouTube Developers Live: Embedded Web Player Customization",
+          "Big Buck Bunny (다시)"
+        ],
+        "status": "“YouTube Developers Live: Embedded Web Player Customization” 을(를) 3번째로 옮겼어요 (4곡 중).",
+        "r": {
+          "a": {
+            "t": 4.132843,
+            "paused": false,
+            "d": 19.021
+          },
+          "b": {
+            "t": 6.637848,
+            "paused": false,
+            "d": 19.021
+          },
+          "advancing": true
+        }
+      }
+    },
+    {
+      "name": "17 키보드 — 손잡이에서 ↑ · Home, 포커스가 그 곡에 남는다 (같은 영상의 다른 트랙)",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "afterUp": [
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Me at the zoo",
+          "Big Buck Bunny (다시)",
+          "YouTube Developers Live: Embedded Web Player Customization"
+        ],
+        "afterHome": [
+          "Big Buck Bunny (다시)",
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Me at the zoo",
+          "YouTube Developers Live: Embedded Web Player Customization"
+        ],
+        "status": "“Big Buck Bunny (다시)” 을(를) 1번째로 옮겼어요 (4곡 중)."
+      }
+    },
+    {
+      "name": "19 순서를 바꾼 뒤 NOW PLAYLIST — 큐는 그대로 · 안내 · 고를 때만 새 순서, 재생 위치 유지",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "notice": "목록이 변경됐어요. 지금은 재생을 시작할 때의 순서로 이어집니다.새 순서로 이어 재생",
+        "queueRows": [
+          "YouTube Developers Live: Embedded Web Player Customization",
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Me at the zoo",
+          "Big Buck Bunny (다시)"
+        ],
+        "newRows": [
+          "Big Buck Bunny (다시)",
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Me at the zoo",
+          "YouTube Developers Live: Embedded Web Player Customization"
+        ],
+        "v1": {
+          "t": 9.166991,
+          "paused": false,
+          "d": 19.021
+        },
+        "v2": {
+          "t": 10.036979,
+          "paused": false,
+          "d": 19.021
+        }
+      }
+    },
+    {
+      "name": "20 보관함 열기 · 닫기와 테마 전환 중 재생 유지 (Mono) — 같은 iframe",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 382,
+          "h": 214,
+          "top": 82,
+          "inView": true,
+          "covered": 0
+        },
+        "s": {
+          "theme": "mono-vinyl",
+          "layout": "strip",
+          "archiveOpen": true,
+          "nowView": "queue",
+          "nowChip": "재생 중",
+          "title": "YouTube Developers Live: Embedded Web Player Customization",
+          "overflowX": 0
+        }
+      }
+    },
+    {
+      "name": "18 모바일(390×844 · 터치) 편집 모드 — 평소엔 손잡이가 없고, 편집에서 손잡이 · ↑ ↓ · 손가락 끌기",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "normal": {
+          "handle": "none",
+          "coarse": true
+        },
+        "edit": {
+          "handle": "block",
+          "hw": 44,
+          "hh": 44,
+          "upH": 44,
+          "play": 0,
+          "pressed": "true"
+        },
+        "afterUp": [
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Big Buck Bunny (다시)",
+          "Me at the zoo",
+          "YouTube Developers Live: Embedded Web Player Customization"
+        ],
+        "afterDrag": [
+          "Me at the zoo",
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Big Buck Bunny (다시)",
+          "YouTube Developers Live: Embedded Web Player Customization"
+        ],
+        "scrollBefore": "153:189",
+        "scrollDuring": "125:189",
+        "r": {
+          "a": {
+            "t": 9.81329,
+            "paused": false,
+            "d": 1343.661
+          },
+          "b": {
+            "t": 12.317972,
+            "paused": false,
+            "d": 1343.661
+          },
+          "advancing": true
+        }
+      }
+    },
+    {
+      "name": "반응형 320 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "stack",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 266,
+          "h": 200,
+          "top": 9,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "name": "반응형 360 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "stack",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 306,
+          "h": 200,
+          "top": 9,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "name": "반응형 390 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "stack",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 336,
+          "h": 200,
+          "top": 9,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "name": "반응형 768 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "stack",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 678,
+          "h": 381,
+          "top": 9,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "name": "반응형 1024 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "strip",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 382,
+          "h": 214,
+          "top": 75,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "name": "반응형 1440 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "strip",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 382,
+          "h": 214,
+          "top": 82,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    },
+    {
+      "name": "반응형 844x390 — 가로 넘침 없음 · 저장 단추 닿음 · 보관함 이 곡 · 재생 계속",
+      "pass": true,
+      "detail": {
+        "pass": true,
+        "dash": {
+          "capture": true,
+          "rows": 0,
+          "innerScroll": null,
+          "expand": false
+        },
+        "layout": "side",
+        "overflowX": 0,
+        "f": {
+          "marker": 0.4102452125118289,
+          "w": 358,
+          "h": 201,
+          "top": 9,
+          "inView": true,
+          "covered": 0
+        }
+      }
+    }
+  ]
+}

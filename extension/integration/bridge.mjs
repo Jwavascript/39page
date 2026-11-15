@@ -60,8 +60,9 @@ try {
     `localStorage.clear(); localStorage.setItem('39page.library', ${JSON.stringify(JSON.stringify(LIBRARY))}); true`,
   )
   await h.cdp.send('Page.reload', {}, dash.session)
-  await waitFor(() => dash.ev(`!!document.querySelector('.playlist-play')`), { label: 'dashboard' })
-  await dash.ev(`document.querySelector('.playlist-play').click(); true`)
+  // M11-7B 부터 대시보드의 재생 입구는 NOW PLAYLIST 의 곡 줄이다 (옛 PLAYLISTS 카드 `.playlist-play` 는 없어졌다).
+  await waitFor(() => dash.ev(`!!document.querySelector('.now-playlist .track-row')`), { label: 'dashboard' })
+  await dash.ev(`document.querySelector('.now-playlist .track-row').click(); true`)
   await waitFor(() => dash.ev(`!!document.querySelector('.player-mount iframe')`), {
     timeout: 30_000,
     label: 'player',
@@ -73,7 +74,8 @@ try {
       selected: lib.data.selectedPlaylistId, lists: lib.data.playlists.map((p) => p.name + ':' + p.tracks.length), moments: m.data.length,
       nowPlaying: document.querySelector('.now-title, .now-playing-title, h2')?.textContent?.trim() ?? null,
       iframe: document.querySelectorAll('.player-mount iframe').length === 1 && document.querySelector('.player-mount iframe').dataset.m115 === 'original',
-      tiles: [...document.querySelectorAll('.playlist-tile .pname, .playlist-tile')].length } })()`)
+      // M11-7B 부터 대시보드에 목록 카드(.playlist-tile)가 없다 — 늘 마운트된 보관함 목록 칸의 개수(화면이 그린 목록 수)를 본다.
+      tiles: Number(document.querySelector('#archive-panel .lists-count')?.textContent ?? 0) } })()`)
   const before = await dashState()
 
   // 확장 페이지 — 서비스 워커에 보낸다 (패널과 같은 길)
@@ -184,7 +186,8 @@ try {
       await sleep(600)
       const after = await dashState()
       const reflected = await dash.ev(
-        `[...document.querySelectorAll('.playlist-tile')].some((t) => t.textContent.includes('즉석 목록'))`,
+        // 늘 마운트된 보관함 목록 칸(M11-7B — 옛 .playlist-tile 대신)에 새 목록이 그려졌는가.
+        `!!document.querySelector('#archive-panel .archive-lists')?.textContent.includes('즉석 목록')`,
       )
       return {
         pass:

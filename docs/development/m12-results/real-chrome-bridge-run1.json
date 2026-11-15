@@ -1,0 +1,341 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "id": "B1",
+      "title": "권한 없음 — 상태 · 쓰기 거절 · offscreen 을 만들지 않는다",
+      "pass": true,
+      "ms": 62,
+      "details": {
+        "pass": true,
+        "state": {
+          "permission": "not-granted",
+          "origins": ["http://127.0.0.1:4173/*"],
+          "origin": "http://127.0.0.1:4173"
+        },
+        "r": {
+          "requestId": "32fd2770-6151-4a22-8060-c065ee7cdf81",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "contexts": []
+      }
+    },
+    {
+      "id": "B2",
+      "title": "실제 권한 프롬프트 — 거부하면 그대로, 허용하면 granted",
+      "pass": true,
+      "ms": 6620,
+      "details": {
+        "pass": true,
+        "denied": {
+          "prompt": "invoked:Deny",
+          "granted": false
+        },
+        "allowed": {
+          "prompt": "invoked:Allow",
+          "granted": true
+        }
+      }
+    },
+    {
+      "id": "B3",
+      "title": "부여 직후 — 목록이 대시보드 저장소와 같다 (분할되지 않음) · offscreen 하나",
+      "pass": true,
+      "ms": 60,
+      "details": {
+        "pass": true,
+        "names": ["MINE", "드라이브"],
+        "contexts": ["/src/offscreen/index.html?gen=1"]
+      }
+    },
+    {
+      "id": "B4",
+      "title": "담기 · 새 목록 + 담기 · Moment — 확인된 저장, 대시보드 선택 · 큐 · iframe 그대로",
+      "pass": false,
+      "ms": 625,
+      "details": {
+        "pass": false,
+        "add": {
+          "playlistId": "drive",
+          "playlistName": "드라이브",
+          "trackId": "ext-8096d3cb-1b16-4e5e-b054-39da38d514f1",
+          "position": 1,
+          "existed": false,
+          "verified": true
+        },
+        "created": {
+          "playlistId": "ext-0604658d-f4bf-4364-bcd3-db5d18919341-list",
+          "playlistName": "즉석 목록",
+          "trackId": "ext-0604658d-f4bf-4364-bcd3-db5d18919341",
+          "position": 1,
+          "created": true,
+          "existed": false,
+          "verified": true
+        },
+        "moment": {
+          "momentId": "ext-4a6029c8-a388-4057-8316-011711a1ee6a",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 43,
+          "noteSaved": true,
+          "existed": false,
+          "verified": true
+        },
+        "before": {
+          "selected": "mine",
+          "lists": ["MINE:1", "드라이브:0"],
+          "moments": 0,
+          "nowPlaying": "YouTube Developers Live",
+          "iframe": true,
+          "tiles": 0
+        },
+        "after": {
+          "selected": "mine",
+          "lists": ["MINE:1", "드라이브:1", "즉석 목록:1"],
+          "moments": 1,
+          "nowPlaying": "YouTube Developers Live",
+          "iframe": true,
+          "tiles": 0
+        },
+        "dashboardSawNewList": false
+      }
+    },
+    {
+      "id": "B5",
+      "title": "같은 요청 ID 를 다시 보내면 — 저장하지 않고 existed",
+      "pass": true,
+      "ms": 19,
+      "details": {
+        "pass": true,
+        "first": {
+          "momentId": "ext-4574831a-a4d8-4896-856e-661c9cd5f1eb",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 90,
+          "noteSaved": true,
+          "existed": false,
+          "verified": true
+        },
+        "second": {
+          "momentId": "ext-4574831a-a4d8-4896-856e-661c9cd5f1eb",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 90,
+          "noteSaved": true,
+          "existed": false,
+          "verified": true
+        },
+        "count": 1
+      }
+    },
+    {
+      "id": "B6",
+      "title": "같은 영상이 이미 있으면 묻는다 — allowDuplicate 일 때만 한 번 더",
+      "pass": true,
+      "ms": 5,
+      "details": {
+        "pass": true,
+        "refused": {
+          "code": "already-in-playlist",
+          "retryable": false,
+          "detail": {
+            "positions": [1],
+            "playlistName": "MINE"
+          }
+        },
+        "again": {
+          "playlistId": "mine",
+          "playlistName": "MINE",
+          "trackId": "ext-75c57369-b409-40b3-9db1-367089722a65",
+          "position": 2,
+          "existed": false,
+          "verified": true
+        }
+      }
+    },
+    {
+      "id": "B7a",
+      "title": "응답 유실 — 처리 중 서비스 워커 강제 종료(Target.closeTarget) → 확인 · 같은 ID 재시도 → 1건",
+      "pass": true,
+      "ms": 2753,
+      "details": {
+        "pass": true,
+        "killed": "Target.closeTarget(service_worker)",
+        "first": {
+          "requestId": "879d03c0-2b82-43b9-b126-13aa72b161c1",
+          "sendError": "A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received"
+        },
+        "status": {
+          "state": "saved",
+          "momentId": "ext-879d03c0-2b82-43b9-b126-13aa72b161c1",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 120,
+          "noteSaved": true
+        },
+        "retry": {
+          "momentId": "ext-879d03c0-2b82-43b9-b126-13aa72b161c1",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 120,
+          "noteSaved": true,
+          "existed": true,
+          "verified": true
+        },
+        "count": 1
+      }
+    },
+    {
+      "id": "B7b",
+      "title": "응답 유실 — 처리 중 offscreen 문서 종료 → uncertain → 확인 · 같은 ID 재시도 → 1건",
+      "pass": true,
+      "ms": 2759,
+      "details": {
+        "pass": true,
+        "killed": "Target.closeTarget(background_page)",
+        "first": {
+          "requestId": "76fa9e1f-3452-49ef-948c-d88d1fce20b2",
+          "outcome": "uncertain",
+          "reason": "disconnected"
+        },
+        "status": {
+          "state": "not-found"
+        },
+        "retry": {
+          "momentId": "ext-76fa9e1f-3452-49ef-948c-d88d1fce20b2",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 120,
+          "noteSaved": true,
+          "existed": false,
+          "verified": true
+        },
+        "count": 1
+      }
+    },
+    {
+      "id": "B8",
+      "title": "철회(API) — onRemoved 가 offscreen 을 닫고, 쓰기는 거절 · 저장소 그대로",
+      "pass": true,
+      "ms": 15,
+      "details": {
+        "pass": true,
+        "r": {
+          "requestId": "9d9cff90-2fbf-49e5-983a-f936ee94511c",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "closed": true,
+        "unchanged": true
+      }
+    },
+    {
+      "id": "B9",
+      "title": "다시 허용 — 프롬프트 없이 부여되고 새 브리지로 저장",
+      "pass": true,
+      "ms": 6615,
+      "details": {
+        "pass": true,
+        "regrant": {
+          "prompt": "no-prompt",
+          "granted": true
+        },
+        "r": {
+          "momentId": "ext-25a97ed2-6272-4dbe-ae1f-4b6927b8658d",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 150,
+          "noteSaved": true,
+          "existed": false,
+          "verified": true
+        },
+        "contexts": ["/src/offscreen/index.html?gen=2"]
+      }
+    },
+    {
+      "id": "B10",
+      "title": "서비스 워커가 멈춘 동안 사이트 액세스에서 철회 — 깨어나 닫는가 · 다음 쓰기 거절",
+      "pass": true,
+      "ms": 2811,
+      "details": {
+        "pass": true,
+        "removed": "ok",
+        "contextsBefore": ["/src/offscreen/index.html?gen=2"],
+        "workerWokeOnRemoved": true,
+        "offscreenAfterRevoke": [],
+        "r": {
+          "requestId": "2ccee335-43e1-447b-9f15-98fb5b131bc0",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "offscreenAfterNextCall": []
+      }
+    },
+    {
+      "id": "B11",
+      "title": "다른 39page 탭과 같은 순간 저장 — 대시보드가 목록을 만들 때 브리지가 담기, 조용한 손실 0",
+      "pass": false,
+      "ms": 39580,
+      "details": {
+        "pass": false,
+        "regrant": {
+          "prompt": "invoked:Allow",
+          "granted": true
+        },
+        "rounds": 15,
+        "okCount": 12,
+        "saved": {
+          "bridge": 12,
+          "dash": 15
+        },
+        "selectedName": "dash-1794724363725-14",
+        "nonOk": ["conflict", "conflict", "conflict"]
+      }
+    },
+    {
+      "id": "B12",
+      "title": "보호 상태 — 손상된 Moments 에는 쓰지 않고 원본 그대로",
+      "pass": true,
+      "ms": 15,
+      "details": {
+        "pass": true,
+        "r": {
+          "code": "blocked",
+          "retryable": false,
+          "detail": {
+            "store": "moments",
+            "status": "protected",
+            "protectedReason": "malformed"
+          }
+        }
+      }
+    },
+    {
+      "id": "B13",
+      "title": "쓰기와 철회가 겹침 — 성공이라 했으면 저장돼 있고, 모르면 uncertain · 재허용 뒤 확인하면 일치",
+      "pass": true,
+      "ms": 6531,
+      "details": {
+        "pass": true,
+        "first": {
+          "requestId": "de9cbe9b-9db6-4441-993f-f1951ecc8acf",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "regrant": {
+          "prompt": "no-prompt",
+          "granted": true
+        },
+        "status": {
+          "state": "not-found"
+        },
+        "count": 0
+      }
+    },
+    {
+      "id": "B14",
+      "title": "대시보드 — 재생 중인 곡 · 플레이어 iframe 이 처음 그대로 (선택 목록은 B4 · B11 에서 확인)",
+      "pass": true,
+      "ms": 1,
+      "details": {
+        "pass": true,
+        "nowPlaying": "YouTube Developers Live",
+        "iframe": true
+      }
+    }
+  ]
+}

@@ -289,18 +289,18 @@ Moments, 작은 터치 영역, 담을 때마다 열리는 새 탭 — 를 고친
 
 설계: [`M11_UX_DESIGN.md`](M11_UX_DESIGN.md) · [`../architecture/M11_BRIDGE_POC.md`](../architecture/M11_BRIDGE_POC.md).
 
-### M12 — Custom Artwork & Now Playing UX (진행 중 — 로컬 브랜치 `m12-custom-artwork`)
+### M12 — Custom Artwork & Now Playing UX (완료 — 로컬 브랜치 `m12-custom-artwork`, 배포 없음)
 
 원래의 M12(도트 마스코트 상세 · 애니메이션)를 사용자 지시로 **곡별 Custom Artwork** 로 다시 정의했다 (2026-11-15). 마스코트
 패널은 영상 아래 Now Playing 카드(그림 · 제목 · 조작)가 된다. 라이브러리 · Moments 저장 형식은 바꾸지 않는다.
 
-| 단계  | 상태                                                                                              |
-| ----- | ------------------------------------------------------------------------------------------------- |
-| M12-1 | ✔ 설계 — UX · 데이터 모델 · IndexedDB · ZIP 백업 · 공유 패키지 (ADR 0032 · 0033 · 0034)           |
-| M12-2 | Now Playing 레이아웃 — 마스코트 → 카드, 영상 위 제목 · 조작 이동, 썸네일 · 기본 그림만            |
-| M12-3 | Artwork 데이터 · 올리기 — IndexedDB · 검증 · 곡별 설정 · 탭 간 · 용량 (ZIP 백업 전에는 출시 불가) |
-| M12-4 | 자산 포함 ZIP 전체 백업 · 복원 · 단일 곡 / 목록 공유 패키지                                       |
-| M12-5 | 최종 통합 검증 — 실제 Chrome · 두 프로필 복원 · 성능 · M11-7D 점검표 갱신                         |
+| 단계  | 상태                                                                                                        |
+| ----- | ----------------------------------------------------------------------------------------------------------- |
+| M12-1 | ✔ 설계 — UX · 데이터 모델 · IndexedDB · ZIP 백업 · 공유 패키지 (ADR 0032 · 0033 · 0034)                     |
+| M12-2 | ✔ Now Playing 레이아웃 — 마스코트 → 영상 아래 카드(플레이어 위젯 안), 썸네일 · 기본 그림. 실제 Chrome 36/36 |
+| M12-3 | ✔ Artwork 데이터 · 올리기 — IndexedDB · 검증 · 곡별 설정 · 탭 간 · 용량. 실제 Chrome 7/7                    |
+| M12-4 | ✔ 자산 포함 ZIP 전체 백업 · 복원 · 단일 곡 / 목록 공유 패키지. 세 프로필 실제 왕복 7/7                      |
+| M12-5 | ✔ 통합 검증 · 출시 판단 — 모두 CONDITIONAL (실기기 · UAT 남음, `M12_RELEASE_READINESS.md`)                  |
 
 설계: [`M12_CUSTOM_ARTWORK.md`](M12_CUSTOM_ARTWORK.md) · [`../architecture/ARTWORK_DESIGN.md`](../architecture/ARTWORK_DESIGN.md).
 계정 · 커뮤니티 · 공개 링크 공유 · 클라우드 동기화는 장래 기능이다 (M12 는 안정 식별자와 파일 패키지만 준비한다).
