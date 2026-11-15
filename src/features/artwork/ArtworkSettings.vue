@@ -26,9 +26,8 @@ import { DEFAULT_ARTWORK_DISPLAY, type ArtworkDisplay, type TrackKey } from '@/s
 import { ARTWORK_FAILURE_MESSAGE, useArtworkStore, type StorageEstimate } from '@/stores/artwork'
 import { useLibraryStore } from '@/stores/library'
 
-import ArtworkPreview from './ArtworkPreview.vue'
+import ArtworkEditorPreview from '@/features/artwork/ArtworkEditorPreview.vue'
 import ArtworkDisplayControls from './ArtworkDisplayControls.vue'
-import { useArtworkDisplayDrag } from './useArtworkDisplayDrag'
 import {
   ARTWORK_IMAGE_TOOLS,
   ARTWORK_LIMITS,
@@ -37,7 +36,7 @@ import {
   validateArtwork,
   type ValidatedArtwork,
 } from './imageValidation'
-import { useObjectUrls, useTrackArtwork } from './useTrackArtwork'
+import { useObjectUrls, useTrackArtwork, type TrackArtworkView } from './useTrackArtwork'
 
 const props = withDefaults(
   defineProps<{ playlistId: string; trackId: string; active?: boolean }>(),
@@ -57,7 +56,7 @@ const track = computed(
 )
 const videoId = computed(() => track.value?.videoId ?? null)
 
-/** 지금 저장된 그림 (미리보기 왼쪽). */
+/** 비교 버튼이 보여 줄 현재 저장된 그림. */
 const { view: current } = useTrackArtwork(
   computed(() => key.value),
   urls,
@@ -77,7 +76,20 @@ const displayChanged = computed(
   () => JSON.stringify(display.value) !== JSON.stringify(savedDisplay.value),
 )
 const dimensions = computed(() => pending.value ?? store.assetFor(current.value.assetId ?? ''))
-const drag = useArtworkDisplayDrag(display, dimensions)
+const draftArtwork = computed<TrackArtworkView>(() => {
+  const sameAsset = pending.value?.id === current.value.assetId
+  return {
+    mode: choice.value,
+    src:
+      choice.value === 'custom'
+        ? ((sameAsset ? current.value.src : pendingUrl.value) ?? current.value.src)
+        : null,
+    posterSrc:
+      pendingUrl.value !== null && !sameAsset ? pendingPosterUrl.value : current.value.posterSrc,
+    animated: choice.value === 'custom' && (pending.value?.animated ?? current.value.animated),
+    assetId: pending.value?.id ?? current.value.assetId,
+  }
+})
 let fileSequence = 0
 const hasUnsavedInput = computed(
   () => pending.value !== null || checking.value || displayChanged.value,
@@ -258,44 +270,17 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
       </p>
 
       <div class="settings-workspace">
-        <div class="settings-previews">
-          <figure class="preview">
-            <div class="preview-art">
-              <ArtworkPreview
-                :video-id="videoId"
-                :mode="current.mode"
-                :src="current.src"
-                :poster-src="current.posterSrc"
-                :animated="current.animated"
-                :display="savedDisplay"
-                :active="active"
-              />
-            </div>
-            <figcaption>지금: {{ currentLabel }}</figcaption>
-          </figure>
-          <figure class="preview preview--draft">
-            <div
-              class="preview-art"
-              :class="{ 'preview-art--adjustable': choice === 'custom' }"
-              @pointerdown="choice === 'custom' && !saving && drag.down($event)"
-              @pointermove="drag.move"
-              @pointerup="drag.end"
-              @pointercancel="drag.end"
-              @lostpointercapture="drag.end"
-            >
-              <ArtworkPreview
-                :video-id="videoId"
-                :mode="choice"
-                :src="choice === 'custom' ? (pendingUrl ?? current.src) : null"
-                :poster-src="pendingUrl !== null ? pendingPosterUrl : current.posterSrc"
-                :animated="choice === 'custom' && (pending?.animated ?? current.animated)"
-                :display="display"
-                :active="active"
-              />
-            </div>
-            <figcaption>저장 전 미리보기 {{ pendingInfo }}</figcaption>
-          </figure>
-        </div>
+        <ArtworkEditorPreview
+          v-model="display"
+          :video-id="videoId"
+          :saved="current"
+          :draft="draftArtwork"
+          :saved-display="savedDisplay"
+          :saved-label="currentLabel"
+          :dimensions="dimensions"
+          :active="active"
+          :disabled="saving || checking || unavailable"
+        />
 
         <div class="settings-tools">
           <ArtworkDisplayControls
@@ -331,6 +316,7 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
               <span class="file-hint"
                 >PNG · JPEG · WebP {{ stillLimit }}, GIF {{ gifLimit }} 까지</span
               >
+              <span v-if="pendingInfo" class="file-hint">{{ pendingInfo }}</span>
               <input
                 ref="fileInput"
                 class="sr-only"
@@ -452,49 +438,6 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   font: 12px/1.5 var(--font-mono);
 }
 
-.settings-previews {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding-bottom: 8px;
-  background: var(--drawer-surface-color);
-}
-
-.preview {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 0;
-  flex-direction: column;
-  margin: 0;
-  gap: 6px;
-}
-
-.preview-art {
-  width: var(--preview-size);
-  height: var(--preview-size);
-  flex: none;
-  aspect-ratio: 1;
-  border: 1px solid var(--artwork-frame-border-color);
-  background: var(--artwork-frame-surface-color);
-  overflow: hidden;
-}
-
-.preview-art--adjustable {
-  touch-action: none;
-  cursor: grab;
-}
-.preview--draft .preview-art {
-  border-style: dashed;
-}
-
-.preview figcaption {
-  font: 11px/1.4 var(--font-mono);
-  overflow-wrap: anywhere;
-}
-
 .settings-choices {
   display: flex;
   flex-direction: column;
@@ -577,11 +520,8 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
     gap: 20px;
   }
-  .settings-previews {
-    flex-direction: column;
-  }
   .settings-scroll {
-    --preview-size: clamp(96px, 30cqh, 160px);
+    --preview-size: clamp(144px, 46cqh, 280px);
     scroll-padding-block-start: 12px;
   }
 }

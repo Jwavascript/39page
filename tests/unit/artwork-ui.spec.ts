@@ -174,7 +174,7 @@ describe('B. 저장', () => {
     await openSettingsFromManage(ctx, 'One')
 
     await pickFile(ctx, fileOf(pngBytes(1), 'cover.png'))
-    expect(ctx.wrapper.findAll('.artwork-settings .preview')).toHaveLength(2)
+    expect(ctx.wrapper.findAll('.artwork-settings .preview')).toHaveLength(1)
     expect(ctx.wrapper.get('.artwork-settings').text()).toContain('320×320')
     expect(ctx.store.preferenceFor(ctx.keyOne)).toEqual({ mode: 'auto' })
     expect(cardSource(ctx)).not.toBe('custom')
@@ -324,6 +324,69 @@ describe('E. Object URL 수명', () => {
 })
 
 describe('M12-6A — 편집 세션과 미리보기', () => {
+  it('변경 전 비교는 draft·저장값·GIF 노드와 멈춤 선택을 유지하고 조절 재개 시 편집 결과로 돌아온다', async () => {
+    const ctx = await setup()
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(gifBytes(2), 'compare.gif'))
+    await save(ctx)
+    await ctx.wrapper.get('.preview--draft .artwork-preview button').trigger('click')
+    await ctx.wrapper.get('[aria-label="확대율"]').setValue('2')
+    const image = () => ctx.wrapper.get('.preview--draft .artwork-image__custom')
+    const node = image().element
+    const src = image().attributes('src')
+    await ctx.wrapper.get('.compare-button').trigger('click')
+    expect(ctx.wrapper.get('.preview-label').text()).toBe('현재 저장된 이미지')
+    expect(image().attributes('style')).toContain('scale(1)')
+    expect((ctx.wrapper.get('[aria-label="확대율"]').element as HTMLInputElement).value).toBe('2')
+    expect(ctx.store.displayFor(ctx.keyOne).zoom).toBe(1)
+    expect(image().element).toBe(node)
+    expect(image().attributes('src')).toBe(src)
+    expect(ctx.wrapper.get('.artwork-preview button').attributes('aria-pressed')).toBe('true')
+    await ctx.wrapper.get('.compare-button').trigger('click')
+    expect(ctx.wrapper.get('.preview-label').text()).toBe('저장 전 미리보기')
+    expect(image().attributes('style')).toContain('scale(2)')
+    await ctx.wrapper.get('.compare-button').trigger('click')
+    await ctx.wrapper.get('[aria-label="가로 위치"]').setValue('20')
+    expect(ctx.wrapper.get('.compare-button').attributes('aria-pressed')).toBe('false')
+    expect(image().attributes('style')).toContain('20% 50%')
+    ctx.wrapper.unmount()
+    expect(urls.live.size).toBe(0)
+  })
+
+  it('미리보기 끌기는 슬라이더와 같은 draft를 바꾸며 저장 실패 뒤에도 그 값이 남는다', async () => {
+    const ctx = await setup()
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(pngBytes(1), 'drag.png'))
+    await save(ctx)
+    await ctx.wrapper.get('[aria-label="확대율"]').setValue('2')
+    const box = ctx.wrapper.get('.preview-art')
+    box.element.getBoundingClientRect = () => ({ width: 160, height: 160 }) as DOMRect
+    const pointer = async (type: string, clientX: number) => {
+      const event = new MouseEvent(type, { bubbles: true, button: 0, clientX, clientY: 0 })
+      Object.defineProperty(event, 'pointerId', { value: 1 })
+      box.element.dispatchEvent(event)
+      await nextTick()
+    }
+    await pointer('pointerdown', 0)
+    await pointer('pointermove', 40)
+    await pointer('pointerup', 40)
+    expect((ctx.wrapper.get('[aria-label="가로 위치"]').element as HTMLInputElement).value).toBe(
+      '25',
+    )
+    expect(ctx.wrapper.get('.preview-art img').attributes('style')).toContain('25% 50%')
+    const write = vi
+      .spyOn(ctx.store, 'setDisplay')
+      .mockResolvedValueOnce({ ok: false, reason: 'quota' })
+    await save(ctx)
+    expect(status(ctx).text()).toContain('저장 공간')
+    expect(ctx.store.displayFor(ctx.keyOne).zoom).toBe(1)
+    expect((ctx.wrapper.get('[aria-label="확대율"]').element as HTMLInputElement).value).toBe('2')
+    expect((ctx.wrapper.get('[aria-label="가로 위치"]').element as HTMLInputElement).value).toBe(
+      '25',
+    )
+    write.mockRestore()
+    ctx.wrapper.unmount()
+  })
   it('편집 도구와 미리보기는 같은 본문에서 스크롤하고 작업 단추는 본문 밖에 유지한다', async () => {
     const ctx = await setup()
     await openSettingsFromManage(ctx, 'One')
@@ -438,10 +501,10 @@ describe('M12-6A — 편집 세션과 미리보기', () => {
     await pickFile(ctx, fileOf(gifBytes(2), 'motion.gif'))
     const image = () => ctx.wrapper.get('.preview--draft .artwork-image__custom').attributes('src')
     const poster = image()
-    await ctx.wrapper.get('.preview--draft button').trigger('click')
+    await ctx.wrapper.get('.preview--draft .artwork-preview button').trigger('click')
     expect(image()).not.toBe(poster)
     await ctx.wrapper.get('[aria-label="확대율"]').setValue('2')
-    await ctx.wrapper.get('.preview--draft button').trigger('click')
+    await ctx.wrapper.get('.preview--draft .artwork-preview button').trigger('click')
     expect(image()).toBe(poster)
     ctx.wrapper.unmount()
     expect(urls.live.size).toBe(0)
