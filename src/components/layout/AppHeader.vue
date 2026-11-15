@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * 제품 헤더 — 최소 구현.
+ * 제품 헤더 — 메뉴와 접기/펼치기 표현.
  *
- * 왼쪽에 브랜드, 오른쪽에 액션을 둔다. 현재 액션은 테마 전환뿐이다.
- * M1-4의 `DashboardShell`이 이 컴포넌트를 그대로 재사용하고,
- * 라이브러리·링크 추가 버튼은 `actions` 슬롯으로 더한다.
+ * 왼쪽에 브랜드, 오른쪽에 전역 메뉴·테마·접기 버튼을 둔다.
+ * DashboardShell이 화면 상태를 소유하며 전역 메뉴는 actions 슬롯으로 전달한다.
+ * 접어도 메뉴와 테마 컴포넌트를 마운트한 채 hidden으로 숨긴다.
  *
  * 레퍼런스의 `.demo-top`(프로토타입 상단 바)과 가로·세로 보기 버튼은
  * 제품 UI가 아니므로 옮기지 않는다 (`design/references/README.md`).
@@ -17,30 +17,73 @@
  */
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 
-defineProps<{ brand: string }>()
+withDefaults(defineProps<{ brand: string; expanded?: boolean }>(), { expanded: true })
+const emit = defineEmits<{ toggle: [] }>()
 </script>
 
 <template>
-  <header class="app-header">
-    <h1 class="brand">{{ brand }}</h1>
-    <div class="actions">
-      <!-- M1-4에서 라이브러리·링크 추가 버튼이 이 앞에 들어온다. -->
-      <slot name="actions" />
-      <ThemeSwitcher />
+  <header class="app-header" :class="{ 'is-collapsed': !expanded }" :aria-label="brand">
+    <div id="dashboard-header-content" class="header-content" :hidden="!expanded">
+      <h1 class="brand">{{ brand }}</h1>
+      <div class="actions">
+        <!-- M1-4에서 라이브러리·링크 추가 버튼이 이 앞에 들어온다. -->
+        <slot name="actions" />
+        <ThemeSwitcher />
+      </div>
     </div>
+    <button
+      type="button"
+      class="header-toggle"
+      :aria-expanded="expanded"
+      aria-controls="dashboard-header-content"
+      :aria-label="expanded ? '헤더 접기' : '헤더 펼치기'"
+      :title="expanded ? '상단 메뉴를 접어 감상 공간 넓히기' : '보관함 · 데이터 · 테마 메뉴 펼치기'"
+      @click="emit('toggle')"
+    >
+      <span aria-hidden="true">{{ expanded ? '⌃' : '⌄' }}</span>
+      {{ expanded ? '헤더 접기' : '헤더 펼치기' }}
+    </button>
   </header>
 </template>
 
 <style scoped>
 /* 승인된 디자인의 .header / .brand 값을 따른다. */
 .app-header {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
   justify-content: space-between;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--header-border-color);
+}
+
+.header-content {
+  display: contents;
+}
+.header-content[hidden] {
+  display: none;
+}
+.header-toggle {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: var(--pill-surface-color);
+  color: var(--pill-text-color);
+  font: 11px var(--font-mono);
+  white-space: nowrap;
+}
+.app-header.is-collapsed {
+  padding-bottom: 0;
+  border-bottom: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.is-collapsed .header-toggle {
+  grid-column: 2;
 }
 
 /*
@@ -67,8 +110,17 @@ defineProps<{ brand: string }>()
 
 @media (max-width: 650px) {
   .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .header-toggle {
+    grid-column: 2;
+  }
+  .actions {
+    grid-row: 2;
+    grid-column: 1 / -1;
   }
 
   .brand {

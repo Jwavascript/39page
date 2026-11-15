@@ -50,6 +50,7 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppNav from '@/components/layout/AppNav.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
+import { useHeaderCollapse } from '@/components/layout/useHeaderCollapse'
 import ArchivePanel from '@/features/archive/ArchivePanel.vue'
 import {
   ARCHIVE,
@@ -95,6 +96,14 @@ const sheetLeft = ref<number | null>(null)
 const archiveHeight = ref<number | null>(null)
 
 const workspace = ref<HTMLElement | null>(null)
+const shell = ref<HTMLElement | null>(null)
+const header = useHeaderCollapse(shell, () => {
+  if (isArchiveOpen.value) {
+    if (layoutMode.value === 'strip') fitStrip(false)
+    else measureSheet()
+  }
+  reportObstruction()
+})
 
 /** 닫을 때 포커스를 되돌릴 버튼. */
 let archiveTrigger: HTMLElement | null = null
@@ -469,8 +478,17 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
 </script>
 
 <template>
-  <div class="dashboard-shell">
-    <AppHeader :brand="brand" :inert="behindDialog">
+  <div
+    ref="shell"
+    class="dashboard-shell"
+    :class="{ 'is-header-collapsed': !header.expanded.value }"
+  >
+    <AppHeader
+      :brand="brand"
+      :expanded="header.expanded.value"
+      :inert="behindDialog"
+      @toggle="header.toggle"
+    >
       <template #actions>
         <AppNav
           :archive-id="ARCHIVE_ID"
@@ -550,6 +568,13 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
   max-width: var(--size-shell-max-width);
   margin: auto;
   padding: 22px clamp(12px, 3vw, 46px) 44px;
+}
+
+.dashboard-shell.is-header-collapsed {
+  padding-top: 8px;
+}
+.is-header-collapsed .workspace {
+  margin-top: 8px;
 }
 
 /* 승인된 디자인의 .workspace 값을 따른다. 복합 배경을 그대로 쓴다. */

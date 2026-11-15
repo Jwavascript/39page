@@ -66,3 +66,4 @@
 "선행 결정 사항" 표를 참조한다.
 
 - [0035](0035-m12-6-edit-sessions-and-artwork-display.md): M12-6 편집 세션·제목 제출·카세트 레이블·비파괴 구도·ZIP/공유 v2 (채택).
+- [0036](0036-collapsible-dashboard-header.md): 페이지 메모리의 헤더 접기·펼치기, 스크롤·포커스 유지, F11 독립 (채택).

@@ -313,6 +313,12 @@ Moments, 작은 터치 영역, 담을 때마다 열리는 새 탭 — 를 고친
 - 관리 메뉴 공유 진입·통합 회귀. 검증과 출시 조건은 [보고서](../development/M12_6_UX_POLISH_REPORT.md).
 - TODO: 실기기·사람 UAT. 화면 공간 재조정·몰입 모드·Moments 이동은 별도 후속 작업.
 
+### M12-6 후속 — 헤더 접기·펼치기
+
+사용자 선택으로 헤더를 숨기고 감상 공간을 확보한다. 페이지 안에서만 상태를 유지하며 F11과 독립적이다.
+대시보드·Artwork Editor·저장 계약은 유지한다. 구현·검증: [헤더 패치 보고서](../development/HEADER_COLLAPSE_REPORT.md).
+TODO: 사용자 UAT·실기기·실제 F11 키 확인.
+
 ## 범위 외
 
 ### MVP 제외 (`MVP_SPEC.md` §3)

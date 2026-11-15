@@ -2566,6 +2566,12 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 - 구체적 명령·실측·변경 파일·미검증 범위: [M12-6 보고서](M12_6_UX_POLISH_REPORT.md).
 - TODO: 화면 공간 재조정·몰입 모드·Moments 이동, 사람 UAT·실기기. 배포·push·main 통합은 하지 않는다.
 
+### M12-6 후속. 헤더 접기·펼치기
+
+`m12-6-artwork-editor-ux`의 `f2b290f` 위에서 독립 패치로 구현한다. 메모리 UI 상태·접기/펼치기 접근성·공간 확보·스크롤 보정을
+추가하고 대시보드 배치·플레이어·Artwork Editor·저장 포맷은 유지한다.
+명령·Chrome 실측·미검증 항목은 [헤더 패치 보고서](HEADER_COLLAPSE_REPORT.md), 결정은 ADR 0036 참조.
+
 ## 선행 결정 사항
 
 해당 단계 전에 확정해야 한다. 중요한 결정은 `docs/decisions/`에 기록한다.

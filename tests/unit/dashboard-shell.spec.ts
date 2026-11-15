@@ -60,13 +60,13 @@ describe('1. DashboardShell 렌더링', () => {
     }
   })
 
-  it('헤더의 버튼은 전역 입구 둘과 테마 전환 둘이다 — 모두 동작한다 (M11-7B · H1)', async () => {
+  it('헤더의 전역 입구·테마 전환·접기 버튼이 모두 동작한다', async () => {
     const wrapper = mountApp()
     const header = wrapper.findComponent(AppHeader)
 
     // M11-7B: 음악 · Moments 입구를 "보관함" 하나로 합쳤다 (ADR 0030). 링크 추가는 보관함 안에 있다.
     const buttons = header.findAll('button')
-    expect(buttons).toHaveLength(4)
+    expect(buttons).toHaveLength(5)
     const nav = header.findAll('.app-nav button')
     expect(nav.map((button) => button.text())).toEqual(['▤ 보관함', '⇩ 데이터 · 백업'])
     expect(header.text()).not.toContain('링크 추가')
