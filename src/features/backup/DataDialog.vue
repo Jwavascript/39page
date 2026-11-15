@@ -15,7 +15,9 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 
+import ArtworkStoragePanel from '@/features/artwork/ArtworkStoragePanel.vue'
 import BackupPanel from '@/features/backup/BackupPanel.vue'
+import SharePanel from '@/features/backup/SharePanel.vue'
 import { useLibraryStore, type LibraryStatus } from '@/stores/library'
 import { useMomentsStore, type MomentsStatus } from '@/stores/moments'
 
@@ -101,8 +103,9 @@ watch(
       </div>
 
       <p id="data-dialog-scope" class="scope">
-        JSON 백업 파일에는 이 브라우저의 39page 데이터가 <strong>모두</strong> 들어가요 —
-        플레이리스트와 곡, Moments, 테마.
+        <strong>전체 백업(ZIP)</strong>에는 이 브라우저의 39page 데이터가
+        <strong>모두</strong> 들어가요 — 플레이리스트와 곡, Moments, 테마, 앨범아트. JSON 백업에는
+        앨범아트가 빠져요.
       </p>
 
       <dl class="status-list">
@@ -113,6 +116,10 @@ watch(
       </dl>
 
       <BackupPanel />
+
+      <ArtworkStoragePanel />
+
+      <SharePanel />
 
       <ul class="help">
         <li>

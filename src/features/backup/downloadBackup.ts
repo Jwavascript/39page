@@ -136,6 +136,46 @@ export function downloadText(
 }
 
 /**
+ * 바이트를 파일로 내려받는다 (M12-4 — ZIP 전체 백업 · 공유 패키지). `downloadText` 와 같은 방식이다.
+ */
+export function downloadBytes(
+  bytes: Uint8Array,
+  fileName: string,
+  type = 'application/zip',
+): DownloadResult {
+  if (typeof URL.createObjectURL !== 'function' || typeof Blob !== 'function') {
+    return { ok: false, reason: 'unsupported' }
+  }
+  let url: string | null = null
+  try {
+    const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type })
+    url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = fileName
+    anchor.rel = 'noopener'
+    anchor.style.display = 'none'
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    const revoke = url
+    setTimeout(() => {
+      URL.revokeObjectURL(revoke)
+    }, 0)
+    url = null
+    return { ok: true, fileName, bytes: blob.size }
+  } catch (error) {
+    if (url !== null) URL.revokeObjectURL(url)
+    return { ok: false, reason: 'unknown', error }
+  }
+}
+
+/** 전체 백업 ZIP 의 파일 이름 — JSON 백업과 같은 시각 표기, 확장자만 `.zip`. */
+export function fullBackupFileName(now: Date): string {
+  return backupFileName(now).replace(/\.json$/, '.zip')
+}
+
+/**
  * 백업 객체를 파일로 내려받는다.
  *
  * 직렬화만 하고 나머지는 `downloadText` 에 넘긴다.

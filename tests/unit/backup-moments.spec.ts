@@ -183,7 +183,11 @@ const panel = (s: Session) => s.wrapper.get('.backup')
 const exportButton = (s: Session) =>
   panel(s)
     .findAll('.pill')
-    .filter((n) => n.text().includes('내보내기') && !n.text().includes('먼저'))[0]
+    // M12-4: 전체 백업(ZIP) 단추를 빼고 JSON(또는 복구본) 단추를 고른다.
+    .filter(
+      (n) =>
+        n.text().includes('내보내기') && !n.text().includes('먼저') && !n.text().includes('ZIP'),
+    )[0]
 const applyButton = (s: Session) =>
   s.wrapper.findAll('.preview .pill').filter((n) => n.text().includes('교체하고'))[0]
 const cancelButton = (s: Session) =>

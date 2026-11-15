@@ -702,7 +702,11 @@ describe('C. 영속화와 보호', () => {
      * M8-3 에서 가져오기가 생겼다. 이것도 **동작하는** 경로다 — 보호 상태의
      * 원본을 백업으로 교체할 수 있고, 그 전에 원문을 내려받을 수 있다.
      */
-    expect(labels.filter((label) => label.includes('가져오기'))).toEqual(['JSON 백업 가져오기'])
+    // M12-4: 백업 가져오기가 ZIP(전체) · JSON 을 함께 받고, 공유 파일 가져오기가 생겼다.
+    expect(labels.filter((label) => label.includes('가져오기'))).toEqual([
+      '백업 가져오기 (ZIP · JSON)',
+      '공유 파일 가져오기',
+    ])
 
     // 아직 없는 기능의 버튼은 두지 않는다.
     for (const absent of ['초기화', '되살리', '병합', '동기화']) {

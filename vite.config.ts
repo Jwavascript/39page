@@ -62,6 +62,10 @@ export default defineConfig(({ mode }) => {
   const ids = bridgeExtensionIds({ ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env })
   return {
     plugins: [vue(), vueDevTools(), emitBridgeHeaders(ids)],
+    // 패키지 manifest 의 앱 버전 (M12-4, ADR 0034). `npm run` 이 package.json 의 version 을 넘긴다.
+    define: {
+      __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

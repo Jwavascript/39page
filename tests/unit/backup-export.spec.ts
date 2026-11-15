@@ -468,7 +468,10 @@ function mountApp() {
 type Context = ReturnType<typeof mountApp>
 
 const backupButton = (context: Context) =>
-  context.wrapper.findAll('.backup .pill').filter((node) => node.text().includes('내보내기'))[0]
+  // M12-4: 위에 전체 백업(ZIP) 단추가 생겼다 — JSON 백업(또는 복구본) 단추를 고른다.
+  context.wrapper
+    .findAll('.backup .pill')
+    .filter((node) => node.text().includes('JSON 백업') || node.text().includes('복구본'))[0]
 
 async function seed(store: ReturnType<typeof useLibraryStore>): Promise<void> {
   const created = await store.createPlaylist('NIGHT DRIVE')
