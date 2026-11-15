@@ -186,7 +186,13 @@ function focusHead(): void {
   backButton.value?.focus({ preventScroll: true })
 }
 
-defineExpose({ startAddLink, revealVideo, focusHead })
+const hasUnsavedInput = computed(
+  () =>
+    draftUrl.value.trim() !== '' ||
+    draftTitle.value.trim() !== '' ||
+    trackList.value?.hasUnsavedInput === true,
+)
+defineExpose({ startAddLink, revealVideo, focusHead, hasUnsavedInput, busy: isSaving })
 
 /**
  * 영상별 Moment 수 — 곡 줄의 `◆ N` 배지 (M11-4 §5-4). 라이브러리는 Moments 를 모르고(ADR 0019),

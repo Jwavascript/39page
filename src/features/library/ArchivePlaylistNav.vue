@@ -212,7 +212,13 @@ function focusSelected(): void {
   target?.focus({ preventScroll: true })
 }
 
-defineExpose({ focusSelected })
+const hasUnsavedInput = computed(
+  () =>
+    create.draftName.value.trim() !== '' ||
+    (renamingId.value !== null && draftName.value !== library.getPlaylist(renamingId.value)?.name),
+)
+const busy = computed(() => isSaving.value || create.isSubmitting.value)
+defineExpose({ focusSelected, hasUnsavedInput, busy })
 </script>
 
 <template>

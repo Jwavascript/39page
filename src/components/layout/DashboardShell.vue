@@ -72,6 +72,7 @@ defineProps<{
 
 const ARCHIVE_ID = 'archive-panel'
 const isArchiveOpen = ref(false)
+const archivePanel = ref<InstanceType<typeof ArchivePanel> | null>(null)
 const archiveTab = ref<ArchiveTab>('music')
 
 /**
@@ -267,7 +268,7 @@ function unwatchStrip(): void {
 /** "링크 추가로 바로" 요청 — 숫자가 바뀔 때마다 보관함이 한 번 링크 입력을 연다. */
 const addLinkRequest = ref(0)
 /** "이 영상의 Moments 만" · "음악 탭의 그 곡" 요청 (M11-4). `seq` 가 바뀔 때마다 한 번 적용된다. */
-const momentsFocusRequest = ref<{ videoId: string; seq: number } | null>(null)
+const momentsFocusRequest = ref<{ videoId?: string; view?: 'all'; seq: number } | null>(null)
 const revealRequest = ref<{ videoId: string; seq: number } | null>(null)
 /** "그 곡의 앨범아트 설정" 요청 (M12-3) — `seq` 가 바뀔 때마다 한 번. */
 const artworkRequest = ref<{ playlistId: string; trackId: string; seq: number } | null>(null)
@@ -275,7 +276,9 @@ const artworkRequest = ref<{ playlistId: string; trackId: string; seq: number } 
 const detailRequest = ref(0)
 let requestSeq = 0
 
-function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): void {
+async function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): Promise<void> {
+  if (isArchiveOpen.value && (await archivePanel.value?.allowLeave()) === false) return
+  archivePanel.value?.resetNavigation()
   if (tab !== undefined) archiveTab.value = tab
   if (options.addLink === true) {
     archiveTab.value = 'music'
@@ -285,6 +288,10 @@ function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): void {
     archiveTab.value = 'moments'
     requestSeq += 1
     momentsFocusRequest.value = { videoId: options.videoId, seq: requestSeq }
+  }
+  if (options.momentsView === 'all') {
+    archiveTab.value = 'moments'
+    momentsFocusRequest.value = { view: 'all', seq: ++requestSeq }
   }
   if (options.revealVideoId !== undefined) {
     archiveTab.value = 'music'
@@ -310,6 +317,8 @@ function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): void {
 
 async function closeArchive(): Promise<void> {
   if (!isArchiveOpen.value) return
+  if ((await archivePanel.value?.allowLeave()) === false) return
+  archivePanel.value?.resetNavigation()
 
   isArchiveOpen.value = false
   unwatchStrip()
@@ -496,6 +505,7 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
       </button>
       <WidgetHost :layout="layout" />
       <ArchivePanel
+        ref="archivePanel"
         :open="isArchiveOpen"
         :tab="archiveTab"
         :panel-id="ARCHIVE_ID"

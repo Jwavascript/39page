@@ -587,6 +587,12 @@ describe('B. 초안의 메모 — 저장 전에 쓰고, 초안은 하나다', ()
     await nextTick()
 
     expect(draftForm(s).get('.stale-note').text()).toContain('곡이 바뀌었어요')
+    expect(
+      draftForm(s)
+        .get('.draft-save')
+        .element.compareDocumentPosition(draftForm(s).get('.stale-note').element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(draftForm(s).get('.note-target').text()).toContain('Alpha')
     expect(draftForm(s).get('.note-target').text()).toContain('0:42')
     await saveDraft(s)

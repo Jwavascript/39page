@@ -28,7 +28,7 @@ import { useMomentsArchive } from './useMomentsArchive'
 
 const props = defineProps<{
   /** 바뀔 때마다 그 영상의 Moments 만 보인다 (음악 탭 곡 행의 ◆ 배지 · 대시보드 "이 곡 모두 보기"). */
-  focusRequest?: { videoId: string; seq: number } | null
+  focusRequest?: { videoId?: string; view?: 'all'; seq: number } | null
 }>()
 
 const archive = useMomentsArchive()
@@ -41,7 +41,11 @@ const archiveCapture = ref<InstanceType<typeof MomentCapture> | null>(null)
 watch(
   () => props.focusRequest?.seq,
   () => {
-    if (props.focusRequest != null) archive.focusVideo(props.focusRequest.videoId)
+    const request = props.focusRequest
+    if (request?.view === 'all') {
+      archive.clearQuery()
+      archive.setView('all')
+    } else if (request?.videoId !== undefined) archive.focusVideo(request.videoId)
   },
   { immediate: true },
 )

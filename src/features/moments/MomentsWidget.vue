@@ -72,7 +72,7 @@ function onSaved(momentId: string): void {
 }
 
 function openAll(): void {
-  archive?.open('moments')
+  archive?.open('moments', { momentsView: 'all' })
 }
 
 /** 영상 띠의 초안 알림 — 저장 전 초안이 있다(대시보드에서 잡고 보관함을 열었다). */

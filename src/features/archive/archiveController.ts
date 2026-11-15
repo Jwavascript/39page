@@ -13,6 +13,8 @@ import type { InjectionKey, Ref } from 'vue'
 export type ArchiveTab = 'music' | 'moments'
 
 export interface ArchiveOpenOptions {
+  /** 명시적인 '모두 보기'는 이전 보기와 무관하게 전체를 연다. */
+  readonly momentsView?: 'all'
   /**
    * 음악 탭에서 고른 목록의 "YouTube 링크 추가" 를 바로 연다 (M11-3 U15) — 새 목록을 만든 다음 행동으로
    * 자연스럽게 잇는다. 링크 입력란으로 포커스가 간다.

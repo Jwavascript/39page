@@ -667,7 +667,7 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     expect(panel(s).find('.focus-line').exists()).toBe(false)
   })
 
-  it('대시보드 "모두 보기" 를 곡 재생 중에 누르면 이 곡 보기로 열린다 (M11-7C)', async () => {
+  it('대시보드 "모두 보기" 는 재생 중에도 전체 보기로 열린다 (M12-6)', async () => {
     seedMoments([
       ...[0, 1, 2, 3].map((i) => moment({ id: `a${String(i)}`, videoId: A, atSeconds: i * 10 })),
       moment({ id: 'b', videoId: B, title: 'Bravo' }),
@@ -676,8 +676,8 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     await playFromStart(s)
     await s.wrapper.get('.moments-widget .widget-head .pill').trigger('click')
     await settle()
-    expect(panel(s).findAll('.chip')[0]?.attributes('aria-pressed')).toBe('true')
-    expect(rows(s)).toHaveLength(4)
+    expect(panel(s).findAll('.chip')[1]?.attributes('aria-pressed')).toBe('true')
+    expect(heads(s)).toHaveLength(2)
   })
 })
 

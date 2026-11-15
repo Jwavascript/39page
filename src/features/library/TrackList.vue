@@ -95,7 +95,12 @@ function reveal(videoId: string): boolean {
   return true
 }
 
-defineExpose({ reveal })
+const hasUnsavedInput = computed(
+  () =>
+    renamingId.value !== null &&
+    draftTitle.value !== props.tracks?.find((track) => track.id === renamingId.value)?.title,
+)
+defineExpose({ reveal, hasUnsavedInput })
 
 function momentCount(videoId: string): number {
   return props.momentCounts?.get(videoId) ?? 0

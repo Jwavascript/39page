@@ -65,8 +65,11 @@ const revision = ref(0)
 
 const pending = shallowRef<ValidatedArtwork | null>(null)
 const pendingUrl = ref<string | null>(null)
+let fileSequence = 0
+const hasUnsavedInput = computed(() => pending.value !== null || checking.value)
 const checking = ref(false)
 const saving = ref(false)
+defineExpose({ hasUnsavedInput, busy: saving })
 const message = ref('')
 const failed = ref(false)
 const estimate = ref<StorageEstimate | null>(null)
@@ -92,10 +95,14 @@ onMounted(async () => {
   estimate.value = await store.estimate()
 })
 
-onBeforeUnmount(dropPending)
+onBeforeUnmount(() => {
+  fileSequence += 1
+  dropPending()
+})
 
 // 다른 곡을 열면 처음부터.
 watch(key, () => {
+  fileSequence += 1
   dropPending()
   message.value = ''
   failed.value = false
@@ -125,8 +132,10 @@ async function onFile(event: Event): Promise<void> {
   message.value = ''
   failed.value = false
   checking.value = true
+  const sequence = ++fileSequence
   try {
     const result = await validateArtwork(file, tools)
+    if (sequence !== fileSequence) return
     if (!result.ok) {
       failed.value = true
       message.value = REJECT_MESSAGE[result.reason]
@@ -137,7 +146,7 @@ async function onFile(event: Event): Promise<void> {
     pendingUrl.value = urls.create(result.artwork.blob)
     choice.value = 'custom'
   } finally {
-    checking.value = false
+    if (sequence === fileSequence) checking.value = false
   }
 }
 
@@ -227,11 +236,15 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
         </div>
         <figcaption>지금: {{ currentLabel }}</figcaption>
       </figure>
-      <figure v-if="pendingUrl !== null" class="preview">
+      <figure class="preview preview--draft">
         <div class="preview-art">
-          <ArtworkImage :video-id="videoId" mode="custom" :src="pendingUrl" />
+          <ArtworkImage
+            :video-id="videoId"
+            :mode="choice"
+            :src="choice === 'custom' ? (pendingUrl ?? current.src) : null"
+          />
         </div>
-        <figcaption>새 그림: {{ pendingInfo }}</figcaption>
+        <figcaption>저장 전 미리보기 {{ pendingInfo }}</figcaption>
       </figure>
     </div>
 

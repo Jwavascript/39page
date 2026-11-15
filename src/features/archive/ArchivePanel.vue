@@ -39,7 +39,7 @@ const props = defineProps<{
   /** 바뀔 때마다 고른 목록의 링크 입력을 연다 (`ArchiveOpenOptions.addLink`). */
   addLinkRequest?: number
   /** Moments 탭을 한 영상으로 거른다 (`ArchiveOpenOptions.videoId`). */
-  momentsFocusRequest?: { videoId: string; seq: number } | null
+  momentsFocusRequest?: { videoId?: string; view?: 'all'; seq: number } | null
   /** 음악 탭에서 그 영상의 곡 줄을 보인다 (`ArchiveOpenOptions.revealVideoId`). */
   revealRequest?: { videoId: string; seq: number } | null
   /** 바뀔 때마다 음악 탭을 고른 목록의 상세 단계로 맞춘다 (`ArchiveOpenOptions.showDetail`). */
@@ -95,6 +95,41 @@ function onTabKeydown(event: KeyboardEvent): void {
  */
 type MusicStep = 'lists' | 'detail'
 const musicStep = ref<MusicStep>('lists')
+const session = ref(0)
+const settings = ref<InstanceType<typeof ArtworkSettings> | null>(null)
+
+/** 저장 중에는 기다리고, 파일·입력은 확인 후 폐기한다. 라디오 선택은 취소로 즉시 폐기한다. */
+let leaveRequest: Promise<boolean> | null = null
+let resolveLeave: ((allow: boolean) => void) | null = null
+const confirmingDiscard = ref(false)
+function allowLeave(): Promise<boolean> {
+  if (settings.value?.busy || lists.value?.busy || editor.value?.busy) return Promise.resolve(false)
+  const dirty =
+    settings.value?.hasUnsavedInput || lists.value?.hasUnsavedInput || editor.value?.hasUnsavedInput
+  if (!dirty) return Promise.resolve(true)
+  if (leaveRequest !== null) return Promise.resolve(false)
+  confirmingDiscard.value = true
+  leaveRequest = new Promise((resolve) => {
+    resolveLeave = resolve
+  })
+  void nextTick(() => document.getElementById('archive-keep-editing')?.focus())
+  return leaveRequest
+}
+
+function finishDiscard(allow: boolean): void {
+  confirmingDiscard.value = false
+  resolveLeave?.(allow)
+  resolveLeave = null
+  leaveRequest = null
+}
+
+function resetNavigation(): void {
+  artworkTarget.value = null
+  musicStep.value = 'lists'
+  session.value += 1
+}
+
+defineExpose({ allowLeave, resetNavigation })
 
 const lists = ref<InstanceType<typeof ArchivePlaylistNav> | null>(null)
 const editor = ref<InstanceType<typeof PlaylistEditor> | null>(null)
@@ -169,6 +204,7 @@ function openArtwork(playlistId: string, trackId: string): void {
 }
 
 async function closeArtwork(): Promise<void> {
+  if (!(await allowLeave())) return
   artworkTarget.value = null
   musicStep.value = 'detail'
   await nextTick()
@@ -209,6 +245,18 @@ watch(
     닫혀 있으면 `hidden` — 안쪽 단추가 Tab 순서에 남지 않는다.
   -->
   <aside :id="panelId" class="archive drawer" :hidden="!open" aria-labelledby="archive-title">
+    <div
+      v-if="confirmingDiscard"
+      class="discard-confirm"
+      role="group"
+      aria-label="미저장 편집 폐기 확인"
+    >
+      <p>저장하지 않은 파일이나 입력 내용이 있어요. 버리고 나갈까요?</p>
+      <button id="archive-keep-editing" type="button" class="tab" @click="finishDiscard(false)">
+        계속 편집
+      </button>
+      <button type="button" class="tab" @click="finishDiscard(true)">버리고 나가기</button>
+    </div>
     <div class="archive-head">
       <h2 id="archive-title" class="archive-title">보관함</h2>
       <div class="tabs" role="tablist" aria-label="보관함 보기">
@@ -257,6 +305,7 @@ watch(
         :data-step="musicStep"
       >
         <ArchivePlaylistNav
+          :key="`lists-${session}`"
           ref="lists"
           class="music-lists"
           :active="open"
@@ -264,6 +313,7 @@ watch(
           @selected="onPlaylistSelected"
         />
         <PlaylistEditor
+          :key="`editor-${session}`"
           ref="editor"
           class="music-detail"
           :active="open"
@@ -271,6 +321,7 @@ watch(
           @artwork="openArtwork"
         />
         <ArtworkSettings
+          ref="settings"
           v-if="artworkTarget !== null"
           :key="`${artworkTarget.playlistId}/${artworkTarget.trackId}`"
           class="music-artwork"
@@ -315,6 +366,13 @@ watch(
 
 .archive[hidden] {
   display: none;
+}
+
+.discard-confirm {
+  flex: none;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--drawer-head-border-color);
+  font: 12px/1.5 var(--font-body);
 }
 
 .archive-head {

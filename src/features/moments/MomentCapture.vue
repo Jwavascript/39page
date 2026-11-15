@@ -109,10 +109,6 @@ defineExpose({ capture, focusNote })
         <span class="target-time">{{ capture.draftTime.value }}</span>
         <span class="target-title">{{ capture.draft.value.title }}</span>
       </p>
-      <p v-if="capture.isDraftStale.value" class="stale-note">
-        재생 중인 곡이 바뀌었어요. 이 초안은 위에 적힌 곡 · 시점으로 저장돼요. 지금 곡으로 바꾸려면
-        ↻ 다시 잡기를 누르세요.
-      </p>
       <label class="label" :for="`${idPrefix}-capture-note`">메모 (선택)</label>
       <textarea
         :id="`${idPrefix}-capture-note`"
@@ -162,6 +158,10 @@ defineExpose({ capture, focusNote })
           ↻ 지금 시점으로 다시 잡기
         </button>
       </div>
+      <p v-if="capture.isDraftStale.value" class="stale-note" role="status">
+        재생 중인 곡이 바뀌었어요. 이 초안은 위에 적힌 곡 · 시점으로 저장돼요. 지금 곡으로 바꾸려면
+        ↻ 다시 잡기를 누르세요.
+      </p>
     </form>
 
     <!-- 잡기 · 저장 결과. 라이브 영역은 늘 있다 — 비어 있으면 자리를 차지하지 않는다. -->
