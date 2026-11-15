@@ -285,10 +285,25 @@ Moments, 작은 터치 영역, 담을 때마다 열리는 새 탭 — 를 고친
 | M11-7A | ✔ UAT 기반 UX 재설계 · 비교 시안 — NOW PLAYLIST · 이 곡 Moments · 보관함 2열 · Moment 저장 A/B · 트랙 정렬 A/B/C. 앱 코드 변경 없음, 사용자 선택 대기 ([`M11_7_UX_REDESIGN.md`](M11_7_UX_REDESIGN.md))                                                   |
 | M11-7B | ✔ 대시보드 · 보관함 개편 — 기본 테마 Kawaii · NOW PLAYLIST(재생 큐 우선) · 헤더 보관함 · 데이터 · 백업 · 보관함 목록 칸 \| 상세 칸 · 작은 영상 띠 · 모바일 데크 띠. 실제 YouTube 26/26                                                                   |
 | M11-7C | ✔ Moments 정보 구조(영상 띠 보기 전용 · 이 곡 → 전체 → 최근 · 이 곡 관리 화면 · 위젯 이 곡 전체) · Moment 저장 B(잡기 → 메모 → 저장, 공유 초안) · 트랙 편집 C(`moveTrackTo` · 끌기 · 키보드 · 모바일 편집 모드). 로컬 브랜치, 배포 없음                  |
-| M11-7D | 최종 UAT · 배포 준비                                                                                                                                                                                                                                     |
+| M11-7D | 최종 UAT · 배포 준비 — **M12 뒤로 옮김** (새 Now Playing UI · Artwork 저장 구조 기준으로 다시 점검)                                                                                                                                                      |
 
 설계: [`M11_UX_DESIGN.md`](M11_UX_DESIGN.md) · [`../architecture/M11_BRIDGE_POC.md`](../architecture/M11_BRIDGE_POC.md).
-M12 (도트 마스코트 상세 · 애니메이션)는 M11 이 남겨 둔 자리를 쓴다.
+
+### M12 — Custom Artwork & Now Playing UX (진행 중 — 로컬 브랜치 `m12-custom-artwork`)
+
+원래의 M12(도트 마스코트 상세 · 애니메이션)를 사용자 지시로 **곡별 Custom Artwork** 로 다시 정의했다 (2026-11-15). 마스코트
+패널은 영상 아래 Now Playing 카드(그림 · 제목 · 조작)가 된다. 라이브러리 · Moments 저장 형식은 바꾸지 않는다.
+
+| 단계  | 상태                                                                                              |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| M12-1 | ✔ 설계 — UX · 데이터 모델 · IndexedDB · ZIP 백업 · 공유 패키지 (ADR 0032 · 0033 · 0034)           |
+| M12-2 | Now Playing 레이아웃 — 마스코트 → 카드, 영상 위 제목 · 조작 이동, 썸네일 · 기본 그림만            |
+| M12-3 | Artwork 데이터 · 올리기 — IndexedDB · 검증 · 곡별 설정 · 탭 간 · 용량 (ZIP 백업 전에는 출시 불가) |
+| M12-4 | 자산 포함 ZIP 전체 백업 · 복원 · 단일 곡 / 목록 공유 패키지                                       |
+| M12-5 | 최종 통합 검증 — 실제 Chrome · 두 프로필 복원 · 성능 · M11-7D 점검표 갱신                         |
+
+설계: [`M12_CUSTOM_ARTWORK.md`](M12_CUSTOM_ARTWORK.md) · [`../architecture/ARTWORK_DESIGN.md`](../architecture/ARTWORK_DESIGN.md).
+계정 · 커뮤니티 · 공개 링크 공유 · 클라우드 동기화는 장래 기능이다 (M12 는 안정 식별자와 파일 패키지만 준비한다).
 
 ## 범위 외
 

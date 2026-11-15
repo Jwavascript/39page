@@ -58,6 +58,9 @@
 | [0029](0029-track-title-oembed-prefill.md)     | 링크로 곡을 추가할 때 제목 칸만 YouTube oEmbed 로 미리 채운다 — 사용자 제목 · 저장된 제목은 그대로     | 채택 (M11-4 후속)      |
 | [0030](0030-m11-7-dashboard-archive-roles.md)  | 대시보드는 지금 재생 큐와 이 곡의 Moments, 관리는 보관함 한 곳 — 헤더 · 위젯 · 저장 모델 재설계        | **부분 채택** (M11-7B) |
 | [0031](0031-default-theme-kawaii.md)           | Theme 1 · 새 사용자의 기본 테마를 Kawaii Synth Cassette 로 — 테마 키 · 저장 형식은 그대로              | 채택 (M11-7B)          |
+| [0032](0032-now-playing-card.md)               | 마스코트 패널을 Now Playing 카드로 바꾸고, 곡 정보 · 재생 조작을 영상 아래 카드 한 곳에 둔다           | 채택 (M12-1 설계)      |
+| [0033](0033-artwork-storage-indexeddb.md)      | 곡별 Artwork 는 (playlistId, trackId) 연결과 내용 해시 자산으로 IndexedDB 에 둔다                      | 채택 (M12-1 설계)      |
+| [0034](0034-zip-full-backup-and-share.md)      | 앨범아트 포함 전체 백업 · 파일 공유는 ZIP 패키지로, 기존 JSON 백업을 그 안에 그대로 넣는다             | 채택 (M12-1 설계)      |
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.

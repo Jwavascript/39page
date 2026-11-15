@@ -2495,6 +2495,23 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 
 ---
 
+## M12 — Custom Artwork & Now Playing UX
+
+브랜치 `m12-custom-artwork` (M11-7C `1db699e` 에서 갈라짐). 설계: [`../product/M12_CUSTOM_ARTWORK.md`](../product/M12_CUSTOM_ARTWORK.md) ·
+[`../architecture/ARTWORK_DESIGN.md`](../architecture/ARTWORK_DESIGN.md) · ADR 0032 · 0033 · 0034. push · 배포 · 스토어 업로드 없음.
+
+### M12-1. 설계 — 완료 (2026-11-15)
+
+- 분석: Track id 는 목록 안에서만 유일(가져온 백업) → 연결 키 (playlistId, trackId). 큐는 출처 playlistId 를 메모리에 가진다.
+  트랙 삭제에 되돌리기 없음. 웹앱 문서에 CSP 없음. 확장 계약은 Artwork 와 무관.
+- 산출물: UX 문서 · 기술 설계 · ADR 0032 · 0033 · 0034 · 로드맵 (M11-7D 를 M12 뒤로).
+
+### M12-2 ~ M12-5
+
+(단계마다 이 절에 커밋 · 시험 결과를 덧붙인다.)
+
+---
+
 ## 선행 결정 사항
 
 해당 단계 전에 확정해야 한다. 중요한 결정은 `docs/decisions/`에 기록한다.
