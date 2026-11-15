@@ -16,6 +16,7 @@ import CollectApp from './app/CollectApp.vue'
 import { resolveEntry } from './app/entry'
 import { PLAYER_ADAPTER_FACTORY } from './features/playback/PlayerAdapter'
 import { YouTubeIFramePlayerAdapter } from './features/playback/YouTubeIFramePlayerAdapter'
+import { useArtworkStore } from './stores/artwork'
 import { useLibraryStore } from './stores/library'
 import { useMomentsStore } from './stores/moments'
 import { useThemeStore } from './stores/theme'
@@ -67,6 +68,10 @@ if (resolveEntry(globalThis.location.hash) === 'collect') {
 } else {
   const app = createApp(App)
   app.use(pinia)
+
+  // 곡별 앨범아트 (M12-3, ADR 0033) — IndexedDB 를 열고 연결 표를 읽는다. 기다리지 않고 마운트한다: 열기 전 ·
+  // 열 수 없으면 모든 곡이 자동(썸네일 → 기본)으로 보인다. 수집 화면은 앨범아트를 쓰지 않는다.
+  void useArtworkStore(pinia).init()
 
   /*
    * 실제 플레이어 어댑터. 팩토리로 주입한다 (ADR 0006).

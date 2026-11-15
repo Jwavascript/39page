@@ -34,6 +34,11 @@ export interface ArchiveOpenOptions {
    * 함께 보이므로 차이가 없다.
    */
   readonly showDetail?: boolean
+  /**
+   * 음악 탭에서 그 곡의 **앨범아트 설정**을 연다 (M12-3) — Now Playing 카드의 그림을 누를 때. 그 목록을 고르고
+   * 상세 칸 자리에 설정을 띄운다.
+   */
+  readonly artwork?: { readonly playlistId: string; readonly trackId: string }
 }
 
 export interface ArchiveController {

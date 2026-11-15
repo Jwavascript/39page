@@ -24,6 +24,7 @@
  */
 import { nextTick, ref, watch } from 'vue'
 
+import ArtworkSettings from '@/features/artwork/ArtworkSettings.vue'
 import ArchivePlaylistNav from '@/features/library/ArchivePlaylistNav.vue'
 import PlaylistEditor from '@/features/library/PlaylistEditor.vue'
 import MomentsBrowserPanel from '@/features/moments/MomentsBrowserPanel.vue'
@@ -48,6 +49,8 @@ const props = defineProps<{
    * "보관함 닫기" 를 따로 두므로 `false` 다 (M11-7C UAT). 쌓기 · 옆 배치는 그대로 여기 있다.
    */
   showClose?: boolean
+  /** 그 곡의 앨범아트 설정을 연다 (`ArchiveOpenOptions.artwork`, M12-3). `seq` 가 바뀔 때마다 한 번. */
+  artworkRequest?: { playlistId: string; trackId: string; seq: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -153,6 +156,34 @@ watch(
   },
 )
 
+/* ---------- 음악 탭: 앨범아트 설정 (M12-3) ---------- */
+
+/**
+ * 설정 중인 곡. 있으면 상세 칸 자리에 설정이 선다 (좁으면 그 한 단계만). 목록 칸 · 상세 칸은 마운트된 채다 —
+ * 닫으면 쓰던 상세가 그대로 돌아온다.
+ */
+const artworkTarget = ref<{ playlistId: string; trackId: string } | null>(null)
+
+function openArtwork(playlistId: string, trackId: string): void {
+  artworkTarget.value = { playlistId, trackId }
+}
+
+async function closeArtwork(): Promise<void> {
+  artworkTarget.value = null
+  musicStep.value = 'detail'
+  await nextTick()
+  editor.value?.focusHead()
+}
+
+watch(
+  () => props.artworkRequest?.seq,
+  () => {
+    const request = props.artworkRequest
+    if (request == null) return
+    openArtwork(request.playlistId, request.trackId)
+  },
+)
+
 /** Moments 탭을 한 번이라도 열었는지 — 열었으면 그 뒤로 마운트를 유지한다. */
 const momentsVisited = ref(false)
 watch(
@@ -220,7 +251,11 @@ watch(
       <!--
         두 칸 / 두 단계. 두 컴포넌트는 **늘 마운트**되어 있다 — 단계를 바꿔도 쓰던 양식이 남는다.
       -->
-      <div class="music-layout" :data-step="musicStep">
+      <div
+        class="music-layout"
+        :class="{ 'is-artwork': artworkTarget !== null }"
+        :data-step="musicStep"
+      >
         <ArchivePlaylistNav
           ref="lists"
           class="music-lists"
@@ -233,6 +268,15 @@ watch(
           class="music-detail"
           :active="open"
           @back="showStep('lists')"
+          @artwork="openArtwork"
+        />
+        <ArtworkSettings
+          v-if="artworkTarget !== null"
+          :key="`${artworkTarget.playlistId}/${artworkTarget.trackId}`"
+          class="music-artwork"
+          :playlist-id="artworkTarget.playlistId"
+          :track-id="artworkTarget.trackId"
+          @close="closeArtwork"
         />
       </div>
     </div>
@@ -382,6 +426,16 @@ watch(
   border-right: 1px solid var(--drawer-head-border-color);
 }
 
+/* 앨범아트 설정 (M12-3) — 상세 칸 자리에 선다. 상세 칸은 마운트된 채 숨는다. */
+.music-layout.is-artwork > .music-detail {
+  display: none;
+}
+
+.music-artwork {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 /*
  * 좁은 보관함 — **두 단계.** 두 칸을 나란히 두면 곡 제목이 몇 글자 폭으로 눌린다. 한 번에 한 단계만
  * 보이고, 상세 단계의 "목록으로" 로 돌아온다. 화면 폭이 아니라 보관함의 폭으로 판단한다.
@@ -396,8 +450,13 @@ watch(
   }
 
   .music-layout[data-step='lists'] > .music-detail,
-  .music-layout[data-step='detail'] > .music-lists {
+  .music-layout[data-step='detail'] > .music-lists,
+  .music-layout.is-artwork > .music-lists {
     display: none;
+  }
+
+  .music-artwork {
+    grid-column: 1;
   }
 
   .music-detail :deep(.step-nav) {

@@ -2517,7 +2517,19 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 - 시험: 58 파일 · 2,017 (마스코트 시험 삭제, 카드 · 그림 28개 추가). 실제 Chrome · YouTube 36/36 (`m12-results/real-chrome-layout.json`).
   하네스 결함 1건: 전체 페이지 스크린샷(`captureBeyondViewport`)이 뷰포트를 잠깐 4×4 로 바꿔 가시성 가드가 멈췄다 — 뷰포트 스크린샷으로 바꿈.
 
-### M12-3 ~ M12-5
+### M12-3. Artwork 데이터 · 올리기 — 완료 (2026-11-15) · **출시 불가 (ZIP 백업 전)**
+
+- IndexedDB `39page-artwork` v1 (`assets` · `blobs` · `assignments`[`playlistId`,`trackId`] + `assetId` 색인). 선호 auto(레코드
+  없음) · default · custom. 자산 id = SHA-256. 바꾸기 · 옛 자산 정리는 한 readwrite 트랜잭션, 충돌은 수정 번호로 거절.
+- 검증: 매직 바이트(PNG · JPEG · WebP · GIF), SVG · HTML · 동영상 거절, 움직이는 WebP 거절(TODO), 정지 5 MB · GIF 12 MB ·
+  4,096px, 실제 디코딩, GIF 포스터(첫 프레임 PNG).
+- 화면: 곡 "관리" → 🖼 앨범아트 (보관함 상세 칸 자리 — 모달 아님), 카드 그림 누르기. 저장 확정 뒤에만 반영 · 실패 이유 표시 ·
+  사용량 · `estimate` · 사용자 요청 시에만 `persist`. 카드: 지금 곡 GIF 움직임, 모션 감소 · 멈춤 = 포스터, 화면 밖이면 포스터.
+- 라이브러리 곡 · 목록 삭제가 저장되면(`$onAction`) 연결 · 고아 자산 정리. 탭 간: `BroadcastChannel` + 보일 때 다시 읽기.
+- 새 개발 의존성 `fake-indexeddb@6.2.5` (ADR 0034 검토). 시험 62 파일 · 2,073. 실제 Chrome · 실제 IndexedDB · 실제 디코딩 7/7
+  (`m12-results/real-chrome-artwork-m12-3.json`). 하네스 결함: 새로고침 직후 옛 문서를 보고 넘어감 → 표시로 구분.
+
+### M12-4 ~ M12-5
 
 (단계마다 이 절에 커밋 · 시험 결과를 덧붙인다.)
 

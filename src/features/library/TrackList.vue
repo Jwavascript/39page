@@ -65,6 +65,8 @@ const emit = defineEmits<{
   remove: [trackId: string]
   rename: [trackId: string, title: string]
   moments: [videoId: string]
+  /** 이 곡의 앨범아트 설정을 연다 (M12-3) — 보관함이 상세 칸 자리에 설정을 띄운다. */
+  artwork: [trackId: string]
 }>()
 
 /**
@@ -535,6 +537,14 @@ onBeforeUnmount(() => {
           @click="startRename(track)"
         >
           ✎ 이름 바꾸기
+        </button>
+        <button
+          type="button"
+          class="pill track-artwork"
+          :aria-label="`${track.title} 앨범아트 설정`"
+          @click="emit('artwork', track.id)"
+        >
+          🖼 앨범아트
         </button>
         <button
           type="button"

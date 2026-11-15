@@ -501,6 +501,7 @@ describe('B. 플레이리스트 UI', () => {
       wrapper.findAll('.track-controls button').map((node) => node.attributes('aria-label')),
     ).toEqual([
       'Track t1 이름 변경',
+      'Track t1 앨범아트 설정',
       'Track t1 맨 위로',
       'Track t1 위로',
       'Track t1 아래로',

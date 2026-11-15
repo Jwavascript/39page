@@ -269,6 +269,8 @@ const addLinkRequest = ref(0)
 /** "이 영상의 Moments 만" · "음악 탭의 그 곡" 요청 (M11-4). `seq` 가 바뀔 때마다 한 번 적용된다. */
 const momentsFocusRequest = ref<{ videoId: string; seq: number } | null>(null)
 const revealRequest = ref<{ videoId: string; seq: number } | null>(null)
+/** "그 곡의 앨범아트 설정" 요청 (M12-3) — `seq` 가 바뀔 때마다 한 번. */
+const artworkRequest = ref<{ playlistId: string; trackId: string; seq: number } | null>(null)
 /** "고른 목록의 상세로" 요청 (M11-7B) — 숫자가 바뀔 때마다 음악 탭이 상세 단계가 된다. */
 const detailRequest = ref(0)
 let requestSeq = 0
@@ -292,6 +294,11 @@ function openArchive(tab?: ArchiveTab, options: ArchiveOpenOptions = {}): void {
   if (options.showDetail === true) {
     archiveTab.value = 'music'
     detailRequest.value += 1
+  }
+  if (options.artwork !== undefined) {
+    archiveTab.value = 'music'
+    requestSeq += 1
+    artworkRequest.value = { ...options.artwork, seq: requestSeq }
   }
   if (isArchiveOpen.value) return
 
@@ -496,6 +503,7 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
         :moments-focus-request="momentsFocusRequest"
         :reveal-request="revealRequest"
         :detail-request="detailRequest"
+        :artwork-request="artworkRequest"
         :show-close="archiveLayout !== 'strip'"
         @close="closeArchive"
         @select-tab="(tab) => (archiveTab = tab)"

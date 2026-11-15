@@ -386,6 +386,8 @@ describe('B. 트랙 목록 UI', () => {
     const buttons = group.findAll('button')
     expect(buttons.map((node) => node.attributes('aria-label'))).toEqual([
       'One 이름 변경',
+      // M12-3: 곡별 앨범아트 설정
+      'One 앨범아트 설정',
       'One 맨 위로',
       'One 위로',
       'One 아래로',
@@ -394,6 +396,7 @@ describe('B. 트랙 목록 UI', () => {
     ])
     expect(buttons.map((node) => node.text())).toEqual([
       '✎ 이름 바꾸기',
+      '🖼 앨범아트',
       '⤒ 맨 위로',
       '↑ 위로',
       '↓ 아래로',

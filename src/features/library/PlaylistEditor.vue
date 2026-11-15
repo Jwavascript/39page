@@ -52,6 +52,8 @@ const props = defineProps<{ active: boolean }>()
 const emit = defineEmits<{
   /** 좁은 화면의 "목록으로" — 목록 단계로 돌아간다 (`ArchivePanel`). */
   back: []
+  /** 곡의 앨범아트 설정 (M12-3). 보관함이 받아 상세 칸 자리에 설정을 띄운다. */
+  artwork: [playlistId: string, trackId: string]
 }>()
 
 const library = useLibraryStore()
@@ -561,6 +563,11 @@ watch(
         @remove="removeTrack"
         @rename="renameTrack"
         @moments="openMoments"
+        @artwork="
+          (trackId) =>
+            library.selectedPlaylist !== null &&
+            emit('artwork', library.selectedPlaylist.id, trackId)
+        "
       />
     </div>
   </section>

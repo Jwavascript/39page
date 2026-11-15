@@ -2,7 +2,7 @@
 /**
  * 한 곡의 앨범아트를 그린다 (M12-2, ARTWORK_DESIGN §2-3).
  *
- * 우선순위: (사용자 이미지 — M12-3) → YouTube 썸네일 → 39page 기본 그림.
+ * 우선순위: 사용자 이미지(M12-3) → YouTube 썸네일 → 39page 기본 그림.
  *
  * 기본 그림을 **늘 아래에 깔고**, 썸네일은 다 받은 뒤에만 그 위에 보인다 — 받는 동안 · 오프라인 · 삭제된 영상에서
  * 빈 상자가 보이지 않는다. 썸네일 실패(`error`)와 YouTube 의 "없음" 회색 그림(120×90)은 기본 그림으로 남는다.
@@ -18,10 +18,17 @@ const props = withDefaults(
   defineProps<{
     /** 지금 곡의 영상. 없으면(곡 없음) 기본 그림. */
     videoId: string | null
-    /** `auto` — 썸네일 → 기본. `default` — 사용자가 기본 그림을 골랐다 (썸네일을 받지 않는다). */
-    mode?: 'auto' | 'default'
+    /**
+     * - `auto` — 썸네일 → 기본
+     * - `default` — 사용자가 기본 그림을 골랐다 (썸네일을 받지 않는다)
+     * - `custom` — 사용자 이미지 (`src`). 바이트를 읽는 동안(`loading`)은 기본 그림
+     * - `missing` — 연결된 이미지를 찾지 못함: 기본 그림 (부르는 쪽이 알림을 띄운다)
+     */
+    mode?: 'auto' | 'default' | 'custom' | 'missing' | 'loading'
+    /** 사용자 이미지의 `blob:` URL (custom). 움직임을 멈추면 부르는 쪽이 포스터 URL 을 준다. */
+    src?: string | null
   }>(),
-  { mode: 'auto' },
+  { mode: 'auto', src: null },
 )
 
 const thumbnailUrl = computed<string | null>(() =>
@@ -50,7 +57,10 @@ function onError(event: Event): void {
 }
 
 /** 실제로 보이는 것 — 시험 · 실제 브라우저 측정이 읽는다. */
-const shown = computed<'thumbnail' | 'loading' | 'default'>(() => {
+const shown = computed<'custom' | 'missing' | 'thumbnail' | 'loading' | 'default'>(() => {
+  if (props.mode === 'custom' && props.src !== null) return 'custom'
+  if (props.mode === 'missing') return 'missing'
+  if (props.mode === 'custom' || props.mode === 'loading') return 'loading'
   const url = thumbnailUrl.value
   if (url === null || failedUrl.value === url) return 'default'
   return loadedUrl.value === url ? 'thumbnail' : 'loading'
@@ -76,6 +86,16 @@ const shown = computed<'thumbnail' | 'loading' | 'default'>(() => {
       referrerpolicy="no-referrer"
       @load="onLoad"
       @error="onError"
+    />
+    <!-- 사용자 이미지 (`blob:` — 이 브라우저 안의 바이트). 이미지 요소는 스크립트를 실행하지 않는다. -->
+    <img
+      v-if="shown === 'custom'"
+      :key="src ?? ''"
+      class="artwork-image__custom"
+      :src="src ?? ''"
+      alt=""
+      decoding="async"
+      draggable="false"
     />
   </div>
 </template>
@@ -105,6 +125,15 @@ const shown = computed<'thumbnail' | 'loading' | 'default'>(() => {
 
 .artwork-image__thumb.is-loaded {
   opacity: 1;
+}
+
+/* 사용자 이미지 — 정사각형을 가운데 기준으로 채운다 (비율이 다르면 넘치는 쪽이 잘린다). */
+.artwork-image__custom {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 @media (prefers-reduced-motion: reduce) {
