@@ -1,0 +1,23 @@
+{
+  "candidate": "e371fb5",
+  "runs": [
+    {
+      "name": "header",
+      "source": "docs/development/header-collapse-results/check/header.mjs",
+      "checks": 43,
+      "passed": 43
+    },
+    {
+      "name": "editor",
+      "source": "docs/development/artwork-editor-results/check/editor.mjs",
+      "checks": 98,
+      "passed": 98
+    },
+    {
+      "name": "ux",
+      "source": "docs/development/m12-6-results/check/ux.mjs",
+      "checks": 49,
+      "passed": 49
+    }
+  ]
+}

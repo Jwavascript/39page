@@ -1,0 +1,55 @@
+{
+  "candidate": "e371fb5",
+  "results": [
+    {
+      "name": "Production YouTube playback and NOW PLAYLIST",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Queue next/previous preserves one iframe",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Moment UI saves note and captured position",
+      "pass": true,
+      "details": {
+        "id": "ext-web-ada6b960a82c4701bb9ebe63141362a7",
+        "source": "youtube",
+        "videoId": "aqz-KE-bpKQ",
+        "atSeconds": 0,
+        "note": "Release gate Moment",
+        "title": "Bunny",
+        "createdAt": "2026-11-15T14:57:22.475Z",
+        "updatedAt": "2026-11-15T14:57:22.475Z"
+      }
+    },
+    {
+      "name": "Full ZIP download contains newly saved Moment",
+      "pass": true,
+      "details": {
+        "name": "39page-backup-20261115-2357.zip",
+        "bytes": 1086
+      }
+    },
+    {
+      "name": "Production bridge refuses web ancestry without touching storage",
+      "pass": true,
+      "details": {
+        "bridge": "refused",
+        "headers": "/bridge.html\n  Content-Security-Policy: frame-ancestors 'none'\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n/bridge\n  Content-Security-Policy: frame-ancestors 'none'\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n"
+      }
+    },
+    {
+      "name": "Collect fallback opens without saving",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Collect fallback saves only after explicit confirmation",
+      "pass": true,
+      "details": {}
+    }
+  ]
+}
