@@ -33,6 +33,12 @@
 9. 관리 메뉴의 목록·곡 공유는 `SHARE_DIALOG` 공용 계약으로 기존 데이터 대화상자와 SharePanel을 연다.
    playlistId·trackId를 명시적으로 넘기고 선택된 라이브러리 목록을 바꾸지 않는다. 문맥 진입마다 Moments는 꺼진 상태로 시작한다.
 
+## Artwork Editor UX 후속 패치 (사용자 지시)
+
+편집 본문은 폭에 따라 2열/1열, 미리보기는 본문 내부 sticky, 저장·취소는 별도 하단 행으로 둔다.
+변경 전 보기는 같은 draft·기존 GIF 모션 상태를 보존하는 UI 상태이며 IndexedDB·패키지 계약을 바꾸지 않는다.
+상세·실측: [편집기 보고서](../development/ARTWORK_EDITOR_UX_REPORT.md).
+
 ## 대안과 한계
 
 - 이미지 재인코딩: GIF 애니메이션·해시·원본을 바꾸므로 채택하지 않는다.

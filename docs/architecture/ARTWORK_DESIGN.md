@@ -318,3 +318,14 @@ interface ArtworkBlobRecord {
 설정 화면에서도 GIF는 모션 감소·멈춤·화면 밖에서 포스터로 전환하고 URL은 세션 종료 시 해제한다.
 기존 §9의 이미지 자르기 중 **표시 구도 조절**은 구현됐으며, 원본 픽셀 자르기·회전은 여전히 범위 밖이다.
 근거: [ADR 0035](../decisions/0035-m12-6-edit-sessions-and-artwork-display.md).
+
+## 11. Artwork Editor UX 후속 패치 (저장 계약 변경 없음)
+
+설정 화면은 고정 헤더·단일 스크롤 본문·하단 동작 영역으로 나눈다. 본문은 편집 칸 폭 560px 이상에서 2열,
+그 아래에서 1열이며 미리보기만 본문 안에서 sticky다. 편집 칸 높이 280px 이하는 여백과 미리보기를 줄여 컨트롤 행을 확보한다.
+이 규칙은 Artwork 컴포넌트의 scoped CSS·크기 컨테이너 안에만 적용한다.
+
+`ArtworkEditorPreview`는 기존 display draft를 직접 v-model로 받아 미리보기·슬라이더·드래그가 같은 값을 사용한다.
+저장 전 비교는 로컬 UI boolean으로만 관리한다. 같은 자산이면 이미지 URL·노드를 유지해 구도만 바꾸며,
+GIF 모션 상태는 기존 ArtworkPreview가 계속 소유한다. 비교·편집 UI를 위해 자산·연결·백업 포맷을 바꾸지 않는다.
+검증: [편집기 UX 보고서](../development/ARTWORK_EDITOR_UX_REPORT.md).

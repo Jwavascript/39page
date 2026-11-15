@@ -521,8 +521,17 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
     gap: 20px;
   }
   .settings-scroll {
-    --preview-size: clamp(144px, 46cqh, 280px);
+    --preview-size: clamp(72px, min(46cqh, calc(100cqh - 208px)), 280px);
     scroll-padding-block-start: 12px;
+  }
+}
+
+/* 짧은 편집 칸에서도 64px 미리보기 아래에 44px 조절 행이 온전히 남도록 한다. */
+@container artwork-editor (max-height: 280px) {
+  .settings-scroll {
+    --preview-size: 64px;
+    padding-block: 4px;
+    scroll-padding-block: calc(var(--preview-size) + 12px) 4px;
   }
 }
 

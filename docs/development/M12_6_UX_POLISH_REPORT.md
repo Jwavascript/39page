@@ -1,5 +1,8 @@
 # M12-6 UX Polish 구현·검증 보고 (2026-11-15)
 
+> 후속 Artwork Editor UI 개선·새 화면 실측은 [별도 보고서](ARTWORK_EDITOR_UX_REPORT.md)에 있다.
+> 아래 수치는 `325226d` 당시 기록이다.
+
 브랜치 `m12-6-ux-polish`, 시작 HEAD `fd4b995` (`m12-custom-artwork`), 시작 작업 트리 깨끗함.
 기존 커밋 재작성·push·main 통합·운영 배포·스토어 업로드는 하지 않았다. 새 의존성은 없다.
 

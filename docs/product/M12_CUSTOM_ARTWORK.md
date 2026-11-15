@@ -138,3 +138,11 @@ Moments 넣기는 체크박스(기본 꺼짐, 넣을 개수 표시). 가져오�
 - 결정: [ADR 0035](../decisions/0035-m12-6-edit-sessions-and-artwork-display.md).
   검증·잔여 TODO: [M12-6 보고서](../development/M12_6_UX_POLISH_REPORT.md).
 - TODO: 화면 공간 재조정, 몰입 모드, Moments 이동은 별도 후속 과제다. 실기기·사람 UAT는 미완료다.
+
+## 11. Artwork Editor UX 후속 패치
+
+미리보기를 확인하려고 위아래로 스크롤하던 문제를 편집기 안에서 개선했다. 넓은 칸은 미리보기/컨트롤 2열,
+좁은 칸은 작은 sticky 미리보기와 단열 컨트롤이다. 저장·취소는 본문 스크롤 밖의 하단 작업 영역에 둔다.
+편집 결과 하나를 크게 보여 주고 변경 전 보기로 저장값과 비교한다. 같은 GIF의 노드·멈춤 선택과 기존 draft를 유지한다.
+저장 구조·ZIP/공유 버전·보관함 진입·대시보드 배치는 그대로다.
+실측과 후속 UAT: [편집기 UX 보고서](../development/ARTWORK_EDITOR_UX_REPORT.md).

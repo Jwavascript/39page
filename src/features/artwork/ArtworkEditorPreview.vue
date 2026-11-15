@@ -146,5 +146,11 @@ function toggleComparison(): void {
     height: auto;
     aspect-ratio: 1;
   }
+  .preview-caption {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 </style>
