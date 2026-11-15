@@ -294,6 +294,7 @@ export function useShareImport(): ShareImportModel {
             trackId: result.trackId,
             videoId: track.videoId,
             mode: track.artwork.mode,
+            ...(track.artwork.display !== undefined ? { display: track.artwork.display } : {}),
             ...(track.artwork.mode === 'custom' ? { assetId: track.artwork.assetId ?? '' } : {}),
             revision: 1,
             updatedAt: new Date().toISOString(),

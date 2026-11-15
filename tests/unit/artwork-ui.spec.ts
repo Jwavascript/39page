@@ -324,6 +324,63 @@ describe('E. Object URL 수명', () => {
 })
 
 describe('M12-6A — 편집 세션과 미리보기', () => {
+  it('구도는 미리보기만 변경하고 저장 성공 뒤 카드·새 세션에 반영된다', async () => {
+    const ctx = await setup()
+    await playFirst(ctx)
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(pngBytes(1), 'wide.png'))
+    await save(ctx)
+    const original = ctx.wrapper.get('.now-playing-card .artwork-image__custom').attributes('style')
+    await ctx.wrapper.get('[aria-label="확대율"]').setValue('2')
+    await ctx.wrapper.get('[aria-label="가로 위치"]').setValue('25')
+    expect(ctx.wrapper.get('.preview--draft .artwork-image__custom').attributes('style')).toContain(
+      'scale(2)',
+    )
+    expect(ctx.wrapper.get('.now-playing-card .artwork-image__custom').attributes('style')).toBe(
+      original,
+    )
+    await save(ctx)
+    expect(
+      ctx.wrapper.get('.now-playing-card .artwork-image__custom').attributes('style'),
+    ).toContain('scale(2)')
+    await ctx.wrapper.get('.strip-close').trigger('click')
+    await flushPromises()
+    await ctx.wrapper.get('.np-art-edit').trigger('click')
+    await flushPromises()
+    expect((ctx.wrapper.get('[aria-label="확대율"]').element as HTMLInputElement).value).toBe('2')
+    expect((ctx.wrapper.get('[aria-label="가로 위치"]').element as HTMLInputElement).value).toBe(
+      '25',
+    )
+    ctx.wrapper.unmount()
+    expect(urls.live.size).toBe(0)
+  })
+
+  it('잘못된 교체 파일은 기존 미리보기와 구도를 지킨다', async () => {
+    const ctx = await setup()
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(pngBytes(1), 'good.png'))
+    await ctx.wrapper.get('[aria-label="확대율"]').setValue('1.5')
+    const before = ctx.wrapper.get('.preview--draft .artwork-image__custom').attributes()
+    await pickFile(ctx, fileOf('<html>', 'broken.png'))
+    expect(ctx.wrapper.get('.preview--draft .artwork-image__custom').attributes()).toEqual(before)
+    ctx.wrapper.unmount()
+  })
+
+  it('GIF 미리보기도 모션 감소·멈춤은 포스터이며 원본 URL은 보존한다', async () => {
+    reducedMotion = true
+    const ctx = await setup()
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(gifBytes(2), 'motion.gif'))
+    const image = () => ctx.wrapper.get('.preview--draft .artwork-image__custom').attributes('src')
+    const poster = image()
+    await ctx.wrapper.get('.preview--draft button').trigger('click')
+    expect(image()).not.toBe(poster)
+    await ctx.wrapper.get('[aria-label="확대율"]').setValue('2')
+    await ctx.wrapper.get('.preview--draft button').trigger('click')
+    expect(image()).toBe(poster)
+    ctx.wrapper.unmount()
+    expect(urls.live.size).toBe(0)
+  })
   it('라디오 선택은 저장 전 미리보기만 바꾸고, 닫았다 열면 기본 목록 화면과 저장값으로 돌아온다', async () => {
     const ctx = await setup()
     await playFirst(ctx)

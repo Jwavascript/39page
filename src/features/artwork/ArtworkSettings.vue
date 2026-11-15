@@ -22,11 +22,13 @@ import {
 } from 'vue'
 
 import { formatBytes } from '@/shared/utils/bytes'
-import type { TrackKey } from '@/shared/types/artwork'
+import { DEFAULT_ARTWORK_DISPLAY, type ArtworkDisplay, type TrackKey } from '@/shared/types/artwork'
 import { ARTWORK_FAILURE_MESSAGE, useArtworkStore, type StorageEstimate } from '@/stores/artwork'
 import { useLibraryStore } from '@/stores/library'
 
-import ArtworkImage from './ArtworkImage.vue'
+import ArtworkPreview from './ArtworkPreview.vue'
+import ArtworkDisplayControls from './ArtworkDisplayControls.vue'
+import { useArtworkDisplayDrag } from './useArtworkDisplayDrag'
 import {
   ARTWORK_IMAGE_TOOLS,
   ARTWORK_LIMITS,
@@ -37,7 +39,10 @@ import {
 } from './imageValidation'
 import { useObjectUrls, useTrackArtwork } from './useTrackArtwork'
 
-const props = defineProps<{ playlistId: string; trackId: string }>()
+const props = withDefaults(
+  defineProps<{ playlistId: string; trackId: string; active?: boolean }>(),
+  { active: true },
+)
 const emit = defineEmits<{ close: [] }>()
 
 const store = useArtworkStore()
@@ -65,8 +70,18 @@ const revision = ref(0)
 
 const pending = shallowRef<ValidatedArtwork | null>(null)
 const pendingUrl = ref<string | null>(null)
+const pendingPosterUrl = ref<string | null>(null)
+const display = ref<ArtworkDisplay>({ ...DEFAULT_ARTWORK_DISPLAY })
+const savedDisplay = computed(() => store.displayFor(key.value))
+const displayChanged = computed(
+  () => JSON.stringify(display.value) !== JSON.stringify(savedDisplay.value),
+)
+const dimensions = computed(() => pending.value ?? store.assetFor(current.value.assetId ?? ''))
+const drag = useArtworkDisplayDrag(display, dimensions)
 let fileSequence = 0
-const hasUnsavedInput = computed(() => pending.value !== null || checking.value)
+const hasUnsavedInput = computed(
+  () => pending.value !== null || checking.value || displayChanged.value,
+)
 const checking = ref(false)
 const saving = ref(false)
 defineExpose({ hasUnsavedInput, busy: saving })
@@ -80,12 +95,15 @@ const heading = useTemplateRef<HTMLElement>('heading')
 function syncFromStore(): void {
   const preference = store.preferenceFor(key.value)
   choice.value = preference.mode
+  display.value = { ...store.displayFor(key.value) }
   revision.value = store.revisionFor(key.value)
 }
 
 function dropPending(): void {
   if (pendingUrl.value !== null) urls.revoke(pendingUrl.value)
+  if (pendingPosterUrl.value !== null) urls.revoke(pendingPosterUrl.value)
   pendingUrl.value = null
+  pendingPosterUrl.value = null
   pending.value = null
 }
 
@@ -144,6 +162,9 @@ async function onFile(event: Event): Promise<void> {
     dropPending()
     pending.value = result.artwork
     pendingUrl.value = urls.create(result.artwork.blob)
+    pendingPosterUrl.value =
+      result.artwork.poster === null ? null : urls.create(result.artwork.poster)
+    display.value = { ...DEFAULT_ARTWORK_DISPLAY }
     choice.value = 'custom'
   } finally {
     if (sequence === fileSequence) checking.value = false
@@ -163,7 +184,8 @@ const pendingInfo = computed(() => {
 const canSave = computed(() => {
   if (saving.value || checking.value || unavailable.value || track.value === null) return false
   const now = store.preferenceFor(key.value).mode
-  if (choice.value === 'custom') return pending.value !== null
+  if (choice.value === 'custom')
+    return pending.value !== null || (now === 'custom' && displayChanged.value)
   return choice.value !== now
 })
 
@@ -176,10 +198,12 @@ async function save(): Promise<void> {
   try {
     const result =
       choice.value === 'custom' && pending.value !== null
-        ? await store.setCustom(key.value, id, pending.value, revision.value)
-        : choice.value === 'default'
-          ? await store.useDefault(key.value, id, revision.value)
-          : await store.useAuto(key.value, id, revision.value)
+        ? await store.setCustom(key.value, id, pending.value, revision.value, display.value)
+        : choice.value === 'custom'
+          ? await store.setDisplay(key.value, id, display.value, revision.value)
+          : choice.value === 'default'
+            ? await store.useDefault(key.value, id, revision.value)
+            : await store.useAuto(key.value, id, revision.value)
     if (!result.ok) {
       failed.value = true
       message.value = ARTWORK_FAILURE_MESSAGE[result.reason]
@@ -232,23 +256,43 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
     <div class="settings-previews">
       <figure class="preview">
         <div class="preview-art">
-          <ArtworkImage :video-id="videoId" :mode="current.mode" :src="current.src" />
+          <ArtworkPreview
+            :video-id="videoId"
+            :mode="current.mode"
+            :src="current.src"
+            :poster-src="current.posterSrc"
+            :animated="current.animated"
+            :display="savedDisplay"
+            :active="active"
+          />
         </div>
         <figcaption>지금: {{ currentLabel }}</figcaption>
       </figure>
       <figure class="preview preview--draft">
-        <div class="preview-art">
-          <ArtworkImage
+        <div
+          class="preview-art"
+          :class="{ 'preview-art--adjustable': choice === 'custom' }"
+          @pointerdown="choice === 'custom' && !saving && drag.down($event)"
+          @pointermove="drag.move"
+          @pointerup="drag.end"
+          @pointercancel="drag.end"
+          @lostpointercapture="drag.end"
+        >
+          <ArtworkPreview
             :video-id="videoId"
             :mode="choice"
             :src="choice === 'custom' ? (pendingUrl ?? current.src) : null"
+            :poster-src="pendingUrl !== null ? pendingPosterUrl : current.posterSrc"
+            :animated="choice === 'custom' && (pending?.animated ?? current.animated)"
+            :display="display"
+            :active="active"
           />
         </div>
         <figcaption>저장 전 미리보기 {{ pendingInfo }}</figcaption>
       </figure>
     </div>
 
-    <fieldset class="settings-choices" :disabled="unavailable || track === null">
+    <fieldset class="settings-choices" :disabled="saving || unavailable || track === null">
       <legend class="sr-only">앨범아트 고르기</legend>
       <label class="choice">
         <input v-model="choice" type="radio" name="artwork-choice" value="auto" />
@@ -284,6 +328,12 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
         />
       </div>
     </fieldset>
+
+    <ArtworkDisplayControls
+      v-if="choice === 'custom'"
+      v-model="display"
+      :disabled="saving || checking || unavailable"
+    />
 
     <p class="settings-status" :class="{ 'is-warning': failed }" role="status" aria-live="polite">
       {{ message }}
@@ -376,6 +426,14 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   border: 1px solid var(--artwork-frame-border-color);
   background: var(--artwork-frame-surface-color);
   overflow: hidden;
+}
+
+.preview-art--adjustable {
+  touch-action: none;
+  cursor: grab;
+}
+.preview--draft .preview-art {
+  border-style: dashed;
 }
 
 .preview figcaption {

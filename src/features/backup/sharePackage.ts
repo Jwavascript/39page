@@ -37,7 +37,7 @@ import {
 import { buildZip, readZip, ZIP_ERROR_MESSAGE } from './zipPackage'
 
 export const SHARE_FORMAT = '39page-share'
-export const SHARE_VERSION = 1
+export const SHARE_VERSION = 2
 /** 한 패키지의 곡 수 상한 — 손상 · 악의적인 파일로 라이브러리를 부풀리지 않게. */
 export const MAX_SHARE_TRACKS = 2000
 export const MAX_SHARE_MOMENTS = 10000
@@ -100,7 +100,11 @@ export async function createSharePackage(input: {
     packed.assignments.map((assignment) => [
       assignment.trackId,
       assignment.mode === 'custom'
-        ? { mode: 'custom' as const, assetId: assignment.assetId ?? '' }
+        ? {
+            mode: 'custom' as const,
+            assetId: assignment.assetId ?? '',
+            ...(assignment.display !== undefined ? { display: assignment.display } : {}),
+          }
         : { mode: 'default' as const },
     ]),
   )
@@ -224,7 +228,7 @@ export async function readSharePackage(
   if (!verified.ok) return { ok: false, message: MANIFEST_PROBLEM_MESSAGE(verified.problem) }
 
   const share = decodeJson(zip.files.get('share.json'))
-  if (!isRecord(share) || share.version !== SHARE_VERSION) {
+  if (!isRecord(share) || (share.version !== 1 && share.version !== SHARE_VERSION)) {
     return { ok: false, message: '공유 내용(share.json)을 읽을 수 없습니다.' }
   }
   if (share.kind !== 'track' && share.kind !== 'playlist') {

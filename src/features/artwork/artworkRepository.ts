@@ -13,7 +13,13 @@
  * 이 모듈은 Vue · Pinia 를 모른다 — 화면이 읽는 경계는 `stores/artwork.ts` 다. 라이브러리도 모른다 — 트랙이
  * 있는지는 부르는 쪽이 본다.
  */
-import type { ArtworkAsset, ArtworkAssignment, TrackKey } from '@/shared/types/artwork'
+import {
+  readArtworkDisplay,
+  type ArtworkDisplay,
+  type ArtworkAsset,
+  type ArtworkAssignment,
+  type TrackKey,
+} from '@/shared/types/artwork'
 
 export const ARTWORK_DB_NAME = '39page-artwork'
 export const ARTWORK_DB_VERSION = 1
@@ -55,7 +61,12 @@ export interface NewAsset {
 export type PreferenceWrite =
   | { readonly mode: 'auto' }
   | { readonly mode: 'default' }
-  | { readonly mode: 'custom'; readonly assetId: string; readonly newAsset?: NewAsset }
+  | {
+      readonly mode: 'custom'
+      readonly assetId: string
+      readonly newAsset?: NewAsset
+      readonly display?: ArtworkDisplay
+    }
 
 export interface ArtworkSnapshot {
   readonly assignments: ArtworkAssignment[]
@@ -241,6 +252,8 @@ export function createArtworkRepository(db: IDBDatabase): ArtworkRepository {
         const store = tx.objectStore(ASSIGNMENTS)
         const current = (await request(store.get(keyOf(key)))) as ArtworkAssignment | undefined
         if ((current?.revision ?? 0) !== expectedRevision) throw new ConflictError()
+        if (next.mode === 'custom' && readArtworkDisplay(next.display) === null)
+          throw new Error('invalid display')
 
         if (next.mode === 'custom' && next.newAsset !== undefined) await putAsset(tx, next.newAsset)
         if (next.mode === 'custom') {
@@ -258,6 +271,9 @@ export function createArtworkRepository(db: IDBDatabase): ArtworkRepository {
             videoId,
             mode: next.mode,
             ...(next.mode === 'custom' ? { assetId: next.assetId } : {}),
+            ...(next.mode === 'custom' && next.display !== undefined
+              ? { display: readArtworkDisplay(next.display)! }
+              : {}),
             revision: (current?.revision ?? 0) + 1,
             updatedAt: now.toISOString(),
           }

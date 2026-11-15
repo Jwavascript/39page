@@ -12,6 +12,8 @@ import {
   ARTWORK_EXTENSION,
   ARTWORK_MIME_TYPES,
   isArtworkAssetId,
+  readArtworkDisplay,
+  type ArtworkDisplay,
   type ArtworkAsset,
   type ArtworkAssignment,
   type ArtworkMimeType,
@@ -55,6 +57,7 @@ export interface PackageManifest {
 
 /** 패키지 안 한 트랙의 그림. `auto` 는 적지 않는다. */
 export interface PackedPreference {
+  readonly display?: ArtworkDisplay
   readonly mode: 'default' | 'custom'
   readonly assetId?: string
 }
@@ -337,7 +340,13 @@ export function readPackedPreference(value: unknown): PackedPreference | null {
   if (!isRecord(value)) return null
   if (value.mode === 'default') return { mode: 'default' }
   if (value.mode === 'custom' && isArtworkAssetId(value.assetId)) {
-    return { mode: 'custom', assetId: value.assetId }
+    const display = readArtworkDisplay(value.display)
+    if (display === null) return null
+    return {
+      mode: 'custom',
+      assetId: value.assetId,
+      ...(value.display === undefined ? {} : { display }),
+    }
   }
   return null
 }

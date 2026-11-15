@@ -43,6 +43,8 @@ export interface TrackKey {
 
 /** IndexedDB `assignments` 의 레코드. `auto` 는 저장하지 않는다. */
 export interface ArtworkAssignment {
+  /** 원본 바이트와 독립적인 트랙별 표시 설정. 생략하면 기본값. */
+  readonly display?: ArtworkDisplay
   readonly playlistId: string
   readonly trackId: string
   /** 연결할 때의 영상 — 진단 · 공유 · 고아 정리에 쓴다. 표시 판단에는 쓰지 않는다. */
@@ -53,6 +55,37 @@ export interface ArtworkAssignment {
   /** 이 연결의 수정 번호 (탭 간 충돌 판정). 1 부터. */
   readonly revision: number
   readonly updatedAt: string
+}
+
+export interface ArtworkDisplay {
+  readonly fit: 'cover' | 'contain'
+  readonly positionX: number
+  readonly positionY: number
+  readonly zoom: number
+}
+
+export const DEFAULT_ARTWORK_DISPLAY: Readonly<ArtworkDisplay> = Object.freeze({
+  fit: 'cover',
+  positionX: 50,
+  positionY: 50,
+  zoom: 1,
+})
+
+/** 생략은 구버전 기본값, 잘못된 값은 null. NaN·무한·범위 밖·부분 객체를 받지 않는다. */
+export function readArtworkDisplay(value: unknown): ArtworkDisplay | null {
+  if (value === undefined) return { ...DEFAULT_ARTWORK_DISPLAY }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  const data = value as Record<string, unknown>
+  const within = (n: unknown, min: number, max: number): n is number =>
+    typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max
+  if (
+    (data.fit !== 'cover' && data.fit !== 'contain') ||
+    !within(data.positionX, 0, 100) ||
+    !within(data.positionY, 0, 100) ||
+    !within(data.zoom, 1, 3)
+  )
+    return null
+  return { fit: data.fit, positionX: data.positionX, positionY: data.positionY, zoom: data.zoom }
 }
 
 /** 자산 메타데이터. id 는 내용의 SHA-256 (16진수 64자) — 같은 파일은 한 번만 저장된다. */

@@ -19,7 +19,13 @@ import { useLibraryStore } from '@/stores/library'
 import { useMomentsStore } from '@/stores/moments'
 
 import { fakeImageTools, fileOf, pngBytes } from '../support/artworkFixtures'
-import { captureDownloads, inSetup, newProfile, useNodeBlobs } from '../support/transferHarness'
+import {
+  captureDownloads,
+  inSetup,
+  newProfile,
+  useNodeBlobs,
+  rewritePackage,
+} from '../support/transferHarness'
 
 const V1 = 'aaaaaaaaaaa'
 const V2 = 'bbbbbbbbbbb'
@@ -126,8 +132,54 @@ describe('A. 만들기 — 고른 것만', () => {
 })
 
 describe('B. 가져오기', () => {
+  it('v1 공유 파일은 기본 구도로 가져오고 미래 버전·범위 밖 숫자는 거절한다', async () => {
+    const s = await sender()
+    const { bytes } = await makeShare({ playlistId: s.mixId, trackId: s.t1, includeMoments: false })
+    const legacy = await rewritePackage(
+      bytes,
+      'share.json',
+      (value) => {
+        value.version = 1
+      },
+      1,
+    )
+    await newProfile()
+    const incoming = inSetup(() => useShareImport())
+    await incoming.selectFile(new File([legacy as Uint8Array<ArrayBuffer>], 'v1.zip'))
+    await incoming.apply()
+    expect(incoming.failed.value).toBe(false)
+    const p = useLibraryStore().playlists.find((item) => item.name === 'MIX')!
+    expect(useArtworkStore().displayFor({ playlistId: p.id, trackId: p.tracks[0]!.id })).toEqual({
+      fit: 'cover',
+      positionX: 50,
+      positionY: 50,
+      zoom: 1,
+    })
+    const invalid = await rewritePackage(bytes, 'share.json', (value) => {
+      const playlist = value.playlist as { tracks: { artwork: Record<string, unknown> }[] }
+      playlist.tracks[0]!.artwork.display = {
+        fit: 'contain',
+        positionX: 50,
+        positionY: 50,
+        zoom: 99,
+      }
+    })
+    expect((await readSharePackage(invalid, fakeImageTools(), new Date())).ok).toBe(false)
+    const future = await rewritePackage(
+      bytes,
+      'share.json',
+      (value) => {
+        value.version = 3
+      },
+      3,
+    )
+    expect((await readSharePackage(future, fakeImageTools(), new Date())).ok).toBe(false)
+    expect(useLibraryStore().getPlaylist(p.id)?.tracks).toHaveLength(1)
+  })
   it('새 목록 — 새 id 로 만들고 그림을 연결한다 (다른 프로필)', async () => {
     const s = await sender()
+    const crop = { fit: 'cover' as const, positionX: 0, positionY: 100, zoom: 2.25 }
+    await useArtworkStore().setDisplay({ playlistId: s.mixId, trackId: s.t1 }, V1, crop, 1)
     const { bytes } = await makeShare({ playlistId: s.mixId, includeMoments: false })
 
     await newProfile()
@@ -148,6 +200,7 @@ describe('B. 가져오기', () => {
     expect(mix?.tracks.map((t) => t.title)).toEqual(['One', 'Two'])
     expect(mix?.tracks.map((t) => t.id)).not.toContain(s.t1) // 보낸 쪽 id 를 쓰지 않는다
     const artwork = useArtworkStore()
+    expect(artwork.displayFor({ playlistId: mix!.id, trackId: mix!.tracks[0]!.id })).toEqual(crop)
     expect(artwork.preferenceFor({ playlistId: mix!.id, trackId: mix!.tracks[0]!.id }).mode).toBe(
       'custom',
     )

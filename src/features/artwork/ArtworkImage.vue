@@ -10,6 +10,11 @@
  * 표현만 한다. 무엇을 그릴지(선호)는 부모가 준다 — 저장소를 모른다.
  */
 import { computed, ref, watch } from 'vue'
+import {
+  DEFAULT_ARTWORK_DISPLAY,
+  readArtworkDisplay,
+  type ArtworkDisplay,
+} from '@/shared/types/artwork'
 
 import DefaultArtwork from './DefaultArtwork.vue'
 import { isPlaceholderThumbnail, youtubeThumbnailUrl } from './youtubeThumbnail'
@@ -27,9 +32,21 @@ const props = withDefaults(
     mode?: 'auto' | 'default' | 'custom' | 'missing' | 'loading'
     /** 사용자 이미지의 `blob:` URL (custom). 움직임을 멈추면 부르는 쪽이 포스터 URL 을 준다. */
     src?: string | null
+    display?: ArtworkDisplay
   }>(),
   { mode: 'auto', src: null },
 )
+
+const imageStyle = computed(() => {
+  const display = readArtworkDisplay(props.display) ?? DEFAULT_ARTWORK_DISPLAY
+  const position = `${display.positionX}% ${display.positionY}%`
+  return {
+    objectFit: display.fit,
+    objectPosition: position,
+    transform: `scale(${display.zoom})`,
+    transformOrigin: position,
+  }
+})
 
 const thumbnailUrl = computed<string | null>(() =>
   props.mode === 'auto' ? youtubeThumbnailUrl(props.videoId) : null,
@@ -69,7 +86,7 @@ const shown = computed<'custom' | 'missing' | 'thumbnail' | 'loading' | 'default
 
 <template>
   <div class="artwork-image" :data-artwork-source="shown">
-    <DefaultArtwork />
+    <DefaultArtwork v-if="shown !== 'custom'" />
     <!--
       썸네일. 기본 그림 위에 겹친다. 실패한 주소는 다시 요청하지 않는다(`v-if`). 이 페이지 주소를 YouTube 이미지
       서버에 보내지 않는다(`no-referrer`).
@@ -92,6 +109,7 @@ const shown = computed<'custom' | 'missing' | 'thumbnail' | 'loading' | 'default
       v-if="shown === 'custom'"
       :key="src ?? ''"
       class="artwork-image__custom"
+      :style="imageStyle"
       :src="src ?? ''"
       alt=""
       decoding="async"
@@ -102,6 +120,7 @@ const shown = computed<'custom' | 'missing' | 'thumbnail' | 'loading' | 'default
 
 <style scoped>
 .artwork-image {
+  background: var(--artwork-frame-surface-color);
   position: relative;
   width: 100%;
   height: 100%;

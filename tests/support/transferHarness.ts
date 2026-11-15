@@ -20,6 +20,47 @@ import { useLibraryStore } from '@/stores/library'
 import { useMomentsStore } from '@/stores/moments'
 
 import { fakeImageTools } from './artworkFixtures'
+import {
+  buildManifest,
+  decodeJson,
+  encodeJson,
+  packagePolicy,
+  type PackageManifest,
+} from '@/features/backup/packageFormat'
+import { buildZip, readZip } from '@/features/backup/zipPackage'
+
+/** 유효한 해시를 가진 이전 버전·잘못된 의미 값 fixture. 무결성 오류와 의미 검증을 구분한다. */
+export async function rewritePackage(
+  bytes: Uint8Array,
+  meta: 'artwork.json' | 'share.json',
+  rewrite: (value: Record<string, unknown>) => void,
+  version = 2,
+): Promise<Uint8Array> {
+  const zip = readZip(
+    bytes,
+    packagePolicy(['manifest.json', 'backup.json', 'artwork.json', 'share.json']),
+  )
+  if (!zip.ok) throw new Error(zip.error.kind)
+  const original = decodeJson(zip.files.get('manifest.json')) as PackageManifest
+  const payload = decodeJson(zip.files.get(meta)) as Record<string, unknown>
+  rewrite(payload)
+  const files = [...zip.files]
+    .filter(([name]) => name !== 'manifest.json')
+    .map(([path, data]) => ({
+      path,
+      bytes: path === meta ? encodeJson(payload) : data,
+      compress: false,
+    }))
+  const manifest = await buildManifest(
+    { ...original, formatVersion: version },
+    files,
+    fakeImageTools().sha256,
+  )
+  return buildZip([
+    { path: 'manifest.json', bytes: encodeJson(manifest), compress: true },
+    ...files,
+  ])
+}
 
 export function useNodeBlobs(): void {
   vi.stubGlobal('Blob', NodeBlob)

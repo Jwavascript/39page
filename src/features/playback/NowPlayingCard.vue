@@ -23,6 +23,7 @@ import type { TrackKey } from '@/shared/types/artwork'
 import { formatTimestamp } from '@/shared/utils/time'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
+import { useArtworkStore } from '@/stores/artwork'
 
 import { PLAYER_ADAPTER_FACTORY } from './PlayerAdapter'
 import { PLAYBACK_COORDINATOR } from './playbackCoordinator'
@@ -58,6 +59,10 @@ const trackKey = computed<TrackKey | null>(() => {
 })
 
 const { view: artwork } = useTrackArtwork(trackKey)
+const artworkStore = useArtworkStore()
+const artworkDisplay = computed(() =>
+  trackKey.value === null ? undefined : artworkStore.displayFor(trackKey.value),
+)
 
 /** 그림을 눌러 설정을 열 수 있는가 — 그 트랙이 지금 라이브러리에 있을 때만. */
 const canEditArtwork = computed(() => {
@@ -154,7 +159,12 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   <section class="now-playing-card" aria-label="지금 재생">
     <div class="np-body">
       <div ref="artBox" class="np-art" :data-artwork-mode="artwork.mode">
-        <ArtworkImage :video-id="videoId" :mode="artwork.mode" :src="artworkSrc" />
+        <ArtworkImage
+          :video-id="videoId"
+          :mode="artwork.mode"
+          :src="artworkSrc"
+          :display="artworkDisplay"
+        />
         <!-- 그림을 누르면 이 곡의 앨범아트 설정 (목록의 곡일 때만). 그림 전체가 단추다. -->
         <button
           v-if="canEditArtwork"

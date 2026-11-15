@@ -56,6 +56,62 @@ const custom = (item: NewAsset) =>
   ({ mode: 'custom', assetId: item.asset.id, newAsset: item }) as const
 
 describe('A. 한 트랙의 선호 바꾸기', () => {
+  it('같은 원본의 곡별 구도는 독립적이며, 구도만 바꿀 때 Blob을 다시 쓰지 않는다', async () => {
+    const a = asset('a')
+    await repo.setPreference(A, 'v', custom(a), 0, NOW)
+    await repo.setPreference(B, 'v', custom(a), 0, NOW)
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put')
+    const display = { fit: 'contain' as const, positionX: 20, positionY: 80, zoom: 1.5 }
+    expect(
+      (await repo.setPreference(A, 'v', { mode: 'custom', assetId: a.asset.id, display }, 1, NOW))
+        .ok,
+    ).toBe(true)
+    expect(put.mock.instances.map((store) => store.name)).toEqual(['assignments'])
+    const snap = await repo.snapshot()
+    expect(snap.assignments.find((item) => item.trackId === A.trackId)?.display).toEqual(display)
+    expect(snap.assignments.find((item) => item.trackId === B.trackId)?.display).toBeUndefined()
+    expect(snap.assets).toHaveLength(1)
+    expect(new Uint8Array(await (await repo.getBlob(a.asset.id))!.blob.arrayBuffer())).toEqual(
+      new Uint8Array(await a.blob.arrayBuffer()),
+    )
+    // 다른 탭의 옛 수정 번호로 저장하면 최신 구도를 덮지 않는다.
+    expect(
+      await repo.setPreference(
+        A,
+        'v',
+        { mode: 'custom', assetId: a.asset.id, display: { ...display, zoom: 3 } },
+        1,
+        NOW,
+      ),
+    ).toEqual({ ok: false, reason: 'conflict' })
+  })
+
+  it('구도 쓰기 실패는 이전 연결·원본을 지키며 재시도할 수 있다', async () => {
+    const a = asset('a')
+    await repo.setPreference(A, 'v', custom(a), 0, NOW)
+    const before = await repo.snapshot()
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementationOnce(() => {
+      throw new DOMException('full', 'QuotaExceededError')
+    })
+    expect(
+      await repo.setPreference(
+        A,
+        'v',
+        {
+          mode: 'custom',
+          assetId: a.asset.id,
+          display: { fit: 'cover', positionX: 0, positionY: 100, zoom: 2 },
+        },
+        1,
+        NOW,
+      ),
+    ).toEqual({ ok: false, reason: 'quota' })
+    put.mockRestore()
+    expect(await repo.snapshot()).toEqual(before)
+    repo.close()
+    repo = createArtworkRepository(await openArtworkDb(factory))
+    expect(await repo.snapshot()).toEqual(before)
+  })
   it('custom — 자산 · 바이트 · 연결이 함께 저장되고 수정 번호가 1 이 된다', async () => {
     const a = asset('a')
     const result = await repo.setPreference(A, 'vvvvvvvvvvv', custom(a), 0, NOW)

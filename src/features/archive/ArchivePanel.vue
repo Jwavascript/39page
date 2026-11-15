@@ -327,6 +327,7 @@ watch(
           class="music-artwork"
           :playlist-id="artworkTarget.playlistId"
           :track-id="artworkTarget.trackId"
+          :active="open && tab === 'music'"
           @close="closeArtwork"
         />
       </div>

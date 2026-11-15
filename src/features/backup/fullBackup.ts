@@ -11,7 +11,7 @@
  * 순수 함수다 — store · 저장소 · 시계를 읽지 않는다. 받은 것만으로 만들고 읽는다.
  */
 import type { ImageTools } from '@/features/artwork/imageValidation'
-import type { ArtworkAssignment } from '@/shared/types/artwork'
+import type { ArtworkAssignment, ArtworkDisplay } from '@/shared/types/artwork'
 
 import type { BackupFile } from './backupSchema'
 import {
@@ -35,13 +35,14 @@ import {
 import { buildZip, readZip, ZIP_ERROR_MESSAGE, type ZipEntry } from './zipPackage'
 
 export const FULL_BACKUP_FORMAT = '39page-full-backup'
-export const FULL_BACKUP_VERSION = 1
-export const ARTWORK_JSON_VERSION = 1
+export const FULL_BACKUP_VERSION = 2
+export const ARTWORK_JSON_VERSION = 2
 
 const META = ['manifest.json', 'backup.json', 'artwork.json'] as const
 
 /** `artwork.json` 의 연결 한 줄 — 저장소의 수정 번호 · 시각은 옮기지 않는다 (복원하는 쪽이 새로 매긴다). */
 export interface PackedAssignment {
+  readonly display?: ArtworkDisplay
   readonly playlistId: string
   readonly trackId: string
   readonly videoId: string
@@ -103,6 +104,9 @@ export async function createFullBackupZip(input: {
       trackId: assignment.trackId,
       videoId: assignment.videoId,
       mode: assignment.mode,
+      ...(assignment.mode === 'custom' && assignment.display !== undefined
+        ? { display: assignment.display }
+        : {}),
       ...(assignment.mode === 'custom' && assignment.assetId !== undefined
         ? { assetId: assignment.assetId }
         : {}),
@@ -217,7 +221,10 @@ export async function readFullBackupZip(
   let artwork: UnpackedArtwork = { assets: [], problems: [] }
   const dropped: DroppedLink[] = []
   if (rawArtwork !== null) {
-    if (!isRecord(rawArtwork) || rawArtwork.version !== ARTWORK_JSON_VERSION) {
+    if (
+      !isRecord(rawArtwork) ||
+      (rawArtwork.version !== 1 && rawArtwork.version !== ARTWORK_JSON_VERSION)
+    ) {
       return { ok: false, message: '앨범아트 목록(artwork.json)을 읽을 수 없습니다.' }
     }
     const unpacked = await unpackAssets(rawArtwork.assets, zip.files, tools, now)

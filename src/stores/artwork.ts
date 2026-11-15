@@ -24,6 +24,9 @@ import {
 import type { ValidatedArtwork } from '@/features/artwork/imageValidation'
 import {
   trackKeyString,
+  DEFAULT_ARTWORK_DISPLAY,
+  readArtworkDisplay,
+  type ArtworkDisplay,
   type ArtworkAsset,
   type ArtworkAssignment,
   type ArtworkPreference,
@@ -172,6 +175,10 @@ export const useArtworkStore = defineStore('artwork', () => {
     return assignmentFor(key)?.revision ?? 0
   }
 
+  function displayFor(key: TrackKey): ArtworkDisplay {
+    return readArtworkDisplay(assignmentFor(key)?.display) ?? { ...DEFAULT_ARTWORK_DISPLAY }
+  }
+
   function assetFor(id: string): ArtworkAsset | null {
     return assets.value.get(id) ?? null
   }
@@ -246,6 +253,7 @@ export const useArtworkStore = defineStore('artwork', () => {
     videoId: string,
     artwork: ValidatedArtwork,
     expectedRevision: number,
+    display?: ArtworkDisplay,
   ): Promise<ArtworkChangeResult> {
     const newAsset: NewAsset = {
       asset: {
@@ -260,7 +268,30 @@ export const useArtworkStore = defineStore('artwork', () => {
       blob: artwork.blob,
       poster: artwork.poster,
     }
-    return change(key, videoId, { mode: 'custom', assetId: artwork.id, newAsset }, expectedRevision)
+    return change(
+      key,
+      videoId,
+      { mode: 'custom', assetId: artwork.id, newAsset, display },
+      expectedRevision,
+    )
+  }
+
+  /** 표시만 바꾼다. 같은 자산·Blob을 그대로 참조하고 수정 번호로 충돌을 검사한다. */
+  function setDisplay(
+    key: TrackKey,
+    videoId: string,
+    display: ArtworkDisplay,
+    expectedRevision: number,
+  ) {
+    const preference = preferenceFor(key)
+    if (preference.mode !== 'custom')
+      return Promise.resolve<ArtworkChangeResult>({ ok: false, reason: 'failed' })
+    return change(
+      key,
+      videoId,
+      { mode: 'custom', assetId: preference.assetId, display },
+      expectedRevision,
+    )
   }
 
   function useDefault(key: TrackKey, videoId: string, expectedRevision: number) {
@@ -399,10 +430,12 @@ export const useArtworkStore = defineStore('artwork', () => {
     reload,
     assignmentFor,
     preferenceFor,
+    displayFor,
     revisionFor,
     assetFor,
     loadBlob,
     setCustom,
+    setDisplay,
     useDefault,
     useAuto,
     forgetTracks,

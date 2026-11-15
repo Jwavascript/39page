@@ -31,6 +31,7 @@ import {
   newProfile,
   useNodeBlobs,
   type Profile,
+  rewritePackage,
 } from '../support/transferHarness'
 
 const V1 = 'aaaaaaaaaaa'
@@ -112,9 +113,35 @@ const snapshotLibrary = () =>
   }))
 
 describe('A. 왕복 — 다른 프로필에서 그대로', () => {
+  it('v1 ZIP은 생략한 구도를 기본값으로 새 프로필에 복원한다', async () => {
+    await newProfile()
+    const keys = await seed()
+    const { bytes } = await exportZip()
+    const old = await rewritePackage(
+      bytes,
+      'artwork.json',
+      (value) => {
+        value.version = 1
+      },
+      1,
+    )
+    await newProfile()
+    const { full } = importer()
+    await full.selectZip(new File([old as Uint8Array<ArrayBuffer>], 'v1.zip'))
+    await full.apply()
+    expect(full.artworkResult.value?.outcome).toBe('saved')
+    expect(useArtworkStore().displayFor(keys.a1)).toEqual({
+      fit: 'cover',
+      positionX: 50,
+      positionY: 50,
+      zoom: 1,
+    })
+  })
   it('목록 · 순서 · Moments · 테마 · 그림(PNG · GIF 포스터) · 연결이 같다', async () => {
     await newProfile()
     const keys = await seed()
+    const crop = { fit: 'contain' as const, positionX: 15, positionY: 85, zoom: 1.75 }
+    await useArtworkStore().setDisplay(keys.b1, V1, crop, 1)
     const before = snapshotLibrary()
     const beforeMoments = useMomentsStore().moments.map((m) => [m.videoId, m.atSeconds, m.note])
     const exported = await exportZip()
@@ -150,6 +177,7 @@ describe('A. 왕복 — 다른 프로필에서 그대로', () => {
     expect(artwork.preferenceFor(keys.a1).mode).toBe('custom')
     expect(artwork.preferenceFor(keys.a2)).toEqual({ mode: 'default' })
     expect(artwork.preferenceFor(keys.b1).mode).toBe('custom')
+    expect(artwork.displayFor(keys.b1)).toEqual(crop)
     expect(artwork.usage.assets).toBe(2)
     // 같은 영상의 두 트랙(A1 · B1)이 서로 다른 그림이다.
     expect(artwork.preferenceFor(keys.a1)).not.toEqual(artwork.preferenceFor(keys.b1))
@@ -238,6 +266,24 @@ describe('C. 읽기 검증 — 아무것도 쓰지 않는다', () => {
     expect(useArtworkStore().usage.assets).toBe(0)
   }
 
+  it('해시가 유효해도 잘못된 구도·미래 내부 버전은 어떤 저장도 하기 전에 거절한다', async () => {
+    const base = await exported()
+    const invalid = await rewritePackage(base, 'artwork.json', (value) => {
+      const rows = value.assignments as Record<string, unknown>[]
+      rows.find((row) => row.mode === 'custom')!.display = {
+        fit: 'cover',
+        positionX: -1,
+        positionY: 50,
+        zoom: 2,
+      }
+    })
+    await expectRejected(invalid, /연결이 올바르지/)
+    const future = await rewritePackage(base, 'artwork.json', (value) => {
+      value.version = 3
+    })
+    await expectRejected(future, /읽을 수 없/)
+  })
+
   it('그림 바이트 하나를 바꾸면(변조 · 손상) manifest 해시가 맞지 않아 받지 않는다', async () => {
     const bytes = new Uint8Array(await exported())
     // 저장(압축 없음)된 PNG 의 서명 뒤 바이트를 바꾼다.
@@ -271,7 +317,7 @@ describe('C. 읽기 검증 — 아무것도 쓰지 않는다', () => {
       /종류/,
     )
     await expectRejected(
-      zipSync({ ...files, 'manifest.json': enc({ ...manifest, formatVersion: 2 }) }),
+      zipSync({ ...files, 'manifest.json': enc({ ...manifest, formatVersion: 3 }) }),
       /더 새 39page/,
     )
   })
