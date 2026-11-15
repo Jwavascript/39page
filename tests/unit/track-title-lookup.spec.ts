@@ -164,6 +164,27 @@ async function submit(w: ReturnType<typeof mount>): Promise<void> {
 }
 
 describe('B. 양식 — 제목 칸만 채우고, 사용자 · 저장을 앞서지 않는다', () => {
+  it('빠른 제출의 조회 중 양식을 닫으면 늦은 응답으로 곡을 추가하지 않는다', async () => {
+    vi.useFakeTimers()
+    let answer: (response: Response) => void = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve
+          }),
+      ),
+    )
+    const { wrapper, library } = await openForm()
+    await wrapper.get('#track-url').setValue(`https://youtu.be/${nextId()}`)
+    await submit(wrapper)
+    await wrapper.get('.link-form button[type="button"]').trigger('click')
+    answer(json({ title: 'Too late' }))
+    await flushPromises()
+    expect(lastTrack(library)).toBeUndefined()
+    expect(wrapper.find('.link-form').exists()).toBe(false)
+  })
   it('링크를 넣고 400ms 뒤 한 번 묻고, 제목 칸을 채운다 → 추가하면 그 제목으로 저장', async () => {
     vi.useFakeTimers()
     const id = nextId()

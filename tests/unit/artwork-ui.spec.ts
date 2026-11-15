@@ -324,6 +324,60 @@ describe('E. Object URL 수명', () => {
 })
 
 describe('M12-6A — 편집 세션과 미리보기', () => {
+  it('새 목록으로 이동할 때도 미저장 파일을 먼저 확인하고 폐기 뒤 설정 화면을 정리한다', async () => {
+    const ctx = await setup()
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(pngBytes(1), 'draft.png'))
+    await ctx.wrapper.get('.lists-head .pill--strong').trigger('click')
+    await flushPromises()
+    expect(ctx.wrapper.find('.discard-confirm').exists()).toBe(true)
+    await ctx.wrapper.get('#archive-keep-editing').trigger('click')
+    await flushPromises()
+    expect(ctx.wrapper.find('.artwork-settings').exists()).toBe(true)
+    expect(ctx.wrapper.find('.create-form').exists()).toBe(false)
+    await ctx.wrapper.get('.lists-head .pill--strong').trigger('click')
+    await flushPromises()
+    await ctx.wrapper.get('.discard-confirm button:last-child').trigger('click')
+    await flushPromises()
+    expect(ctx.wrapper.find('.artwork-settings').exists()).toBe(false)
+    expect(ctx.wrapper.find('.create-form').exists()).toBe(true)
+    expect(ctx.store.usage.assets).toBe(0)
+    ctx.wrapper.unmount()
+    expect(urls.live.size).toBe(0)
+  })
+  it('곡 관리와 선택하지 않은 목록 관리에서 공유 대상은 정확하고 Moments는 항상 기본 꺼짐이다', async () => {
+    const ctx = await setup()
+    const other = await ctx.library.createPlaylist('OTHER')
+    if (!other.ok) throw new Error('playlist')
+    await ctx.library.selectPlaylist(ctx.playlistId)
+    await openSettingsFromManage(ctx, 'One')
+    await ctx.wrapper.get('.artwork-settings [aria-label="앨범아트 설정 닫기"]').trigger('click')
+    await flushPromises()
+    await ctx.wrapper.get('[aria-label="One 공유"]').trigger('click')
+    await flushPromises()
+    expect((ctx.wrapper.get('[aria-label="공유할 목록"]').element as HTMLSelectElement).value).toBe(
+      ctx.playlistId,
+    )
+    expect((ctx.wrapper.get('[aria-label="공유할 범위"]').element as HTMLSelectElement).value).toBe(
+      ctx.keyOne.trackId,
+    )
+    await ctx.wrapper.get('.share input[type="checkbox"]').setValue(true)
+    await ctx.wrapper.get('[aria-label="데이터 닫기"]').trigger('click')
+    await ctx.wrapper.get('[aria-label="OTHER 관리 — 이름 수정 · 삭제"]').trigger('click')
+    await ctx.wrapper.get('[aria-label="OTHER 목록 공유"]').trigger('click')
+    await flushPromises()
+    expect((ctx.wrapper.get('[aria-label="공유할 목록"]').element as HTMLSelectElement).value).toBe(
+      other.playlistId,
+    )
+    expect((ctx.wrapper.get('[aria-label="공유할 범위"]').element as HTMLSelectElement).value).toBe(
+      '',
+    )
+    expect(
+      (ctx.wrapper.get('.share input[type="checkbox"]').element as HTMLInputElement).checked,
+    ).toBe(false)
+    expect(ctx.library.selectedPlaylistId).toBe(ctx.playlistId)
+    ctx.wrapper.unmount()
+  })
   it('구도는 미리보기만 변경하고 저장 성공 뒤 카드·새 세션에 반영된다', async () => {
     const ctx = await setup()
     await playFirst(ctx)

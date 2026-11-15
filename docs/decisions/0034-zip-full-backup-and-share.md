@@ -5,6 +5,9 @@
 
 ## 배경
 
+M12-6: 구도 이식을 위해 ZIP·공유 manifest 및 Artwork/공유 JSON을 v2로 내보내며 v1/v2를 읽는다.
+내부 `backup.json`은 기존 형식이다. [ADR 0035](0035-m12-6-edit-sessions-and-artwork-display.md) 결정 8 참조.
+
 사용자 이미지는 IndexedDB 에만 있다. JSON 백업(ADR 0018)만으로는 다른 컴퓨터에서 Artwork 를 복원할 수 없다. 서버 · 계정이 없으므로
 공유도 파일로 한다.
 

@@ -305,6 +305,14 @@ Moments, 작은 터치 영역, 담을 때마다 열리는 새 탭 — 를 고친
 설계: [`M12_CUSTOM_ARTWORK.md`](M12_CUSTOM_ARTWORK.md) · [`../architecture/ARTWORK_DESIGN.md`](../architecture/ARTWORK_DESIGN.md).
 계정 · 커뮤니티 · 공개 링크 공유 · 클라우드 동기화는 장래 기능이다 (M12 는 안정 식별자와 파일 패키지만 준비한다).
 
+### M12-6 — UX Polish (로컬 구현, push·배포 없음)
+
+- 보관함 편집 세션·모든 옵션 미리보기·Moment 버튼 위치·모두 보기 전체 필터.
+- 빠른 제출 제목 조회·큐 출처 카세트 레이블.
+- 비파괴 Artwork 구도·IndexedDB 연결별 설정·ZIP/공유 v2 (v1 읽기).
+- 관리 메뉴 공유 진입·통합 회귀. 검증과 출시 조건은 [보고서](../development/M12_6_UX_POLISH_REPORT.md).
+- TODO: 실기기·사람 UAT. 화면 공간 재조정·몰입 모드·Moments 이동은 별도 후속 작업.
+
 ## 범위 외
 
 ### MVP 제외 (`MVP_SPEC.md` §3)

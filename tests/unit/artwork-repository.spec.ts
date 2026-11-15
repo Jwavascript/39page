@@ -66,7 +66,9 @@ describe('A. 한 트랙의 선호 바꾸기', () => {
       (await repo.setPreference(A, 'v', { mode: 'custom', assetId: a.asset.id, display }, 1, NOW))
         .ok,
     ).toBe(true)
-    expect(put.mock.instances.map((store) => store.name)).toEqual(['assignments'])
+    expect(put.mock.instances.map((store) => (store as IDBObjectStore).name)).toEqual([
+      'assignments',
+    ])
     const snap = await repo.snapshot()
     expect(snap.assignments.find((item) => item.trackId === A.trackId)?.display).toEqual(display)
     expect(snap.assignments.find((item) => item.trackId === B.trackId)?.display).toBeUndefined()

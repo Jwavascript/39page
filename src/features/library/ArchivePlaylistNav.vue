@@ -22,6 +22,7 @@ import { computed, inject, nextTick, ref, watch } from 'vue'
 import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/library/libraryFeedback'
 import { UNSAVED_NOTICE, usePlaylistCreate } from '@/features/library/usePlaylistCreate'
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
+import { SHARE_DIALOG } from '@/shared/types/share'
 import {
   MAX_PLAYLIST_NAME_LENGTH,
   useLibraryStore,
@@ -31,6 +32,7 @@ import {
 const props = defineProps<{
   /** 보관함이 열려 있는지. 닫히면 쓰던 양식 · 펼친 관리 · 안내를 비운다. */
   active: boolean
+  beforeSelect?: () => Promise<boolean>
 }>()
 
 const emit = defineEmits<{
@@ -41,6 +43,7 @@ const emit = defineEmits<{
 }>()
 
 const library = useLibraryStore()
+const shareDialog = inject(SHARE_DIALOG, null)
 const coordinator = inject(PLAYBACK_COORDINATOR, null)
 
 const create = usePlaylistCreate()
@@ -65,6 +68,9 @@ function failureMessage(reason: string | undefined): string {
 }
 
 async function select(id: string): Promise<void> {
+  if (props.beforeSelect !== undefined && !(await props.beforeSelect())) return
+  resetManage()
+  managingId.value = null
   notice.value = ''
   if (id !== library.selectedPlaylistId) {
     const result = await library.selectPlaylist(id)
@@ -79,6 +85,11 @@ async function select(id: string): Promise<void> {
 async function submitCreate(): Promise<void> {
   const id = await create.submit()
   if (id !== null) emit('created', id)
+}
+
+async function startCreate(): Promise<void> {
+  if (props.beforeSelect !== undefined && !(await props.beforeSelect())) return
+  await create.start()
 }
 
 /* ---------- 관리: 이름 수정 · 삭제 (M11-7B 에서 상세 칸의 머리말에서 옮겨 왔다) ---------- */
@@ -227,7 +238,7 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
       <h3 id="archive-lists-title" class="section-title">
         플레이리스트 <span class="lists-count">{{ library.playlists.length }}</span>
       </h3>
-      <button type="button" class="pill pill--strong" @click="create.start">＋ 새 목록</button>
+      <button type="button" class="pill pill--strong" @click="startCreate">＋ 새 목록</button>
     </div>
 
     <form v-if="create.isCreating.value" class="create-form" @submit.prevent="submitCreate">
@@ -310,6 +321,15 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
             class="form-actions"
           >
             <button type="button" class="pill" @click="startRename(playlist.id)">이름 수정</button>
+            <button
+              v-if="shareDialog"
+              type="button"
+              class="pill"
+              :aria-label="`${playlist.name} 목록 공유`"
+              @click="shareDialog.open({ playlistId: playlist.id })"
+            >
+              이 목록 공유
+            </button>
             <button
               type="button"
               class="pill pill--danger"

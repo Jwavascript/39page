@@ -6,7 +6,7 @@
  * 컴포넌트는 **보관함 안**만 안다 — 탭, 닫기, 포커스.
  *
  * - 탭은 WAI-ARIA 탭 패턴이다: `role="tablist"` · 화살표 ←/→ · Home/End 로 옮기고 바로 바꾼다.
- * - 두 탭 본문은 **늘 마운트**되어 있고 `hidden` 으로만 숨긴다. 탭을 오가도 쓰던 양식이 남는다.
+ * - 탭을 오갈 때 본문을 유지한다. 음악 하위 편집은 닫기·새 진입 시 세션을 바꿔 정리한다 (M12-6).
  * - 열리면 고른 탭 단추로 포커스가 온다. 닫으면 셸이 연 버튼으로 되돌린다.
  * - 포커스 가둠이 없는 비모달 영역이다 — 플레이어 · 헤더를 계속 쓸 수 있다. 그래서 `aria-modal`
  *   을 선언하지 않는다 (M2 드로어와 같은 판단).
@@ -22,7 +22,7 @@
  * 스크롤하지 않는다 (스크롤이 겹치지 않게). 폭은 화면이 아니라 **보관함 자신의 폭**으로 본다
  * (컨테이너 쿼리) — 보관함이 화면의 일부만 쓰는 배치가 있기 때문이다.
  */
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import ArtworkSettings from '@/features/artwork/ArtworkSettings.vue'
 import ArchivePlaylistNav from '@/features/library/ArchivePlaylistNav.vue'
@@ -96,12 +96,14 @@ function onTabKeydown(event: KeyboardEvent): void {
 type MusicStep = 'lists' | 'detail'
 const musicStep = ref<MusicStep>('lists')
 const session = ref(0)
+const editorSession = ref(0)
 const settings = ref<InstanceType<typeof ArtworkSettings> | null>(null)
 
 /** 저장 중에는 기다리고, 파일·입력은 확인 후 폐기한다. 라디오 선택은 취소로 즉시 폐기한다. */
 let leaveRequest: Promise<boolean> | null = null
 let resolveLeave: ((allow: boolean) => void) | null = null
 const confirmingDiscard = ref(false)
+let discardTrigger: HTMLElement | null = null
 function allowLeave(): Promise<boolean> {
   if (settings.value?.busy || lists.value?.busy || editor.value?.busy) return Promise.resolve(false)
   const dirty =
@@ -109,6 +111,7 @@ function allowLeave(): Promise<boolean> {
   if (!dirty) return Promise.resolve(true)
   if (leaveRequest !== null) return Promise.resolve(false)
   confirmingDiscard.value = true
+  discardTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
   leaveRequest = new Promise((resolve) => {
     resolveLeave = resolve
   })
@@ -121,12 +124,22 @@ function finishDiscard(allow: boolean): void {
   resolveLeave?.(allow)
   resolveLeave = null
   leaveRequest = null
+  if (!allow) void nextTick(() => discardTrigger?.focus({ preventScroll: true }))
 }
+
+onBeforeUnmount(() => resolveLeave?.(false))
 
 function resetNavigation(): void {
   artworkTarget.value = null
   musicStep.value = 'lists'
   session.value += 1
+}
+
+async function beforePlaylistChange(): Promise<boolean> {
+  if (!(await allowLeave())) return false
+  artworkTarget.value = null
+  editorSession.value += 1
+  return true
 }
 
 defineExpose({ allowLeave, resetNavigation })
@@ -160,6 +173,7 @@ function onPlaylistSelected(): void {
 
 /** 새 목록을 만들면 곡 추가로 바로 이어 준다 — 상세 칸의 "링크 추가" 로 포커스 (M11 U15). */
 function onPlaylistCreated(): void {
+  artworkTarget.value = null
   musicStep.value = 'detail'
   void nextTick(() => editor.value?.startAddLink())
 }
@@ -250,6 +264,7 @@ watch(
       class="discard-confirm"
       role="group"
       aria-label="미저장 편집 폐기 확인"
+      @keydown.esc.prevent.stop="finishDiscard(false)"
     >
       <p>저장하지 않은 파일이나 입력 내용이 있어요. 버리고 나갈까요?</p>
       <button id="archive-keep-editing" type="button" class="tab" @click="finishDiscard(false)">
@@ -309,11 +324,12 @@ watch(
           ref="lists"
           class="music-lists"
           :active="open"
+          :before-select="beforePlaylistChange"
           @created="onPlaylistCreated"
           @selected="onPlaylistSelected"
         />
         <PlaylistEditor
-          :key="`editor-${session}`"
+          :key="`editor-${session}-${editorSession}`"
           ref="editor"
           class="music-detail"
           :active="open"

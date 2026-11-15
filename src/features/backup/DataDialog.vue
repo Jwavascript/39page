@@ -20,8 +20,10 @@ import BackupPanel from '@/features/backup/BackupPanel.vue'
 import SharePanel from '@/features/backup/SharePanel.vue'
 import { useLibraryStore, type LibraryStatus } from '@/stores/library'
 import { useMomentsStore, type MomentsStatus } from '@/stores/moments'
+import type { ShareRequest } from '@/shared/types/share'
 
-const props = defineProps<{ open: boolean; dialogId: string }>()
+const props = defineProps<{ open: boolean; dialogId: string; shareRequest?: ShareRequest | null }>()
+const sharePanel = ref<InstanceType<typeof SharePanel> | null>(null)
 const emit = defineEmits<{ close: [] }>()
 
 const library = useLibraryStore()
@@ -77,7 +79,8 @@ watch(
     if (!isOpen) return
     await nextTick()
     // 제목이 읽히도록 대화상자 자체에 먼저 둔다. Tab 한 번이면 첫 단추다.
-    dialog.value?.focus()
+    if (props.shareRequest != null) sharePanel.value?.focusExport()
+    else dialog.value?.focus()
   },
 )
 </script>
@@ -119,7 +122,7 @@ watch(
 
       <ArtworkStoragePanel />
 
-      <SharePanel />
+      <SharePanel ref="sharePanel" :request="shareRequest" />
 
       <ul class="help">
         <li>

@@ -1,0 +1,156 @@
+{
+  "date": "2026-11-15",
+  "results": [
+    {
+      "name": "Chrome production build in isolated profile",
+      "pass": true,
+      "details": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/157.0.8103.51",
+        "revision": "@653674df293788cf4932c40d914e9e15b41a2d31",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+        "jsVersion": "15.7.112.23"
+      }
+    },
+    {
+      "name": "Actual YouTube playback",
+      "pass": true,
+      "details": {
+        "subtitle": "1 / 2 · YOUTUBE · 재생 중 · 0:02"
+      }
+    },
+    {
+      "name": "Radio preview before save",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Deck entry resets nested editor to list",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Direct card entry targets playing track, draft discarded",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Unsaved upload asks before closing",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "GIF crop saved without changing original bytes",
+      "pass": true,
+      "details": {
+        "assets": [
+          {
+            "id": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "mimeType": "image/gif",
+            "byteSize": 19357,
+            "width": 160,
+            "height": 80,
+            "animated": true,
+            "createdAt": "2026-11-15T08:52:32.012Z"
+          }
+        ],
+        "links": [
+          {
+            "playlistId": "a",
+            "trackId": "a1",
+            "videoId": "aqz-KE-bpKQ",
+            "mode": "custom",
+            "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "display": {
+              "fit": "contain",
+              "positionX": 25,
+              "positionY": 75,
+              "zoom": 1.5
+            },
+            "revision": 1,
+            "updatedAt": "2026-11-15T08:52:32.012Z"
+          }
+        ],
+        "hashes": [
+          [
+            "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "Crop survives reload and renders on card",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Playlist management shares unselected target; Moments off",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "One GIF asset, independent crops on two tracks",
+      "pass": true,
+      "details": [
+        {
+          "playlistId": "a",
+          "trackId": "a1",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "display": {
+            "fit": "contain",
+            "positionX": 25,
+            "positionY": 75,
+            "zoom": 1.5
+          },
+          "revision": 1,
+          "updatedAt": "2026-11-15T08:52:32.012Z"
+        },
+        {
+          "playlistId": "b",
+          "trackId": "b1",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "display": {
+            "fit": "cover",
+            "positionX": 50,
+            "positionY": 50,
+            "zoom": 2
+          },
+          "revision": 1,
+          "updatedAt": "2026-11-15T08:52:34.428Z"
+        }
+      ]
+    },
+    {
+      "name": "Cassette keeps playing source while selecting another list",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "See all explicitly opens all filter",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Moment warning keeps save button position and capture target",
+      "pass": true,
+      "details": {
+        "beforeY": 715.453125,
+        "y": 715.453125,
+        "warning": true,
+        "target": "저장 전0:01Bunny A"
+      }
+    },
+    {
+      "name": "Harness completed all scenarios",
+      "pass": false,
+      "details": {
+        "error": "Error: evaluate failed: TypeError: Cannot set properties of null (setting 'value')\n    at <anonymous>:1:63\n    at <anonymous>:1:162\n    at Object.evaluate (file:///C:/Users/phoria/39page/extension/integration/cdp.mjs:65:13)\n    at async file:///C:/Users/phoria/39page/docs/development/m12-6-results/check/ux.mjs:264:5\n    at async session (file:///C:/Users/phoria/39page/docs/development/m12-6-results/check/ux.mjs:110:5)\n    at async file:///C:/Users/phoria/39page/docs/development/m12-6-results/check/ux.mjs:119:3"
+      }
+    }
+  ]
+}

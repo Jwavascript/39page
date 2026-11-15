@@ -388,6 +388,7 @@ describe('B. 트랙 목록 UI', () => {
       'One 이름 변경',
       // M12-3: 곡별 앨범아트 설정
       'One 앨범아트 설정',
+      'One 공유',
       'One 맨 위로',
       'One 위로',
       'One 아래로',
@@ -397,6 +398,7 @@ describe('B. 트랙 목록 UI', () => {
     expect(buttons.map((node) => node.text())).toEqual([
       '✎ 이름 바꾸기',
       '🖼 앨범아트',
+      '이 곡 공유',
       '⤒ 맨 위로',
       '↑ 위로',
       '↓ 아래로',

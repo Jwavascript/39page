@@ -1,0 +1,596 @@
+{
+  "date": "2026-11-15",
+  "results": [
+    {
+      "name": "Chrome production build in isolated profile",
+      "pass": true,
+      "details": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/157.0.8103.51",
+        "revision": "@653674df293788cf4932c40d914e9e15b41a2d31",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+        "jsVersion": "15.7.112.23"
+      }
+    },
+    {
+      "name": "Actual YouTube playback",
+      "pass": true,
+      "details": {
+        "subtitle": "1 / 2 · YOUTUBE · 재생 중 · 0:02"
+      }
+    },
+    {
+      "name": "Radio preview before save",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Deck entry resets nested editor to list",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Direct card entry targets playing track, draft discarded",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Unsaved upload asks before closing",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "GIF crop saved without changing original bytes",
+      "pass": true,
+      "details": {
+        "assets": [
+          {
+            "id": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "mimeType": "image/gif",
+            "byteSize": 19357,
+            "width": 160,
+            "height": 80,
+            "animated": true,
+            "createdAt": "2026-11-15T09:01:24.405Z"
+          }
+        ],
+        "links": [
+          {
+            "playlistId": "a",
+            "trackId": "a1",
+            "videoId": "aqz-KE-bpKQ",
+            "mode": "custom",
+            "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "display": {
+              "fit": "contain",
+              "positionX": 25,
+              "positionY": 75,
+              "zoom": 1.5
+            },
+            "revision": 1,
+            "updatedAt": "2026-11-15T09:01:24.406Z"
+          }
+        ],
+        "hashes": [
+          [
+            "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "Crop survives reload and renders on card",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Playlist management shares unselected target; Moments off",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "One GIF asset, independent crops on two tracks",
+      "pass": true,
+      "details": [
+        {
+          "playlistId": "a",
+          "trackId": "a1",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "display": {
+            "fit": "contain",
+            "positionX": 25,
+            "positionY": 75,
+            "zoom": 1.5
+          },
+          "revision": 1,
+          "updatedAt": "2026-11-15T09:01:24.406Z"
+        },
+        {
+          "playlistId": "b",
+          "trackId": "b1",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "display": {
+            "fit": "cover",
+            "positionX": 50,
+            "positionY": 50,
+            "zoom": 2
+          },
+          "revision": 1,
+          "updatedAt": "2026-11-15T09:01:26.819Z"
+        }
+      ]
+    },
+    {
+      "name": "Cassette keeps playing source while selecting another list",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "See all explicitly opens all filter",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Moment warning keeps save button position and capture target",
+      "pass": true,
+      "details": {
+        "beforeY": 715.453125,
+        "y": 715.453125,
+        "warning": true,
+        "target": "저장 전0:01Bunny A"
+      }
+    },
+    {
+      "name": "Real oEmbed fast submit obtains title",
+      "pass": true,
+      "details": {
+        "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film"
+      }
+    },
+    {
+      "name": "Blocked oEmbed still adds fallback title",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Track management selects exact playlist and track",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 1440x900 dashboard",
+      "pass": true,
+      "details": {
+        "w": 448.515625,
+        "h": 252.28125,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 1440x900 archive",
+      "pass": true,
+      "details": {
+        "w": 384,
+        "h": 216,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 1024x768 dashboard",
+      "pass": true,
+      "details": {
+        "w": 640,
+        "h": 360,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 1024x768 archive",
+      "pass": true,
+      "details": {
+        "w": 384,
+        "h": 216,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 768x1024 dashboard",
+      "pass": true,
+      "details": {
+        "w": 640,
+        "h": 360,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 768x1024 archive",
+      "pass": true,
+      "details": {
+        "w": 680.03125,
+        "h": 382.515625,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 390x844 dashboard",
+      "pass": true,
+      "details": {
+        "w": 338,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 390x844 archive",
+      "pass": true,
+      "details": {
+        "w": 338,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 360x740 dashboard",
+      "pass": true,
+      "details": {
+        "w": 308,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 360x740 archive",
+      "pass": true,
+      "details": {
+        "w": 308,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 320x640 dashboard",
+      "pass": true,
+      "details": {
+        "w": 268,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 320x640 archive",
+      "pass": true,
+      "details": {
+        "w": 268,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 844x390 dashboard",
+      "pass": true,
+      "details": {
+        "w": 360,
+        "h": 202.5,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout kawaii-synth-cassette 844x390 archive",
+      "pass": true,
+      "details": {
+        "w": 360,
+        "h": 202.5,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 1440x900 dashboard",
+      "pass": true,
+      "details": {
+        "w": 448.515625,
+        "h": 252.28125,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 1440x900 archive",
+      "pass": true,
+      "details": {
+        "w": 384,
+        "h": 216,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 1024x768 dashboard",
+      "pass": true,
+      "details": {
+        "w": 640,
+        "h": 360,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 1024x768 archive",
+      "pass": true,
+      "details": {
+        "w": 384,
+        "h": 216,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 768x1024 dashboard",
+      "pass": true,
+      "details": {
+        "w": 640,
+        "h": 360,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 768x1024 archive",
+      "pass": true,
+      "details": {
+        "w": 680.03125,
+        "h": 382.515625,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 390x844 dashboard",
+      "pass": true,
+      "details": {
+        "w": 338,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 390x844 archive",
+      "pass": true,
+      "details": {
+        "w": 338,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 360x740 dashboard",
+      "pass": true,
+      "details": {
+        "w": 308,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 360x740 archive",
+      "pass": true,
+      "details": {
+        "w": 308,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 320x640 dashboard",
+      "pass": true,
+      "details": {
+        "w": 268,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 320x640 archive",
+      "pass": true,
+      "details": {
+        "w": 268,
+        "h": 202,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 844x390 dashboard",
+      "pass": true,
+      "details": {
+        "w": 360,
+        "h": 202.5,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Layout mono-vinyl 844x390 archive",
+      "pass": true,
+      "details": {
+        "w": 360,
+        "h": 202.5,
+        "iframe": true,
+        "overflow": 0
+      }
+    },
+    {
+      "name": "Artwork actions accessible 320x640",
+      "pass": true,
+      "details": [
+        {
+          "x": 196,
+          "y": 596.359375,
+          "width": 50,
+          "height": 44,
+          "right": 246,
+          "bottom": 640.359375
+        },
+        {
+          "x": 254,
+          "y": 596.359375,
+          "width": 50,
+          "height": 44,
+          "right": 304,
+          "bottom": 640.359375
+        }
+      ]
+    },
+    {
+      "name": "Artwork actions accessible 844x390",
+      "pass": true,
+      "details": [
+        {
+          "x": 690,
+          "y": 346.46875,
+          "width": 50,
+          "height": 44,
+          "right": 740,
+          "bottom": 390.46875
+        },
+        {
+          "x": 748,
+          "y": 346.46875,
+          "width": 50,
+          "height": 44,
+          "right": 798,
+          "bottom": 390.46875
+        }
+      ]
+    },
+    {
+      "name": "New Chrome profile restores ZIP crops and original GIF",
+      "pass": true,
+      "details": {
+        "assets": [
+          {
+            "id": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "mimeType": "image/gif",
+            "byteSize": 19357,
+            "width": 160,
+            "height": 80,
+            "animated": true,
+            "createdAt": "2026-11-15T09:01:45.198Z"
+          }
+        ],
+        "links": [
+          {
+            "playlistId": "a",
+            "trackId": "a1",
+            "videoId": "aqz-KE-bpKQ",
+            "mode": "custom",
+            "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "display": {
+              "fit": "contain",
+              "positionX": 25,
+              "positionY": 75,
+              "zoom": 1.5
+            },
+            "revision": 1,
+            "updatedAt": "2026-11-15T09:01:45.508Z"
+          },
+          {
+            "playlistId": "b",
+            "trackId": "b1",
+            "videoId": "aqz-KE-bpKQ",
+            "mode": "custom",
+            "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "display": {
+              "fit": "cover",
+              "positionX": 50,
+              "positionY": 50,
+              "zoom": 2
+            },
+            "revision": 1,
+            "updatedAt": "2026-11-15T09:01:45.508Z"
+          }
+        ],
+        "hashes": [
+          [
+            "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+            "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "Track share restores crop with new track IDs",
+      "pass": true,
+      "details": [
+        {
+          "playlistId": "a",
+          "trackId": "a1",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "display": {
+            "fit": "contain",
+            "positionX": 25,
+            "positionY": 75,
+            "zoom": 1.5
+          },
+          "revision": 1,
+          "updatedAt": "2026-11-15T09:01:45.508Z"
+        },
+        {
+          "playlistId": "b",
+          "trackId": "b1",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "display": {
+            "fit": "cover",
+            "positionX": 50,
+            "positionY": 50,
+            "zoom": 2
+          },
+          "revision": 1,
+          "updatedAt": "2026-11-15T09:01:45.508Z"
+        },
+        {
+          "playlistId": "ea7e14c6-a52d-41f0-b552-605dd61ba21c",
+          "trackId": "abe180b0-6cca-4fd9-8bfc-13aa9a00edfa",
+          "videoId": "aqz-KE-bpKQ",
+          "mode": "custom",
+          "display": {
+            "fit": "cover",
+            "positionX": 50,
+            "positionY": 50,
+            "zoom": 2
+          },
+          "assetId": "3ad845d8ea3ca2e9454511db664b886e434b876cbd31a80185b94e9aada83b3d",
+          "revision": 1,
+          "updatedAt": "2026-11-15T09:01:45.926Z"
+        }
+      ]
+    }
+  ]
+}

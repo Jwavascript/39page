@@ -67,6 +67,7 @@ const emit = defineEmits<{
   moments: [videoId: string]
   /** 이 곡의 앨범아트 설정을 연다 (M12-3) — 보관함이 상세 칸 자리에 설정을 띄운다. */
   artwork: [trackId: string]
+  share: [trackId: string]
 }>()
 
 /**
@@ -550,6 +551,14 @@ onBeforeUnmount(() => {
           @click="emit('artwork', track.id)"
         >
           🖼 앨범아트
+        </button>
+        <button
+          type="button"
+          class="pill track-share"
+          :aria-label="`${track.title} 공유`"
+          @click="emit('share', track.id)"
+        >
+          이 곡 공유
         </button>
         <button
           type="button"

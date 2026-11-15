@@ -64,3 +64,5 @@
 
 나머지 선행 결정 사항은 `docs/development/IMPLEMENTATION_PLAN.md`의
 "선행 결정 사항" 표를 참조한다.
+
+- [0035](0035-m12-6-edit-sessions-and-artwork-display.md): M12-6 편집 세션·제목 제출·카세트 레이블·비파괴 구도·ZIP/공유 v2 (채택).

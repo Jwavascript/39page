@@ -298,4 +298,23 @@ interface ArtworkBlobRecord {
 
 - 계정 · 커뮤니티 · 공개 링크 공유 · 클라우드 동기화: 자산 id 가 내용 해시이고 공유 패키지가 `sourceId` · `formatVersion` 을
   가지므로, 서버가 생겨도 같은 패키지를 업로드 단위로 쓸 수 있다. 서버 · 로그인 · URL 생성은 만들지 않았다.
-- 움직이는 WebP, 이미지 자르기 · 회전, 목록 화면의 작은 그림, Moment 별 그림.
+- 움직이는 WebP, 원본 픽셀 자르기 · 회전, 목록 화면의 작은 그림, Moment 별 그림.
+
+## 10. M12-6 표시 설정·패키지 개정 (이 절이 v1 서술의 최신 보충이다)
+
+`ArtworkAssignment.display?: ArtworkDisplay`는 사용자 이미지의 연결별 선택 필드다.
+`{ fit: 'cover' | 'contain', positionX: 0..100, positionY: 0..100, zoom: 1..3 }`, 기본은 cover/50/50/1이다.
+기존 연결에 필드가 없으면 기본값으로 읽고 쓰지 않는다. 잘못된 값·비유한 수·부분 객체는 패키지 읽기 시 거절한다.
+
+원본과 포스터에 같은 CSS `object-fit`·`object-position`·확대·변환 중심을 적용한다. cover는 채우고 contain은 비율을
+보존해 의도적인 여백을 둔다. 포인터 이동은 표시된 이미지의 실제 넘침/여백 길이로 백분율을 계산한다.
+자산과 Blob은 그대로이며 구도만 저장할 때 assignments 한 건만 쓴다. DB 키·색인 변화가 없으므로 IndexedDB v1을 유지한다.
+저장 실패·탭 간 revision 충돌 시 이전 연결을 보존하고, 카드에는 저장 확정 후 반영한다.
+
+전체 ZIP manifest `formatVersion: 2`, artwork.json `version: 2`, 공유 manifest `formatVersion: 2`, share.json `version: 2`로
+내보낸다. 각각 v1/v2를 읽고 더 새 버전을 거절한다. 내부 backup.json은 기존 JSON 형식이다. 공유 트랙 artwork와 전체 백업
+연결에 display를 포함하며, 새 ID로 가져와도 그대로 옮긴다. staging·rollback·불완전 백업·누락 자산 정책은 §7–8 그대로다.
+
+설정 화면에서도 GIF는 모션 감소·멈춤·화면 밖에서 포스터로 전환하고 URL은 세션 종료 시 해제한다.
+기존 §9의 이미지 자르기 중 **표시 구도 조절**은 구현됐으며, 원본 픽셀 자르기·회전은 여전히 범위 밖이다.
+근거: [ADR 0035](../decisions/0035-m12-6-edit-sessions-and-artwork-display.md).

@@ -24,6 +24,7 @@
 import { computed, inject, nextTick, ref, watch } from 'vue'
 
 import { ARCHIVE } from '@/features/archive/archiveController'
+import { SHARE_DIALOG } from '@/shared/types/share'
 
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import { useTitleLookup } from '@/features/library/useTitleLookup'
@@ -75,6 +76,11 @@ const playback = inject(PLAYBACK_COORDINATOR, null)
  * 주입되지 않으면 비켜주지 않는다 (단독 마운트 테스트).
  */
 const archive = inject(ARCHIVE, null)
+const shareDialog = inject(SHARE_DIALOG, null)
+function shareTrack(trackId: string): void {
+  const playlistId = library.selectedPlaylistId
+  if (playlistId !== null) shareDialog?.open({ playlistId, trackId })
+}
 
 /** 곡 편집(순서 · 이름 · 삭제)이 거절됐을 때의 안내. */
 const formError = ref('')
@@ -108,7 +114,7 @@ const addedNotice = ref('')
 
 /**
  * 제목 칸 미리 채우기 (ADR 0029) — 링크를 넣고 제목 칸이 비어 있고 손대지 않았을 때만 YouTube oEmbed 로
- * 제목을 받아 **칸만** 채운다. 사용자가 쓴 제목을 덮지 않고, 추가는 조회를 기다리지 않는다.
+ * 제목을 받아 **칸만** 채운다. 사용자가 쓴 제목을 덮지 않는다. 제출은 최대 4초까지 같은 조회를 마친다.
  */
 const titleLookup = useTitleLookup(draftUrl, draftTitle)
 
@@ -149,6 +155,7 @@ function closeLinkForm(): void {
 }
 
 async function startAddLink(): Promise<void> {
+  linkSession += 1
   const current = library.selectedPlaylist
   if (current === null) return
 
@@ -578,6 +585,7 @@ watch(
       <h3 class="drawer-section-title">TRACKS</h3>
 
       <TrackList
+        @share="shareTrack"
         ref="trackList"
         :moment-counts="momentCounts"
         :now-playing-track-id="nowPlayingTrackId"

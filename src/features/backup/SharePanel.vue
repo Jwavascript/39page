@@ -7,7 +7,8 @@
  *
  * 서버 · 공개 링크가 없다 — 파일을 직접 주고받는다.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import type { ShareRequest } from '@/shared/types/share'
 
 import { formatBytes } from '@/shared/utils/bytes'
 import { useLibraryStore } from '@/stores/library'
@@ -16,6 +17,12 @@ import { useMomentsStore } from '@/stores/moments'
 import { useShareExport, useShareImport } from './useShare'
 
 const library = useLibraryStore()
+const props = defineProps<{ request?: ShareRequest | null }>()
+const exportHeading = ref<HTMLElement | null>(null)
+function focusExport(): void {
+  exportHeading.value?.focus()
+}
+defineExpose({ focusExport })
 const moments = useMomentsStore()
 const share = useShareExport()
 const incoming = useShareImport()
@@ -27,7 +34,26 @@ const includeMoments = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const playlist = computed(() => library.getPlaylist(playlistId.value) ?? null)
-watch(playlistId, () => (trackId.value = ''))
+watch(playlistId, () => (trackId.value = ''), { flush: 'sync' })
+const targetError = ref('')
+watch(
+  () => props.request?.seq,
+  async () => {
+    const request = props.request
+    if (request == null) return
+    includeMoments.value = false
+    const target = library.getPlaylist(request.playlistId)
+    const valid =
+      target !== undefined &&
+      (request.trackId === undefined || target.tracks.some((track) => track.id === request.trackId))
+    playlistId.value = valid ? request.playlistId : ''
+    trackId.value = valid ? (request.trackId ?? '') : ''
+    targetError.value = valid ? '' : '공유할 목록이나 곡이 사라졌어요. 대상을 다시 골라 주세요.'
+    await nextTick()
+    focusExport()
+  },
+  { immediate: true },
+)
 
 /** 넣을 Moments 수 — 켜기 전에 몇 개가 나가는지 보인다. */
 const momentCount = computed(() => {
@@ -42,7 +68,11 @@ const momentCount = computed(() => {
 })
 
 function make(): void {
-  if (playlist.value === null) return
+  if (
+    playlist.value === null ||
+    (trackId.value !== '' && !playlist.value.tracks.some((track) => track.id === trackId.value))
+  )
+    return
   void share.exportShare({
     playlistId: playlist.value.id,
     ...(trackId.value === '' ? {} : { trackId: trackId.value }),
@@ -61,7 +91,10 @@ function onFile(event: Event): void {
 <template>
   <section class="share" aria-labelledby="share-title">
     <div class="rule" />
-    <h3 id="share-title" class="share-title">SHARE · 파일로 공유</h3>
+    <h3 id="share-title" ref="exportHeading" class="share-title" tabindex="-1">
+      SHARE · 파일로 공유
+    </h3>
+    <p v-if="targetError" role="status">{{ targetError }}</p>
 
     <div class="share-form">
       <label class="field">

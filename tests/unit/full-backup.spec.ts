@@ -267,6 +267,7 @@ describe('C. 읽기 검증 — 아무것도 쓰지 않는다', () => {
   }
 
   it('해시가 유효해도 잘못된 구도·미래 내부 버전은 어떤 저장도 하기 전에 거절한다', async () => {
+    expect.hasAssertions()
     const base = await exported()
     const invalid = await rewritePackage(base, 'artwork.json', (value) => {
       const rows = value.assignments as Record<string, unknown>[]

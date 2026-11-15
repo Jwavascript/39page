@@ -60,6 +60,7 @@ import {
 import DataDialog from '@/features/backup/DataDialog.vue'
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
+import { SHARE_DIALOG, type ShareRequest, type ShareTarget } from '@/shared/types/share'
 
 defineProps<{
   brand: string
@@ -382,13 +383,21 @@ provide(ARCHIVE, archive)
 
 const DATA_DIALOG_ID = 'data-dialog'
 const isDataOpen = ref(false)
+const shareRequest = ref<ShareRequest | null>(null)
 let dataTrigger: HTMLElement | null = null
 
-function openData(): void {
+function openData(target?: ShareTarget): void {
+  shareRequest.value = target === undefined ? null : { ...target, seq: ++requestSeq }
   const active = document.activeElement
   dataTrigger = active instanceof HTMLElement ? active : null
   isDataOpen.value = true
 }
+
+provide(SHARE_DIALOG, {
+  open(target) {
+    openData(target)
+  },
+})
 
 async function closeData(): Promise<void> {
   if (!isDataOpen.value) return
@@ -526,7 +535,12 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
     -->
     <AppFooter :inert="behindDialog" />
 
-    <DataDialog :open="isDataOpen" :dialog-id="DATA_DIALOG_ID" @close="closeData" />
+    <DataDialog
+      :open="isDataOpen"
+      :dialog-id="DATA_DIALOG_ID"
+      :share-request="shareRequest"
+      @close="closeData"
+    />
   </div>
 </template>
 

@@ -251,7 +251,11 @@ describe('B. 목록 관리는 목록 칸에 — 재생은 상세 칸에', () => 
     await toggle?.trigger('click')
 
     const panel = s.wrapper.findAll('.archive-lists .list-row')[1]?.get('.manage-panel')
-    expect(panel?.findAll('button').map((b) => b.text())).toEqual(['이름 수정', '목록 삭제'])
+    expect(panel?.findAll('button').map((b) => b.text())).toEqual([
+      '이름 수정',
+      '이 목록 공유',
+      '목록 삭제',
+    ])
     expect(toggle?.attributes('aria-expanded')).toBe('true')
   })
 

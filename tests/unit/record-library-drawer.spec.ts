@@ -502,6 +502,7 @@ describe('B. 플레이리스트 UI', () => {
     ).toEqual([
       'Track t1 이름 변경',
       'Track t1 앨범아트 설정',
+      'Track t1 공유',
       'Track t1 맨 위로',
       'Track t1 위로',
       'Track t1 아래로',
