@@ -1,15 +1,16 @@
 # 운영 반영 후 3~7일 사용 기록
 
-배포 승인 전의 준비 양식이다. 운영 배포·smoke 완료로 표시하지 않는다.
+2026-11-16 운영 배포·격리 프로필 smoke를 완료했다. 이후 실제 사용 기록은 아래에 쌓는다.
 관련: [Release Gate](RELEASE_GATE.md).
 
 ## Day 0 — 배포 담당자가 기록
 
-- 배포일/시각: TODO
-- 실제 배포 Git SHA / Cloudflare Worker Version ID: TODO
-- 이전 안정 Version ID: TODO
-- 사전 JSON / Artwork 포함 ZIP 백업 파일명·복원 확인: TODO
-- Release Gate의 운영 smoke 결과: TODO
+- 배포일/시각: 2026-11-16 00:30:27 KST CI 성공 확인, 00:31~00:34 운영 검사.
+- 실제 배포 Git SHA: `cac19d56a5a4c4986fbead4cbf3156f2b7274e99`.
+- Cloudflare Worker Version ID (CI 보고): `0c291394-e72a-4830-b09d-c083a5d143cf`.
+- 이전 성공 Version ID: `712b48f1-eedb-4ea4-8f12-c566b0efab78`.
+- 사전 백업: 사용자가 운영 프로필에 데이터가 없다고 확인. 사용 시작 후 전체 ZIP 보관은 TODO.
+- 운영 검사: HTTP 11/11, 격리 Chrome 58/58. [실행 기록](PRODUCTION_RELEASE_2026_11_16.md).
 
 ## 사용 일정
 

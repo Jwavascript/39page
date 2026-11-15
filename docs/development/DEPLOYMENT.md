@@ -540,3 +540,14 @@ M9 번들을 한 탭에만 주어 "배포 전에 열어 둔 탭" 을 흉내 냈�
   옮길 수 있어 두 경로 모두에 둔다. **실제 응답 헤더는 배포 뒤 `curl -I` 로만 확인할 수 있다** — 로컬 `vite preview` 는
   `_headers` 를 읽지 않는다 (미확인, TODO).
 - 켜는 순서 · 롤백 · 확인: [`M11_RELEASE_READINESS.md`](M11_RELEASE_READINESS.md) §6-3 · §7.
+
+## 7. M11·M12 운영 반영 (2026-11-16 KST)
+
+사용자 승인 후 main `2bc8fd2..cac19d5`를 push했고 Workers Builds 성공 및 운영 반영을 확인했다.
+제품 코드는 Gate의 e371fb5와 동일하다. 공개 자산 7개 SHA-256 일치, HTTP 11/11, 격리 운영 Chrome 58/58 통과.
+`/bridge`·`/bridge.html` 실제 CSP는 `frame-ancestors 'none'`이며 확장 직접 저장은 계속 비활성이다.
+Web Store 업로드는 하지 않았다. 사용자는 운영 프로필에 데이터가 없다고 확인했다.
+
+새 Version ID(CI 보고): `0c291394-e72a-4830-b09d-c083a5d143cf`.
+이전 성공 Version ID: `712b48f1-eedb-4ea4-8f12-c566b0efab78`.
+전체 검사·스크린샷·미확인 관리 설정·Git 롤백 준비: [운영 배포 기록](PRODUCTION_RELEASE_2026_11_16.md).
