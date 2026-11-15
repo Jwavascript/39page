@@ -28,6 +28,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const DEFAULT_PLAYLIST_NAME = 'MY RECORDS'
 const VIDEO = 'jNQXAC9IVRw'
@@ -87,12 +88,12 @@ function boot() {
 type Session = ReturnType<typeof boot>
 
 async function openDrawer(session: Session) {
-  await session.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+  await session.wrapper.get('.now-playlist .open-archive').trigger('click')
   await nextTick()
 }
 
 async function closeDrawer(session: Session) {
-  await session.wrapper.get('.drawer .close').trigger('click')
+  await archiveCloseButton(session.wrapper).trigger('click')
   await nextTick()
 }
 
@@ -133,7 +134,7 @@ describe('A. 복원', () => {
 
     // 앱을 쓰는 동안에도 쓰지 않는다 — 부르는 UI 가 없다.
     session.library.createPlaylist('MORE')
-    session.theme.setTheme('kawaii-synth-cassette')
+    session.theme.setTheme('mono-vinyl')
     await nextTick()
     expect(rawMoments()).toBeNull()
     session.wrapper.unmount()
@@ -160,7 +161,7 @@ describe('B. 원문 보호', () => {
     expect(session.moments.canPersist).toBe(false)
 
     session.library.createPlaylist('STILL FINE')
-    session.theme.setTheme('kawaii-synth-cassette')
+    session.theme.setTheme('mono-vinyl')
     await nextTick()
     // 메모리 수정도 저장되지 않는다.
     const added = await session.moments.add({ videoId: VIDEO, atSeconds: 1 })
@@ -238,7 +239,7 @@ describe('D. 플레이어 DOM 동일성', () => {
     const host = session.fake.hostNode
     expect(host).not.toBeNull()
 
-    session.theme.setTheme('kawaii-synth-cassette')
+    session.theme.setTheme('mono-vinyl')
     await nextTick()
     await openDrawer(session)
     await closeDrawer(session)

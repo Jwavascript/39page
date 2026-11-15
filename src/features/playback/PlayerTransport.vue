@@ -107,8 +107,9 @@ const emit = defineEmits<{ previous: []; toggle: []; next: [] }>()
 /* 승인된 디자인의 `.round` 값을 따른다. */
 .round {
   display: grid;
-  min-width: 42px;
-  height: 42px;
+  /* 터치 목표 44px (M11 U16 — 승인 디자인의 42px 에서 키웠다). */
+  min-width: 44px;
+  height: 44px;
   border: 0;
   border-radius: var(--radius-circle);
   background: transparent;
@@ -117,8 +118,15 @@ const emit = defineEmits<{ previous: []; toggle: []; next: [] }>()
   place-items: center;
 }
 
-.round:hover:not(:disabled) {
-  background: var(--transport-surface-hover-color);
+/* 터치 뒤 hover 표현이 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  .round:hover:not(:disabled) {
+    background: var(--transport-surface-hover-color);
+  }
+
+  .pill:hover {
+    background: var(--pill-surface-hover-color);
+  }
 }
 
 .round:disabled {
@@ -134,19 +142,15 @@ const emit = defineEmits<{ previous: []; toggle: []; next: [] }>()
   color: var(--transport-main-text-color);
 }
 
-/* 승인된 디자인의 `.pill` 값을 따른다. 드로어의 `.pill` 과 같은 값이다. */
+/* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
 .pill {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
   background: var(--pill-surface-color);
   color: var(--pill-text-color);
   font: 11px var(--font-mono);
-}
-
-.pill:hover {
-  background: var(--pill-surface-hover-color);
 }
 
 /* 링크이므로 기본 밑줄을 걷어낸다. 레퍼런스의 `.pill` 과 같은 모양이 된다. */

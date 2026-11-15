@@ -405,3 +405,28 @@ describe('팝업 — 단축키 (M10-5)', () => {
     ])
   })
 })
+
+describe('팝업 — YouTube 위 패널로 (M11-5B)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('영상 페이지면 패널(음악 담기)을 열고 팝업은 닫는다 — 한 번만', async () => {
+    const { fake } = mountPopup()
+    vi.mocked(fake.bridge.openPanel).mockResolvedValue(true)
+    await settle()
+    fake.pending[0]!.resolve(ok(VIDEO))
+    await settle()
+    expect(fake.bridge.openPanel).toHaveBeenCalledWith(1, 'music')
+    expect(fake.bridge.closePopup).toHaveBeenCalledTimes(1)
+  })
+
+  it('패널을 열지 못하면 팝업이 남아 기존 수집 화면 버튼을 보인다 (대체 경로)', async () => {
+    const { wrapper, fake } = mountPopup()
+    await settle()
+    fake.pending[0]!.resolve(ok(VIDEO))
+    await settle()
+    expect(fake.bridge.openPanel).toHaveBeenCalledTimes(1)
+    expect(fake.bridge.closePopup).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('플레이리스트에 추가')
+  })
+})

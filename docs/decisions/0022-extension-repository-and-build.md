@@ -42,6 +42,10 @@ M10 은 YouTube 에서 39page 로 영상을 담는 Chrome 확장을 만든다. �
 
 ### 3. 도구 — 웹앱과 같은 Vue 3 + Vite + TypeScript
 
+> 2026-11-15 보완: 확장 기본 외형을 Cassette로 정리하면서 CSS 허용 목록의 Mono 토큰을
+> `src/themes/kawaii-synth-cassette/tokens.css`로 교체했다 ([ADR 0037](0037-extension-cassette-design.md)).
+> 공통 토큰과 순수 유틸리티 공유 및 웹앱 컴포넌트·store import 금지 원칙은 유지한다.
+
 - Popup 은 Vue 3 (`<script setup lang="ts">`). Background · Content 는 Vue 없음.
 - Vite 빌드 두 번:
   - **본 빌드**: `src/popup/index.html` + `src/background/index.ts`. 서비스 워커는

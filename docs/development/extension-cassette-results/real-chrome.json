@@ -1,0 +1,300 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "id": "D1",
+      "title": "Actual toolbar popup on unsupported page uses Cassette",
+      "pass": true,
+      "ms": 223,
+      "details": {
+        "pass": true,
+        "theme": "kawaii-synth-cassette",
+        "brand": "39page",
+        "width": 360,
+        "overflow": 0,
+        "mark": true
+      }
+    },
+    {
+      "id": "D2",
+      "title": "Panel permission denied: genuine prompt, gate retained, no write",
+      "pass": true,
+      "ms": 1053,
+      "details": {
+        "pass": true,
+        "pending": {
+          "busy": "true",
+          "text": "권한 요청 중…"
+        },
+        "prompt": "invoked:Deny",
+        "gate": true
+      }
+    },
+    {
+      "id": "D3",
+      "title": "Permission accepted: genuine prompt and original bridge reads playlists",
+      "pass": true,
+      "ms": 791,
+      "details": {
+        "pass": true,
+        "pending": {
+          "busy": "true",
+          "text": "권한 요청 중…"
+        },
+        "prompt": "invoked:Allow"
+      }
+    },
+    {
+      "id": "D4",
+      "title": "Music save via offscreen bridge keeps dashboard selection and iframe",
+      "pass": true,
+      "ms": 175,
+      "details": {
+        "pass": true,
+        "selected": "mine",
+        "iframe": true
+      }
+    },
+    {
+      "id": "D5",
+      "title": "Instant playlist creation retains data contract",
+      "pass": true,
+      "ms": 121,
+      "details": {
+        "pass": true,
+        "list": {
+          "id": "ext-0a69e29f-60c8-4764-9ebc-b2dbea03a70b-list",
+          "name": "민트빛 즉석 믹스",
+          "tracks": [
+            {
+              "id": "ext-0a69e29f-60c8-4764-9ebc-b2dbea03a70b",
+              "source": "youtube",
+              "videoId": "aqz-KE-bpKQ",
+              "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "D6",
+      "title": "Moment capture: fixed time, long note, confirmed store persistence",
+      "pass": true,
+      "ms": 1934,
+      "details": {
+        "pass": true,
+        "time": "0:03",
+        "stillTime": "0:03",
+        "length": 500,
+        "count": 1,
+        "iframe": true
+      }
+    },
+    {
+      "id": "D7",
+      "title": "Storage failure injection: explicit error, no false success or data loss",
+      "pass": true,
+      "ms": 198,
+      "details": {
+        "pass": true,
+        "heading": "! 저장하지 못했어요",
+        "unchanged": true
+      }
+    },
+    {
+      "id": "D8",
+      "title": "Long title + long playlist: narrow and 200% browser zoom",
+      "pass": true,
+      "ms": 2902,
+      "details": {
+        "pass": true,
+        "fixture": "title text only replaced for layout stress; original video/data unchanged",
+        "samples": [
+          {
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "width": 380,
+            "height": 620,
+            "overflow": 0,
+            "contentOverflow": 0,
+            "headingWithinHeader": true,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "width": 343,
+            "height": 620,
+            "overflow": 0,
+            "contentOverflow": 0,
+            "headingWithinHeader": true,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "viewport": {
+              "width": 360,
+              "height": 780
+            },
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "width": 313,
+            "height": 620,
+            "overflow": 0,
+            "contentOverflow": 0,
+            "headingWithinHeader": true,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "viewport": {
+              "width": 844,
+              "height": 390
+            },
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "width": 380,
+            "height": 358,
+            "overflow": 0,
+            "contentOverflow": 0,
+            "headingWithinHeader": true,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "viewport": {
+              "width": 720,
+              "height": 780
+            },
+            "zoom": 2,
+            "theme": "kawaii-synth-cassette",
+            "width": 320,
+            "height": 350,
+            "overflow": 0,
+            "contentOverflow": 0,
+            "headingWithinHeader": true,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "viewport": {
+              "width": 360,
+              "height": 780
+            },
+            "zoom": 2,
+            "theme": "kawaii-synth-cassette",
+            "width": 140,
+            "height": 350,
+            "overflow": 0,
+            "contentOverflow": 0,
+            "headingWithinHeader": true,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "D9",
+      "title": "Keyboard tabs and Escape close; actual panel repeated opening",
+      "pass": true,
+      "ms": 702,
+      "details": {
+        "pass": true,
+        "keyboard": {
+          "selected": "true",
+          "focus": "panel-tab-moment",
+          "outline": "2px"
+        },
+        "playing": {
+          "paused": false,
+          "time": 9.146101,
+          "hosts": 0
+        }
+      }
+    },
+    {
+      "id": "D10",
+      "title": "Permission revocation closes offscreen and restores permission UI",
+      "pass": true,
+      "ms": 119,
+      "details": {
+        "pass": true,
+        "removed": true,
+        "offscreen": 0
+      }
+    },
+    {
+      "id": "D11",
+      "title": "Collect fallback still opens only on explicit request",
+      "pass": true,
+      "ms": 107,
+      "details": {
+        "pass": true,
+        "url": "http://127.0.0.1:4173/#collect?v=1&kind=track&videoId=aqz-KE-bpKQ&title=Big+Buck+Bunny+60fps+4K+-+Official+Blender+Foundation+Short+Film&req=03270c02-9543-42da-8094-a8163738a456"
+      }
+    },
+    {
+      "id": "D12",
+      "title": "Cassette text colors: measured token pairs meet 4.5:1",
+      "pass": true,
+      "ms": 6,
+      "details": {
+        "pass": true,
+        "pairs": [
+          {
+            "name": "body",
+            "fg": "#e2fff6",
+            "bg": "#245c6e",
+            "ratio": 7.018122490103387
+          },
+          {
+            "name": "muted",
+            "fg": "#b2d7d5",
+            "bg": "#245c6e",
+            "ratio": 4.7947181242019985
+          },
+          {
+            "name": "primary",
+            "fg": "#3f2340",
+            "bg": "#ff9bc5",
+            "ratio": 7.043383591719686
+          },
+          {
+            "name": "selected tab",
+            "fg": "#0d4254",
+            "bg": "#b5fbea",
+            "ratio": 9.328394092367597
+          },
+          {
+            "name": "success",
+            "fg": "#17384a",
+            "bg": "#a7ffdf",
+            "ratio": 10.589544588063529
+          },
+          {
+            "name": "error",
+            "fg": "#edb99b",
+            "bg": "#172b3b",
+            "ratio": 8.313267910707623
+          },
+          {
+            "name": "warning",
+            "fg": "#e7c5a8",
+            "bg": "#172b3b",
+            "ratio": 8.9608991708754
+          },
+          {
+            "name": "field",
+            "fg": "#ecfff9",
+            "bg": "#0e2a39",
+            "ratio": 14.364336497336502
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "39page",
   "version": "1.0.0",
-  "description": "YouTube 에서 보고 있는 영상과 지금 이 순간을 39page 로 담습니다. 저장은 39page 화면에서 직접 확인하고 합니다.",
-  "minimum_chrome_version": "102",
+  "description": "YouTube 를 떠나지 않고, 보고 있는 영상과 지금 이 순간을 작은 패널에서 39page 에 담습니다.",
+  "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -23,19 +23,27 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "offscreen"],
+  "optional_host_permissions": ["https://39page.com/*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/panel/index.html"],
+      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"],
+      "use_dynamic_url": true
+    }
+  ],
   "commands": {
     "quick-add": {
       "suggested_key": {
         "default": "Alt+Shift+Y"
       },
-      "description": "지금 YouTube 영상을 39page 플레이리스트에 담기 (수집 화면 열기)"
+      "description": "지금 YouTube 영상을 39page 플레이리스트에 담기 (YouTube 위 패널)"
     },
     "capture-moment": {
       "suggested_key": {
         "default": "Alt+Shift+M"
       },
-      "description": "지금 재생 시점을 39page Moment 로 고정 (수집 화면 열기)"
+      "description": "지금 재생 시점을 39page Moment 로 잡기 (YouTube 위 패널)"
     }
   }
 }

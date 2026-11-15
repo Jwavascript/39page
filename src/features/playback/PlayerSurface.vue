@@ -27,17 +27,23 @@
  * 포함, `<Teleport>`로 이동, 마운트된 노드의 부모 변경.
  *
  * 단일 루트 요소를 유지한다. `WidgetHost`가 `grid-area`를 루트에 적용한다.
+ *
+ * M12-2 (ADR 0032) — 영상 위아래에 있던 `NOW PLAYING` 제목 · 부제 · 트랜스포트 · 상태 줄을 영상 **바로 아래**의
+ * **Now Playing 카드**(`NowPlayingCard.vue`, 앨범아트 · 제목 · 조작)로 모았다 — 사본을 남기지 않았다. 카드는 영상
+ * 상자의 **형제**이고 어댑터 소유 영역 밖이다 (M11 까지의 제목 · 조작과 같은 자리). 어댑터 소유 영역 · 가시성 감시 ·
+ * 마운트 순서는 그대로다.
+ *
+ * 보관함이 열려 있는 동안(조상의 `data-archive-layout`) 이 영역은 **작은 재생 띠**가 된다 — 넓으면 [영상 | 카드],
+ * 좁으면 영상 → 한 줄 카드. 같은 노드를 CSS 로 다시 놓을 뿐이다: 조건부 렌더 · 이동 · 복제가 없고, 영상은 숨기지도
+ * 덮지도 않으며 200×200 아래로 줄지 않는다. 규칙은 이 파일 맨 아래의 비스코프 스타일에 있다.
  */
-import { computed, inject, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { inject, onMounted, onUnmounted, useTemplateRef } from 'vue'
 
+import NowPlayingCard from './NowPlayingCard.vue'
 import { PLAYER_ADAPTER_FACTORY, type PlayerAdapter } from './PlayerAdapter'
-import PlayerTransport from './PlayerTransport.vue'
 import { PLAYBACK_COORDINATOR, type PlayerAttachment } from './playbackCoordinator'
 import { watchPlayerVisibility, type PlayerVisibilityWatcher } from './playerVisibility'
 import { useTransport } from './useTransport'
-
-/** 어댑터 팩토리가 없을 때. 실제 실패 상태이므로 경고로 알린다. */
-const NO_ADAPTER_STATUS = '플레이어를 연결하지 못했습니다.'
 
 const mountHost = useTemplateRef<HTMLElement>('mountHost')
 
@@ -58,7 +64,7 @@ const createAdapter = inject(PLAYER_ADAPTER_FACTORY, null)
  */
 const coordinator = inject(PLAYBACK_COORDINATOR, null)
 
-/** 화면에 보일 값과 버튼 명령. 로직은 composable 에 있다 (규칙 3). */
+/** 영상 전 안내를 보일지만 읽는다. 제목 · 조작은 Now Playing 카드가 쓴다 (M12-2). */
 const transport = useTransport()
 
 /**
@@ -114,27 +120,10 @@ onUnmounted(() => {
   adapter?.destroy()
   adapter = null
 })
-
-/**
- * 라이브 리전에 넣을 문구.
- *
- * 의도적으로 띄운 안내만 담는다. 재생 상태(`재생 중` 등)는 **부제**에 적는다 —
- * 여기 넣으면 상태가 바뀔 때마다 보조기기가 읽어 시끄러워진다.
- * 같은 문구가 유지되면 DOM 이 바뀌지 않아 다시 읽히지도 않는다.
- */
-const statusText = computed<string>(() =>
-  createAdapter === null ? NO_ADAPTER_STATUS : transport.statusText.value,
-)
-
-const statusIsWarning = computed<boolean>(() => createAdapter === null || transport.isWarning.value)
 </script>
 
 <template>
-  <section class="player-surface">
-    <p class="eyebrow">NOW PLAYING · YOUTUBE</p>
-    <p class="now-title" :title="transport.title.value">{{ transport.title.value }}</p>
-    <p class="now-sub">{{ transport.subtitle.value }}</p>
-
+  <section class="player-surface" aria-label="YouTube 영상">
     <!--
       승인된 디자인의 `.video-holder`. Vue 가 소유한다. 테두리·비율·최소
       크기를 여기서 잡는다.
@@ -162,24 +151,8 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
       <div ref="mountHost" class="player-mount" />
     </div>
 
-    <!-- 어댑터 소유 영역 **밖**의 형제다. 영상을 덮지 않는다. -->
-    <PlayerTransport
-      :shows-pause="transport.showsPause.value"
-      :can-toggle="transport.canToggle.value"
-      :can-previous="transport.canPrevious.value"
-      :can-next="transport.canNext.value"
-      :toggle-label="transport.toggleLabel.value"
-      :youtube-url="transport.youtubeUrl.value"
-      @previous="transport.previous"
-      @toggle="transport.toggle"
-      @next="transport.next"
-    />
-
-    <p class="status" :class="{ 'is-warning': statusIsWarning }" role="status" aria-live="polite">
-      {{ statusText }}
-    </p>
-
-    <p class="mute-note">YouTube 공식 영상·컨트롤은 그대로 표시됩니다.</p>
+    <!-- 영상 바로 아래의 카드 (M12-2). 어댑터 소유 영역 **밖**의 형제다. 영상을 덮지 않는다. -->
+    <NowPlayingCard />
   </section>
 </template>
 
@@ -190,35 +163,6 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
  */
 .player-surface {
   min-width: 0;
-}
-
-/* 승인된 디자인의 `.eyebrow` 값을 따른다. */
-.eyebrow {
-  margin: 0;
-  color: var(--eyebrow-text-color);
-  font: 11px var(--font-mono);
-  letter-spacing: 0.12em;
-}
-
-/* 승인된 디자인의 `.now-title` 값을 따른다. */
-.now-title {
-  overflow: hidden;
-  margin: 10px 0 0;
-  color: var(--now-title-text-color);
-  font-size: clamp(18px, 1.6vw, 23px);
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 승인된 디자인의 `.now-sub` 값을 따른다. */
-.now-sub {
-  overflow: hidden;
-  margin: 7px 0 14px;
-  color: var(--now-sub-text-color);
-  font: 12px var(--font-mono);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /*
@@ -299,31 +243,41 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   height: 100%;
   border: 0;
 }
+</style>
 
-/*
- * 승인된 디자인의 `.status` 값을 따른다.
- *
- * `min-height` 덕에 문구가 비어도 레이아웃이 흔들리지 않는다. 그래서
- * 재생 중에는 비워둘 수 있다.
- */
-.status {
-  min-height: 39px;
-  margin: 0;
-  padding-top: 10px;
-  color: var(--status-text-color);
-  font: 12px/1.5 var(--font-mono);
+<!--
+  보관함이 열렸을 때의 작은 배치 (M11-7B · 배치 C, M12-2 에서 카드로).
+
+  **비스코프**다 — 조상(`DashboardShell` 의 워크스페이스)이 다는 `data-archive-layout` 을 봐야 하는데, 스코프 스타일은
+  조상의 속성으로 시작하는 규칙을 쓸 수 없다. 이 컴포넌트의 클래스만 겨냥하고 `.player-surface` 아래로 한정한다.
+  카드 안쪽의 작은 모양은 `NowPlayingCard.vue` 의 비스코프 스타일이 정한다.
+
+  영상(`.video-holder`)은 어느 배치에서도 `display` · `visibility` 를 건드리지 않고, 폭은 384px 이상(16:9 → 216px) 또는
+  열 전체다. `min-width` / `min-height` 202px 은 그대로 남는다.
+-->
+<style>
+/* 띠 (넓은 화면): 왼쪽 영상, 오른쪽 Now Playing 카드. */
+[data-archive-layout='strip'] .player-surface {
+  display: grid;
+  align-items: start;
+  column-gap: clamp(14px, 1.8vw, 24px);
+  grid-template-areas: 'video card';
+  grid-template-columns: clamp(384px, 34%, 480px) minmax(0, 1fr);
 }
 
-/* 승인된 디자인의 `.status.warning` 값을 따른다. */
-.status.is-warning {
-  color: var(--status-warning-text-color);
+/* 영상은 왼쪽 칸 — 크기 · 표시는 건드리지 않는다 (최소 202px 은 스코프 스타일 그대로). */
+[data-archive-layout='strip'] .player-surface > .video-holder {
+  grid-area: video;
 }
 
-/* 승인된 디자인의 `.mute-note` 값을 따른다. */
-.mute-note {
-  margin: 0;
-  padding-top: 5px;
-  color: var(--mute-note-text-color);
-  font: 10px var(--font-mono);
+[data-archive-layout='strip'] .player-surface > .now-playing-card {
+  grid-area: card;
+  margin-top: 0;
+}
+
+/* 쌓기 · 옆 (좁은 화면): 영상 → 한 줄 카드. 영상과 카드 사이를 좁힌다. */
+[data-archive-layout='stack'] .player-surface > .now-playing-card,
+[data-archive-layout='side'] .player-surface > .now-playing-card {
+  margin-top: 6px;
 }
 </style>

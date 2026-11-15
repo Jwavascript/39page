@@ -5,7 +5,7 @@
  * `design/references/two-themes-v09.html`의 SVG를 **그대로 이식**했다.
  * 좌표·`viewBox`·형태·색을 바꾸지 않았다 (`AGENTS.md` 규칙 6).
  *
- * 원본과 달라진 점은 세 가지뿐이다.
+ * 원본과 달라진 점은 아래와 같다.
  * 1. `<defs>`의 id 에 `ksc-` 접두사를 붙였다. 두 데크 SVG 가 동시에 DOM 에
  *    존재하므로 id 가 충돌하면 그라디언트·필터·클립이 서로 덮인다.
  *    `url(#...)` 참조도 함께 바꿨다.
@@ -14,9 +14,11 @@
  * 3. 내부 컨트롤의 `role="button"` / `tabindex` / `data-speed-button` 을
  *    제거했다. 동작하지 않는 버튼을 만들지 않기 위해서다. 금속 하드웨어는
  *    데크 본체 디자인의 일부이므로 외형만 남긴다.
+ * 4. M12-6: 기존 레이블 영역 안에 큐 출처 이름과 말줄임을 표시한다 (ADR 0035). 참고 HTML은 수정하지 않는다.
  *
  * 회전 애니메이션은 M4 다. 지금은 정지 상태이며, 재생 중인 것처럼 보이지 않는다.
  */
+withDefaults(defineProps<{ label?: string }>(), { label: 'KAWAII SYNTH MIX' })
 </script>
 
 <template>
@@ -24,7 +26,7 @@
     class="deck-art deck-art--kawaii-synth-cassette"
     viewBox="0 0 900 570"
     role="img"
-    aria-label="민트와 분홍 포인트가 있는 오리지널 카세트 데크"
+    :aria-label="`민트와 분홍 포인트가 있는 오리지널 카세트 데크 · ${label}`"
   >
     <defs>
       <linearGradient id="ksc-synthBody" x1=".07" y1=".02" x2=".94" y2="1">
@@ -87,17 +89,9 @@
       stroke-width="4"
     />
     <rect x="154" y="155" width="595" height="70" rx="7" fill="#143e52" />
-    <text
-      x="183"
-      y="195"
-      font-size="23"
-      font-family="ui-monospace,monospace"
-      letter-spacing="4"
-      fill="#dcfff6"
-      font-weight="bold"
-    >
-      KAWAII SYNTH MIX
-    </text>
+    <foreignObject class="cassette-label" x="183" y="173" width="430" height="32">
+      <div xmlns="http://www.w3.org/1999/xhtml" :title="label" :aria-label="label">{{ label }}</div>
+    </foreignObject>
     <rect x="630" y="170" width="100" height="35" rx="4" fill="#ff91bc" />
     <text
       x="680"
@@ -209,3 +203,16 @@
     </g>
   </svg>
 </template>
+
+<style scoped>
+.cassette-label div {
+  overflow: hidden;
+  color: #dcfff6;
+  font:
+    bold 23px/32px ui-monospace,
+    monospace;
+  letter-spacing: 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

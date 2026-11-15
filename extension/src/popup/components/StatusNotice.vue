@@ -26,7 +26,12 @@ defineProps<{
 }
 
 .notice.error {
-  border-color: var(--button-border-color);
+  border-color: var(--error-text-color);
+  border-left-width: 3px;
+}
+
+.notice.error .notice-title {
+  color: var(--error-text-color);
 }
 
 .notice-title {
@@ -40,5 +45,6 @@ defineProps<{
   margin: 0;
   color: var(--text-muted-color);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 </style>

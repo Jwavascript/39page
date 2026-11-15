@@ -14,6 +14,7 @@ import type { Track } from '@/shared/types'
 import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
+import { openTrackManage } from '../support/trackManage'
 
 const KEY = STORAGE_KEYS.library
 const realLocalStorage = globalThis.localStorage
@@ -49,7 +50,7 @@ function mountApp() {
 
 type Wrapper = ReturnType<typeof mountApp>['wrapper']
 
-const drawer = (wrapper: Wrapper) => wrapper.get('#record-library-drawer')
+const drawer = (wrapper: Wrapper) => wrapper.get('#archive-panel')
 const isOpen = (wrapper: Wrapper) => drawer(wrapper).attributes('hidden') === undefined
 
 /** 지금 보이는 데크의 열기 트리거. 비활성 테마의 것은 CSS 로 숨겨진다. */
@@ -68,7 +69,15 @@ function deckTrigger(wrapper: Wrapper, theme: 'mono-vinyl' | 'kawaii-synth-casse
  */
 async function openDrawer(wrapper: Wrapper, index = 0) {
   await nextTick()
-  await wrapper.findAll('.playlist-tile .playlist-open')[index]?.trigger('click')
+  // M11-7B: 목록은 보관함의 목록 칸에서 고른다. 그 목록을 고르고(있으면) 보관함을 연다.
+  await wrapper.findAll('.archive-lists .list-select')[index]?.trigger('click')
+  await flushPromises()
+  if (wrapper.get('#archive-panel').attributes('hidden') !== undefined) {
+    await wrapper
+      .get('.now-playlist .open-archive, .now-playlist .widget-foot .pill')
+      .trigger('click')
+  }
+  await flushPromises()
   await nextTick()
 }
 
@@ -78,18 +87,29 @@ async function openDrawer(wrapper: Wrapper, index = 0) {
  * `＋ 새 목록` 은 플레이리스트가 사는 위젯에, `＋ YouTube 링크 추가` 는 트랙이
  * 사는 드로어에 있다. 위계가 공간에 드러나야 한다는 보고 6a 의 답이다.
  */
-const createButton = (wrapper: Wrapper) => wrapper.get('.playlist-widget .pill--strong')
+const createButton = (wrapper: Wrapper) => wrapper.get('.archive-lists .pill--strong')
 
-/** 위젯의 생성 폼으로 플레이리스트를 만든다. */
+/** 보관함 목록 칸의 생성 폼으로 플레이리스트를 만든다 (M11-7B — 만드는 곳은 보관함 하나다). */
 async function createPlaylistViaUi(wrapper: Wrapper, name: string) {
   await createButton(wrapper).trigger('click')
-  await wrapper.get('#new-playlist-name').setValue(name)
-  await wrapper.get('form.create-form').trigger('submit')
+  await wrapper.get('#archive-new-playlist-name').setValue(name)
+  await wrapper.get('.archive-lists form.create-form').trigger('submit')
+  await flushPromises()
   await nextTick()
 }
 
-/** 타일의 `⋯` — 그 목록을 선택하고 편집 오버레이를 연다. */
-const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.playlist-tile .playlist-open')
+/**
+ * 고른 목록의 "관리" 를 편다 (M11-7B) — 이름 수정 · 목록 삭제는 목록 칸의 그 행 아래에 있다.
+ * 이미 펴져 있으면 그대로 둔다.
+ */
+async function openListManage(wrapper: Wrapper) {
+  const toggle = wrapper.get('.archive-lists .list-row.is-selected .list-manage')
+  if (toggle.attributes('aria-expanded') !== 'true') await toggle.trigger('click')
+  await nextTick()
+}
+
+/** 보관함 목록 칸의 행 — 누르면 그 목록을 고른다. */
+const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.archive-lists .list-select')
 
 async function switchTheme(key: 'mono-vinyl' | 'kawaii-synth-cassette') {
   useThemeStore().setTheme(key)
@@ -124,38 +144,40 @@ describe('A. 드로어 동작', () => {
    * "lp판을 누르면 최소화 되었던 playlist 위젯이 펼쳐지게" 로 바뀌었다.
    * 트랙 드로어는 플레이리스트 타일을 눌러서 연다.
    */
-  it('2. Mono Vinyl LP 트리거가 플레이리스트 위젯을 펼친다', async () => {
+  it('2. Mono Vinyl LP 트리거가 음악 보관함을 연다 (M11-3)', async () => {
     const { wrapper } = mountApp()
-
     await deckTrigger(wrapper, 'mono-vinyl').trigger('click')
-    await nextTick()
+    await flushPromises()
 
-    expect(wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+    expect(isOpen(wrapper)).toBe(true)
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
     expect(deckTrigger(wrapper, 'mono-vinyl').attributes('aria-expanded')).toBe('true')
-    // 트랙 드로어는 열리지 않는다.
-    expect(isOpen(wrapper)).toBe(false)
   })
 
-  it('2. 다시 누르면 접힌다', async () => {
+  it('2. 보관함이 열린 동안 데크는 CSS 로만 접히고, 닫으면 같은 노드가 돌아온다 (M11-3)', async () => {
     const { wrapper } = mountApp()
-    const trigger = deckTrigger(wrapper, 'mono-vinyl')
+    const deck = wrapper.get('.deck-widget').element
+    await deckTrigger(wrapper, 'mono-vinyl').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.workspace').classes()).toContain('is-archive-open')
 
-    await trigger.trigger('click')
-    await trigger.trigger('click')
-    await nextTick()
-
-    expect(wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
-    expect(trigger.attributes('aria-expanded')).toBe('false')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
+    await flushPromises()
+    expect(isOpen(wrapper)).toBe(false)
+    expect(wrapper.get('.deck-widget').element).toBe(deck)
   })
 
   it('3. Kawaii 카세트 트리거도 같은 선반을 펼친다', async () => {
     const { wrapper } = mountApp()
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
+    await switchTheme('kawaii-synth-cassette')
     await deckTrigger(wrapper, 'kawaii-synth-cassette').trigger('click')
     await nextTick()
 
-    expect(wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
+    // 데크는 음악 보관함을 연다 (M11-3) — 두 테마가 같다.
+    expect(isOpen(wrapper)).toBe(true)
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
   })
 
   it('3. 타일 본문이 트랙 드로어를 연다', async () => {
@@ -163,27 +185,29 @@ describe('A. 드로어 동작', () => {
     useLibraryStore().createPlaylist('A')
     await nextTick()
 
-    await wrapper.get('.playlist-tile .playlist-open').trigger('click')
+    await wrapper.get('.now-playlist .open-archive').trigger('click')
     await flushPromises()
     await nextTick()
 
     expect(isOpen(wrapper)).toBe(true)
   })
 
-  it('3. 접힌 선반에서도 타일이 보인다 — 드로어로 가는 길이 막히지 않는다', async () => {
+  it('3. 타일 본문도 같은 보관함을 그 목록으로 연다 — 데크와 같은 곳 (M11-3)', async () => {
     const { wrapper } = mountApp()
     useLibraryStore().createPlaylist('A')
-    await nextTick()
+    await flushPromises()
 
-    expect(wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
-    expect(wrapper.findAll('.playlist-tile')).toHaveLength(1)
+    await openDrawer(wrapper)
+    await flushPromises()
+    expect(isOpen(wrapper)).toBe(true)
+    expect(wrapper.get('#playlist-editor-title').text()).toBe('A')
   })
 
   it('4. 닫기 버튼으로 닫힌다', async () => {
     const { wrapper } = mountApp()
     await openDrawer(wrapper)
 
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
 
     expect(isOpen(wrapper)).toBe(false)
@@ -200,13 +224,13 @@ describe('A. 드로어 동작', () => {
     expect(isOpen(wrapper)).toBe(false)
   })
 
-  it('6. 열면 닫기 버튼으로, 닫으면 트리거로 포커스가 간다', async () => {
+  it('6. 열면 고른 탭(음악)으로, 닫으면 트리거로 포커스가 간다 (M11-2 보관함)', async () => {
     const { wrapper } = mountApp()
     useLibraryStore().createPlaylist('A')
     await nextTick()
 
     // 트리거는 이제 타일 본문이다 (M7).
-    const trigger = wrapper.get('.playlist-tile .playlist-open').element as HTMLElement
+    const trigger = wrapper.get('.now-playlist .open-archive').element as HTMLElement
     trigger.focus()
 
     trigger.click()
@@ -214,9 +238,9 @@ describe('A. 드로어 동작', () => {
     await flushPromises()
     await nextTick()
     await nextTick()
-    expect(document.activeElement).toBe(wrapper.get('[aria-label="라이브러리 닫기"]').element)
+    expect(document.activeElement).toBe(wrapper.get('#archive-tab-music').element)
 
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
@@ -229,11 +253,10 @@ describe('A. 드로어 동작', () => {
     library.createPlaylist('A')
     const b = await library.createPlaylist('B')
     await nextTick()
-    // 두 번째 타일(=B)을 열어 선택을 B 로 맞춘다.
-    await wrapper.findAll('.playlist-tile .playlist-open')[1]?.trigger('click')
-    await nextTick()
+    // 두 번째 목록(=B)을 골라 보관함을 연다.
+    await openDrawer(wrapper, 1)
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(isOpen(wrapper)).toBe(true)
     expect(library.selectedPlaylistId).toBe(b.ok ? b.playlistId : null)
@@ -246,13 +269,12 @@ describe('A. 드로어 동작', () => {
     expect(drawer(wrapper).attributes('hidden')).toBeDefined()
   })
 
-  it('데크 트리거가 aria-controls 로 플레이리스트 선반을 가리킨다', () => {
+  it('데크 트리거가 aria-controls 로 보관함을 가리킨다 (M11-3)', () => {
     const { wrapper } = mountApp()
-
     for (const theme of ['mono-vinyl', 'kawaii-synth-cassette'] as const) {
-      expect(deckTrigger(wrapper, theme).attributes('aria-controls')).toBe('playlist-shelf')
+      expect(deckTrigger(wrapper, theme).attributes('aria-controls')).toBe('archive-panel')
+      expect(deckTrigger(wrapper, theme).attributes('aria-expanded')).toBe('false')
     }
-    expect(wrapper.get('.playlist-widget').attributes('id')).toBe('playlist-shelf')
   })
 
   it('포커스 가둠이 없으므로 aria-modal 을 선언하지 않는다', () => {
@@ -262,10 +284,11 @@ describe('A. 드로어 동작', () => {
 
   it('데크 안내 문구가 테마에 따라 바뀐다', async () => {
     const { wrapper } = mountApp()
-    expect(wrapper.get('.deck-hint').text()).toContain('LP를 누르면')
-
-    await switchTheme('kawaii-synth-cassette')
+    // 기본 테마는 Kawaii Synth Cassette 다 (M11-7B).
     expect(wrapper.get('.deck-hint').text()).toContain('카세트를 누르면')
+
+    await switchTheme('mono-vinyl')
+    expect(wrapper.get('.deck-hint').text()).toContain('LP를 누르면')
   })
 })
 
@@ -277,8 +300,8 @@ describe('B. 플레이리스트 UI', () => {
     library.createPlaylist('NIGHT DRIVE')
     await openDrawer(wrapper)
 
-    // 목록은 이제 위젯의 타일 격자다 (M6-4).
-    const names = wrapper.findAll('.playlist-tile .pname').map((node) => node.text())
+    // 목록은 보관함의 목록 칸에 있다 (M11-7B).
+    const names = wrapper.findAll('.archive-lists .list-name').map((node) => node.text())
     expect(names).toEqual(['MY RECORDS', 'NIGHT DRIVE'])
   })
 
@@ -313,6 +336,7 @@ describe('B. 플레이리스트 UI', () => {
     await openDrawer(wrapper)
 
     // 이름 수정 → 저장
+    await openListManage(wrapper)
     await wrapper
       .findAll('.pill')
       .filter((b) => b.text() === '이름 수정')[0]
@@ -325,6 +349,7 @@ describe('B. 플레이리스트 UI', () => {
     expect(library.getPlaylist(id)?.name).toBe('RENAMED')
 
     // 다시 열고 취소
+    await openListManage(wrapper)
     await wrapper
       .findAll('.pill')
       .filter((b) => b.text() === '이름 수정')[0]
@@ -347,8 +372,9 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     library.createPlaylist('A')
     library.createPlaylist('B')
-    // 두 번째 타일(=B)을 열어 B 를 편집 대상으로 둔다.
+    // 두 번째 목록(=B)을 골라 그 행의 관리를 편다.
     await openDrawer(wrapper, 1)
+    await openListManage(wrapper)
 
     await wrapper
       .findAll('.pill')
@@ -371,6 +397,7 @@ describe('B. 플레이리스트 UI', () => {
     const library = useLibraryStore()
     library.createPlaylist('ONLY')
     await openDrawer(wrapper)
+    await openListManage(wrapper)
 
     const deleteButton = wrapper.findAll('.pill').filter((b) => b.text() === '목록 삭제')[0]
     expect(deleteButton?.attributes('disabled')).toBeDefined()
@@ -393,18 +420,24 @@ describe('B. 플레이리스트 UI', () => {
     // 저장된 선택은 p2(=B) 다. 그 타일을 열어 선택을 유지한다.
     await openDrawer(wrapper, 1)
 
-    const tiles = wrapper.findAll('.playlist-tile')
-    expect(tiles[0]?.find('.pmeta').text()).toBe('2 TRACKS')
+    const tiles = wrapper.findAll('.archive-lists .list-row')
+    expect(tiles[0]?.find('.list-meta').text()).toBe('2곡')
     // 빈 목록은 트랙 수 대신 비었음을 말한다 (M6-4).
-    expect(tiles[1]?.find('.pmeta').text()).toBe('EMPTY')
+    expect(tiles[1]?.find('.list-meta').text()).toBe('비어 있음')
     expect(tiles[1]?.classes()).toContain('is-selected')
-    expect(tiles[1]?.find('.playlist-open').attributes('aria-current')).toBe('true')
-    expect(tiles[0]?.find('.playlist-open').attributes('aria-current')).toBeUndefined()
-    // 빈 목록은 재생할 수 없다.
-    expect(tiles[1]?.find('.playlist-play').attributes('disabled')).toBeDefined()
+    expect(tiles[1]?.find('.list-select').attributes('aria-current')).toBe('true')
+    expect(tiles[0]?.find('.list-select').attributes('aria-current')).toBeUndefined()
+    // 목록 칸에는 재생 단추가 없다 (M11-7B) — 상세 칸의 전체 재생이 빈 목록에서 꺼져 있다.
+    expect(tiles[1]?.find('.list-play').exists()).toBe(false)
+    expect(
+      wrapper.get('.playlist-editor .head-actions .pill--strong').attributes('disabled'),
+    ).toBeDefined()
+    // 대시보드의 NOW PLAYLIST 는 고른 목록(B)을 "재생 대기" 로 보인다 — 재생 중이라고 하지 않는다.
+    expect(wrapper.get('.now-playlist').attributes('data-view')).toBe('standby')
+    expect(wrapper.get('.now-playlist .state-chip').text()).toBe('재생 대기')
 
     // 드로어 머리말이 **무엇을 편집하는지** 말한다 (보고 6b).
-    expect(wrapper.get('#record-library-title').text()).toBe('B')
+    expect(wrapper.get('#playlist-editor-title').text()).toBe('B')
   })
 
   it('선택을 바꿔도 재생 큐가 그대로다', async () => {
@@ -429,12 +462,12 @@ describe('B. 플레이리스트 UI', () => {
     const { wrapper } = mountApp()
 
     /*
-     * 목록이 없으면 열 타일도 없다 — 드로어로 가는 길이 애초에 없다 (M7).
-     * 위젯이 시작점을 안내한다.
+     * 목록이 없으면 NOW PLAYLIST 가 시작점을 안내한다 — 보관함에서 목록을 만든다 (M11-7B).
      */
-    expect(wrapper.findAll('.playlist-tile')).toHaveLength(0)
-    expect(wrapper.get('.playlist-widget').text()).toContain('아직 플레이리스트가 없습니다')
-    expect(wrapper.get('.playlist-widget').text()).toContain('새 목록')
+    expect(wrapper.findAll('.now-playlist .track-row')).toHaveLength(0)
+    expect(wrapper.get('.now-playlist').attributes('data-view')).toBe('none')
+    expect(wrapper.get('.now-playlist').text()).toContain('아직 플레이리스트가 없어요')
+    expect(wrapper.get('.now-playlist').text()).toContain('보관함에서 목록 만들기')
     // 드로어 자체의 빈 상태 문구는 그대로 둔다 (선택이 없을 때의 방어선).
     expect(wrapper.get('.track-list').text()).toContain('플레이리스트를 선택하면')
   })
@@ -460,14 +493,22 @@ describe('B. 플레이리스트 UI', () => {
       'dQw4w9WgXcQ',
       'dQw4w9WgXcQ',
     ])
-    // M6-5 부터 각 행에 ✎ ↑ ↓ × 네 개가 있다. ▶ 는 `.track-play` 로 따로 있다.
-    expect(wrapper.findAll('.track .track-controls button')).toHaveLength(8)
+    // M11-3: 행에는 ▶ 재생과 "관리" 만 드러나 있다. 관리를 펼치면 글자 이름이 있는 단추들 (M11-7C: 맨 위 · 맨 아래 추가).
+    expect(wrapper.findAll('.track .track-manage').map((n) => n.text())).toEqual(['관리', '관리'])
+    expect(wrapper.find('.track-controls').exists()).toBe(false)
+    await openTrackManage(wrapper, 'Track t1')
     expect(
-      wrapper
-        .findAll('.track')[0]
-        ?.findAll('.track-controls button')
-        .map((node) => node.attributes('aria-label')),
-    ).toEqual(['Track t1 이름 변경', 'Track t1 위로', 'Track t1 아래로', 'Track t1 삭제'])
+      wrapper.findAll('.track-controls button').map((node) => node.attributes('aria-label')),
+    ).toEqual([
+      'Track t1 이름 변경',
+      'Track t1 앨범아트 설정',
+      'Track t1 공유',
+      'Track t1 맨 위로',
+      'Track t1 위로',
+      'Track t1 아래로',
+      'Track t1 맨 아래로',
+      'Track t1 삭제',
+    ])
   })
 
   it('빈 플레이리스트를 안내한다', async () => {
@@ -571,7 +612,7 @@ describe('C. 영속화와 보호', () => {
 
     expect(second.playlists.map((playlist) => playlist.name)).toEqual(expectedNames)
     expect(second.selectedPlaylistId).toBe(expectedSelected)
-    expect(wrapper.findAll('.playlist-tile .pname').map((n) => n.text())).toEqual(expectedNames)
+    expect(wrapper.findAll('.archive-lists .list-name').map((n) => n.text())).toEqual(expectedNames)
   })
 
   it('20. protected 상태를 경고로 알린다', async () => {
@@ -607,8 +648,8 @@ describe('C. 영속화와 보호', () => {
     await createPlaylistViaUi(wrapper, 'IN MEMORY ONLY')
 
     expect(library.playlists).toHaveLength(1)
-    // 만든 자리에서 알린다. 생성은 이제 위젯의 일이다 (M6-4).
-    expect(wrapper.get('.widget-notice').text()).toContain('저장되지 않았습니다')
+    // 만든 자리에서 알린다 — 보관함의 목록 칸 (M11-7B).
+    expect(wrapper.get('.archive-lists .notice').text()).toContain('저장되지 않았습니다')
   })
 
   it('23. 보호 상태에서 원본이 보존된다', async () => {
@@ -662,7 +703,11 @@ describe('C. 영속화와 보호', () => {
      * M8-3 에서 가져오기가 생겼다. 이것도 **동작하는** 경로다 — 보호 상태의
      * 원본을 백업으로 교체할 수 있고, 그 전에 원문을 내려받을 수 있다.
      */
-    expect(labels.filter((label) => label.includes('가져오기'))).toEqual(['JSON 백업 가져오기'])
+    // M12-4: 백업 가져오기가 ZIP(전체) · JSON 을 함께 받고, 공유 파일 가져오기가 생겼다.
+    expect(labels.filter((label) => label.includes('가져오기'))).toEqual([
+      '백업 가져오기 (ZIP · JSON)',
+      '공유 파일 가져오기',
+    ])
 
     // 아직 없는 기능의 버튼은 두지 않는다.
     for (const absent of ['초기화', '되살리', '병합', '동기화']) {
@@ -681,7 +726,7 @@ describe('D. 플레이어 안정성', () => {
     expect(wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)
     expect(wrapper.get('.player-mount').element).toBe(mount)
 
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
 
     expect(wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)
@@ -694,7 +739,7 @@ describe('D. 플레이어 안정성', () => {
 
     for (let i = 0; i < 3; i += 1) {
       await openDrawer(wrapper)
-      await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+      await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
       await nextTick()
     }
 
@@ -710,8 +755,8 @@ describe('D. 플레이어 안정성', () => {
     const parent = (host as HTMLElement).parentElement
 
     await openDrawer(wrapper)
-    await switchTheme('kawaii-synth-cassette')
-    await wrapper.get('[aria-label="라이브러리 닫기"]').trigger('click')
+    await switchTheme('mono-vinyl')
+    await wrapper.get('[aria-label="보관함 닫기"]').trigger('click')
     await nextTick()
     await switchTheme('mono-vinyl')
     await openDrawer(wrapper)
@@ -754,6 +799,8 @@ describe('D. 플레이어 안정성', () => {
 
     await openDrawer(wrapper)
     await tileOpenButtons(wrapper)[0]?.trigger('click')
+    await flushPromises()
+    await openListManage(wrapper)
     await wrapper
       .findAll('.pill')
       .filter((p) => p.text() === '목록 삭제')[0]
@@ -810,15 +857,19 @@ describe('F. 긴 이름·긴 제목이 드로어를 넓히지 않는다 (M9-6 �
    *
    * jsdom 은 레이아웃을 하지 않으므로 보장을 이루는 조각을 모두 고정한다.
    */
-  const drawer = () => readFileSync('src/features/library/RecordLibraryDrawer.vue', 'utf8')
+  // M11-2: 드로어의 틀은 보관함(ArchivePanel), 목록 머리말은 편집 표면(PlaylistEditor)이 맡는다.
+  const archive = () => readFileSync('src/features/archive/ArchivePanel.vue', 'utf8')
+  const editor = () => readFileSync('src/features/library/PlaylistEditor.vue', 'utf8')
   const list = () => readFileSync('src/features/library/TrackList.vue', 'utf8')
 
   it('머리말의 글 상자가 줄어들 수 있고, 닫기 버튼은 줄지 않는다', () => {
-    expect(drawer()).toContain('<div class="head-text">')
-    expect(drawer()).toMatch(/\.head-text \{[^}]*min-width: 0/)
-    expect(drawer()).toMatch(/\.close \{[^}]*flex: none/)
-    // 줄어든 자리에서 제목은 말줄임된다.
-    expect(drawer()).toMatch(/\.drawer-title \{[^}]*text-overflow: ellipsis/)
+    expect(editor()).toContain('<div class="editor-head">')
+    expect(editor()).toMatch(/\.editor-head \{[^}]*min-width: 0/)
+    expect(archive()).toMatch(/\.close \{[^}]*flex: none/)
+    // 탭 줄은 줄어들 수 있다 — 닫기(×)를 밀어내지 않는다.
+    expect(archive()).toMatch(/\.tabs \{[^}]*min-width: 0/)
+    // M11-3: 긴 이름은 잘리지 않고 줄을 바꾼다 (U12) — 목록 머리말이 보관함 폭을 넘지 않는다.
+    expect(editor()).toMatch(/\.drawer-title \{[^}]*overflow-wrap: anywhere/)
   })
 
   it('트랙 목록의 열이 목록 폭에 묶여 있다', () => {

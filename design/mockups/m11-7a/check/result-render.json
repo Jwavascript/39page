@@ -1,0 +1,18 @@
+{
+  "report": [
+    {
+      "name": "01-dashboard-mono-1321",
+      "height": 1140,
+      "devices": 1,
+      "overflowX": [
+        0
+      ],
+      "smallButtons": 1,
+      "storage": 0,
+      "pageOverflowX": 0
+    }
+  ],
+  "problems": [],
+  "external": [],
+  "requests": 6
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko" data-theme="mono-vinyl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>39page M11-7A 비교 시안</title>
+    <!--
+      M11-7A 비교 시안 — 실제 구현이 아니다.
+      - 빌드 대상이 아니다 (design/ 는 빌드 · 린트 · 포맷 대상이 아니다).
+      - 승인된 레퍼런스(design/references/)를 대신하지 않는다. tokens.css · decks.js 는 앱 소스에서 옮긴 사본이다.
+      - 샘플 데이터만 쓴다. 39page store · localStorage · YouTube · 외부 API 에 연결하지 않는다.
+      - 설계 문서: docs/product/M11_7_UX_REDESIGN.md
+    -->
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="proto.css" />
+  </head>
+  <body>
+    <div class="proto-banner" role="note">
+      <strong>⚠ 설계 시안 — 실제 39page 가 아닙니다</strong>
+      <span>샘플 데이터 · 저장 없음 · 소리/영상 없음 · 외부 연결 없음 · 추천은 확정이 아님</span>
+      <span class="grow"></span>
+      <button type="button" id="themeToggle">테마 바꾸기 (지금: <span id="themeLabel">Mono Vinyl</span>)</button>
+    </div>
+    <div id="proto"></div>
+    <div id="live" class="sr-only" aria-live="polite"></div>
+    <noscript><p style="padding: 16px">이 시안은 JavaScript 로 그립니다.</p></noscript>
+    <script src="decks.js"></script>
+    <script src="proto.js"></script>
+  </body>
+</html>

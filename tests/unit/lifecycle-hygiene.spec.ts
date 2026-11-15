@@ -254,7 +254,8 @@ describe('E. 번들', () => {
       dependencies: Record<string, string>
     }
 
-    // MVP 의 런타임 의존성은 vue 와 pinia 뿐이다.
-    expect(Object.keys(packageJson.dependencies).sort()).toEqual(['pinia', 'vue'])
+    // MVP 의 런타임 의존성은 vue 와 pinia 뿐이었다. M12-4 에서 ZIP 백업 · 공유를 위해 fflate 를 더했다
+    // (ADR 0034 의 검토 — UI 라이브러리가 아니다).
+    expect(Object.keys(packageJson.dependencies).sort()).toEqual(['fflate', 'pinia', 'vue'])
   })
 })

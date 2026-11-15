@@ -7,13 +7,11 @@
  * - 성공하면 수집 화면이 열린다(그것이 알림이다). 담지 못하면 그 탭의 아이콘에 `!` 와
  *   이유를 단다 — 6초 뒤 지운다. 저장은 하지 않는다 (수집 화면에서 사용자가 한다).
  */
-import { CAPTURE_REFUSAL_COPY } from '@/shared/feedbackCopy'
 import type { ErrorCode, UnsupportedReason } from '@/shared/messages'
 
 import type { ActionPort } from './actionPort'
-import { captureMoment } from './captureMoment'
 import { inspectTab } from './inspectTab'
-import { openCollect, type OpenCollectDeps } from './openCollect'
+import { openPanel, type PanelDeps } from './panel'
 
 export const COMMANDS = { quickAdd: 'quick-add', captureMoment: 'capture-moment' } as const
 export const BADGE_CLEAR_MS = 6_000
@@ -36,10 +34,10 @@ function errorMessage(code: ErrorCode): string {
   if (code === 'page-changed') return '그 사이 영상이 바뀌었습니다. 다시 눌러 주세요.'
   if (code === 'no-tab') return '탭을 찾을 수 없습니다.'
   if (code === 'timeout') return '페이지가 제때 답하지 않았습니다. 다시 눌러 주세요.'
-  return `수집 화면을 열지 못했습니다. (코드: ${code})`
+  return `39page 패널을 열지 못했습니다. (코드: ${code})`
 }
 
-export interface CommandDeps extends OpenCollectDeps {
+export interface CommandDeps extends PanelDeps {
   readonly action: ActionPort
   /** 배지를 지우는 타이머 — 테스트가 바꿔 낀다. */
   readonly later: (run: () => void, ms: number) => void
@@ -57,19 +55,20 @@ async function run(deps: CommandDeps, command: string, tabId: number): Promise<C
     return { kind: 'flagged', message: UNSUPPORTED_MESSAGE[page.reason] }
   }
 
-  if (command === COMMANDS.quickAdd) {
-    const opened = await openCollect(deps, tabId, page.videoId)
-    return opened.ok
-      ? { kind: opened.data.status, tabId: opened.data.tabId }
-      : { kind: 'flagged', message: errorMessage(opened.error.code) }
+  /*
+   * M11-5B — 단축키는 YouTube 위 패널을 연다 (새 탭 없음). Moment 단축키는 누른 순간의 시점을 잡아
+   * 패널에 넘긴다 — 잡지 못한 이유(광고 · 재생 전 등)는 패널이 보여 준다. 패널을 띄우지 못할 때만
+   * 아이콘 배지로 알린다.
+   */
+  const opened = await openPanel(deps, tabId, command === COMMANDS.quickAdd ? 'music' : 'moment')
+  if (!opened.ok) return { kind: 'flagged', message: errorMessage(opened.error.code) }
+  if (opened.data.status === 'unsupported') {
+    return {
+      kind: 'flagged',
+      message: UNSUPPORTED_MESSAGE[opened.data.reason as UnsupportedReason],
+    }
   }
-
-  const captured = await captureMoment(deps, tabId, page.videoId)
-  if (!captured.ok) return { kind: 'flagged', message: errorMessage(captured.error.code) }
-  if (captured.data.status === 'refused') {
-    return { kind: 'flagged', message: CAPTURE_REFUSAL_COPY[captured.data.reason] }
-  }
-  return { kind: captured.data.status, tabId: captured.data.tabId }
+  return { kind: opened.data.status, tabId }
 }
 
 /** 단축키 하나를 처리한다. 어떤 실패도 던지지 않는다 — 아이콘으로 알린다. */

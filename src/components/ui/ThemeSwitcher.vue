@@ -41,7 +41,8 @@ const theme = useThemeStore()
 }
 
 .theme-button {
-  min-height: 31px;
+  /* 터치 목표 44px (M11 U16 — 승인 디자인의 31px 에서 키웠다). */
+  min-height: 44px;
   padding: 6px 12px;
   border: 0;
   background: transparent;
@@ -50,8 +51,11 @@ const theme = useThemeStore()
   letter-spacing: 0.04em;
 }
 
-.theme-button:hover {
-  filter: brightness(1.14);
+/* 터치 뒤 hover 표현이 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  .theme-button:hover {
+    filter: brightness(1.14);
+  }
 }
 
 /*

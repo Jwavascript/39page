@@ -1,0 +1,198 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "id": "D1",
+      "title": "Actual toolbar popup on unsupported page uses Cassette",
+      "pass": true,
+      "ms": 280,
+      "details": {
+        "pass": true,
+        "theme": "kawaii-synth-cassette",
+        "brand": "39page",
+        "overflow": 0,
+        "mark": true
+      }
+    },
+    {
+      "id": "D2",
+      "title": "Panel permission denied: genuine prompt, gate retained, no write",
+      "pass": true,
+      "ms": 1356,
+      "details": {
+        "pass": true,
+        "pending": {
+          "busy": "true",
+          "text": "권한 요청 중…"
+        },
+        "prompt": "invoked:Deny",
+        "gate": true
+      }
+    },
+    {
+      "id": "D3",
+      "title": "Permission accepted: genuine prompt and original bridge reads playlists",
+      "pass": true,
+      "ms": 886,
+      "details": {
+        "pass": true,
+        "pending": {
+          "busy": "true",
+          "text": "권한 요청 중…"
+        },
+        "prompt": "invoked:Allow"
+      }
+    },
+    {
+      "id": "D4",
+      "title": "Music save via offscreen bridge keeps dashboard selection and iframe",
+      "pass": true,
+      "ms": 182,
+      "details": {
+        "pass": true,
+        "selected": "mine",
+        "iframe": true
+      }
+    },
+    {
+      "id": "D5",
+      "title": "Instant playlist creation retains data contract",
+      "pass": true,
+      "ms": 116,
+      "details": {
+        "pass": true,
+        "list": {
+          "id": "ext-1d04da7e-296e-4eb7-aa75-bd6395a21fe9-list",
+          "name": "민트빛 즉석 믹스",
+          "tracks": [
+            {
+              "id": "ext-1d04da7e-296e-4eb7-aa75-bd6395a21fe9",
+              "source": "youtube",
+              "videoId": "aqz-KE-bpKQ",
+              "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "D6",
+      "title": "Moment capture: fixed time, long note, confirmed store persistence",
+      "pass": false,
+      "error": "timeout waiting for condition"
+    },
+    {
+      "id": "D7",
+      "title": "Storage failure injection: explicit error, no false success or data loss",
+      "pass": true,
+      "ms": 211,
+      "details": {
+        "pass": true,
+        "heading": "! 저장하지 못했어요",
+        "unchanged": true
+      }
+    },
+    {
+      "id": "D8",
+      "title": "Long title + long playlist: narrow and 200% browser zoom",
+      "pass": true,
+      "ms": 3648,
+      "details": {
+        "pass": true,
+        "fixture": "title text only replaced for layout stress; original video/data unchanged",
+        "samples": [
+          {
+            "width": 380,
+            "height": 620,
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "overflow": 0,
+            "contentOverflow": 0,
+            "header": 228.6666717529297,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "width": 343,
+            "height": 620,
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "overflow": 0,
+            "contentOverflow": 0,
+            "header": 192,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "width": 313,
+            "height": 620,
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "overflow": 0,
+            "contentOverflow": 0,
+            "header": 162,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "width": 380,
+            "height": 358,
+            "zoom": 1,
+            "theme": "kawaii-synth-cassette",
+            "overflow": 0,
+            "contentOverflow": 0,
+            "header": 228.6666717529297,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          },
+          {
+            "width": 320,
+            "height": 350,
+            "zoom": 2,
+            "theme": "kawaii-synth-cassette",
+            "overflow": 0,
+            "contentOverflow": 0,
+            "header": 168.6666717529297,
+            "background": "radial-gradient(circle at 20% 20%, rgb(36, 92, 110) 0%, rgb(20, 43, 59) 40%, rgb(13, 28, 45) 82%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 19px, rgba(229, 255, 255, 0.043) 20px)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "D9",
+      "title": "Keyboard tabs and Escape close; actual panel repeated opening",
+      "pass": true,
+      "ms": 1139,
+      "details": {
+        "pass": true,
+        "keyboard": {
+          "selected": "true",
+          "focus": "panel-tab-moment",
+          "outline": "2px"
+        },
+        "playing": {
+          "paused": false,
+          "time": 25.587938,
+          "hosts": 0
+        }
+      }
+    },
+    {
+      "id": "D10",
+      "title": "Permission revocation closes offscreen and restores permission UI",
+      "pass": true,
+      "ms": 196,
+      "details": {
+        "pass": true,
+        "removed": true,
+        "offscreen": 0
+      }
+    },
+    {
+      "id": "D11",
+      "title": "Collect fallback still opens only on explicit request",
+      "pass": true,
+      "ms": 149,
+      "details": {
+        "pass": true,
+        "url": "http://127.0.0.1:4173/#collect?v=1&kind=track&videoId=aqz-KE-bpKQ&title=Big+Buck+Bunny+60fps+4K+-+Official+Blender+Foundation+Short+Film&req=8340b4f7-fb8b-4140-8dcf-170e8e80feda"
+      }
+    }
+  ]
+}

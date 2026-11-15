@@ -30,6 +30,20 @@ export type StatusTone = 'info' | 'warning'
 /** 큐가 비었을 때의 인덱스. */
 export const NO_QUEUE_INDEX = -1
 
+/**
+ * 큐가 **어느 플레이리스트에서 떠졌는지** (M11-7B).
+ *
+ * 큐는 스냅샷이라 트랙만으로는 출처를 알 수 없다 — 같은 곡이 여러 목록에 있을 수 있고, 목록 밖
+ * 영상(Moment 재생)일 수도 있다. 그래서 큐를 만드는 쪽(Playback Coordinator)이 함께 적는다.
+ *
+ * **메모리에만 있다. 저장하지 않는다.** 새로고침하면 큐와 함께 사라진다.
+ */
+export interface QueueSource {
+  readonly playlistId: string
+  /** 큐를 뜬 순간의 목록 이름. 목록이 지워진 뒤에도 무엇을 듣고 있었는지 말할 수 있다. */
+  readonly name: string
+}
+
 export const usePlaybackStore = defineStore('playback', () => {
   /** 현재 트랙. 없으면 `null`이다. */
   const currentTrack = ref<Track | null>(null)
@@ -45,6 +59,12 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   /** 큐 안의 현재 위치. 큐가 비면 `NO_QUEUE_INDEX`다. */
   const queueIndex = ref<number>(NO_QUEUE_INDEX)
+
+  /**
+   * 큐의 출처 목록 (M11-7B). 모르면 `null` — 출처를 **추정하지 않는다.**
+   * `setQueue` 가 큐와 함께 바꾼다. 따로 바꾸는 길을 두지 않는다 — 큐와 출처가 어긋나지 않게.
+   */
+  const queueSource = ref<QueueSource | null>(null)
 
   /** 도메인 재생 상태. YouTube 숫자 상태값이 아니다. */
   const playerState = ref<PlayerState>('idle')
@@ -111,14 +131,22 @@ export const usePlaybackStore = defineStore('playback', () => {
    * 불변조건: `queueIndex`는 큐 범위 안이거나, 큐가 비면 `NO_QUEUE_INDEX`다.
    * `currentTrack`은 항상 `queue[queueIndex]`와 일치한다.
    */
-  function setQueue(tracks: readonly Track[], startIndex = 0): void {
+  function setQueue(
+    tracks: readonly Track[],
+    startIndex = 0,
+    source: QueueSource | null = null,
+  ): void {
     queue.value = [...tracks]
 
     if (queue.value.length === 0) {
       queueIndex.value = NO_QUEUE_INDEX
       currentTrack.value = null
+      queueSource.value = null
       return
     }
+
+    // 출처는 큐와 **함께** 바뀐다. 넘기지 않으면 "모른다" 다 — 이전 큐의 출처가 남지 않는다.
+    queueSource.value = source === null ? null : { ...source }
 
     const clamped = Math.min(Math.max(startIndex, 0), queue.value.length - 1)
     queueIndex.value = clamped
@@ -168,6 +196,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     currentTrack.value = null
     queue.value = []
     queueIndex.value = NO_QUEUE_INDEX
+    queueSource.value = null
     playerState.value = 'idle'
     statusMessage.value = ''
     statusTone.value = 'info'
@@ -178,6 +207,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     currentTrack,
     queue,
     queueIndex,
+    queueSource,
     playerState,
     statusMessage,
     statusTone,

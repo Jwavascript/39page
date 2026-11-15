@@ -1,0 +1,223 @@
+{
+  "observedAt": "2026-11-15T15:05:15.507Z",
+  "candidate": "e371fb52454ecac349f27843df8a15c1444bed5e",
+  "remoteHeads": "9e40b8f9d89272b1054634b8aeff73ec9866101e\trefs/heads/m11-1-ux-bridge-poc\n2bc8fd2af9ac2609ce2f565a19c6ab185253d497\trefs/heads/main",
+  "ancestry": [
+    {
+      "ref": "f5a4932",
+      "included": true
+    },
+    {
+      "ref": "a1259a3",
+      "included": true
+    },
+    {
+      "ref": "db968bf",
+      "included": true
+    },
+    {
+      "ref": "1db699e",
+      "included": true
+    },
+    {
+      "ref": "fd4b995",
+      "included": true
+    },
+    {
+      "ref": "7ebc67b",
+      "included": true
+    },
+    {
+      "ref": "8884ae1",
+      "included": true
+    },
+    {
+      "ref": "bbaa80c",
+      "included": true
+    },
+    {
+      "ref": "325226d",
+      "included": true
+    },
+    {
+      "ref": "b73c96e",
+      "included": true
+    },
+    {
+      "ref": "e65f8c7",
+      "included": true
+    },
+    {
+      "ref": "f2b290f",
+      "included": true
+    },
+    {
+      "ref": "f304cce",
+      "included": true
+    },
+    {
+      "ref": "850a45e",
+      "included": true
+    },
+    {
+      "ref": "80a4cd3",
+      "included": true
+    },
+    {
+      "ref": "e371fb5",
+      "included": true
+    },
+    {
+      "ref": "2bc8fd2",
+      "included": false
+    }
+  ],
+  "mergeSimulation": {
+    "tree": "db0bcb602eff315bef110521e60544f0a9192d68",
+    "applied": false,
+    "diffFromCandidate": "docs/development/DEPLOYMENT.md\ndocs/development/EXTENSION_RELEASE.md"
+  },
+  "http": [
+    {
+      "requested": "https://39page.com/",
+      "hops": [
+        {
+          "url": "https://39page.com/",
+          "status": 200,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bytes": 1932,
+      "sha256": "2ba8d5fcaf513f9b2324a97497fc7c94e043b7aa7710a57842b58f4f232247fd"
+    },
+    {
+      "requested": "http://39page.com/release-gate-read-only?gate=1",
+      "hops": [
+        {
+          "url": "http://39page.com/release-gate-read-only?gate=1",
+          "status": 301,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html; charset=UTF-8",
+            "location": "https://39page.com/release-gate-read-only?gate=1"
+          }
+        },
+        {
+          "url": "https://39page.com/release-gate-read-only?gate=1",
+          "status": 200,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bytes": 1932,
+      "sha256": "2ba8d5fcaf513f9b2324a97497fc7c94e043b7aa7710a57842b58f4f232247fd"
+    },
+    {
+      "requested": "https://www.39page.com/release-gate-read-only?gate=1",
+      "hops": [
+        {
+          "url": "https://www.39page.com/release-gate-read-only?gate=1",
+          "status": 301,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html; charset=UTF-8",
+            "location": "https://39page.com/release-gate-read-only?gate=1"
+          }
+        },
+        {
+          "url": "https://39page.com/release-gate-read-only?gate=1",
+          "status": 200,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bytes": 1932,
+      "sha256": "2ba8d5fcaf513f9b2324a97497fc7c94e043b7aa7710a57842b58f4f232247fd"
+    },
+    {
+      "requested": "https://39page.com/bridge",
+      "hops": [
+        {
+          "url": "https://39page.com/bridge",
+          "status": 200,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bytes": 1932,
+      "sha256": "2ba8d5fcaf513f9b2324a97497fc7c94e043b7aa7710a57842b58f4f232247fd"
+    },
+    {
+      "requested": "https://39page.com/bridge.html",
+      "hops": [
+        {
+          "url": "https://39page.com/bridge.html",
+          "status": 200,
+          "headers": {
+            "server": "cloudflare",
+            "content-type": "text/html",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bytes": 1932,
+      "sha256": "2ba8d5fcaf513f9b2324a97497fc7c94e043b7aa7710a57842b58f4f232247fd"
+    }
+  ],
+  "files": [
+    {
+      "path": "/favicon.ico",
+      "bytes": 4286,
+      "sha256": "db74ab0b78338c1f778f8398c45f4103c99aea0e845a3118a7750b4eeafd3445",
+      "status": 200
+    },
+    {
+      "path": "/assets/index-BDctC-gs.js",
+      "bytes": 224659,
+      "sha256": "01415d5ab2c938335e79ec5bc066e27b505039ecd42261262ee2ae42f32f2c39",
+      "status": 200
+    },
+    {
+      "path": "/assets/index-D9zkpkAY.css",
+      "bytes": 51965,
+      "sha256": "d2f2333c9bf0230b4ff8a013e8077431ae5a1bdc09765072daca69da03a4ea56",
+      "status": 200
+    }
+  ],
+  "github": {
+    "commits/main": {
+      "sha": "2bc8fd2af9ac2609ce2f565a19c6ab185253d497",
+      "date": "2026-11-11T08:12:56Z"
+    },
+    "commits/main/check-runs": [
+      {
+        "name": "Workers Builds: 39page",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-12T00:07:21Z",
+        "html_url": "https://github.com/Jwavascript/39page/runs/130874495780"
+      }
+    ]
+  },
+  "candidateHeaders": "/bridge.html\n  Content-Security-Policy: frame-ancestors 'none'\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n/bridge\n  Content-Security-Policy: frame-ancestors 'none'\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n",
+  "candidateArtifacts": "?? docs/development/POST_RELEASE_FEEDBACK.md\n?? docs/development/RELEASE_GATE.md\n?? docs/development/release-gate-results/\n",
+  "productionSettingsUnverified": [
+    "Cloudflare active Worker Version ID",
+    "Current dashboard build/deploy commands and production branch",
+    "Cloudflare build env vars and Node version",
+    "Rollback target Version ID and account access"
+  ]
+}

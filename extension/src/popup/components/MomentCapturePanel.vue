@@ -63,6 +63,7 @@ const isProblem = computed(() => props.state.kind === 'error' || props.state.kin
   padding: 12px 14px;
   border: 1px solid var(--info-border-color);
   border-radius: var(--radius-modal);
+  background: var(--drawer-surface-color);
 }
 
 .moment-title {
@@ -74,7 +75,7 @@ const isProblem = computed(() => props.state.kind === 'error' || props.state.kin
 
 /* 보조 동작 — 웹앱의 `.pill` 토큰 (주된 동작은 플레이리스트 추가). */
 .capture {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -100,8 +101,8 @@ const isProblem = computed(() => props.state.kind === 'error' || props.state.kin
 
 .moment-help {
   margin: 0;
-  color: var(--text-dim-color);
-  font-size: 11px;
+  color: var(--text-muted-color);
+  font-size: 12px;
 }
 
 .moment-message {
@@ -111,6 +112,8 @@ const isProblem = computed(() => props.state.kind === 'error' || props.state.kin
 }
 
 .moment-message.is-error {
-  color: var(--text-color);
+  padding-left: 8px;
+  border-left: 3px solid var(--error-text-color);
+  color: var(--error-text-color);
 }
 </style>

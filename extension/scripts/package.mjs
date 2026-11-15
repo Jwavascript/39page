@@ -55,8 +55,9 @@ const files = listFiles(dist).map((path) => ({
 }))
 
 // ---------- 넣기 전 검사 ----------
+// M11-5: offscreen 문서(39page 저장 브리지) · YouTube 위 패널 페이지가 더해졌다 (ADR 0028).
 const ALLOWED =
-  /^(manifest\.json|background\.js|content\.js|icons\/icon-(16|32|48|128)\.png|src\/popup\/index\.html|assets\/[\w.-]+\.(js|css))$/
+  /^(manifest\.json|background\.js|content\.js|icons\/icon-(16|32|48|128)\.png|src\/(popup|panel|offscreen)\/index\.html|assets\/[\w.-]+\.(js|css))$/
 for (const file of files) {
   if (!ALLOWED.test(file.name)) fail(`예상하지 못한 파일 — ${file.name}`)
   if (file.name.endsWith('.map')) fail(`소스맵 — ${file.name}`)
@@ -84,6 +85,8 @@ for (const needed of [
   'background.js',
   'content.js',
   'src/popup/index.html',
+  'src/panel/index.html',
+  'src/offscreen/index.html',
   'icons/icon-128.png',
 ]) {
   if (!files.some((file) => file.name === needed)) fail(`빠진 파일 — ${needed}`)

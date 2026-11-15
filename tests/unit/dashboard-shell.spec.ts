@@ -60,14 +60,28 @@ describe('1. DashboardShell 렌더링', () => {
     }
   })
 
-  it('헤더에 동작하지 않는 버튼을 만들지 않는다', () => {
+  it('헤더의 전역 입구·테마 전환·접기 버튼이 모두 동작한다', async () => {
     const wrapper = mountApp()
     const header = wrapper.findComponent(AppHeader)
 
-    // 헤더의 버튼은 테마 전환 2개뿐이다. 라이브러리 열기는 M2-2에서
-    // 데크 트리거로 구현했고, 링크 추가는 아직 없다.
-    expect(header.findAll('button')).toHaveLength(2)
+    // M11-7B: 음악 · Moments 입구를 "보관함" 하나로 합쳤다 (ADR 0030). 링크 추가는 보관함 안에 있다.
+    const buttons = header.findAll('button')
+    expect(buttons).toHaveLength(5)
+    const nav = header.findAll('.app-nav button')
+    expect(nav.map((button) => button.text())).toEqual(['▤ 보관함', '⇩ 데이터 · 백업'])
     expect(header.text()).not.toContain('링크 추가')
+    // 테마 전환은 Theme 1 = Synth Cassette, Theme 2 = Mono Vinyl 순서다.
+    expect(header.findAll('.theme-button').map((button) => button.text())).toEqual([
+      '01 / SYNTH CASSETTE',
+      '02 / MONO VINYL',
+    ])
+
+    // 동작하지 않는 버튼이 없다 — 각 입구가 실제로 무언가를 연다.
+    await nav[0]?.trigger('click')
+    expect(wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
+    await nav[1]?.trigger('click')
+    expect(wrapper.get('.data-backdrop').attributes('hidden')).toBeUndefined()
   })
 
   it('아직 없는 기능의 버튼을 만들지 않는다', () => {
@@ -201,7 +215,7 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
       ]),
     )
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     // 같은 노드여야 한다. 새 노드면 iframe 이 재로드된다.
@@ -250,7 +264,7 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
       wrapper.findAll('[data-instance-id]').map((node) => node.attributes('data-instance-id'))
 
     const before = ids()
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(ids()).toEqual(before)
@@ -265,7 +279,7 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
     const hostElement = host.element
     const widgetElements = [...host.element.children]
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(host.element).toBe(hostElement)
@@ -277,11 +291,11 @@ describe('8 · 9. 테마 전환 시 DOM 동일성', () => {
     const theme = useThemeStore()
     const shell = wrapper.get('.dashboard-shell').element
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(wrapper.get('.dashboard-shell').element).toBe(shell)
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
   })
 })
 
@@ -308,7 +322,7 @@ describe('7. 테마와 위젯의 책임 분리', () => {
     const host = wrapper.findComponent(WidgetHost)
 
     const before = host.props('layout')
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
     // 같은 객체 참조여야 한다. 테마별 레이아웃을 만들지 않는다.

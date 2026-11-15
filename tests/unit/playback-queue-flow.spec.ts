@@ -23,6 +23,8 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { openTrackManage } from '../support/trackManage'
+import { archiveCloseButton } from '../support/archiveClose'
 
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
 
@@ -199,15 +201,20 @@ describe('A. 드로어에서 재생 시작', () => {
     expect(player().options.videoId).toBe(VIDEOS[1])
   })
 
-  it('목록 행의 ▶ 가 그 목록을 선택하고 재생한다', async () => {
+  it('목록 칸에서 다른 목록을 고르고 상세 칸의 전체 재생으로 재생한다 (M11-7B)', async () => {
     const { wrapper, library, playback } = await setup()
     const other = await library.createPlaylist('OTHER')
     const otherId = other.ok ? other.playlistId : ''
     library.addTrack(otherId, { videoId: VIDEOS[2], title: 'Only' })
     await nextTick()
 
-    // 두 번째 목록 행의 ▶.
-    await wrapper.findAll('.playlist-play')[1]?.trigger('click')
+    // 새로 만든 OTHER 가 골라져 있다 — 첫 목록으로 갔다가 목록 칸에서 다시 OTHER 를 고른다.
+    await wrapper.findAll('.archive-lists .list-select')[0]?.trigger('click')
+    await flush()
+    expect(library.selectedPlaylistId).not.toBe(otherId)
+    await wrapper.findAll('.archive-lists .list-select')[1]?.trigger('click')
+    await flush()
+    await wrapper.get('.playlist-editor .head-actions .pill--strong').trigger('click')
     await flush()
 
     expect(library.selectedPlaylistId).toBe(otherId)
@@ -235,21 +242,20 @@ describe('A. 드로어에서 재생 시작', () => {
 
     expect(byText(wrapper, '.pill', '▶ 목록 전체 재생')?.attributes('disabled')).toBeDefined()
     /*
-     * M7 — 타일의 `▶` 는 전체 재생 전용이고 빈 목록에서 비활성이다.
-     *
-     * 타일 **본문**은 트랙 편집을 열므로 막다른 길이 아니다 — 비워 둔 목록에
-     * 레코드를 넣으러 들어갈 수 있다.
+     * M11-7B — NOW PLAYLIST 는 빈 목록에 "처음부터 재생" 을 내놓지 않는다. 막다른 길이 아니다 —
+     * 링크 추가와 보관함 편집으로 갈 수 있다.
      */
-    expect(wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('.playlist-open').attributes('aria-label')).toContain('트랙 편집')
+    expect(wrapper.find('.now-playlist .play-all').exists()).toBe(false)
+    expect(wrapper.get('.now-playlist .add-link').text()).toContain('YouTube 링크 추가')
+    expect(wrapper.get('.now-playlist .open-archive').text()).toContain('보관함에서 편집')
     expect(FakeYtPlayer.instances).toHaveLength(0)
   })
 
   it('재생 버튼에 접근성 이름이 있다', async () => {
     const { wrapper } = await setup()
 
-    expect(wrapper.get('.playlist-play').attributes('aria-label')).toBe(
-      'MY RECORDS 전체 재생 (3곡)',
+    expect(wrapper.get('.now-playlist .play-all').attributes('aria-label')).toBe(
+      'MY RECORDS 처음부터 재생 (3곡)',
     )
     expect(wrapper.findAll('.track-play').map((node) => node.attributes('aria-label'))).toEqual([
       'Track 1 재생',
@@ -358,7 +364,7 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     const iframe = player().iframe
 
     for (let round = 0; round < 2; round += 1) {
-      await wrapper.get('.drawer .close').trigger('click')
+      await archiveCloseButton(wrapper).trigger('click')
       await nextTick()
       await wrapper.get('.deck-open--mono-vinyl').trigger('click')
       await nextTick()
@@ -376,9 +382,11 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     const before = [...playback.queue]
 
     // 두 번째 트랙을 위로 올린다.
+    await openTrackManage(wrapper, 'Track 2')
     await wrapper.get('[aria-label="Track 2 위로"]').trigger('click')
     await nextTick()
     // 세 번째 트랙을 지운다. 행의 버튼은 ✎ ↑ ↓ × 네 개다 (M6-5).
+    await openTrackManage(wrapper, 'Track 3')
     await wrapper.get('[aria-label="Track 3 삭제"]').trigger('click')
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
     await nextTick()

@@ -1,0 +1,325 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "name": "cassette-1440",
+      "pass": true,
+      "m": {
+        "layout": "strip",
+        "stripClose": {
+          "x": 1230.296875,
+          "y": 27.4375,
+          "r": 1344.8125,
+          "b": 71.4375,
+          "w": 115,
+          "h": 44
+        },
+        "headClose": false,
+        "overlaps": 0,
+        "rightAligned": true,
+        "aboveStrip": true,
+        "inView": true,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 2.075919,
+        "paused": false
+      },
+      "v2": {
+        "t": 4.236611,
+        "paused": false
+      }
+    },
+    {
+      "name": "cassette-1024",
+      "pass": true,
+      "m": {
+        "layout": "strip",
+        "stripClose": {
+          "x": 836.15625,
+          "y": 21.921875,
+          "r": 950.671875,
+          "b": 65.921875,
+          "w": 115,
+          "h": 44
+        },
+        "headClose": false,
+        "overlaps": 0,
+        "rightAligned": true,
+        "aboveStrip": true,
+        "inView": true,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 6.289735,
+        "paused": false
+      },
+      "v2": {
+        "t": 8.436784,
+        "paused": false
+      }
+    },
+    {
+      "name": "cassette-844x390",
+      "pass": true,
+      "m": {
+        "layout": "side",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 10.432003,
+        "paused": false
+      },
+      "v2": {
+        "t": 12.577007,
+        "paused": false
+      }
+    },
+    {
+      "name": "cassette-390",
+      "pass": true,
+      "m": {
+        "layout": "stack",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 14.586015,
+        "paused": false
+      },
+      "v2": {
+        "t": 16.747507,
+        "paused": false
+      }
+    },
+    {
+      "name": "cassette-360",
+      "pass": true,
+      "m": {
+        "layout": "stack",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 18.792803,
+        "paused": false
+      },
+      "v2": {
+        "t": 20.953869,
+        "paused": false
+      }
+    },
+    {
+      "name": "cassette-320",
+      "pass": true,
+      "m": {
+        "layout": "stack",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 22.940458,
+        "paused": false
+      },
+      "v2": {
+        "t": 25.087837,
+        "paused": false
+      }
+    },
+    {
+      "name": "mono-1440",
+      "pass": true,
+      "m": {
+        "layout": "strip",
+        "stripClose": {
+          "x": 1230.296875,
+          "y": 27.4375,
+          "r": 1344.8125,
+          "b": 71.4375,
+          "w": 115,
+          "h": 44
+        },
+        "headClose": false,
+        "overlaps": 0,
+        "rightAligned": true,
+        "aboveStrip": true,
+        "inView": true,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 27.691518,
+        "paused": false
+      },
+      "v2": {
+        "t": 29.831654,
+        "paused": false
+      }
+    },
+    {
+      "name": "mono-1024",
+      "pass": true,
+      "m": {
+        "layout": "strip",
+        "stripClose": {
+          "x": 836.15625,
+          "y": 21.921875,
+          "r": 950.671875,
+          "b": 65.921875,
+          "w": 115,
+          "h": 44
+        },
+        "headClose": false,
+        "overlaps": 0,
+        "rightAligned": true,
+        "aboveStrip": true,
+        "inView": true,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 31.944701,
+        "paused": false
+      },
+      "v2": {
+        "t": 34.102816,
+        "paused": false
+      }
+    },
+    {
+      "name": "mono-844x390",
+      "pass": true,
+      "m": {
+        "layout": "side",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 36.154674,
+        "paused": false
+      },
+      "v2": {
+        "t": 38.311929,
+        "paused": false
+      }
+    },
+    {
+      "name": "mono-390",
+      "pass": true,
+      "m": {
+        "layout": "stack",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 40.350004,
+        "paused": false
+      },
+      "v2": {
+        "t": 42.499058,
+        "paused": false
+      }
+    },
+    {
+      "name": "mono-360",
+      "pass": true,
+      "m": {
+        "layout": "stack",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 44.502415,
+        "paused": false
+      },
+      "v2": {
+        "t": 46.65622,
+        "paused": false
+      }
+    },
+    {
+      "name": "mono-320",
+      "pass": true,
+      "m": {
+        "layout": "stack",
+        "stripClose": null,
+        "headClose": true,
+        "overlaps": 0,
+        "rightAligned": null,
+        "aboveStrip": null,
+        "inView": null,
+        "text": "보관함 닫기 ×",
+        "overflowX": 0,
+        "marker": 0.059766617229052854
+      },
+      "v1": {
+        "t": 48.659525,
+        "paused": false
+      },
+      "v2": {
+        "t": 50.821518,
+        "paused": false
+      }
+    },
+    {
+      "name": "Esc 닫기 (띠)",
+      "pass": true
+    }
+  ]
+}

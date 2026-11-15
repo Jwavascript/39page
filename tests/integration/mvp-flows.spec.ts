@@ -23,6 +23,8 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { openTrackManage } from '../support/trackManage'
+import { archiveCloseButton } from '../support/archiveClose'
 
 /** `main.ts` 가 하는 기본 플레이리스트 이름. */
 const DEFAULT_PLAYLIST_NAME = 'MY RECORDS'
@@ -82,25 +84,26 @@ async function openDrawer(session: Session) {
   if (session.library.playlists.length === 0) session.library.createPlaylist('MY RECORDS')
   await nextTick()
 
-  await session.wrapper.get('.playlist-tile .playlist-open').trigger('click')
+  await session.wrapper.get('.now-playlist .open-archive').trigger('click')
   await nextTick()
 }
 
 async function closeDrawer(session: Session) {
-  await session.wrapper.get('.drawer .close').trigger('click')
+  await archiveCloseButton(session.wrapper).trigger('click')
   await nextTick()
 }
 
 /**
- * 플레이리스트 위젯으로 새 목록을 만든다.
+ * 보관함의 목록 칸에서 새 목록을 만든다.
  *
- * M6-4 에서 `＋ 새 목록` 이 드로어에서 위젯으로 옮겼다. 플레이리스트가 사는
- * 곳에서 만든다 (보고 6a).
+ * M11-7B 에서 `＋ 새 목록` 은 보관함 한 곳에만 있다 — 대시보드의 NOW PLAYLIST 는 듣는 곳이고
+ * 목록을 만들고 고치는 일은 보관함의 일이다 (ADR 0030).
  */
 async function createPlaylist(session: Session, name: string) {
-  await session.wrapper.get('.playlist-widget .pill--strong').trigger('click')
-  await session.wrapper.get('#new-playlist-name').setValue(name)
-  await session.wrapper.get('form.create-form').trigger('submit')
+  await session.wrapper.get('.archive-lists .pill--strong').trigger('click')
+  await session.wrapper.get('#archive-new-playlist-name').setValue(name)
+  await session.wrapper.get('.archive-lists form.create-form').trigger('submit')
+  await flushPromises()
   await nextTick()
 }
 
@@ -154,12 +157,13 @@ describe('1. 최초 실행 → 기본 라이브러리 생성', () => {
     await openDrawer(session)
 
     /*
-     * M7 — 타일의 `▶`(전체 재생)가 비활성이고, 본문은 트랙 편집을 연다.
-     * 드로어의 `▶ 목록 전체 재생` 도 그대로 비활성이다.
+     * M11-7B — NOW PLAYLIST 는 빈 목록에 "처음부터 재생" 을 내놓지 않고 링크 추가로 안내한다.
+     * 보관함의 `▶ 목록 전체 재생` 은 그대로 비활성이다.
      */
-    expect(session.wrapper.get('.playlist-play').attributes('disabled')).toBeDefined()
+    expect(session.wrapper.find('.now-playlist .play-all').exists()).toBe(false)
+    expect(session.wrapper.get('.now-playlist').text()).toContain('이 목록은 비어 있어요')
 
-    await session.wrapper.get('.playlist-open').trigger('click')
+    await session.wrapper.get('.now-playlist .open-archive').trigger('click')
     await nextTick()
 
     expect(session.playback.queue).toEqual([])
@@ -365,10 +369,11 @@ describe('7. 재생 중 테마 변경', () => {
       state: session.playback.playerState,
     }
 
+    // 둘째 버튼 = Mono Vinyl (M11-7B 부터 기본 · 첫 버튼은 Kawaii Synth Cassette).
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
 
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
     expect(session.fake.calls.mount).toBe(1)
     expect(session.fake.calls.destroy).toBe(0)
     expect(session.fake.hostNode).toBe(host)
@@ -387,14 +392,18 @@ describe('7. 재생 중 테마 변경', () => {
     await closeDrawer(session)
     await startPlaying(session, 0)
 
-    expect(session.wrapper.get('.mascot-message').text()).toBe('NOW SPINNING')
-    expect(session.wrapper.get('.footer-theme').text()).toContain('MONO VINYL')
+    // M12-2: 마스코트 문구 대신 Now Playing 카드 — 두 테마의 기본 그림이 함께 있고 CSS 가 고른다 (ADR 0032).
+    const art = session.wrapper.get('.now-playing-card .default-artwork').element
+    expect(session.wrapper.get('.now-playing-card .now-title').text()).toBe('ONE')
+    expect(session.wrapper.get('.footer-theme').text()).toContain('SYNTH CASSETTE')
 
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
 
-    expect(session.wrapper.get('.mascot-message').text()).toBe('TAPE ROLLING')
-    expect(session.wrapper.get('.footer-theme').text()).toContain('SYNTH CASSETTE')
+    // 테마를 바꿔도 카드 · 그림이 다시 만들어지지 않고 곡 정보가 그대로다.
+    expect(session.wrapper.get('.now-playing-card .default-artwork').element).toBe(art)
+    expect(session.wrapper.get('.now-playing-card .now-title').text()).toBe('ONE')
+    expect(session.wrapper.get('.footer-theme').text()).toContain('MONO VINYL')
     expect(session.wrapper.get('.deck-widget').classes()).toContain('is-playing')
   })
 })
@@ -422,13 +431,14 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
   it('닫으면 포커스가 트리거로 돌아온다', async () => {
     const session = boot()
     // M7: 드로어를 여는 트리거는 플레이리스트 타일 본문이다.
-    const trigger = session.wrapper.get('.playlist-tile .playlist-open')
+    const trigger = session.wrapper.get('.now-playlist .open-archive')
     ;(trigger.element as HTMLElement).focus()
 
     await trigger.trigger('click')
     await nextTick()
     await flushPromises()
-    expect(document.activeElement).toBe(session.wrapper.get('.drawer .close').element)
+    // M11-2: 보관함은 열리면 고른 탭으로 포커스를 옮긴다.
+    expect(document.activeElement).toBe(session.wrapper.get('#archive-tab-music').element)
 
     await closeDrawer(session)
     await flushPromises()
@@ -436,17 +446,22 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
     expect(document.activeElement).toBe(trigger.element)
   })
 
-  it('데크를 누르면 드로어가 아니라 플레이리스트 위젯이 펼쳐진다 (M7)', async () => {
+  it('데크를 누르면 음악 보관함이 열린다 — 재생은 끊기지 않는다 (M11-3)', async () => {
     const session = boot()
+    await openDrawer(session)
+    await addTrack(session, VIDEO_URL, 'ONE')
+    await closeDrawer(session)
+    await startPlaying(session, 0)
     const deck = session.wrapper.get(`.deck-open--${session.theme.current}`)
-
-    expect(session.wrapper.get('.playlist-widget').classes()).toContain('is-collapsed')
+    expect(session.wrapper.get('#archive-panel').attributes('hidden')).toBeDefined()
 
     await deck.trigger('click')
-    await nextTick()
+    await flushPromises()
 
-    expect(session.wrapper.get('.playlist-widget').classes()).not.toContain('is-collapsed')
-    expect(session.wrapper.get('#record-library-drawer').attributes('hidden')).toBeDefined()
+    expect(session.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
+    expect(session.wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
+    expect(session.playback.playerState).toBe('playing')
+    expect(session.fake.calls.pause).toBe(0)
   })
 })
 
@@ -463,14 +478,18 @@ describe('9. 플레이리스트 편집 후 큐 안정성', () => {
     // 트랙 추가
     await addTrack(session, 'https://www.youtube.com/embed/aqz-KE-bpKQ', 'THREE')
     // 순서 변경
+    await openTrackManage(session.wrapper, 'TWO')
     await session.wrapper.get('[aria-label="TWO 위로"]').trigger('click')
-    // 이름 변경
+    // 이름 변경 — 목록 칸의 "관리" 안에 있다 (M11-7B).
+    await session.wrapper.get('.archive-lists .list-row.is-selected .list-manage').trigger('click')
     const rename = session.wrapper
-      .findAll('.drawer-actions button')
+      .findAll('.archive-lists .manage-panel button')
       .find((button) => button.text().includes('이름 수정'))
     await rename?.trigger('click')
+    await flushPromises()
     await session.wrapper.get('#playlist-name').setValue('RENAMED')
-    await session.wrapper.get('.name-form button[type="submit"]').trigger('click')
+    await session.wrapper.get('form.name-form').trigger('submit')
+    await flushPromises()
     await nextTick()
 
     expect(session.playback.queue.map((track) => track.id)).toEqual(queueBefore)
@@ -500,6 +519,7 @@ describe('10. 재생 중인 트랙 삭제', () => {
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
 
+    await openTrackManage(session.wrapper, 'ONE')
     await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
     await flushPromises()
     await session.wrapper.get('.confirm .pill--strong').trigger('click')
@@ -519,6 +539,7 @@ describe('10. 재생 중인 트랙 삭제', () => {
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
 
+    await openTrackManage(session.wrapper, 'ONE')
     await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
     await flushPromises()
     await session.wrapper.get('.confirm .pill--strong').trigger('click')
@@ -543,7 +564,7 @@ describe('11. 새로고침 후 복원', () => {
     // 새로고침: 같은 localStorage, 새 pinia, main.ts 와 같은 순서
     const second = boot()
 
-    expect(second.theme.current).toBe('kawaii-synth-cassette')
+    expect(second.theme.current).toBe('mono-vinyl')
     expect(second.library.selectedPlaylist?.tracks[0]?.title).toBe('KEEP ME')
     // 재생 상태는 영속화 대상이 아니다.
     expect(second.playback.queue).toEqual([])
@@ -668,7 +689,7 @@ describe('13. localStorage 손상과 저장 실패', () => {
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
 
-    expect(session.theme.current).toBe('kawaii-synth-cassette')
-    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
+    expect(session.theme.current).toBe('mono-vinyl')
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
   })
 })

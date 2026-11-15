@@ -1,0 +1,206 @@
+{
+  "env": {
+    "browser": "Chrome/157.0.8103.50",
+    "manifest": {
+      "permissions": ["activeTab", "scripting", "offscreen"],
+      "optional_host_permissions": ["http://127.0.0.1:4173/*"]
+    }
+  },
+  "results": [
+    {
+      "id": "Q1",
+      "title": "권한 없이 — contains · 확장 페이지 안 39page iframe",
+      "details": {
+        "contains": false,
+        "probe": {
+          "marker": null,
+          "storageAccess": true,
+          "sharedLocks": false,
+          "libraryLength": null
+        },
+        "partitioned": true
+      }
+    },
+    {
+      "id": "Q2a",
+      "title": "permissions.request() → 실제 프롬프트에서 \"거부\"",
+      "details": {
+        "clicked": "invoked:Deny",
+        "request": {
+          "value": false
+        },
+        "containsAfter": false,
+        "events": []
+      }
+    },
+    {
+      "id": "Q2b",
+      "title": "permissions.request() → 실제 프롬프트에서 \"허용\"",
+      "details": {
+        "clicked": "invoked:Allow",
+        "request": {
+          "value": true
+        },
+        "containsAfter": true,
+        "events": [
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "Q3",
+      "title": "다른 실제 부여 경로 — chrome://extensions 사이트 액세스 (developerPrivate)",
+      "details": {
+        "before": {
+          "hostAccess": "ON_ALL_SITES",
+          "hasAllHosts": false,
+          "hosts": ["http://127.0.0.1:4173/*:true"]
+        },
+        "addHostPermission": "ok",
+        "hostsAfter": ["http://127.0.0.1:4173/*:true"],
+        "contains": true,
+        "events": [
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "Q4",
+      "title": "부여 직후 — 새 iframe · 부여 전부터 떠 있던 iframe",
+      "details": {
+        "contains": true,
+        "newIframe": {
+          "marker": "first-party",
+          "storageAccess": true,
+          "sharedLocks": true,
+          "libraryLength": 174
+        },
+        "preexistingIframe": {
+          "marker": null,
+          "storageAccess": true,
+          "sharedLocks": false,
+          "libraryLength": null
+        }
+      }
+    },
+    {
+      "id": "Q5",
+      "title": "부여 뒤 offscreen 브리지로 Library · Moments 조회 (실제 store)",
+      "details": {
+        "hello": {
+          "protocol": 1,
+          "library": {
+            "status": "ready",
+            "protectedReason": null,
+            "playlists": 1
+          },
+          "moments": {
+            "status": "ready",
+            "protectedReason": null,
+            "count": 0
+          }
+        },
+        "playlists": ["MY RECORDS"],
+        "sameAsDashboard": true,
+        "momentsStatus": "ready"
+      }
+    },
+    {
+      "id": "Q6",
+      "title": "철회 — permissions.remove() 뒤 새 iframe · 이미 떠 있던 iframe · offscreen 브리지",
+      "details": {
+        "remove": {
+          "value": true
+        },
+        "contains": false,
+        "events": [
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          },
+          {
+            "removed": ["http://127.0.0.1:4173/*"]
+          }
+        ],
+        "newIframe": {
+          "marker": null,
+          "storageAccess": true,
+          "sharedLocks": false,
+          "libraryLength": null
+        },
+        "iframeOpenedWhileGranted": {
+          "marker": "first-party",
+          "storageAccess": true,
+          "sharedLocks": true,
+          "libraryLength": 174
+        },
+        "staleOffscreenBridge": ["MY RECORDS"],
+        "freshOffscreenBridge": []
+      }
+    },
+    {
+      "id": "Q8",
+      "title": "철회 뒤 다시 request() — 프롬프트가 다시 뜨는가",
+      "details": {
+        "clicked": "not-found",
+        "request": {
+          "value": true
+        },
+        "containsAfter": true,
+        "events": [
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          },
+          {
+            "removed": ["http://127.0.0.1:4173/*"]
+          },
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          }
+        ],
+        "ms": 15982
+      }
+    },
+    {
+      "id": "Q9",
+      "title": "사용자 경로의 철회 — chrome://extensions 사이트 액세스 (developerPrivate.removeHostPermission)",
+      "details": {
+        "removeHostPermission": "ok",
+        "hostsAfter": ["http://127.0.0.1:4173/*:true", "http://127.0.0.1:4173/*:false"],
+        "contains": false,
+        "events": [
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          },
+          {
+            "removed": ["http://127.0.0.1:4173/*"]
+          },
+          {
+            "added": ["http://127.0.0.1:4173/*"]
+          },
+          {
+            "removed": ["http://127.0.0.1:4173/*"]
+          }
+        ],
+        "newIframe": {
+          "marker": null,
+          "storageAccess": true,
+          "sharedLocks": false,
+          "libraryLength": null
+        }
+      }
+    },
+    {
+      "id": "Q7",
+      "title": "철회 상태의 폴백 — 기존 수집 화면(새 탭)은 권한 없이 동작",
+      "details": {
+        "collectView": "39page YOUTUBE 에서 담기 담을 영상 제목 없음 — “YouTube · dQw4w9WgXcQ” 로 저장됩니다 dQw4w9WgXc",
+        "firstPartyStorage": true,
+        "choices": 2
+      }
+    }
+  ]
+}

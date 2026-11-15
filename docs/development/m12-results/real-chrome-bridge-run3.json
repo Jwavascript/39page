@@ -1,0 +1,230 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "results": [
+    {
+      "id": "B1",
+      "title": "권한 없음 — 상태 · 쓰기 거절 · offscreen 을 만들지 않는다",
+      "pass": true,
+      "ms": 58,
+      "details": {
+        "pass": true,
+        "state": {
+          "permission": "not-granted",
+          "origins": ["http://127.0.0.1:4173/*"],
+          "origin": "http://127.0.0.1:4173"
+        },
+        "r": {
+          "requestId": "d5f19d89-ef92-46dd-aa80-4c837d4d1407",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "contexts": []
+      }
+    },
+    {
+      "id": "B2",
+      "title": "실제 권한 프롬프트 — 거부하면 그대로, 허용하면 granted",
+      "pass": false,
+      "error": "evaluate timeout: chrome.permissions.request({ origins: ['http://127.0.0.1:417"
+    },
+    {
+      "id": "B3",
+      "title": "부여 직후 — 목록이 대시보드 저장소와 같다 (분할되지 않음) · offscreen 하나",
+      "pass": false,
+      "ms": 4,
+      "details": {
+        "pass": false,
+        "contexts": []
+      }
+    },
+    {
+      "id": "B4",
+      "title": "담기 · 새 목록 + 담기 · Moment — 확인된 저장, 대시보드 선택 · 큐 · iframe 그대로",
+      "pass": false,
+      "ms": 622,
+      "details": {
+        "pass": false,
+        "before": {
+          "selected": "mine",
+          "lists": ["MINE:1", "드라이브:0"],
+          "moments": 0,
+          "nowPlaying": "YouTube Developers Live",
+          "iframe": true,
+          "tiles": 2
+        },
+        "after": {
+          "selected": "mine",
+          "lists": ["MINE:1", "드라이브:0"],
+          "moments": 0,
+          "nowPlaying": "YouTube Developers Live",
+          "iframe": true,
+          "tiles": 2
+        },
+        "dashboardSawNewList": false
+      }
+    },
+    {
+      "id": "B5",
+      "title": "같은 요청 ID 를 다시 보내면 — 저장하지 않고 existed",
+      "pass": false,
+      "error": "evaluate failed: TypeError: Cannot read properties of null (reading 'data')\n    at <anonymous>:1:51"
+    },
+    {
+      "id": "B6",
+      "title": "같은 영상이 이미 있으면 묻는다 — allowDuplicate 일 때만 한 번 더",
+      "pass": false,
+      "ms": 2,
+      "details": {
+        "pass": false
+      }
+    },
+    {
+      "id": "B7a",
+      "title": "응답 유실 — 처리 중 서비스 워커 강제 종료(Target.closeTarget) → 확인 · 같은 ID 재시도 → 1건",
+      "pass": false,
+      "error": "evaluate failed: TypeError: Cannot read properties of null (reading 'data')\n    at <anonymous>:1:51"
+    },
+    {
+      "id": "B7b",
+      "title": "응답 유실 — 처리 중 offscreen 문서 종료 → uncertain → 확인 · 같은 ID 재시도 → 1건",
+      "pass": false,
+      "error": "evaluate failed: TypeError: Cannot read properties of null (reading 'data')\n    at <anonymous>:1:51"
+    },
+    {
+      "id": "B8",
+      "title": "철회(API) — onRemoved 가 offscreen 을 닫고, 쓰기는 거절 · 저장소 그대로",
+      "pass": true,
+      "ms": 7,
+      "details": {
+        "pass": true,
+        "r": {
+          "requestId": "4b3e6a83-625e-4e21-acaa-4b60ab573ef5",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "closed": true,
+        "unchanged": true
+      }
+    },
+    {
+      "id": "B9",
+      "title": "다시 허용 — 프롬프트 없이 부여되고 새 브리지로 저장",
+      "pass": true,
+      "ms": 20530,
+      "details": {
+        "pass": true,
+        "regrant": {
+          "prompt": "invoked:Allow",
+          "granted": true
+        },
+        "r": {
+          "momentId": "ext-e3f10601-a191-4b38-8c3c-b49256a6926d",
+          "videoId": "M7lc1UVf-VE",
+          "atSeconds": 150,
+          "noteSaved": true,
+          "existed": false,
+          "verified": true
+        },
+        "contexts": ["/src/offscreen/index.html?gen=1"]
+      }
+    },
+    {
+      "id": "B10",
+      "title": "서비스 워커가 멈춘 동안 사이트 액세스에서 철회 — 깨어나 닫는가 · 다음 쓰기 거절",
+      "pass": false,
+      "ms": 2840,
+      "details": {
+        "pass": false,
+        "removed": "ok",
+        "contextsBefore": ["/src/offscreen/index.html?gen=1"],
+        "workerWokeOnRemoved": true,
+        "offscreenAfterRevoke": [],
+        "r": {
+          "requestId": "fa89f8de-8567-4a45-8acf-7c49f05a3dab",
+          "outcome": "ok",
+          "data": {
+            "momentId": "ext-fa89f8de-8567-4a45-8acf-7c49f05a3dab",
+            "videoId": "aaaaaaaaaaa",
+            "atSeconds": 3,
+            "noteSaved": true,
+            "existed": false,
+            "verified": true
+          }
+        },
+        "offscreenAfterNextCall": ["/src/offscreen/index.html?gen=2"]
+      }
+    },
+    {
+      "id": "B11",
+      "title": "다른 39page 탭과 같은 순간 저장 — 대시보드가 목록을 만들 때 브리지가 담기, 조용한 손실 0",
+      "pass": true,
+      "ms": 37081,
+      "details": {
+        "pass": true,
+        "regrant": {
+          "prompt": "no-prompt",
+          "granted": true
+        },
+        "rounds": 15,
+        "okCount": 13,
+        "saved": {
+          "bridge": 13,
+          "dash": 15
+        },
+        "selectedName": "dash-1794724695871-14",
+        "nonOk": ["conflict", "conflict"]
+      }
+    },
+    {
+      "id": "B12",
+      "title": "보호 상태 — 손상된 Moments 에는 쓰지 않고 원본 그대로",
+      "pass": true,
+      "ms": 8,
+      "details": {
+        "pass": true,
+        "r": {
+          "code": "blocked",
+          "retryable": false,
+          "detail": {
+            "store": "moments",
+            "status": "protected",
+            "protectedReason": "malformed"
+          }
+        }
+      }
+    },
+    {
+      "id": "B13",
+      "title": "쓰기와 철회가 겹침 — 성공이라 했으면 저장돼 있고, 모르면 uncertain · 재허용 뒤 확인하면 일치",
+      "pass": true,
+      "ms": 6461,
+      "details": {
+        "pass": true,
+        "first": {
+          "requestId": "f222fc52-b48f-4cdf-b74d-7fd05fdb8a51",
+          "outcome": "unavailable",
+          "reason": "permission"
+        },
+        "regrant": {
+          "prompt": "no-prompt",
+          "granted": true
+        },
+        "status": {
+          "state": "not-found"
+        },
+        "count": 0
+      }
+    },
+    {
+      "id": "B14",
+      "title": "대시보드 — 재생 중인 곡 · 플레이어 iframe 이 처음 그대로 (선택 목록은 B4 · B11 에서 확인)",
+      "pass": true,
+      "ms": 1,
+      "details": {
+        "pass": true,
+        "nowPlaying": "YouTube Developers Live",
+        "iframe": true
+      }
+    }
+  ]
+}

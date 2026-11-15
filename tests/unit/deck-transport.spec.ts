@@ -269,7 +269,7 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    useThemeStore().setTheme('kawaii-synth-cassette')
+    useThemeStore().setTheme('mono-vinyl')
     await nextTick()
 
     expect(context.playback.playerState).toBe('playing')

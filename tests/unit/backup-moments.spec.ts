@@ -183,7 +183,11 @@ const panel = (s: Session) => s.wrapper.get('.backup')
 const exportButton = (s: Session) =>
   panel(s)
     .findAll('.pill')
-    .filter((n) => n.text().includes('내보내기') && !n.text().includes('먼저'))[0]
+    // M12-4: 전체 백업(ZIP) 단추를 빼고 JSON(또는 복구본) 단추를 고른다.
+    .filter(
+      (n) =>
+        n.text().includes('내보내기') && !n.text().includes('먼저') && !n.text().includes('ZIP'),
+    )[0]
 const applyButton = (s: Session) =>
   s.wrapper.findAll('.preview .pill').filter((n) => n.text().includes('교체하고'))[0]
 const cancelButton = (s: Session) =>
@@ -304,22 +308,31 @@ describe('A. 내보내기', () => {
     expect(panel(s).text()).toContain('Moment 2개')
   })
 
-  it('쓰던 메모·고정한 캡처는 담지 않는다 — store 의 영속 필드만', async () => {
+  it('저장 전 초안 · 쓰던 메모는 담지 않는다 — store 의 영속 필드만 (M11-7C 저장 모델 B)', async () => {
     seedStorage({ moments: [] })
     const s = boot()
     const created = stubDownloads()
-    await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+    await s.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     s.fake.emitReady()
     s.fake.emitStateChange('playing')
     s.fake.emitPosition(42)
     await nextTick()
+    // 하나는 저장하고, 하나는 잡아 메모를 쓰는 중이다 — 저장 전 초안은 백업에 들어가지 않는다 (M11-7C).
     await s.wrapper.get('.capture-button').trigger('click')
-    await s.wrapper.get('#moment-capture-note').setValue('아직 저장 안 한 메모')
+    await nextTick()
+    await s.wrapper.get('.moments-widget .draft-form').trigger('submit')
+    await flushPromises()
+    s.fake.emitPosition(50)
+    await nextTick()
+    await s.wrapper.get('.capture-button').trigger('click')
+    await nextTick()
+    await s.wrapper.get('#dashboard-moment-capture-note').setValue('아직 저장 안 한 메모')
 
     const file = await exportFile(s, created)
 
-    expect(file.data.moments?.data).toEqual([])
+    expect(file.data.moments?.data).toHaveLength(1)
+    expect(file.data.moments?.data[0]).toMatchObject({ atSeconds: 42, note: '' })
     expect(JSON.stringify(file)).not.toContain('아직 저장 안 한 메모')
   })
 
@@ -747,7 +760,7 @@ describe('D. 적용 — 섹션마다 따로 보고한다', () => {
   it('Moments 만 교체하면 라이브러리·재생을 건드리지 않는다', async () => {
     seedStorage()
     const s = boot()
-    await s.wrapper.get('.playlist-tile .playlist-play').trigger('click')
+    await s.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     s.fake.emitReady()
     s.fake.emitStateChange('playing')

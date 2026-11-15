@@ -3,7 +3,7 @@
  * 팝업 조립 — 상태(`useActiveVideo`)를 받아 화면 하나를 고른다.
  * 탭·메시지는 bridge 가, 문구는 `copy.ts` 가, 모양은 하위 컴포넌트가 맡는다.
  */
-import { inject } from 'vue'
+import { inject, watch } from 'vue'
 
 import BrandHeader from './components/BrandHeader.vue'
 import MomentCapturePanel from './components/MomentCapturePanel.vue'
@@ -24,6 +24,22 @@ const { view, retry, currentTabId } = useActiveVideo(bridge)
 const quickAdd = useQuickAdd(bridge, { view, currentTabId, refresh: retry })
 const moment = useMomentCapture(bridge, { view, currentTabId, refresh: retry })
 const { shortcuts, openSettings } = useShortcuts(bridge)
+
+/*
+ * M11-5B — YouTube 영상 페이지면 패널을 열고 팝업은 닫는다(아이콘 = 패널). 한 번만 시도한다. 열지 못하면
+ * (주입 실패 등) 이 팝업이 그대로 남아 기존 수집 화면 버튼을 보인다 — 대체 경로다.
+ */
+let triedPanel = false
+watch(
+  () => view.value.phase,
+  async (phase) => {
+    if (phase !== 'video' || triedPanel) return
+    triedPanel = true
+    const tabId = currentTabId()
+    if (tabId !== null && (await bridge.openPanel(tabId, 'music'))) bridge.closePopup()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -77,15 +93,17 @@ const { shortcuts, openSettings } = useShortcuts(bridge)
   display: grid;
   gap: 10px;
   padding: 14px 16px 16px;
+  overflow-wrap: anywhere;
 }
 
 /* 보조 링크 모양의 버튼 — 단축키 설정 화면을 연다 (M10-5). */
 .settings {
+  min-height: 44px;
   justify-self: start;
   padding: 2px 0;
   border: 0;
   background: none;
-  color: var(--text-dim-color);
+  color: var(--text-muted-color);
   font: inherit;
   font-size: 11px;
   text-decoration: underline;
@@ -98,6 +116,7 @@ const { shortcuts, openSettings } = useShortcuts(bridge)
 
 /* 웹앱의 quiet-btn 과 같은 토큰. */
 .retry {
+  min-height: 44px;
   justify-self: start;
   margin-top: 4px;
   padding: 5px 12px;

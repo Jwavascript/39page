@@ -1,0 +1,467 @@
+{
+  "results": [
+    {
+      "name": "cassette-1440x900: repeat collapse/expand, space gained, no scroll jump",
+      "pass": false,
+      "details": [
+        {
+          "expanded": {
+            "expanded": "true",
+            "hidden": false,
+            "header": {
+              "x": 43.1875,
+              "y": 22,
+              "w": 1353.625,
+              "h": 71,
+              "b": 93
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 130.4375,
+              "w": 1353.625,
+              "h": 650,
+              "b": 780.4375
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 167.4375,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 419.71875
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 433.71875,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 669.015625
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "track-row is-current",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "collapsed": {
+            "expanded": "false",
+            "hidden": true,
+            "header": {
+              "x": 43.1875,
+              "y": 8,
+              "w": 1353.625,
+              "h": 44,
+              "b": 52
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 60,
+              "w": 1353.625,
+              "h": 650,
+              "b": 710
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 97,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 349.28125
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 363.28125,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 598.578125
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "restored": {
+            "expanded": "false",
+            "hidden": true,
+            "header": {
+              "x": 43.1875,
+              "y": 8,
+              "w": 1353.625,
+              "h": 44,
+              "b": 52
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 60,
+              "w": 1353.625,
+              "h": 650,
+              "b": 710
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 97,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 349.28125
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 363.28125,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 598.578125
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "focusable": 0
+        },
+        {
+          "expanded": {
+            "expanded": "false",
+            "hidden": true,
+            "header": {
+              "x": 43.1875,
+              "y": 8,
+              "w": 1353.625,
+              "h": 44,
+              "b": 52
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 60,
+              "w": 1353.625,
+              "h": 650,
+              "b": 710
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 97,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 349.28125
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 363.28125,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 598.578125
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "collapsed": {
+            "expanded": "true",
+            "hidden": false,
+            "header": {
+              "x": 43.1875,
+              "y": 22,
+              "w": 1353.625,
+              "h": 71,
+              "b": 93
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 130.4375,
+              "w": 1353.625,
+              "h": 650,
+              "b": 780.4375
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 167.4375,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 419.71875
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 433.71875,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 669.015625
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "restored": {
+            "expanded": "false",
+            "hidden": true,
+            "header": {
+              "x": 43.1875,
+              "y": 8,
+              "w": 1353.625,
+              "h": 44,
+              "b": 52
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 60,
+              "w": 1353.625,
+              "h": 650,
+              "b": 710
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 97,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 349.28125
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 363.28125,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 598.578125
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "focusable": 4
+        },
+        {
+          "expanded": {
+            "expanded": "false",
+            "hidden": true,
+            "header": {
+              "x": 43.1875,
+              "y": 8,
+              "w": 1353.625,
+              "h": 44,
+              "b": 52
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 60,
+              "w": 1353.625,
+              "h": 650,
+              "b": 710
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 97,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 349.28125
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 363.28125,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 598.578125
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:00",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "collapsed": {
+            "expanded": "true",
+            "hidden": false,
+            "header": {
+              "x": 43.1875,
+              "y": 22,
+              "w": 1353.625,
+              "h": 71,
+              "b": 93
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 130.4375,
+              "w": 1353.625,
+              "h": 650,
+              "b": 780.4375
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 167.4375,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 419.71875
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 433.71875,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 669.015625
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:01",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "restored": {
+            "expanded": "false",
+            "hidden": true,
+            "header": {
+              "x": 43.1875,
+              "y": 8,
+              "w": 1353.625,
+              "h": 44,
+              "b": 52
+            },
+            "workspace": {
+              "x": 43.1875,
+              "y": 60,
+              "w": 1353.625,
+              "h": 650,
+              "b": 710
+            },
+            "player": {
+              "x": 538.1875,
+              "y": 97,
+              "w": 448.515625,
+              "h": 252.28125,
+              "b": 349.28125
+            },
+            "card": {
+              "x": 538.1875,
+              "y": 363.28125,
+              "w": 448.515625,
+              "h": 235.296875,
+              "b": 598.578125
+            },
+            "scrollY": 0,
+            "overflow": 0,
+            "iframe": true,
+            "theme": "kawaii-synth-cassette",
+            "focus": "header-toggle",
+            "subtitle": "1 / 1 · YOUTUBE · 재생 중 · 0:01",
+            "widgets": [
+              ["deck", 80.1875, 424.890625],
+              ["clock", 1019.8125, 340],
+              ["weather", 1019.8125, 340],
+              ["player", 538.1875, 448.515625],
+              ["playlist", 80.1875, 424.890625],
+              ["moments", 1019.8125, 340]
+            ],
+            "fullscreen": false
+          },
+          "focusable": 4
+        }
+      ]
+    },
+    {
+      "name": "cassette-1440x900: iframe and playback position retained",
+      "pass": true,
+      "details": {
+        "beforeVideo": {
+          "seconds": 1.243238,
+          "paused": false
+        },
+        "afterVideo": {
+          "seconds": 2.212035,
+          "paused": false
+        }
+      }
+    },
+    {
+      "name": "cassette-1440x900: restored archive menu works",
+      "pass": false
+    },
+    {
+      "name": "Complete run",
+      "pass": false,
+      "details": {
+        "error": "TypeError: Cannot read properties of undefined (reading 'slice')\n    at record (file:///C:/Users/phoria/39page/docs/development/header-collapse-results/check/header.mjs:11:68)\n    at file:///C:/Users/phoria/39page/docs/development/header-collapse-results/check/header.mjs:178:7"
+      }
+    }
+  ]
+}

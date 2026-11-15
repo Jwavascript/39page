@@ -102,17 +102,17 @@ describe('A. 문서 구조', () => {
 })
 
 describe('B. 키보드 경로', () => {
-  it('드로어를 열면 닫기 버튼으로 포커스가 옮겨간다', async () => {
+  it('보관함을 열면 고른 탭으로 포커스가 옮겨간다 (M11-2)', async () => {
     const { wrapper } = mountApp()
     await seedLibrary()
     await nextTick()
     // M7: 트랙 드로어는 플레이리스트 타일 본문으로 연다.
-    const trigger = wrapper.get('.playlist-tile .playlist-open')
+    const trigger = wrapper.get('.now-playlist .open-archive')
 
     await trigger.trigger('click')
     await flushPromises()
 
-    expect(document.activeElement).toBe(wrapper.get('.drawer .close').element)
+    expect(document.activeElement).toBe(wrapper.get('#archive-tab-music').element)
   })
 
   it('ESC 로 닫고 포커스가 트리거로 돌아온다', async () => {
@@ -144,7 +144,7 @@ describe('B. 키보드 경로', () => {
     // 넓은 화면에서는 나란히 놓이는 비모달 영역이다. 가두지 않는 것을
     // 선언하지 않는 것으로 정직하게 표시한다.
     expect(drawer.attributes('aria-modal')).toBeUndefined()
-    expect(drawer.attributes('aria-labelledby')).toBe('record-library-title')
+    expect(drawer.attributes('aria-labelledby')).toBe('archive-title')
   })
 
   it('비활성 테마의 데크 트리거는 숨어 Tab 순서에서 빠진다', () => {
@@ -179,31 +179,67 @@ describe('C. 컨트롤 이름과 크기', () => {
     const { wrapper } = mountApp()
     const library = await seedLibrary()
     await nextTick()
-    await wrapper.get('.playlist-play').trigger('click')
+    await wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
 
     expect(library.selectedPlaylist?.tracks).toHaveLength(2)
     expect(wrapper.get('.round--main').attributes('aria-label')).toBe('일시정지')
   })
 
-  it('작은 컨트롤이 최소 터치 크기를 갖는다', () => {
-    // 브라우저 실측에서 `.track-play` 가 30×22 였다 (24px 미달).
-    // M6-5 에서 트랙 행이 `TrackList.vue` 로 분리됐다 (규칙 3).
+  it('작은 컨트롤이 44px 터치 목표를 갖는다 (M11-3 U16)', () => {
+    // M5 에서 24px → 29px, M11-3 에서 44px 로 올렸다 (실측: 실제 Chromium 390px).
     const list = readSource('src/features/library/TrackList.vue')
+    expect(list).toMatch(/\.track-play \{[\s\S]*?width: 44px;[\s\S]*?min-height: 44px/)
+    expect(list).toMatch(/\.track-manage \{[\s\S]*?min-height: 44px/)
+    expect(list).toMatch(/\.pill \{[\s\S]*?min-height: 44px/)
 
-    expect(list).toMatch(/\.track-play \{[\s\S]*?min-height: 29px/)
-    expect(list).toMatch(/\.track-controls button \{[\s\S]*?height: 29px/)
+    // M11-7B: NOW PLAYLIST 의 곡 줄 · 목록 줄 · 단추.
+    const nowPlaylist = readSource('src/features/library/NowPlaylistWidget.vue')
+    expect(nowPlaylist).toMatch(/\.track-row,\s*\.picker-row \{[\s\S]*?min-height: 44px/)
+    expect(nowPlaylist).toMatch(/\.pill \{[\s\S]*?min-height: 44px/)
 
-    // 타일의 편집 버튼도 같은 29px 를 쓴다 (M6-4).
-    const tile = readSource('src/features/library/PlaylistTile.vue')
-    expect(tile).toMatch(/\.playlist-open \{[\s\S]*?height: 29px/)
+    expect(readSource('src/components/ui/ThemeSwitcher.vue')).toMatch(
+      /\.theme-button \{[\s\S]*?min-height: 44px/,
+    )
+    expect(readSource('src/features/playback/PlayerTransport.vue')).toMatch(
+      /\.round \{[\s\S]*?min-width: 44px;[\s\S]*?height: 44px/,
+    )
+    // 데크의 그려진 키는 작아도, 누를 수 있는 자리는 44px 이상이다.
+    expect(readSource('src/features/deck/DeckWidget.vue')).toMatch(
+      /\.deck-key::after \{[\s\S]*?width: max\(100%, 44px\);[\s\S]*?height: max\(100%, 44px\)/,
+    )
+  })
+
+  it('터치 뒤 hover 표현이 남지 않는다 — 대시보드의 :hover 는 (hover: hover) 안에만 (M11-3 U18)', () => {
+    for (const file of [
+      'src/components/layout/AppNav.vue',
+      'src/components/ui/ThemeSwitcher.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/backup/BackupPanel.vue',
+      'src/features/deck/DeckWidget.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/useNowPlaylist.ts',
+      'src/features/library/NowPlaylistWidget.vue',
+      'src/features/library/TrackList.vue',
+      'src/features/moments/MomentList.vue',
+      'src/features/moments/MomentRow.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/moments/MomentsWidget.vue',
+      'src/features/playback/PlayerTransport.vue',
+    ]) {
+      const style = readSource(file).slice(readSource(file).indexOf('<style'))
+      // :hover 가 나오는 모든 규칙이 (hover: hover) 블록 안에 있다.
+      const outside = style.replace(/@media \(hover: hover\) \{[\s\S]*?\n\}/g, '')
+      expect({ file, hover: outside.includes(':hover') }).toEqual({ file, hover: false })
+    }
   })
 
   it('외부 링크가 새 창을 안전하게 연다', async () => {
     const { wrapper } = mountApp()
     await seedLibrary()
     await nextTick()
-    await wrapper.get('.playlist-play').trigger('click')
+    await wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
 
     const link = wrapper.get('.action-row a')
@@ -229,9 +265,14 @@ describe('D. 포커스 링', () => {
       'src/components/layout/AppHeader.vue',
       'src/components/ui/ThemeSwitcher.vue',
       'src/features/playback/PlayerTransport.vue',
-      'src/features/library/RecordLibraryDrawer.vue',
-      'src/features/library/PlaylistWidget.vue',
-      'src/features/library/PlaylistTile.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/backup/DataDialog.vue',
+      'src/components/layout/AppNav.vue',
+      'src/features/library/NowPlaylistWidget.vue',
+      'src/features/library/useNowPlaylist.ts',
       'src/features/library/TrackList.vue',
       'src/features/deck/DeckWidget.vue',
     ]) {
@@ -246,14 +287,18 @@ describe('E. 장식과 상태', () => {
     const { wrapper } = mountApp()
 
     expect(wrapper.get('.dot-matrix').attributes('aria-hidden')).toBe('true')
-    expect(wrapper.get('.mascot-corner').attributes('aria-hidden')).toBe('true')
+    // M12-2: 마스코트 코너 장식 대신 기본 앨범아트 — 곡 제목이 옆에 있다.
+    expect(wrapper.get('.default-artwork').attributes('aria-hidden')).toBe('true')
     expect(wrapper.get('.wxicon').attributes('aria-hidden')).toBe('true')
+    const headerArrow = wrapper.get('.header-toggle svg')
+    expect(headerArrow.attributes('aria-hidden')).toBe('true')
+    expect(headerArrow.attributes('focusable')).toBe('false')
   })
 
-  it('SVG 는 역할과 이름을 갖는다', () => {
+  it('정보를 전달하는 SVG는 역할과 이름을 갖는다', () => {
     const { wrapper } = mountApp()
 
-    for (const svg of wrapper.findAll('svg')) {
+    for (const svg of wrapper.findAll('svg:not([aria-hidden="true"])')) {
       expect(svg.attributes('role')).toBe('img')
       expect(svg.attributes('aria-label')).toBeTruthy()
     }
@@ -263,15 +308,16 @@ describe('E. 장식과 상태', () => {
     const { wrapper } = mountApp()
     const theme = useThemeStore()
 
+    // DOM 순서는 [mono, kawaii] 그대로다. 기본 테마는 Kawaii Synth Cassette (M11-7B).
     const arts = wrapper.findAll('.deck-art')
-    expect(arts[0]?.attributes('aria-hidden')).toBeUndefined()
-    expect(arts[1]?.attributes('aria-hidden')).toBe('true')
+    expect(arts[0]?.attributes('aria-hidden')).toBe('true')
+    expect(arts[1]?.attributes('aria-hidden')).toBeUndefined()
 
-    theme.setTheme('kawaii-synth-cassette')
+    theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect(wrapper.findAll('.deck-art')[0]?.attributes('aria-hidden')).toBe('true')
-    expect(wrapper.findAll('.deck-art')[1]?.attributes('aria-hidden')).toBeUndefined()
+    expect(wrapper.findAll('.deck-art')[0]?.attributes('aria-hidden')).toBeUndefined()
+    expect(wrapper.findAll('.deck-art')[1]?.attributes('aria-hidden')).toBe('true')
   })
 
   it('상태 영역이 정중한 라이브 리전이다', () => {

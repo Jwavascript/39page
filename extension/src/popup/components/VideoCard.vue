@@ -19,7 +19,7 @@ defineProps<{
 <template>
   <article class="video-card" aria-label="현재 영상">
     <span class="kind">{{ PAGE_KIND_LABEL[pageKind] }}</span>
-    <p v-if="title !== null" class="title" dir="auto">{{ title }}</p>
+    <p v-if="title !== null" class="title" dir="auto" :title="title">{{ title }}</p>
     <p v-else class="title unknown">{{ UNKNOWN_TITLE }}</p>
     <dl class="meta">
       <dt>영상 ID</dt>
@@ -33,9 +33,11 @@ defineProps<{
   display: grid;
   gap: 8px;
   padding: 14px;
-  border: 1px solid var(--info-border-color);
+  min-width: 0;
+  border: 1px solid var(--artwork-card-border-color);
   border-radius: var(--radius-modal);
-  background: var(--surface-raised-color);
+  background: var(--artwork-card-background);
+  box-shadow: var(--artwork-card-shadow);
 }
 
 .kind {
@@ -55,7 +57,7 @@ defineProps<{
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-  color: var(--text-color);
+  color: var(--now-title-text-color);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
@@ -72,8 +74,9 @@ defineProps<{
   gap: 8px;
   align-items: baseline;
   margin: 0;
-  color: var(--text-dim-color);
-  font-size: 11px;
+  flex-wrap: wrap;
+  color: var(--text-muted-color);
+  font-size: 12px;
 }
 
 .meta dd {

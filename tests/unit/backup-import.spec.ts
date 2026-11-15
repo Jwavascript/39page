@@ -463,6 +463,12 @@ describe('C. readBackup — 경고하고 가져온다', () => {
 
 function mountApp() {
   const fake = new FakePlayerAdapter()
+  /*
+   * 이 파일의 시나리오는 "Mono Vinyl 을 쓰던 사용자가 Kawaii 테마가 든 백업을 가져온다" 다. 기본 테마가
+   * Kawaii Synth Cassette 로 바뀐 뒤(M11-7B)에도 복원이 테마를 **바꾸는지** 볼 수 있게, 시작 테마를
+   * 저장소에 쓰지 않고 메모리에서만 Mono Vinyl 로 둔다.
+   */
+  useThemeStore().current = 'mono-vinyl'
   const wrapper = mount(App, {
     attachTo: document.body,
     global: { provide: { [PLAYER_ADAPTER_FACTORY as symbol]: () => fake } },
@@ -1344,7 +1350,7 @@ describe('H. 앱 상태와 경계', () => {
     await nextTick()
 
     // 재생을 시작한다.
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1368,7 +1374,7 @@ describe('H. 앱 상태와 경계', () => {
     const context = mountApp()
     await seed(context)
     await nextTick()
-    await context.wrapper.get('.playlist-play').trigger('click')
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
     context.fake.emitReady()
     context.fake.emitStateChange('playing')
@@ -1412,12 +1418,11 @@ describe('H. 앱 상태와 경계', () => {
     await nextTick()
 
     // 타일이 새 목록을 보여준다.
-    expect(context.wrapper.findAll('.playlist-tile .pname').map((node) => node.text())).toEqual([
-      'NIGHT DRIVE',
-      'MORNING',
-    ])
+    expect(context.wrapper.findAll('.archive-lists .list-name').map((node) => node.text())).toEqual(
+      ['NIGHT DRIVE', 'MORNING'],
+    )
     // 선택된 목록이 표시된다.
-    expect(context.wrapper.get('#record-library-title').text()).toBe('MORNING')
+    expect(context.wrapper.get('#playlist-editor-title').text()).toBe('MORNING')
     // 테마가 문서에 반영된다.
     expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
   })
@@ -1433,9 +1438,14 @@ describe('H. 앱 상태와 경계', () => {
       'src/features/backup/createBackup.ts',
       'src/features/backup/readBackup.ts',
       'src/features/backup/BackupPanel.vue',
-      'src/features/library/RecordLibraryDrawer.vue',
-      'src/features/library/PlaylistWidget.vue',
-      'src/features/library/PlaylistTile.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/backup/DataDialog.vue',
+      'src/components/layout/AppNav.vue',
+      'src/features/library/NowPlaylistWidget.vue',
+      'src/features/library/useNowPlaylist.ts',
       'src/features/library/TrackList.vue',
       'src/features/deck/DeckWidget.vue',
       'src/features/deck/useDeckTransport.ts',

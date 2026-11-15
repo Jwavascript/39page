@@ -18,15 +18,39 @@ import { resolveCollectOrigin } from './src/shared/collectOrigin'
 const ICON_SIZES = [16, 32, 48, 128] as const
 
 /**
- * 원본 `manifest.json` 과 아이콘(`icons/icon-<크기>.png`)을 그대로 내보낸다. 깨진 JSON 이면
- * 빌드를 멈춘다. 정적 폴더(publicDir)를 쓰지 않으므로 dist 에 들어가는 것은 이 목록뿐이다.
+ * 개발 빌드 전용 공개 키 (M11-5) — 압축해제 설치의 확장 ID 를 `pkagnijdhfmkodpdfgdehfdghcgbfpoa` 로
+ * 고정한다 (M11-1 PoC 와 같은 키, 개인 키는 저장소에 없다). 39page 개발 빌드가 이 ID 를 브리지 허용
+ * 목록에 넣는다. **운영 빌드에는 넣지 않는다** — 검사기(`check-manifest.mjs`)가 `key` 를 막는다.
  */
-function emitManifest(): Plugin {
+const DEV_EXTENSION_KEY =
+  'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtQtVG8fSbzjMJlJ+HsQt5JoeKTPG6TNMcRmi8Nl9T8ZsAxp+HK53clyX0UGJ6T1C60b3w6guWkMnZAqZA+Yf4AigQtAyvH63zakQbva9y0FYYF+4aLOhGNSxyJ4CgLisk/sD15icEQA0+1gab2v5/HfjHDHEopyakn7kvE96wTsXTt0W2673CPpv+da9Lw8gNpQ/A2WHSspw7a1ahx6RQpNh3yl4BSgKJKB9gkB9mb3zFiu2fx/1ZVtRsQ8sjvj2yS7LdEdtVSsWBNUw0PQIYGW+e2lhtuwx8OUIkFTT54xdMghk4vxRYOx8kfpngaW9+U4ikolhmDIlGZ5jGYQcHQIDAQAB'
+
+/**
+ * 원본 `manifest.json` 과 아이콘(`icons/icon-<크기>.png`)을 내보낸다. 깨진 JSON 이면 빌드를 멈춘다.
+ * 정적 폴더(publicDir)를 쓰지 않으므로 dist 에 들어가는 것은 이 목록뿐이다.
+ *
+ * 개발 빌드만 바꾼다 (M11-5): 39page 호스트 권한을 개발 origin 으로, 그리고 고정 ID 용 `key`.
+ * 운영 빌드는 원본 그대로다 — `https://39page.com/*` 하나.
+ */
+function emitManifest(mode: string, collectOrigin: string): Plugin {
   return {
     name: '39page-emit-manifest',
     generateBundle() {
-      const source = readFileSync(new URL('./manifest.json', import.meta.url), 'utf8')
-      JSON.parse(source)
+      const raw = readFileSync(new URL('./manifest.json', import.meta.url), 'utf8')
+      const manifest = JSON.parse(raw) as Record<string, unknown>
+      const source =
+        mode === 'development'
+          ? `${JSON.stringify(
+              {
+                ...manifest,
+                key: DEV_EXTENSION_KEY,
+                optional_host_permissions: [`${collectOrigin}/*`],
+              },
+              null,
+              2,
+            )}
+`
+          : raw
       this.emitFile({ type: 'asset', fileName: 'manifest.json', source })
       for (const size of ICON_SIZES) {
         const fileName = `icons/icon-${String(size)}.png`
@@ -53,7 +77,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: { __COLLECT_ORIGIN__: JSON.stringify(collectOrigin) },
-    plugins: [vue(), emitManifest()],
+    plugins: [vue(), emitManifest(mode, collectOrigin)],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -71,6 +95,10 @@ export default defineConfig(({ mode }) => {
       rolldownOptions: {
         input: {
           popup: fileURLToPath(new URL('./src/popup/index.html', import.meta.url)),
+          // 39page 저장 브리지를 띄우는 offscreen 문서 (M11-5).
+          offscreen: fileURLToPath(new URL('./src/offscreen/index.html', import.meta.url)),
+          // YouTube 위 플로팅 패널 (M11-5B) — web_accessible_resources, YouTube 에서만.
+          panel: fileURLToPath(new URL('./src/panel/index.html', import.meta.url)),
           background: fileURLToPath(new URL('./src/background/index.ts', import.meta.url)),
         },
         output: {

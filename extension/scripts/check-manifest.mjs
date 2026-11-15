@@ -10,19 +10,27 @@ import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('..', import.meta.url))
 const dist = join(root, 'dist')
 
-/** 이 단계(M10-2)에서 허용하는 권한. 늘리려면 ADR 과 이 목록을 함께 바꾼다. */
-const ALLOWED_PERMISSIONS = ['activeTab', 'scripting']
+/**
+ * 허용하는 권한. 늘리려면 ADR 과 이 목록을 함께 바꾼다.
+ * M11-5 (ADR 0028): `offscreen` — 39page 저장 브리지를 띄울 문서 (설치 경고 없음).
+ */
+const ALLOWED_PERMISSIONS = ['activeTab', 'scripting', 'offscreen']
 
-/** 두지 않기로 한 키 (EXTENSION_DESIGN.md §7). */
+/**
+ * 선택 호스트 권한 (M11-5, ADR 0028) — 정확한 39page origin 하나. 설치할 때 묻지 않고, 사용자가 패널에서
+ * 처음 저장 브리지를 쓸 때 묻는다. 넓은 패턴(`<all_urls>` · 모든 사이트 와일드카드)은 허용하지 않는다.
+ */
+const EXPECTED_OPTIONAL_HOSTS = ['https://39page.com/*']
+
+/** 두지 않기로 한 키 (EXTENSION_DESIGN.md §7). `key` — 개발 빌드의 고정 ID 용 공개 키는 운영에 넣지 않는다. */
 const FORBIDDEN_KEYS = [
   'host_permissions',
-  'optional_host_permissions',
   'content_scripts',
   'externally_connectable',
-  'web_accessible_resources',
   'content_security_policy',
   'oauth2',
   'update_url',
+  'key',
 ]
 
 const failures = []
@@ -94,6 +102,32 @@ if (manifest !== null) {
     if (key in manifest) fail(`두지 않기로 한 키가 있다 — ${key}`)
   }
 
+  const optionalHosts = manifest.optional_host_permissions ?? []
+  if (JSON.stringify(optionalHosts) !== JSON.stringify(EXPECTED_OPTIONAL_HOSTS)) {
+    fail(`optional_host_permissions 가 ${JSON.stringify(EXPECTED_OPTIONAL_HOSTS)} 가 아니다`)
+  }
+  if ('optional_permissions' in manifest) fail('optional_permissions 를 두지 않는다')
+
+  // 웹에서 닿는 확장 파일 (M11-5) — YouTube 위 패널 페이지 하나만, YouTube 에서만.
+  const accessible = manifest.web_accessible_resources ?? []
+  if (!Array.isArray(accessible)) fail('web_accessible_resources 가 배열이 아니다')
+  else {
+    for (const entry of accessible) {
+      for (const resource of entry?.resources ?? []) {
+        if (!/^src\/panel\/index\.html$/.test(resource)) {
+          fail(`web_accessible_resources 에 패널 밖의 파일이 있다 — ${resource}`)
+        } else expectFile('web_accessible_resources', resource)
+      }
+      for (const match of entry?.matches ?? []) {
+        if (!['https://www.youtube.com/*', 'https://m.youtube.com/*'].includes(match)) {
+          fail(`web_accessible_resources 가 YouTube 밖에 열려 있다 — ${match}`)
+        }
+      }
+      if ('extension_ids' in (entry ?? {}))
+        fail('web_accessible_resources 에 extension_ids 가 있다')
+    }
+  }
+
   const background = manifest.background
   if (background === undefined || typeof background !== 'object') fail('background 가 없다')
   else {
@@ -105,7 +139,8 @@ if (manifest !== null) {
   expectFile('action.default_popup', manifest.action?.default_popup)
 
   // 아이콘 (M10-6) — 스토어는 128×128 PNG 를 요구한다. 가리키는 파일이 PNG 이고 크기가 이름과 같은지 본다.
-  if (manifest.minimum_chrome_version !== '102') fail('minimum_chrome_version 이 102 가 아니다')
+  // M11-5: offscreen(109) · 저장소 분할 규칙(115) · runtime.getContexts(116) — ADR 0028 결정 10.
+  if (manifest.minimum_chrome_version !== '116') fail('minimum_chrome_version 이 116 이 아니다')
   if (typeof manifest.description !== 'string' || manifest.description.length > 132) {
     fail('description 이 없거나 132자를 넘는다')
   }

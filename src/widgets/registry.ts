@@ -15,8 +15,7 @@ import type { Component } from 'vue'
 
 import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/shared/types'
 import DeckWidget from '@/features/deck/DeckWidget.vue'
-import PlaylistWidget from '@/features/library/PlaylistWidget.vue'
-import MascotPanel from '@/features/mascot/MascotPanel.vue'
+import NowPlaylistWidget from '@/features/library/NowPlaylistWidget.vue'
 import MomentsWidget from '@/features/moments/MomentsWidget.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import ClockWidget from '@/widgets/clock/ClockWidget.vue'
@@ -74,14 +73,6 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultArea: 'deck',
     ...NOT_EDITABLE,
   },
-  mascot: {
-    type: 'mascot',
-    title: '마스코트',
-    // M1-6에서 정적 도트 마스코트로 교체했다. 애니메이션은 M4 다.
-    component: MascotPanel,
-    defaultArea: 'mascot',
-    ...NOT_EDITABLE,
-  },
   clock: {
     type: 'clock',
     title: '시계',
@@ -100,7 +91,7 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
   },
   playlist: {
     type: 'playlist',
-    title: '플레이리스트',
+    title: '지금 재생목록',
     /*
      * M6-4 에서 새로 추가한 **첫 상호작용 위젯**이다. 시계·날씨처럼 보여주기만
      * 하지 않고 사용자 데이터를 만들고 재생을 요청한다.
@@ -109,7 +100,12 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
      * 배치뿐이고, 상호작용은 컴포넌트 안에 있다. 레지스트리가 위젯의 능력을
      * 알아야 했다면 확장 지점이 잘못 그려진 것이다 (ADR 0003).
      */
-    component: PlaylistWidget,
+    /*
+     * M11-7B: 카드 그리드(PLAYLISTS)를 **NOW PLAYLIST** 로 바꿨다 — 지금 재생 큐(없으면 고른 목록을
+     * "재생 대기" 로)의 곡을 보이고 바로 고른다 (ADR 0030). 위젯 종류 · 영역 이름(`playlist`)은 그대로라
+     * 레이아웃 선언은 바뀌지 않는다.
+     */
+    component: NowPlaylistWidget,
     defaultArea: 'playlist',
     ...NOT_EDITABLE,
   },
@@ -128,7 +124,8 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
   player: {
     type: 'player',
     title: 'YouTube 플레이어',
-    // M1-5에서 플레이스홀더를 PlayerSurface 로 교체했다.
+    // M1-5에서 플레이스홀더를 PlayerSurface 로 교체했다. M12-2: 영상 바로 아래 Now Playing 카드를 품는다
+    // (마스코트 위젯 자리 — ADR 0032).
     // 실제 YouTube 어댑터는 M3에서 주입한다.
     component: PlayerSurface,
     defaultArea: 'player',

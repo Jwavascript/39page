@@ -16,6 +16,8 @@ export type ContentListener = (
 export function createContentListener(deps: {
   readonly extensionId: string
   readonly read: () => PageSnapshot
+  /** YouTube 위 패널 (M11-5B). 없으면 패널 요청을 거절한다. */
+  readonly panel?: { open(): 'opened' | 'focused'; close(): void }
 }): ContentListener {
   return (message, sender, sendResponse) => {
     if (sender.id !== deps.extensionId) {
@@ -30,6 +32,17 @@ export function createContentListener(deps: {
     }
 
     try {
+      if (parsed.value.type === 'panel/open' || parsed.value.type === 'panel/close') {
+        if (deps.panel === undefined) {
+          sendResponse(fail('unsupported-type', '패널이 없다'))
+        } else if (parsed.value.type === 'panel/open') {
+          sendResponse(ok({ status: deps.panel.open() }))
+        } else {
+          deps.panel.close()
+          sendResponse(ok({ closed: true }))
+        }
+        return false
+      }
       sendResponse(ok(deps.read()))
     } catch {
       sendResponse(fail('internal', '페이지를 읽지 못했다'))

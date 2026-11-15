@@ -468,7 +468,10 @@ function mountApp() {
 type Context = ReturnType<typeof mountApp>
 
 const backupButton = (context: Context) =>
-  context.wrapper.findAll('.backup .pill').filter((node) => node.text().includes('내보내기'))[0]
+  // M12-4: 위에 전체 백업(ZIP) 단추가 생겼다 — JSON 백업(또는 복구본) 단추를 고른다.
+  context.wrapper
+    .findAll('.backup .pill')
+    .filter((node) => node.text().includes('JSON 백업') || node.text().includes('복구본'))[0]
 
 async function seed(store: ReturnType<typeof useLibraryStore>): Promise<void> {
   const created = await store.createPlaylist('NIGHT DRIVE')
@@ -491,20 +494,22 @@ function stubDownloadGlobals() {
   return created
 }
 
-describe('E. 드로어 바닥의 백업 패널', () => {
-  it('패널이 편집 영역과 구분되어 바닥에 있다', () => {
+describe('E. 데이터 대화상자의 백업 패널 (M11-2 에서 드로어 바닥에서 옮김)', () => {
+  it('패널이 한 플레이리스트의 편집 영역이 아니라 전역 데이터 대화상자에 있다', () => {
     const context = mountApp()
 
     const panel = context.wrapper.get('.backup')
-    // 선과 다른 머리말로 끊는다.
+    // 선과 다른 머리말로 끊는다 — BackupPanel 은 그대로 재사용한다.
     expect(panel.find('.rule').exists()).toBe(true)
     expect(panel.get('.backup-title').text()).toBe('DATA')
-    // 트랙 목록보다 뒤에 온다.
-    const body = context.wrapper.get('.drawer-body').element
-    const list = context.wrapper.get('.track-list').element
-    expect(body.contains(panel.element)).toBe(true)
-    expect(list.compareDocumentPosition(panel.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
+    // 백업은 앱 전체 데이터 관리다 (M11 U1) — 플레이리스트 편집 표면 · 보관함 안에 없다.
+    const dialog = context.wrapper.get('#data-dialog').element
+    expect(dialog.contains(panel.element)).toBe(true)
+    expect(context.wrapper.get('#archive-panel').element.contains(panel.element)).toBe(false)
+    expect(context.wrapper.findAll('.backup')).toHaveLength(1)
+    // 대상이 전체임을 대화상자가 말한다.
+    expect(context.wrapper.get('#data-dialog-scope').text()).toContain(
+      '플레이리스트와 곡, Moments, 테마',
     )
   })
 
@@ -536,7 +541,7 @@ describe('E. 드로어 바닥의 백업 패널', () => {
     const context = mountApp()
     expect(backupButton(context)?.exists()).toBe(true)
 
-    context.theme.setTheme('kawaii-synth-cassette')
+    context.theme.setTheme('mono-vinyl')
     await nextTick()
 
     expect(backupButton(context)?.exists()).toBe(true)
@@ -564,7 +569,7 @@ describe('E. 드로어 바닥의 백업 패널', () => {
   it('내려받은 파일이 지금 라이브러리와 테마를 담는다', async () => {
     const context = mountApp()
     await seed(context.library)
-    context.theme.setTheme('kawaii-synth-cassette')
+    context.theme.setTheme('mono-vinyl')
     await nextTick()
     const created = stubDownloadGlobals()
 
@@ -577,7 +582,7 @@ describe('E. 드로어 바닥의 백업 패널', () => {
       'TWO',
     ])
     expect(file.data.library.data.selectedPlaylistId).toBe(context.library.selectedPlaylistId)
-    expect(file.data.preferences?.theme?.data).toBe('kawaii-synth-cassette')
+    expect(file.data.preferences?.theme?.data).toBe('mono-vinyl')
   })
 
   it('내려받기가 실패하면 오류 어조로 알린다', async () => {

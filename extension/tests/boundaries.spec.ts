@@ -39,7 +39,7 @@ const WEB_IMPORT_ALLOWLIST = [
   '@web/shared/utils/youtube',
   '@web/shared/utils/time',
   '@web/styles/tokens.css',
-  '@web/themes/mono-vinyl/tokens.css',
+  '@web/themes/kawaii-synth-cassette/tokens.css',
 ]
 
 describe('구조 규칙', () => {
@@ -105,19 +105,24 @@ describe('manifest 원본 (EXTENSION_DESIGN.md §7)', () => {
   const manifest = JSON.parse(read(resolve(ROOT, 'manifest.json'))) as Record<string, unknown>
   const pkg = JSON.parse(read(resolve(ROOT, 'package.json'))) as { version: string }
 
-  it('MV3 · 권한은 activeTab 과 scripting 뿐', () => {
+  it('MV3 · 권한은 activeTab · scripting · offscreen 뿐 (M11-5 — offscreen 은 저장 브리지 문서)', () => {
     expect(manifest.manifest_version).toBe(3)
-    expect(manifest.permissions).toEqual(['activeTab', 'scripting'])
+    expect(manifest.permissions).toEqual(['activeTab', 'scripting', 'offscreen'])
+  })
+
+  it('39page 호스트 권한은 정확한 origin 하나를 **선택 권한**으로만 (M11-5 · ADR 0028)', () => {
+    expect(manifest.optional_host_permissions).toEqual(['https://39page.com/*'])
+    expect(manifest.minimum_chrome_version).toBe('116')
   })
 
   it('상시 접근·외부 연결 키가 없다', () => {
     for (const key of [
       'host_permissions',
-      'optional_host_permissions',
+      'optional_permissions',
       'content_scripts',
       'externally_connectable',
-      'web_accessible_resources',
       'content_security_policy',
+      'key',
     ]) {
       expect(Object.keys(manifest)).not.toContain(key)
     }

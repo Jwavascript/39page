@@ -11,7 +11,10 @@ type CommandListener = (command: string, tab?: { id?: number }) => void
 
 let lastWorker: {
   onCommand: FakeEvent<CommandListener>
-  action: Record<'setBadgeText' | 'setBadgeBackgroundColor' | 'setTitle', ReturnType<typeof vi.fn>>
+  action: Record<
+    'setBadgeText' | 'setBadgeBackgroundColor' | 'setTitle' | 'setPopup',
+    ReturnType<typeof vi.fn>
+  > & { onClicked: FakeEvent<(tab: { id?: number }) => void> }
 } | null = null
 
 /** 워커 시작 = 모듈을 처음부터 실행. 실제로 서비스 워커가 다시 깨어날 때와 같다. */
@@ -22,10 +25,31 @@ async function startWorker() {
     setBadgeText: vi.fn<() => Promise<void>>(async () => {}),
     setBadgeBackgroundColor: vi.fn<() => Promise<void>>(async () => {}),
     setTitle: vi.fn<() => Promise<void>>(async () => {}),
+    // 아이콘 (M11-6) — 패널을 연 탭은 팝업을 끄고 onClicked 로 바로 연다.
+    setPopup: vi.fn<() => Promise<void>>(async () => {}),
+    onClicked: fakeEvent<(tab: { id?: number }) => void>(),
   }
   lastWorker = { onCommand, action }
   vi.stubGlobal('chrome', {
-    runtime: { id: EXTENSION_ID, getURL: (path: string) => `${ORIGIN}${path}`, onMessage },
+    runtime: {
+      id: EXTENSION_ID,
+      getURL: (path: string) => `${ORIGIN}${path}`,
+      onMessage,
+      // 저장 브리지 (M11-5) — 워커가 시작할 때 떠 있는 offscreen 을 찾아 닫는다.
+      getContexts: vi.fn<() => Promise<unknown[]>>(async () => []),
+      ContextType: { OFFSCREEN_DOCUMENT: 'OFFSCREEN_DOCUMENT' },
+      sendMessage: vi.fn<() => Promise<unknown>>(),
+    },
+    permissions: {
+      contains: vi.fn<() => Promise<boolean>>(async () => false),
+      onAdded: fakeEvent<() => void>(),
+      onRemoved: fakeEvent<() => void>(),
+    },
+    offscreen: {
+      createDocument: vi.fn<() => Promise<void>>(async () => {}),
+      closeDocument: vi.fn<() => Promise<void>>(async () => {}),
+      Reason: { IFRAME_SCRIPTING: 'IFRAME_SCRIPTING' },
+    },
     commands: { onCommand },
     action,
     tabs: {
@@ -33,6 +57,8 @@ async function startWorker() {
         .fn<(id: number) => Promise<object>>()
         .mockResolvedValue({ id: 1, url: 'https://example.com/', title: 'x' }),
       sendMessage: vi.fn<() => Promise<unknown>>(),
+      // 패널 (M11-5B) — 닫힌 탭의 지시를 지운다.
+      onRemoved: fakeEvent<(tabId: number) => void>(),
     },
     scripting: { executeScript: vi.fn<() => Promise<unknown>>() },
   })
@@ -67,6 +93,19 @@ describe('Background 진입점', () => {
       tabId: 1,
       title: '39page — YouTube 영상 페이지에서 단축키를 눌러 주세요.',
     })
+  })
+
+  it('아이콘 — 팝업이 꺼진 탭에서 YouTube 영상 밖이면 팝업을 다시 켜고 이유를 단다 (M11-6)', async () => {
+    await startWorker()
+    expect(lastWorker?.action.onClicked.listeners).toHaveLength(1)
+    lastWorker?.action.onClicked.listeners[0]?.({ id: 1 })
+    await vi.waitFor(() =>
+      expect(lastWorker?.action.setPopup).toHaveBeenCalledWith({
+        tabId: 1,
+        popup: 'src/popup/index.html',
+      }),
+    )
+    expect(lastWorker?.action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '!' })
   })
 
   it('비동기로 답한다 (true 를 돌려주고 sendResponse 를 나중에 부른다)', async () => {

@@ -209,7 +209,7 @@ describe('C. 테마 전환과 재생 상태의 독립성', () => {
     const { playback } = await mountWithState()
     const before = playback.currentTrack
 
-    useThemeStore().setTheme('kawaii-synth-cassette')
+    useThemeStore().setTheme('mono-vinyl')
     await nextTick()
 
     expect(playback.currentTrack).toEqual(before)
@@ -233,7 +233,7 @@ describe('C. 테마 전환과 재생 상태의 독립성', () => {
   it('13. 테마 변경 전후 PlayerState 가 동일하다', async () => {
     const { playback } = await mountWithState()
 
-    useThemeStore().setTheme('kawaii-synth-cassette')
+    useThemeStore().setTheme('mono-vinyl')
     await nextTick()
 
     expect(playback.playerState).toBe('playing')
@@ -244,7 +244,7 @@ describe('C. 테마 전환과 재생 상태의 독립성', () => {
     const { fake } = await mountWithState()
     const before = { ...fake.calls, load: [...fake.calls.load] }
 
-    useThemeStore().setTheme('kawaii-synth-cassette')
+    useThemeStore().setTheme('mono-vinyl')
     await nextTick()
 
     expect(fake.calls.mount).toBe(before.mount)

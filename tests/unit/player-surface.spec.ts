@@ -75,7 +75,7 @@ describe('A. 어댑터 수명주기', () => {
   it('2. 테마를 바꿔도 mount() 호출 횟수가 유지된다', async () => {
     const { fake } = mountAppWithFake()
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(fake.calls.mount).toBe(1)
   })
@@ -114,7 +114,7 @@ describe('A. 어댑터 수명주기', () => {
   it('6. 테마 변경만으로 destroy() 가 호출되지 않는다', async () => {
     const { fake } = mountAppWithFake()
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
     await switchTheme('mono-vinyl')
 
     expect(fake.calls.destroy).toBe(0)
@@ -212,7 +212,7 @@ describe('B. DOM 인스턴스 동일성', () => {
     const { wrapper } = mountAppWithFake()
     const root = wrapper.get(`[data-instance-id="${PLAYER_INSTANCE_ID}"]`).element
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(wrapper.get(`[data-instance-id="${PLAYER_INSTANCE_ID}"]`).element).toBe(root)
   })
@@ -236,7 +236,7 @@ describe('B. DOM 인스턴스 동일성', () => {
     const parentBefore = host.parentElement
     const containerBefore = fake.container
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     // 부모가 바뀌기만 해도 iframe 은 재로드된다.
     expect(host.parentElement).toBe(parentBefore)
@@ -267,7 +267,7 @@ describe('B. DOM 인스턴스 동일성', () => {
     const styleBefore = node().attributes('style')
     const widgetBefore = node().attributes('data-widget')
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
 
     expect(node().attributes('data-widget')).toBe(widgetBefore)
     expect(node().attributes('style')).toBe(styleBefore)
@@ -375,7 +375,7 @@ describe('C. 이벤트 전달과 store 반영 (M3-1)', () => {
     const { fake } = mountAppWithFake()
     const playback = usePlaybackStore()
 
-    await switchTheme('kawaii-synth-cassette')
+    await switchTheme('mono-vinyl')
     fake.emitStateChange('paused')
 
     expect(playback.playerState).toBe('paused')

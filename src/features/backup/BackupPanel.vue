@@ -28,9 +28,17 @@ import {
   useBackupImport,
   type SectionOutcome,
 } from '@/features/backup/useBackupImport'
+import { useFullBackupExport, useFullBackupImport } from '@/features/backup/useFullBackup'
+import { looksLikeZip } from '@/features/backup/zipPackage'
+import { formatBytes } from '@/shared/utils/bytes'
+import { useArtworkStore } from '@/stores/artwork'
 
 const backup = useBackupExport()
 const restore = useBackupImport()
+/** 앨범아트를 포함한 전체 백업 (M12-4, ADR 0034). 가져오기는 위 JSON 가져오기를 감싼다. */
+const full = useFullBackupExport()
+const fullRestore = useFullBackupImport(restore)
+const artwork = useArtworkStore()
 
 /**
  * 파일 입력. 숨겨 두고 버튼으로 연다.
@@ -53,12 +61,36 @@ function pickFile(): void {
   fileInput.value?.click()
 }
 
-function onFileChange(event: Event): void {
+async function onFileChange(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   // 같은 파일을 다시 고를 수 있어야 한다. 값을 비운다.
   input.value = ''
-  if (file !== undefined) void restore.selectFile(file)
+  if (file === undefined) return
+  // ZIP(전체 백업) 인지 내용으로 본다 — 확장자를 믿지 않는다. 아니면 기존 JSON 가져오기.
+  let head: Uint8Array
+  try {
+    head = new Uint8Array(await file.slice(0, 4).arrayBuffer())
+  } catch {
+    head = new Uint8Array()
+  }
+  if (looksLikeZip(head)) {
+    fullRestore.cancel()
+    await fullRestore.selectZip(file)
+  } else {
+    fullRestore.cancel()
+    await restore.selectFile(file)
+  }
+}
+
+function applyImport(): void {
+  if (fullRestore.active.value) void fullRestore.apply()
+  else void restore.apply()
+}
+
+function cancelImport(): void {
+  if (fullRestore.active.value) fullRestore.cancel()
+  else restore.cancel()
 }
 </script>
 
@@ -74,9 +106,34 @@ function onFileChange(event: Event): void {
       {{ backup.unsavedNotice.value }}
     </p>
 
+    <!-- ---------- 전체 백업 (ZIP, M12-4) — 권장 ---------- -->
+    <div class="backup-actions">
+      <button
+        type="button"
+        class="pill pill--strong full-backup"
+        :disabled="full.busy.value"
+        :aria-busy="full.busy.value ? 'true' : 'false'"
+        @click="full.exportZip()"
+      >
+        {{ full.busy.value ? '전체 백업 만드는 중…' : '전체 백업 (ZIP) 내보내기' }}
+      </button>
+      <span class="full-count">
+        앨범아트 이미지 {{ artwork.usage.assets }}개 · {{ formatBytes(artwork.usage.bytes) }} 포함
+      </span>
+    </div>
+    <p
+      v-if="full.notice.value !== ''"
+      class="full-result"
+      :class="{ 'is-failed': full.failed.value }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ full.notice.value }}
+    </p>
+
     <div class="backup-actions">
       <button type="button" class="pill" @click="backup.request()">
-        {{ backup.isRecovery.value ? '복구본 내보내기' : 'JSON 백업 내보내기' }}
+        {{ backup.isRecovery.value ? '복구본 내보내기' : 'JSON 백업 내보내기 (앨범아트 제외)' }}
       </button>
       <span class="backup-count">
         플레이리스트 {{ backup.counts.value.playlists }}개 · {{ backup.counts.value.tracks }}곡 ·
@@ -115,21 +172,39 @@ function onFileChange(event: Event): void {
       {{ backup.notice.value }}
     </p>
 
-    <p class="backup-note">{{ backup.plaintextNotice }}</p>
+    <p v-if="full.customCount.value > 0" class="backup-warning json-no-artwork">
+      JSON 백업에는 앨범아트(내 이미지 {{ full.customCount.value }}곡)가 들어가지 않습니다 — 다른
+      브라우저에서 그림까지 되살리려면 전체 백업(ZIP)을 쓰세요.
+    </p>
+
+    <p class="backup-note">
+      {{ backup.plaintextNotice }} ZIP 도 압축만 했을 뿐 암호화하지 않습니다.
+    </p>
 
     <!-- ---------- 가져오기 (M8-3) ---------- -->
 
     <div class="backup-actions backup-import">
-      <button type="button" class="pill" @click="pickFile">JSON 백업 가져오기</button>
+      <button type="button" class="pill" :disabled="fullRestore.reading.value" @click="pickFile">
+        {{ fullRestore.reading.value ? '파일 확인하는 중…' : '백업 가져오기 (ZIP · JSON)' }}
+      </button>
       <input
         ref="fileInput"
         class="file-input"
         type="file"
-        accept="application/json,.json"
-        aria-label="백업 JSON 파일 선택"
+        accept="application/zip,.zip,application/json,.json"
+        aria-label="백업 파일 선택 (ZIP 또는 JSON)"
         @change="onFileChange"
       />
     </div>
+
+    <p
+      v-if="fullRestore.notice.value !== ''"
+      class="backup-result is-failed"
+      role="status"
+      aria-live="polite"
+    >
+      {{ fullRestore.notice.value }}
+    </p>
 
     <p
       v-if="restore.notice.value !== ''"
@@ -155,6 +230,25 @@ function onFileChange(event: Event): void {
         {{ result.detail }}
       </li>
     </ul>
+
+    <!-- 앨범아트 단계의 결과 (ZIP 복원, M12-4). 곡과 따로 적는다. -->
+    <p
+      v-if="fullRestore.artworkResult.value !== null"
+      class="backup-result artwork-result"
+      :class="{ 'is-failed': fullRestore.artworkResult.value.outcome !== 'saved' }"
+      role="status"
+    >
+      <strong>앨범아트</strong> — {{ RESULT_LABEL[fullRestore.artworkResult.value.outcome] }} ·
+      {{ fullRestore.artworkResult.value.detail }}
+      <button
+        v-if="fullRestore.canRetryArtwork.value"
+        type="button"
+        class="pill"
+        @click="fullRestore.retryArtwork()"
+      >
+        앨범아트 다시 저장
+      </button>
+    </p>
 
     <!--
       화면에는 복원됐지만 저장되지 않은 상태 (M8-4).
@@ -264,6 +358,18 @@ function onFileChange(event: Event): void {
             <td>{{ restore.preview.value.currentTheme }}</td>
             <td>{{ restore.preview.value.incomingTheme ?? '—' }}</td>
           </tr>
+          <tr v-if="fullRestore.artworkPreview.value !== null">
+            <th scope="row">앨범아트</th>
+            <td>이미지 {{ artwork.usage.assets }}개</td>
+            <td>
+              연결 {{ fullRestore.artworkPreview.value.links }}곡 · 이미지
+              {{ fullRestore.artworkPreview.value.images }}개 ({{
+                formatBytes(fullRestore.artworkPreview.value.bytes)
+              }}<template v-if="fullRestore.artworkPreview.value.existing > 0">
+                · 이미 있음 {{ fullRestore.artworkPreview.value.existing }}</template
+              >)
+            </td>
+          </tr>
         </tbody>
       </table>
 
@@ -279,6 +385,27 @@ function onFileChange(event: Event): void {
           {{ describeWarning(warning) }}
         </li>
       </ul>
+
+      <!-- 앨범아트 (ZIP) — 받지 못하는 것 · 저장소 · 원자성 안내. 숨기지 않는다. -->
+      <template v-if="fullRestore.artworkPreview.value !== null">
+        <p v-if="fullRestore.artworkPreview.value.incompleteAtExport" class="preview-warning">
+          이 백업을 만들 때 일부 앨범아트를 넣지 못했다고 적혀 있습니다 — 그 곡은 썸네일로 보입니다.
+        </p>
+        <ul
+          v-if="fullRestore.artworkPreview.value.problems.length > 0"
+          class="preview-warnings"
+          aria-label="받지 못하는 앨범아트"
+        >
+          <li v-for="line in fullRestore.artworkPreview.value.problems" :key="line">{{ line }}</li>
+        </ul>
+        <p v-if="fullRestore.artworkPreview.value.unavailable" class="preview-warning">
+          이 브라우저에서 앨범아트 저장소를 열 수 없어 그림은 복원되지 않습니다 (곡 · Moments 만).
+        </p>
+        <p class="preview-note">
+          플레이리스트 · Moments 와 앨범아트는 서로 다른 저장소라 한 번에 되돌릴 수 없습니다. 중간에
+          실패하면 일부만 바뀔 수 있으니 먼저 지금 데이터를 전체 백업(ZIP)으로 내려받아 두세요.
+        </p>
+      </template>
 
       <label class="preview-toggle">
         <input v-model="restore.applyTheme.value" type="checkbox" />
@@ -313,6 +440,15 @@ function onFileChange(event: Event): void {
       </p>
 
       <div class="backup-actions">
+        <button
+          v-if="fullRestore.active.value"
+          type="button"
+          class="pill"
+          :disabled="full.busy.value"
+          @click="full.exportZip()"
+        >
+          지금 데이터 먼저 전체 백업 (ZIP)
+        </button>
         <button type="button" class="pill" @click="restore.exportCurrentFirst()">
           지금 데이터 먼저 내보내기
         </button>
@@ -343,11 +479,11 @@ function onFileChange(event: Event): void {
           class="pill pill--strong"
           :disabled="restore.preview.value.blocked !== null || restore.applying.value"
           :aria-busy="restore.applying.value ? 'true' : 'false'"
-          @click="restore.apply()"
+          @click="applyImport"
         >
           교체하고 가져오기
         </button>
-        <button type="button" class="pill" @click="restore.cancel()">취소</button>
+        <button type="button" class="pill" @click="cancelImport">취소</button>
       </div>
     </div>
   </section>
@@ -374,9 +510,9 @@ function onFileChange(event: Event): void {
   letter-spacing: 0.12em;
 }
 
-/* 승인된 디자인의 `.pill` 값을 따른다. */
+/* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
 .pill {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -385,8 +521,10 @@ function onFileChange(event: Event): void {
   font: 11px var(--font-mono);
 }
 
-.pill:hover {
-  background: var(--pill-surface-hover-color);
+@media (hover: hover) {
+  .pill:hover {
+    background: var(--pill-surface-hover-color);
+  }
 }
 
 .pill--strong {
@@ -402,7 +540,8 @@ function onFileChange(event: Event): void {
   gap: 6px 8px;
 }
 
-.backup-count {
+.backup-count,
+.full-count {
   color: var(--row-meta-text-color);
   font: 10px var(--font-mono);
 }
@@ -413,13 +552,15 @@ function onFileChange(event: Event): void {
   font: 11px/1.6 var(--font-mono);
 }
 
-.backup-result {
+.backup-result,
+.full-result {
   margin: 10px 0 0;
   color: var(--row-meta-text-color);
   font: 10px/1.6 var(--font-mono);
 }
 
-.backup-result.is-failed {
+.backup-result.is-failed,
+.full-result.is-failed {
   color: var(--error-text-color);
 }
 

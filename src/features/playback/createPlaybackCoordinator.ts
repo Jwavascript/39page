@@ -44,11 +44,13 @@
  * 시점 이동도 **적재된 플레이어에 보내는 명령**이라 iframe 은 바뀌지 않는다
  * (ADR 0002).
  */
+import { computed } from 'vue'
+
 import type { Track } from '@/shared/types'
 import { isYouTubeVideoId } from '@/shared/utils/youtube'
 import { defaultTrackTitle, useLibraryStore } from '@/stores/library'
 import { isValidAtSeconds } from '@/stores/moments'
-import { usePlaybackStore } from '@/stores/playback'
+import { usePlaybackStore, type QueueSource } from '@/stores/playback'
 
 import type {
   PlayerAdapter,
@@ -60,9 +62,12 @@ import type {
   MomentCapture,
   MomentPlayResult,
   MomentTarget,
+  NowPlaying,
   PlaybackCoordinator,
   PlayerAttachment,
   PlayRequestResult,
+  QueueResyncResult,
+  QueueView,
 } from './playbackCoordinator'
 import type { PlayerHiddenReason, PlayerPresence } from './playerVisibility'
 
@@ -268,7 +273,11 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     playback.setStatus('')
   }
 
-  function startQueue(tracks: readonly Track[], index: number): PlayRequestResult {
+  function startQueue(
+    tracks: readonly Track[],
+    index: number,
+    source: QueueSource | null,
+  ): PlayRequestResult {
     // 가려져 있으면 **큐도 바꾸지 않는다.** 아무 일도 없던 것처럼 거절한다.
     const blocked = startBlock()
     if (blocked !== null) {
@@ -276,7 +285,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       return { ok: false, reason: 'player-hidden' }
     }
 
-    playback.setQueue(snapshot(tracks), index)
+    playback.setQueue(snapshot(tracks), index, source)
     startCurrent()
     return { ok: true }
   }
@@ -287,7 +296,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     // 빈 목록은 재생할 수 없다. 큐도 건드리지 않는다.
     if (playlist.tracks.length === 0) return { ok: false, reason: 'empty-playlist' }
 
-    return startQueue(playlist.tracks, 0)
+    return startQueue(playlist.tracks, 0, { playlistId: playlist.id, name: playlist.name })
   }
 
   function playTrack(playlistId: string, trackId: string): PlayRequestResult {
@@ -299,7 +308,53 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     if (index === -1) return { ok: false, reason: 'track-not-found' }
 
     // 고른 트랙 하나가 아니라 **목록 전체**가 큐가 된다. 그 트랙부터 시작할 뿐이다.
-    return startQueue(playlist.tracks, index)
+    return startQueue(playlist.tracks, index, { playlistId: playlist.id, name: playlist.name })
+  }
+
+  /* ---------------------------------------------------------------- *
+   * 재생 큐 보기 (M11-7B)
+   * ---------------------------------------------------------------- */
+
+  /** 큐 안의 그 자리로 옮겨 재생한다. 큐를 다시 뜨지 않는다. */
+  function playQueueIndex(index: number): PlayRequestResult {
+    if (!Number.isInteger(index) || index < 0 || index >= playback.queue.length) {
+      return { ok: false, reason: 'track-not-found' }
+    }
+
+    // 가시성을 위치 이동보다 먼저 본다 — 거절했는데 "지금 곡" 표시만 바뀌면 안 된다.
+    const blocked = startBlock()
+    if (blocked !== null) {
+      refuseStart(blocked)
+      return { ok: false, reason: 'player-hidden' }
+    }
+
+    playback.setQueueIndex(index)
+    startCurrent()
+    return { ok: true }
+  }
+
+  /**
+   * 큐를 출처 목록의 지금 모습으로 다시 뜬다.
+   *
+   * 지금 곡을 **트랙 id** 로 찾아 그 자리에 선다. 어댑터에는 아무 명령도 보내지 않는다 — 적재된 영상 ·
+   * 재생 위치 · `hasStartedPlaying` 이 그대로다. 재생을 **시작**하는 것이 아니므로 가시성 가드도 없다.
+   */
+  function resyncQueueFromSource(): QueueResyncResult {
+    const source = playback.queueSource
+    const current = playback.currentTrack
+    if (source === null || current === null) return { ok: false, reason: 'no-source' }
+
+    const playlist = library.getPlaylist(source.playlistId)
+    if (playlist === undefined) return { ok: false, reason: 'playlist-not-found' }
+
+    const index = playlist.tracks.findIndex((track) => track.id === current.id)
+    if (index === -1) return { ok: false, reason: 'track-not-found' }
+
+    playback.setQueue(snapshot(playlist.tracks), index, {
+      playlistId: playlist.id,
+      name: playlist.name,
+    })
+    return { ok: true }
   }
 
   /**
@@ -447,7 +502,9 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
    * **선택된 플레이리스트**를 먼저, 그다음 라이브러리 순서다. 같은 영상이
    * 한 목록에 여러 번 있으면 처음 것부터다.
    */
-  function locateInLibrary(videoId: string): { tracks: readonly Track[]; index: number } | null {
+  function locateInLibrary(
+    videoId: string,
+  ): { tracks: readonly Track[]; index: number; source: QueueSource } | null {
     const selected = library.selectedPlaylist
     const ordered =
       selected === null
@@ -456,7 +513,13 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
     for (const playlist of ordered) {
       const index = playlist.tracks.findIndex((track) => track.videoId === videoId)
-      if (index !== -1) return { tracks: playlist.tracks, index }
+      if (index !== -1) {
+        return {
+          tracks: playlist.tracks,
+          index,
+          source: { playlistId: playlist.id, name: playlist.name },
+        }
+      }
     }
     return null
   }
@@ -547,8 +610,10 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       playback.setQueueIndex(inQueue)
     } else {
       const located = locateInLibrary(videoId)
-      if (located !== null) playback.setQueue(snapshot(located.tracks), located.index)
-      else playback.setQueue([standaloneTrack(videoId, target.title)], 0)
+      // 목록에서 찾았으면 그 목록이 출처다. 어디에도 없으면 출처를 **모른다** (추정하지 않는다).
+      if (located !== null) {
+        playback.setQueue(snapshot(located.tracks), located.index, located.source)
+      } else playback.setQueue([standaloneTrack(videoId, target.title)], 0)
     }
 
     clearStatus()
@@ -744,7 +809,60 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     }
   }
 
+  /** 지금 큐의 곡 — 읽기 전용 보기 (M11-3, `NowPlaying`). */
+  const nowPlaying = computed<NowPlaying | null>(() => {
+    const track = playback.currentTrack
+    if (track === null) return null
+    return { trackId: track.id, videoId: track.videoId, playing: playback.isPlaying }
+  })
+
+  /**
+   * 지금 큐 — 읽기 전용 보기 (M11-7B, `QueueView`).
+   *
+   * 출처 상태는 **라이브러리의 지금 모습과 큐(스냅샷)를 견줘** 정한다. 견주는 것은 트랙 id · 영상 ·
+   * 제목과 그 순서다 — 순서 바꾸기 · 추가 · 삭제 · 이름 바꾸기가 모두 "바뀜" 이다.
+   */
+  const queue = computed<QueueView | null>(() => {
+    const tracks = playback.queue
+    if (tracks.length === 0) return null
+
+    const index = playback.queueIndex
+    const stored = playback.queueSource
+    if (stored === null) {
+      return { tracks, index, source: null, sourceState: 'unknown', canResync: false }
+    }
+
+    const playlist = library.getPlaylist(stored.playlistId)
+    if (playlist === undefined) {
+      return { tracks, index, source: stored, sourceState: 'deleted', canResync: false }
+    }
+
+    const same =
+      playlist.tracks.length === tracks.length &&
+      playlist.tracks.every((track, position) => {
+        const queued = tracks[position]
+        return (
+          queued !== undefined &&
+          queued.id === track.id &&
+          queued.videoId === track.videoId &&
+          queued.title === track.title
+        )
+      })
+    const currentId = playback.currentTrack?.id
+    return {
+      tracks,
+      index,
+      source: { playlistId: playlist.id, name: playlist.name },
+      sourceState: same ? 'in-sync' : 'changed',
+      canResync: !same && playlist.tracks.some((track) => track.id === currentId),
+    }
+  })
+
   return {
+    nowPlaying,
+    queue,
+    playQueueIndex,
+    resyncQueueFromSource,
     playPlaylist,
     playTrack,
     togglePlay,

@@ -1,0 +1,75 @@
+{
+  "candidate": "e371fb5",
+  "liveAssetReplayOrigin": "http://127.0.0.1:4173",
+  "results": [
+    {
+      "name": "Downloaded live M10 reads seeded legacy data without rewriting",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "M10 -> candidate preserves all three localStorage envelopes byte-for-byte",
+      "pass": true,
+      "details": {
+        "theme": "mono-vinyl"
+      }
+    },
+    {
+      "name": "ZIP v2 restores custom artwork bytes, non-default framing and stored theme",
+      "pass": true,
+      "details": {
+        "formatVersion": 2,
+        "assets": 1,
+        "assignments": 2,
+        "display": [
+          {
+            "fit": "contain",
+            "positionX": 25,
+            "positionY": 75,
+            "zoom": 1.5
+          },
+          {
+            "fit": "cover",
+            "positionX": 50,
+            "positionY": 50,
+            "zoom": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "Code rollback to actual M10 leaves localStorage and IndexedDB artwork unchanged",
+      "pass": true,
+      "details": {
+        "assets": 1,
+        "assignments": 2
+      }
+    },
+    {
+      "name": "Re-upgrade preserves original artwork SHA-256 and framing",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "ZIP v1 restores in fresh isolated context with default framing",
+      "pass": true,
+      "details": {
+        "assets": 1,
+        "displayed": {
+          "fit": "cover",
+          "positionX": 50,
+          "positionY": 50,
+          "zoom": 1
+        }
+      }
+    },
+    {
+      "name": "Legacy interception is local-only and completed without errors",
+      "pass": true,
+      "details": {
+        "origin": "http://127.0.0.1:4173",
+        "interceptionErrors": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "observedAt": "2026-11-15T14:58:57.580664+00:00",
+  "candidate": "e371fb52454ecac349f27843df8a15c1444bed5e",
+  "node": "v26.13.0",
+  "npm": "11.20.0",
+  "checks": [
+    {
+      "scope": "web",
+      "command": "npm run type-check",
+      "exitCode": 0
+    },
+    {
+      "scope": "web",
+      "command": "npm run lint",
+      "exitCode": 0
+    },
+    {
+      "scope": "web",
+      "command": "npm run format:check",
+      "exitCode": 0
+    },
+    {
+      "scope": "web",
+      "command": "npm test",
+      "exitCode": 0
+    },
+    {
+      "scope": "web",
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    {
+      "scope": "extension",
+      "command": "npm test",
+      "exitCode": 0
+    },
+    {
+      "scope": "extension",
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    {
+      "scope": "extension",
+      "command": "npm run lint",
+      "exitCode": 0
+    },
+    {
+      "scope": "extension",
+      "command": "npm run format:check",
+      "exitCode": 0
+    }
+  ],
+  "webTests": {
+    "files": 67,
+    "passed": 2127
+  },
+  "extensionTests": {
+    "files": 26,
+    "passed": 420
+  },
+  "productionSourceDiff": [],
+  "developmentExtensionIdInWebBuild": false,
+  "bridgePolicy": "disabled",
+  "files": [
+    {
+      "path": "dist/_headers",
+      "bytes": 251,
+      "sha256": "065bfa983bf27ac346bad6ac6c3b230185bd9a8ca9f561366d50c93cb9740cf2"
+    },
+    {
+      "path": "dist/assets/bridge-C4cijQlM.js",
+      "bytes": 9752,
+      "sha256": "d3af7d39c2f0af9dc8657bb1d31e4ec939478c934a504101a1eab7c21d8bbad7"
+    },
+    {
+      "path": "dist/assets/main-D4MmuasD.js",
+      "bytes": 293220,
+      "sha256": "010993f29e485bbdc964f58407808d58d4e60f7738edc367c676d526b6a5e5f5"
+    },
+    {
+      "path": "dist/assets/main-Dzhhksy8.css",
+      "bytes": 93586,
+      "sha256": "e90dace8b71ddfd9b1030da050836a9da4e871c2f2d96b327f833c6471d58cd5"
+    },
+    {
+      "path": "dist/assets/moments-BBtXHUgc.js",
+      "bytes": 87542,
+      "sha256": "d848169c22728f0a8bee4bfb5b506504a122add004d38f4d2b6c96be05c4ff73"
+    },
+    {
+      "path": "dist/bridge.html",
+      "bytes": 583,
+      "sha256": "8b7fdb5a15973eb32d5a85f84431eaa737ab85dee5b7cf505bb956c1734df096"
+    },
+    {
+      "path": "dist/favicon.ico",
+      "bytes": 4286,
+      "sha256": "db74ab0b78338c1f778f8398c45f4103c99aea0e845a3118a7750b4eeafd3445"
+    },
+    {
+      "path": "dist/index.html",
+      "bytes": 2335,
+      "sha256": "d6f3932f853d6d3ced9fbe1cf18713d7e506389d6fad6c9ee7973246eecfc9aa"
+    }
+  ]
+}

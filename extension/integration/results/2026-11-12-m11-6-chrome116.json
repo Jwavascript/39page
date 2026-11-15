@@ -1,0 +1,19 @@
+{
+  "browser": "Chrome/116.0.5845.96 (Chrome for Testing)",
+  "load": "명령줄 --load-extension (116 에는 CDP Extensions.loadUnpacked 가 없다) — 서비스 워커 실행, 확장 ID pkagnijdhfmkodpdfgdehfdghcgbfpoa",
+  "beforeGrant": { "outcome": "unavailable", "reason": "permission" },
+  "promptButtonsViaUIA": "찾지 못함 — 116 의 권한 프롬프트 단추가 UI Automation 트리에 보이지 않았다 (창 '39page - Chromium' 만)",
+  "attempts": [
+    {
+      "keys": "OS SendKeys {ENTER}",
+      "granted": false,
+      "note": "프롬프트가 닫히고 request() 가 false — 기본 단추가 허용이 아니거나 포커스가 다른 곳"
+    },
+    {
+      "keys": "OS SendKeys {TAB}{ENTER}",
+      "granted": null,
+      "note": "프롬프트가 닫히지 않아 25초 시간 초과"
+    }
+  ],
+  "verdict": "확장 적재 · 워커 · 권한 없을 때의 브리지 거절은 확인. 권한 허용 뒤의 저장 · 패널(triggerAction 없음)은 미확인"
+}

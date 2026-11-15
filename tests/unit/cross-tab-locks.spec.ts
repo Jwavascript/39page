@@ -180,6 +180,42 @@ describe('라이브러리 — 같은 순간의 쓰기', () => {
     expect(await pending).toMatchObject({ ok: true, persisted: true })
   })
 
+  it('트랙 옮기기(moveTrackTo)도 같은 잠금을 지난다 — 잠금을 놓기 전에는 쓰지 않고, 못 얻으면 busy (M11-7C)', async () => {
+    vi.useFakeTimers()
+    const tab = await openLibraryTab()
+    const listId = tab.playlists[0]?.id as string
+    await tab.addTrack(listId, { videoId: A_VIDEO, title: 'A 곡' })
+    await tab.addTrack(listId, { videoId: B_VIDEO, title: 'B 곡' })
+    const second = tab.playlists[0]?.tracks[1]?.id as string
+    const before = globalThis.localStorage.getItem(LIBRARY)
+
+    await holdWriteLock(LIBRARY)
+    const pending = tab.moveTrackTo(listId, second, 0)
+    await vi.advanceTimersByTimeAsync(LOCK_TIMEOUT_MS + 10)
+
+    expect(await pending).toEqual({ ok: false, reason: 'busy' })
+    expect(tab.playlists[0]?.tracks.map((track) => track.title)).toEqual(['A 곡', 'B 곡'])
+    expect(globalThis.localStorage.getItem(LIBRARY)).toBe(before)
+  })
+
+  it('두 탭이 같은 목록을 동시에 옮기면 하나는 conflict — 저장소에는 한 탭의 순서만 남는다 (M11-7C)', async () => {
+    const tabA = await openLibraryTab()
+    const listId = tabA.playlists[0]?.id as string
+    for (const title of ['1', '2', '3']) await tabA.addTrack(listId, { videoId: A_VIDEO, title })
+    const tabB = await openLibraryTab()
+    const ids = tabA.playlists[0]?.tracks.map((track) => track.id) ?? []
+
+    const [a, b] = await Promise.all([
+      tabA.moveTrackTo(listId, ids[2] as string, 0),
+      tabB.moveTrackTo(listId, ids[0] as string, 2),
+    ])
+
+    expect(a).toMatchObject({ ok: true, persisted: true })
+    expect(b).toEqual({ ok: false, reason: 'conflict' })
+    expect(storedTitles()).toEqual(['3', '1', '2'])
+    expect(tabB.playlists[0]?.tracks.map((track) => track.title)).toEqual(['3', '1', '2'])
+  })
+
   it(`다른 탭이 ${String(LOCK_TIMEOUT_MS)}ms 넘게 잠그면 busy — 메모리도 저장소도 그대로다`, async () => {
     vi.useFakeTimers()
     const tab = await openLibraryTab()
@@ -570,10 +606,16 @@ describe('어떤 호출부도 잠금을 건너 쓰지 않는다', () => {
     const files = [
       'src/features/collect/useCollect.ts',
       'src/features/backup/useBackupImport.ts',
-      'src/features/library/RecordLibraryDrawer.vue',
-      'src/features/library/PlaylistWidget.vue',
+      'src/features/library/PlaylistEditor.vue',
+      'src/features/library/ArchivePlaylistNav.vue',
+      'src/features/archive/ArchivePanel.vue',
+      'src/features/moments/MomentsBrowserPanel.vue',
+      'src/features/backup/DataDialog.vue',
+      'src/components/layout/AppNav.vue',
+      'src/features/library/NowPlaylistWidget.vue',
       'src/features/moments/useMomentCapture.ts',
       'src/features/moments/useMomentsBrowser.ts',
+      'src/features/moments/useMomentsArchive.ts',
       'src/main.ts',
     ]
     for (const file of files) {

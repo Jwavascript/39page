@@ -1,0 +1,99 @@
+{
+  "results": [
+    {
+      "name": "1. 곡 120 · 연결 119 · 그림 30(약 30 MB) — 연결 · 메타 읽기 / 그림 한 장 읽기",
+      "pass": true,
+      "details": {
+        "injected": {
+          "assets": 30,
+          "bytes": 30297690
+        },
+        "times": [1, 0.5, 0.7, 0.6, 0.6],
+        "blobMs": 0.3
+      }
+    },
+    {
+      "name": "2. Object URL — 사용자 그림 곡 30 개를 지나 기본 그림 곡으로: 살아 있는 URL 0",
+      "pass": true,
+      "details": {
+        "urls": {
+          "created": 30,
+          "revoked": 30,
+          "live": 0
+        },
+        "switchMedianMs": 12,
+        "switchMaxMs": 122
+      }
+    },
+    {
+      "name": "3. 큰 전체 백업 (그림 30 · 약 30 MB) — 만들기 시간 · JS 힙 최고치",
+      "pass": true,
+      "details": {
+        "zipBytes": 30309747,
+        "ms": 187,
+        "heapStartMB": 5.5,
+        "heapPeakMB": 63.9,
+        "notice": "전체 백업 “39page-backup-20261115-1600.zip” 을 내려받았습니다. 앨범아트 연결 119개 · 이미지 30개 (28.9 MB)."
+      }
+    },
+    {
+      "name": "4. 썸네일을 받을 수 없을 때(차단 · 오프라인) — 기본 그림",
+      "pass": true,
+      "details": {
+        "source": "default",
+        "src": null,
+        "natural": null,
+        "title": "Track 120"
+      }
+    },
+    {
+      "name": "5. GIF 256×256 · 16 프레임 — 8초 동안 렌더러 작업 시간 (움직임 / 멈춤=포스터)",
+      "pass": true,
+      "details": {
+        "moving": {
+          "taskMs": 5,
+          "scriptMs": 0,
+          "layoutMs": 0
+        },
+        "still": {
+          "taskMs": 1,
+          "scriptMs": 0,
+          "layoutMs": 0
+        },
+        "gifCard": {
+          "source": "custom",
+          "src": "blob:http://127.0.0.1:4173/eb3b6dca-025e-4676-9d3d-845f7c9d97f1",
+          "natural": 256,
+          "title": "Track 120"
+        }
+      }
+    },
+    {
+      "name": "6. 두 탭 — 다른 탭이 먼저 바꾸면 이 탭의 저장은 거절 · 다른 탭의 그림이 이 탭 카드에 보인다",
+      "pass": true,
+      "details": {
+        "aMsg": "다른 탭에서 이 곡의 앨범아트가 바뀌었습니다. 지금 것을 보고 다시 골라 주세요.",
+        "final": "default",
+        "seenByA": {
+          "source": "default",
+          "src": null,
+          "natural": null,
+          "title": "Track 120"
+        }
+      }
+    },
+    {
+      "name": "7. 새 프로필에 큰 ZIP 복원 — 검증 · 미리보기 시간, 적용 시간, 결과",
+      "pass": true,
+      "details": {
+        "readMs": 343,
+        "applyMs": 106,
+        "res": "앨범아트 — 저장됨 · 연결 119개 · 이미지 30개 복원",
+        "db": {
+          "assets": 30,
+          "links": 119
+        }
+      }
+    }
+  ]
+}

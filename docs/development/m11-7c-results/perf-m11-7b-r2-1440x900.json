@@ -1,0 +1,318 @@
+{
+  "browser": "Chrome/157.0.8103.51",
+  "label": "m11-7b",
+  "viewport": "1440x900",
+  "cpuThrottle": 1,
+  "at": "2026-11-14T15:54:04.564Z",
+  "sizes": {
+    "5000": {
+      "songs": 1000,
+      "open": {
+        "ms": 59,
+        "layout": 9.5,
+        "style": 4.5,
+        "script": 0.6
+      },
+      "nodesOpen": {
+        "panel": 436,
+        "page": 6347,
+        "rows": 21,
+        "heads": 30
+      },
+      "nodesCurrent": {
+        "panel": 57,
+        "page": 5968,
+        "rows": 4,
+        "heads": 1
+      },
+      "filterToCurrent": [
+        {
+          "ms": 3.2,
+          "layout": 0.5,
+          "style": 0.2,
+          "script": 0.1
+        },
+        {
+          "ms": 7.3,
+          "layout": 0.7,
+          "style": 0.2,
+          "script": 0.1
+        },
+        {
+          "ms": 3.5,
+          "layout": 0.6,
+          "style": 0.2,
+          "script": 0.1
+        }
+      ],
+      "filterToAll": [
+        {
+          "ms": 8.2,
+          "layout": 2.4,
+          "style": 0.7,
+          "script": 0.1
+        },
+        {
+          "ms": 9.8,
+          "layout": 3,
+          "style": 0.8,
+          "script": 0.1
+        },
+        {
+          "ms": 7.5,
+          "layout": 2.7,
+          "style": 0.6,
+          "script": 0.1
+        }
+      ],
+      "nodesAll": {
+        "panel": 436,
+        "page": 6347,
+        "rows": 21,
+        "heads": 30
+      },
+      "nodesRecent": {
+        "panel": 466,
+        "page": 6377,
+        "rows": 50,
+        "heads": 0
+      },
+      "filterToRecent": [
+        {
+          "ms": 17.7,
+          "layout": 2.4,
+          "style": 0.7,
+          "script": 0.1
+        },
+        {
+          "ms": 13.9,
+          "layout": 3.3,
+          "style": 0.6,
+          "script": 0.1
+        },
+        {
+          "ms": 12.3,
+          "layout": 2.7,
+          "style": 0.6,
+          "script": 0
+        }
+      ],
+      "groupToggle": {
+        "open": [
+          {
+            "ms": 6.3,
+            "layout": 1.2,
+            "style": 0.3,
+            "script": 0.6
+          },
+          {
+            "ms": 5.8,
+            "layout": 1,
+            "style": 0.3,
+            "script": 0.1
+          },
+          {
+            "ms": 3.8,
+            "layout": 1,
+            "style": 0.2,
+            "script": 0.1
+          }
+        ],
+        "close": [
+          {
+            "ms": 2.6,
+            "layout": 0.3,
+            "style": 0,
+            "script": 0.1
+          },
+          {
+            "ms": 2.5,
+            "layout": 0.2,
+            "style": 0,
+            "script": 0.1
+          },
+          {
+            "ms": 2.6,
+            "layout": 0.4,
+            "style": 0.1,
+            "script": 0.1
+          }
+        ]
+      },
+      "search": [
+        {
+          "q": "후렴",
+          "ms": 38.5,
+          "layout": 16.3,
+          "style": 2.7,
+          "script": 0.4,
+          "nodes": {
+            "panel": 2884,
+            "page": 8795,
+            "rows": 200,
+            "heads": 116
+          },
+          "summary": "순간 920개 · 곡 598개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+        },
+        {
+          "q": "곡 1",
+          "ms": 27.5,
+          "layout": 10.5,
+          "style": 2,
+          "script": 0.1,
+          "nodes": {
+            "panel": 2026,
+            "page": 7937,
+            "rows": 200,
+            "heads": 35
+          },
+          "summary": "순간 2645개 · 곡 539개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+        },
+        {
+          "q": "소름 박자",
+          "ms": 33.5,
+          "layout": 14.2,
+          "style": 2.9,
+          "script": 0.1,
+          "nodes": {
+            "panel": 2998,
+            "page": 8909,
+            "rows": 162,
+            "heads": 143
+          },
+          "summary": "순간 162개 · 곡 143개"
+        }
+      ],
+      "searchClear": [
+        {
+          "ms": 10.9,
+          "layout": 2,
+          "style": 0.6,
+          "script": 0.1
+        },
+        {
+          "ms": 8,
+          "layout": 1.8,
+          "style": 0.4,
+          "script": 0.1
+        },
+        {
+          "ms": 10.9,
+          "layout": 2.3,
+          "style": 0.5,
+          "script": 0.1
+        }
+      ],
+      "showMore": {
+        "ms": 5.3,
+        "layout": 1.6,
+        "style": 0.5,
+        "script": 0.1
+      },
+      "nodesAfterMore": {
+        "panel": 675,
+        "page": 6586,
+        "rows": 21,
+        "heads": 60
+      },
+      "editOpen": [
+        {
+          "ms": 4.6,
+          "layout": 0.6,
+          "style": 0.3,
+          "script": 0.1
+        },
+        {
+          "ms": 4.2,
+          "layout": 0.5,
+          "style": 0.1,
+          "script": 0.1
+        },
+        {
+          "ms": 4,
+          "layout": 0.7,
+          "style": 0.2,
+          "script": 0.1
+        }
+      ],
+      "editSave": [
+        {
+          "ms": 82.2,
+          "layout": 1.8,
+          "style": 0.4,
+          "script": 0.5
+        },
+        {
+          "ms": 68.5,
+          "layout": 1.3,
+          "style": 0.2,
+          "script": 0.3
+        },
+        {
+          "ms": 77.3,
+          "layout": 0.9,
+          "style": 0.2,
+          "script": 0.5
+        }
+      ],
+      "persisted": 3,
+      "iframeSame": true,
+      "capture": [],
+      "save": [
+        {
+          "ms": 74.4,
+          "layout": 1.3,
+          "style": 0.4,
+          "script": 0.8
+        },
+        {
+          "ms": 75.4,
+          "layout": 1.2,
+          "style": 0.2,
+          "script": 0.5
+        },
+        {
+          "ms": 79.4,
+          "layout": 0.9,
+          "style": 0.2,
+          "script": 0.5
+        }
+      ],
+      "savedCount": 3,
+      "summary": {
+        "open": 59,
+        "filterToCurrent": 3.5,
+        "filterToAll": 8.2,
+        "filterToRecent": 13.9,
+        "groupOpen": 5.8,
+        "groupClose": 2.6,
+        "search": 33.5,
+        "searchClear": 10.9,
+        "showMore": 5.3,
+        "editOpen": 4.2,
+        "editSave": 77.3,
+        "capture": null,
+        "save": 75.4,
+        "savedCount": 3,
+        "nodesCurrent": {
+          "panel": 57,
+          "page": 5968,
+          "rows": 4,
+          "heads": 1
+        },
+        "nodesOpen": {
+          "panel": 436,
+          "page": 6347,
+          "rows": 21,
+          "heads": 30
+        },
+        "nodesAll": {
+          "panel": 436,
+          "page": 6347,
+          "rows": 21,
+          "heads": 30
+        }
+      }
+    }
+  }
+}

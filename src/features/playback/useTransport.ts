@@ -30,9 +30,14 @@ const STATE_LABEL: Readonly<Record<PlayerState, string>> = {
   error: '재생 실패',
 }
 
-/** 승인된 디자인의 초기 문구들. */
+/**
+ * 승인된 디자인의 초기 문구들.
+ *
+ * 부제는 M11-3 에서 고쳤다 — 원문 "LP를 클릭하거나 링크를 추가할 수 있어요." 는 카세트 테마에서 맞지
+ * 않았고, 이제 LP · 카세트가 음악 보관함을 연다는 것과 헤더의 입구(M11-7B 부터 "▤ 보관함")를 말하지 않았다 (U3).
+ */
 const EMPTY_TITLE = '재생할 음악을 선택하세요'
-const EMPTY_SUBTITLE = 'LP를 클릭하거나 링크를 추가할 수 있어요.'
+const EMPTY_SUBTITLE = '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.'
 const EMPTY_QUEUE_STATUS = '재생 목록을 만들고 YouTube 링크를 추가해 보세요.'
 
 export interface TransportModel {

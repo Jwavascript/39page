@@ -89,22 +89,29 @@ const placed = computed<PlacedWidget[]>(() =>
   --host-gap: clamp(20px, 2.3vw, 39px);
 
   display: grid;
+  /*
+   * M11-7B: NOW PLAYLIST(`playlist`)가 **데크 바로 아래**에서 3·4 행을 쓴다 (ADR 0030). M11-6 까지는
+   * 데크가 1~3 행을 가로질렀고 그 높이를 플레이어가 정해, 데크 아래에 빈자리가 남은 뒤에야 4 행의
+   * 플레이리스트가 왔다. 그 빈자리가 지금 재생목록의 자리다.
+   */
   grid-template-areas:
     'deck player clock'
     'deck player weather'
-    'deck player moments'
-    'playlist mascot moments';
+    'playlist player moments';
   /*
-   * 1·2 행은 **콘텐츠 높이**(`auto`)다. 그래야 시계와 날씨가 서로 붙는다.
-   * 3 행이 `1fr` 로 남은 높이를 모두 먹으므로 정보 열의 빈자리가 **아래**에
-   * 모인다 — 다른 위젯을 더할 자리다 (M7 요청 4). M9-4 에서 그 자리(3·4 행)를
-   * Music Moments 가 쓴다.
+   * 1 행은 **콘텐츠 높이**(`auto`), 2 행이 `1fr` 다. 데크는 1·2 행을 가로지르고 그 남는 높이를 2 행이
+   * 받는다 — 시계(1 행)와 날씨(2 행 위쪽)는 서로 붙어 있고, 벌어지는 자리는 날씨 **아래**다.
+   * 3 행은 콘텐츠 높이다: NOW PLAYLIST 와 Music Moments 가 선다.
    *
-   * 이전에는 행이 둘뿐이어서 행 높이를 데크·플레이어가 지배했고, 시계가
-   * 1 행 위쪽에 붙은 뒤 **아래로 빈 공간이 생긴 다음** 날씨가 2 행 시작에
-   * 붙었다. 둘 사이가 벌어져 보인 원인이다.
+   * M12-2 (ADR 0032): 4 행의 마스코트가 없어졌다. 영상 아래의 Now Playing 카드는 **플레이어 위젯 안**이라 플레이어가
+   * 1 ~ 3 행을 가로지른다 — 카드를 따로 된 그리드 칸으로 두면 세 열이 한 행 높이를 나눠 써서 영상과 카드 사이가
+   * 81 ~ 165px 벌어졌다 (실제 Chrome 실측, `docs/development/m12-results`). Moments 는 시계 · 날씨 아래 3 행의 남는
+   * 높이를 모두 쓴다 (`align-self: stretch`).
+   *
+   * (M7 까지는 행이 둘뿐이어서 시계가 1 행 위쪽에 붙은 뒤 아래로 빈 공간이 생긴 다음 날씨가 2 행
+   * 시작에 붙었다. 그 벌어짐을 다시 만들지 않는다.)
    */
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   /*
    * 3열의 최소값이 둘 다 근거가 있는 값이다.
    *
@@ -144,21 +151,15 @@ const placed = computed<PlacedWidget[]>(() =>
  */
 
 /*
- * Music Moments 의 자리 (M9-4). 정보 열의 빈자리 — 3·4 행을 그대로 채운다.
+ * Music Moments 의 자리 (M9-4). 정보 열의 빈자리 — 3·4 행을 채운다.
  *
- * ⚠ **이 위젯은 행 높이를 정하지 않는다.** `contain: size` 로 자기 내용이 트랙
- * 크기 계산에 끼어들지 않게 하고, 늘이기로 남은 칸을 채운다. 행 높이는 여전히
- * 데크·플레이어(1~3 행)와 플레이리스트·마스코트(4 행)가 정한다.
- *
- * 그래서 메모 폼을 열거나 순간이 늘어나도 **다른 위젯이 밀리지 않는다** — 내용은
- * 위젯 안에서 스크롤한다. 이 칸은 실측으로 1280×800 에서 274px, 1920×1080 에서
- * 419px 이다 (ADR 0021). 늘이기만 하고 `contain` 을 빼면, 폼을 여는 순간 3 행이
- * 커져 플레이리스트·마스코트가 아래로 밀린다.
+ * M11-3 에서 위젯이 "이 곡의 Moments" 미리보기(최대 3행 · 빠른 저장)로 줄어 **안쪽 스크롤이 없다**.
+ * 그래서 M9 의 `contain: size`(칸 안에서 스크롤)를 풀었다 — 메모 폼을 여는 동안만 행이 조금 길어질 수
+ * 있다. 데크 · 플레이어는 위쪽 정렬이라 움직이지 않는다.
  */
 .widget-host > [data-widget='moments'] {
   min-height: 0;
   align-self: stretch;
-  contain: size;
 }
 
 /*
@@ -211,10 +212,9 @@ const placed = computed<PlacedWidget[]>(() =>
       'deck playlist'
       'player player'
       'moments moments'
-      'clock weather'
-      'mascot mascot';
+      'clock weather';
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   /*
@@ -226,19 +226,6 @@ const placed = computed<PlacedWidget[]>(() =>
    */
   .widget-host > [data-widget='moments'] {
     align-self: start;
-    contain: none;
-  }
-
-  /*
-   * 플레이리스트가 **데크 높이를 넘지 않는다** (M7 요청 5).
-   *
-   * 행 높이는 데크가 정한다. 위젯을 그 행에 늘려 붙이면(`stretch`) 높이가
-   * 데크와 같아지고, 목록이 길면 위젯 **안에서** 스크롤한다. 높이를 숫자로
-   * 정하지 않으므로 화면 폭이 바뀌어도 따라간다.
-   */
-  .widget-host > [data-widget='playlist']:not(.is-collapsed) {
-    min-height: 0;
-    align-self: stretch;
   }
 
   /*
@@ -265,6 +252,87 @@ const placed = computed<PlacedWidget[]>(() =>
   .widget-host::before {
     grid-row: 1 / 2;
     grid-column: 2;
+  }
+}
+
+/*
+ * 700px 이하: **한 열** (M11-3, U20 · U21).
+ *
+ * 두 열을 360px 까지 끌고 가면 데크 옆 반 칸(약 140px)에 플레이리스트가 끼고, 시계 · 날씨가 반 칸씩
+ * 나눠 글자가 빽빽했다. 순서는 듣는 흐름이다 — **작은 데크 띠** → 영상 → **이 곡의 Moments(저장)** →
+ * NOW PLAYLIST → 시계 → 날씨. (M12-2: 마스코트가 없어지고 영상 바로 아래가 Now Playing 카드다 — 플레이어 위젯 안.) 저장이 영상 바로 아래에 있어 세로 화면에서도 닿는다.
+ *
+ * M11-7B: 데크는 여기서 **작은 띠**다 (`DeckWidget` — 아트를 통째로 줄여 왼쪽에, 안내를 옆에). M11-6
+ * 까지는 화면 폭의 데크(390px 에서 약 220px 높이)가 영상을 첫 화면 아래로 밀었다 (ADR 0030).
+ *
+ * `grid-template-areas` 만 바꾼다. DOM 부모 · 순서 · 인스턴스는 그대로다 (ADR 0002).
+ */
+@media (max-width: 700px) {
+  .widget-host {
+    grid-template-areas:
+      'deck'
+      'player'
+      'moments'
+      'playlist'
+      'clock'
+      'weather';
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  /* 한 열에는 세로 구분선이 없다. */
+  .widget-host::before {
+    display: none;
+  }
+
+  /* 데크는 작은 띠다 — 폭 전체를 쓰고, 크기는 `DeckWidget` 이 정한다 (M11-7B). */
+  .widget-host > [data-widget='deck'] {
+    width: 100%;
+  }
+
+  /* 띠와 영상 사이는 위젯 사이의 기본 간격보다 좁게 — 띠는 영상의 머리말처럼 붙는다. */
+  .widget-host {
+    row-gap: 14px;
+  }
+}
+
+/*
+ * 낮은 가로 화면 (폰 가로 — 높이 560px 이하, M11-7B).
+ *
+ * 폭으로는 두 열(1100px 이하) 배치지만 그 배치는 데크 · NOW PLAYLIST 가 첫 행을 차지해 **영상이 첫 화면
+ * 아래**로 밀린다 (844×390 실측: 영상 위 끝 586px). 가시성 가드는 영상이 화면과 전혀 겹치지 않으면
+ * 재생을 멈추므로(`playerVisibility.ts`), 폰을 가로로 돌리기만 해도 음악이 멈췄다. 여기서는 영상을 첫
+ * 행 왼쪽에 두고 이 곡의 Moments · NOW PLAYLIST 를 그 옆에 둔다 — 데크는 그 아래다.
+ *
+ * `grid-template-areas` 만 바꾼다. DOM 부모 · 순서 · 인스턴스는 그대로다 (ADR 0002). 보관함 쪽의 같은
+ * 조건(옆 배치)은 `DashboardShell` 의 `SIDE_QUERY` 다.
+ */
+@media (max-height: 560px) and (orientation: landscape) and (max-width: 1100px) {
+  .widget-host {
+    grid-template-areas:
+      'player moments'
+      'player playlist'
+      'deck playlist'
+      'clock weather';
+    /* 왼쪽 열 360px 이상 — 16:9 영상이 202px 을 지킬 수 있는 폭 (위 머리말과 같은 근거). */
+    grid-template-columns: minmax(360px, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .widget-host > [data-widget='player'] {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  /* 데크는 영상 아래 왼쪽 열 — 너무 크지 않게 영상 폭 안에서. */
+  .widget-host > [data-widget='deck'] {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .widget-host::before {
+    display: none;
   }
 }
 </style>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /** 브랜드 줄 — 웹앱 헤더의 `.brand` 와 같은 글꼴·자간 (AppHeader.vue). */
+import cassette from '@/ui/cassette.svg?inline'
 </script>
 
 <template>
   <header class="brand-header">
-    <span class="disc" aria-hidden="true"></span>
+    <img class="cassette-mark" :src="cassette" alt="" width="44" height="44" />
     <h1 class="brand">39page</h1>
     <span class="role">YouTube 담기</span>
   </header>
@@ -12,23 +13,21 @@
 
 <style scoped>
 .brand-header {
-  display: flex;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  min-width: 0;
+  gap: 8px;
   align-items: center;
-  padding: 13px 16px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--header-border-color);
 }
 
-/* 작은 LP — 장식. 검은 판 · 홈 · 아이보리 라벨. */
-.disc {
-  width: 16px;
-  height: 16px;
+/* 승인된 데크의 카세트 부분을 재사용한 장식. */
+.cassette-mark {
+  grid-row: 1 / 3;
+  width: 44px;
+  height: 44px;
   flex: none;
-  border-radius: var(--radius-circle);
-  background:
-    radial-gradient(circle, var(--accent-color) 0 22%, transparent 23%),
-    repeating-radial-gradient(circle, #0d0c0b 0 1px, #1c1a17 1px 2px);
-  box-shadow: 0 0 0 1px var(--line-color);
 }
 
 .brand {
@@ -39,10 +38,21 @@
 }
 
 .role {
-  margin-left: auto;
-  color: var(--text-dim-color);
+  grid-column: 2;
+  color: var(--text-muted-color);
   font: 10px var(--font-mono);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+@media (max-width: 260px) {
+  .brand-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 8px;
+  }
+  .role {
+    grid-column: 1;
+  }
 }
 </style>

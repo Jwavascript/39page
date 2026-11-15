@@ -44,6 +44,9 @@ export function fakeBridge(initialTabId: number | null = 1) {
       'capture-moment': 'Alt+Shift+M',
     })),
     openShortcutSettings: vi.fn<PopupBridge['openShortcutSettings']>(async () => {}),
+    // 패널 (M11-5B) — 기본은 열지 못한다: 팝업이 기존 화면을 그대로 보인다.
+    openPanel: vi.fn<PopupBridge['openPanel']>(async () => false),
+    closePopup: vi.fn<PopupBridge['closePopup']>(() => {}),
     subscribe: vi.fn<PopupBridge['subscribe']>((listener: (event: TabEvent) => void) => {
       listeners.push(listener)
       return () => {

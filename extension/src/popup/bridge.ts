@@ -44,6 +44,13 @@ export interface PopupBridge {
   openShortcutSettings(): Promise<void>
   /** 구독을 끊는 함수를 돌려준다. */
   subscribe(listener: (event: TabEvent) => void): () => void
+  /**
+   * YouTube 위 패널을 연다 (M11-5B). 열리면 팝업은 닫힌다 — 아이콘을 누르면 패널이 나타나는 것과 같다.
+   * 열지 못하면 팝업이 그대로 남아 기존 수집 화면 경로(대체 경로)를 보인다.
+   */
+  openPanel(tabId: number, mode: 'music' | 'moment'): Promise<boolean>
+  /** 팝업 창을 닫는다. */
+  closePopup(): void
 }
 
 export const BRIDGE_KEY: InjectionKey<PopupBridge> = Symbol('popup-bridge')
@@ -116,6 +123,22 @@ export function createChromeBridge(timeoutMs = INSPECT_TIMEOUT_MS): PopupBridge 
       await chrome.tabs.create({ url: SHORTCUT_SETTINGS_URL })
     },
 
+    async openPanel(tabId, mode) {
+      try {
+        const result = (await chrome.runtime.sendMessage({
+          v: PROTOCOL_VERSION,
+          type: 'panel/open',
+          tabId,
+          mode,
+        })) as Result<{ status?: string }>
+        return result.ok && (result.data.status === 'opened' || result.data.status === 'focused')
+      } catch {
+        return false
+      }
+    },
+    closePopup() {
+      globalThis.close()
+    },
     subscribe(listener) {
       const onUpdated = (
         tabId: number,

@@ -29,6 +29,6 @@ describe('App shell', () => {
 
   it('applies the default theme to the document root', () => {
     mountApp()
-    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
+    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
   })
 })

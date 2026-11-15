@@ -1,0 +1,105 @@
+{
+  "results": [
+    {
+      "name": "A: 그림 셋 저장 (PNG · 기본 · GIF)",
+      "pass": true,
+      "details": {
+        "assets": [
+          ["image/gif", 8],
+          ["image/png", 96]
+        ],
+        "links": ["custom", "custom", "default"]
+      }
+    },
+    {
+      "name": "A: 전체 백업 ZIP 만들기",
+      "pass": true,
+      "details": {
+        "name": "39page-backup-20261115-1528.zip",
+        "bytes": 20609,
+        "ms": 423,
+        "notice": "전체 백업 “39page-backup-20261115-1528.zip” 을 내려받았습니다. 앨범아트 연결 3개 · 이미지 2개 (18.2 KB)."
+      }
+    },
+    {
+      "name": "A: 공유 파일 만들기 (LIST A + Moments)",
+      "pass": true,
+      "details": {
+        "name": "LIST A.39page-share.zip",
+        "bytes": 19604
+      }
+    },
+    {
+      "name": "B: 변조한 ZIP 은 받지 않는다 (아무것도 쓰지 않음)",
+      "pass": true,
+      "details": {
+        "tamperMsg": "파일 내용이 manifest 와 다릅니다 (손상 · 변조): assets/782924fc8572c28da2ab42653e92f231e81498f3c1e0be32a4e821154a5d441a.png"
+      }
+    },
+    {
+      "name": "B: 전체 백업 복원 — 목록 · 순서 · Moments · 그림 · 연결",
+      "pass": true,
+      "details": {
+        "preview": [
+          "항목지금가져올 것",
+          "플레이리스트1개2개",
+          "트랙0곡3곡",
+          "Moments0개2개",
+          "테마kawaii-synth-cassettekawaii-synth-cassette",
+          "앨범아트이미지 0개 연결 3곡 · 이미지 2개 (18.2 KB)"
+        ],
+        "res": [
+          "플레이리스트 — 저장됨 · 2개 · 3곡",
+          "Moments — 저장됨 · Moment 2개",
+          "테마 — 저장됨 · kawaii-synth-cassette",
+          "앨범아트 — 저장됨 · 연결 3개 · 이미지 2개 복원"
+        ],
+        "db": {
+          "assets": [
+            ["image/gif", 8],
+            ["image/png", 96]
+          ],
+          "links": ["custom", "custom", "default"]
+        },
+        "lib": [
+          ["LIST A", ["Bunny A", "Sintel A"]],
+          ["LIST B", ["Bunny B"]]
+        ],
+        "moments": ["carrot", "dragon"],
+        "ms": 540
+      }
+    },
+    {
+      "name": "B: 새로고침 뒤 재생 — 복원된 선택 목록(LIST B)의 첫 곡 그림(GIF 8px)",
+      "pass": true,
+      "details": {
+        "source": "custom",
+        "natural": [8, 8],
+        "title": "Bunny B",
+        "selected": "pb"
+      }
+    },
+    {
+      "name": "C: 공유 가져오기 — 새 목록 · 그림 연결 · 켠 Moments 만 · LIST B 없음",
+      "pass": true,
+      "details": {
+        "preview": "LIST A — 목록 · 곡 2개 · 그림 1개 (18 KB) · Moment 2개 넣을 곳 새 목록 “LIST A” 기존 목록에 추가 — MY RECORDS Moments 2개도 가져오기 (같은 것은 건너뜀) 가져오기 취소",
+        "res": [
+          "새 목록 “LIST A” 을 만들었습니다.",
+          "곡 2개를 더했습니다.",
+          "그림 2곡에 연결했습니다.",
+          "Moment 2개를 더했습니다."
+        ],
+        "lib": [
+          ["MY RECORDS", []],
+          ["LIST A", ["Bunny A", "Sintel A"]]
+        ],
+        "db": {
+          "assets": [["image/png", 96]],
+          "links": ["custom", "default"]
+        },
+        "moments": ["carrot", "dragon"]
+      }
+    }
+  ]
+}

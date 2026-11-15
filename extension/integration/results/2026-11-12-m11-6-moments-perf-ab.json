@@ -1,0 +1,2265 @@
+{
+  "note": "M11-4 최종 빌드 vs M11-6 빌드, 같은 기기 · 같은 시각 번갈아 2회, 1440x900",
+  "runs": {
+    "perf-m11-4-r1-1440x900": {
+      "browser": "Chrome/157.0.8103.50",
+      "label": "m11-4-r1",
+      "viewport": "1440x900",
+      "cpuThrottle": 1,
+      "at": "2026-11-12T13:22:44.666Z",
+      "sizes": {
+        "1000": {
+          "songs": 200,
+          "open": {
+            "ms": 78.9,
+            "layout": 25.5,
+            "style": 5.5,
+            "script": 0.9
+          },
+          "nodesOpen": {
+            "panel": 454,
+            "page": 1886,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 73,
+            "page": 1505,
+            "rows": 6,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 4.9,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.2
+            },
+            {
+              "ms": 2.8,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.1
+            },
+            {
+              "ms": 3.5,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.1
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 14.6,
+              "layout": 5.5,
+              "style": 0.9,
+              "script": 0.1
+            },
+            {
+              "ms": 15.6,
+              "layout": 5.3,
+              "style": 0.8,
+              "script": 0.1
+            },
+            {
+              "ms": 18.4,
+              "layout": 7.8,
+              "style": 1.4,
+              "script": 0.5
+            }
+          ],
+          "nodesAll": {
+            "panel": 454,
+            "page": 1886,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 1898,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 29.2,
+              "layout": 7.8,
+              "style": 1.1,
+              "script": 0.1
+            },
+            {
+              "ms": 20.1,
+              "layout": 7.5,
+              "style": 1,
+              "script": 0.3
+            },
+            {
+              "ms": 19.9,
+              "layout": 5.7,
+              "style": 0.8,
+              "script": 0.1
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 11.6,
+                "layout": 2.1,
+                "style": 0.4,
+                "script": 0.9
+              },
+              {
+                "ms": 10.4,
+                "layout": 1.6,
+                "style": 0.2,
+                "script": 0.4
+              },
+              {
+                "ms": 7.3,
+                "layout": 1.3,
+                "style": 0.5,
+                "script": 0.7
+              }
+            ],
+            "close": [
+              {
+                "ms": 6.3,
+                "layout": 0.9,
+                "style": 0.1,
+                "script": 0.3
+              },
+              {
+                "ms": 6.2,
+                "layout": 0.5,
+                "style": 0.1,
+                "script": 0.2
+              },
+              {
+                "ms": 3.2,
+                "layout": 0.3,
+                "style": 0.1,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 83.3,
+              "layout": 34.3,
+              "style": 4.5,
+              "script": 0.5,
+              "nodes": {
+                "panel": 2455,
+                "page": 3887,
+                "rows": 164,
+                "heads": 103
+              },
+              "summary": "순간 164개 · 곡 103개"
+            },
+            {
+              "q": "곡 1",
+              "ms": 90.9,
+              "layout": 46.6,
+              "style": 3.8,
+              "script": 0.2,
+              "nodes": {
+                "panel": 1972,
+                "page": 3404,
+                "rows": 200,
+                "heads": 33
+              },
+              "summary": "순간 701개 · 곡 139개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 27.1,
+              "layout": 9.9,
+              "style": 2.8,
+              "script": 0.1,
+              "nodes": {
+                "panel": 712,
+                "page": 2144,
+                "rows": 37,
+                "heads": 33
+              },
+              "summary": "순간 37개 · 곡 33개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 19.5,
+              "layout": 5.4,
+              "style": 0.9,
+              "script": 0.1
+            },
+            {
+              "ms": 18,
+              "layout": 4.1,
+              "style": 0.5,
+              "script": 0.3
+            },
+            {
+              "ms": 17.2,
+              "layout": 5.7,
+              "style": 0.8,
+              "script": 0.2
+            }
+          ],
+          "showMore": {
+            "ms": 10.3,
+            "layout": 4,
+            "style": 0.7,
+            "script": 0.3
+          },
+          "nodesAfterMore": {
+            "panel": 698,
+            "page": 2130,
+            "rows": 25,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 405.2,
+              "layout": 3,
+              "style": 0.7,
+              "script": 0.3
+            },
+            {
+              "ms": 7.4,
+              "layout": 0.7,
+              "style": 0.2,
+              "script": 0.1
+            },
+            {
+              "ms": 6.7,
+              "layout": 1.1,
+              "style": 0.3,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 48.9,
+              "layout": 3.6,
+              "style": 0.7,
+              "script": 1.2
+            },
+            {
+              "ms": 42.3,
+              "layout": 1.7,
+              "style": 0.3,
+              "script": 0.4
+            },
+            {
+              "ms": 40.3,
+              "layout": 2.1,
+              "style": 0.2,
+              "script": 0.4
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 78.9,
+            "filterToCurrent": 3.5,
+            "filterToAll": 15.6,
+            "filterToRecent": 20.1,
+            "groupOpen": 10.4,
+            "groupClose": 6.2,
+            "search": 83.3,
+            "searchClear": 18,
+            "showMore": 10.3,
+            "editOpen": 7.4,
+            "editSave": 42.3,
+            "nodesOpen": {
+              "panel": 454,
+              "page": 1886,
+              "rows": 25,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 454,
+              "page": 1886,
+              "rows": 25,
+              "heads": 30
+            }
+          }
+        },
+        "5000": {
+          "songs": 1000,
+          "open": {
+            "ms": 95.4,
+            "layout": 8.3,
+            "style": 3,
+            "script": 0.2
+          },
+          "nodesOpen": {
+            "panel": 436,
+            "page": 4746,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 57,
+            "page": 4367,
+            "rows": 4,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 5.4,
+              "layout": 1.2,
+              "style": 0.3,
+              "script": 0.1
+            },
+            {
+              "ms": 7.3,
+              "layout": 1.3,
+              "style": 0.3,
+              "script": 0.1
+            },
+            {
+              "ms": 2.2,
+              "layout": 0.4,
+              "style": 0.1,
+              "script": 0
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 18.4,
+              "layout": 5.9,
+              "style": 1.1,
+              "script": 0.1
+            },
+            {
+              "ms": 17.8,
+              "layout": 5.9,
+              "style": 0.8,
+              "script": 0.1
+            },
+            {
+              "ms": 8.4,
+              "layout": 4,
+              "style": 0.6,
+              "script": 0
+            }
+          ],
+          "nodesAll": {
+            "panel": 436,
+            "page": 4746,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 4776,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 33,
+              "layout": 5.4,
+              "style": 0.8,
+              "script": 0.1
+            },
+            {
+              "ms": 19.5,
+              "layout": 9.6,
+              "style": 0.5,
+              "script": 0.3
+            },
+            {
+              "ms": 22.3,
+              "layout": 5.7,
+              "style": 1,
+              "script": 0.1
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 9.9,
+                "layout": 2,
+                "style": 0.3,
+                "script": 0.1
+              },
+              {
+                "ms": 6.8,
+                "layout": 2.1,
+                "style": 0.3,
+                "script": 0.1
+              },
+              {
+                "ms": 11.2,
+                "layout": 1.4,
+                "style": 1.9,
+                "script": 0.2
+              }
+            ],
+            "close": [
+              {
+                "ms": 2.3,
+                "layout": 0.2,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 5.1,
+                "layout": 0.5,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 3.6,
+                "layout": 0.4,
+                "style": 0.1,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 101.1,
+              "layout": 39.5,
+              "style": 5.5,
+              "script": 0.3,
+              "nodes": {
+                "panel": 2884,
+                "page": 7194,
+                "rows": 200,
+                "heads": 116
+              },
+              "summary": "순간 920개 · 곡 598개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "곡 1",
+              "ms": 73,
+              "layout": 25.1,
+              "style": 4.7,
+              "script": 0.2,
+              "nodes": {
+                "panel": 2026,
+                "page": 6336,
+                "rows": 200,
+                "heads": 35
+              },
+              "summary": "순간 2645개 · 곡 539개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 135.6,
+              "layout": 52.2,
+              "style": 10,
+              "script": 0.5,
+              "nodes": {
+                "panel": 2998,
+                "page": 7308,
+                "rows": 162,
+                "heads": 143
+              },
+              "summary": "순간 162개 · 곡 143개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 19.3,
+              "layout": 4.5,
+              "style": 0.8,
+              "script": 0.2
+            },
+            {
+              "ms": 17,
+              "layout": 3.4,
+              "style": 0.8,
+              "script": 0.5
+            },
+            {
+              "ms": 31.5,
+              "layout": 7.1,
+              "style": 1.1,
+              "script": 0.5
+            }
+          ],
+          "showMore": {
+            "ms": 18,
+            "layout": 6.1,
+            "style": 1.3,
+            "script": 0.6
+          },
+          "nodesAfterMore": {
+            "panel": 675,
+            "page": 4985,
+            "rows": 21,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 10.5,
+              "layout": 0.7,
+              "style": 0.6,
+              "script": 0.2
+            },
+            {
+              "ms": 7.1,
+              "layout": 0.7,
+              "style": 0.2,
+              "script": 0.1
+            },
+            {
+              "ms": 8.6,
+              "layout": 0.9,
+              "style": 0.2,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 157.4,
+              "layout": 1.2,
+              "style": 0.6,
+              "script": 0.7
+            },
+            {
+              "ms": 162.9,
+              "layout": 1.6,
+              "style": 0.3,
+              "script": 0.6
+            },
+            {
+              "ms": 156,
+              "layout": 1.4,
+              "style": 0.3,
+              "script": 0.5
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 95.4,
+            "filterToCurrent": 5.4,
+            "filterToAll": 17.8,
+            "filterToRecent": 22.3,
+            "groupOpen": 9.9,
+            "groupClose": 3.6,
+            "search": 101.1,
+            "searchClear": 19.3,
+            "showMore": 18,
+            "editOpen": 8.6,
+            "editSave": 157.4,
+            "nodesOpen": {
+              "panel": 436,
+              "page": 4746,
+              "rows": 21,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 436,
+              "page": 4746,
+              "rows": 21,
+              "heads": 30
+            }
+          }
+        }
+      }
+    },
+    "perf-m11-4-r2-1440x900": {
+      "browser": "Chrome/157.0.8103.50",
+      "label": "m11-4-r2",
+      "viewport": "1440x900",
+      "cpuThrottle": 1,
+      "at": "2026-11-12T13:25:13.895Z",
+      "sizes": {
+        "1000": {
+          "songs": 200,
+          "open": {
+            "ms": 89.1,
+            "layout": 28,
+            "style": 3.3,
+            "script": 1
+          },
+          "nodesOpen": {
+            "panel": 454,
+            "page": 1886,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 73,
+            "page": 1505,
+            "rows": 6,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 6.7,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.1
+            },
+            {
+              "ms": 3.8,
+              "layout": 0.1,
+              "style": 0.1,
+              "script": 0
+            },
+            {
+              "ms": 3.3,
+              "layout": 0.1,
+              "style": 0.1,
+              "script": 0.1
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 7.4,
+              "layout": 2.5,
+              "style": 0.4,
+              "script": 0.2
+            },
+            {
+              "ms": 7.7,
+              "layout": 2.5,
+              "style": 0.5,
+              "script": 0
+            },
+            {
+              "ms": 17.3,
+              "layout": 7.2,
+              "style": 0.6,
+              "script": 0.4
+            }
+          ],
+          "nodesAll": {
+            "panel": 454,
+            "page": 1886,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 1898,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 26.6,
+              "layout": 5,
+              "style": 0.8,
+              "script": 0.1
+            },
+            {
+              "ms": 8.4,
+              "layout": 2.7,
+              "style": 0.8,
+              "script": 0
+            },
+            {
+              "ms": 6.9,
+              "layout": 2.1,
+              "style": 0.4,
+              "script": 0
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 3.3,
+                "layout": 0.6,
+                "style": 0.2,
+                "script": 0.2
+              },
+              {
+                "ms": 3.4,
+                "layout": 0.4,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 2.6,
+                "layout": 0.5,
+                "style": 0.1,
+                "script": 0.1
+              }
+            ],
+            "close": [
+              {
+                "ms": 3.1,
+                "layout": 0.3,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 4.5,
+                "layout": 0.3,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 2.2,
+                "layout": 0.2,
+                "style": 0,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 83.9,
+              "layout": 36,
+              "style": 4.1,
+              "script": 0.4,
+              "nodes": {
+                "panel": 2455,
+                "page": 3887,
+                "rows": 164,
+                "heads": 103
+              },
+              "summary": "순간 164개 · 곡 103개"
+            },
+            {
+              "q": "곡 1",
+              "ms": 70.9,
+              "layout": 50.6,
+              "style": 2.3,
+              "script": 0.2,
+              "nodes": {
+                "panel": 1972,
+                "page": 3404,
+                "rows": 200,
+                "heads": 33
+              },
+              "summary": "순간 701개 · 곡 139개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 27.9,
+              "layout": 10.4,
+              "style": 2,
+              "script": 0.5,
+              "nodes": {
+                "panel": 712,
+                "page": 2144,
+                "rows": 37,
+                "heads": 33
+              },
+              "summary": "순간 37개 · 곡 33개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 18.5,
+              "layout": 6.7,
+              "style": 0.6,
+              "script": 0.1
+            },
+            {
+              "ms": 13.5,
+              "layout": 3.1,
+              "style": 1,
+              "script": 0.3
+            },
+            {
+              "ms": 17.7,
+              "layout": 6.5,
+              "style": 0.9,
+              "script": 0.2
+            }
+          ],
+          "showMore": {
+            "ms": 10.6,
+            "layout": 3.5,
+            "style": 0.5,
+            "script": 0.2
+          },
+          "nodesAfterMore": {
+            "panel": 698,
+            "page": 2130,
+            "rows": 25,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 459.7,
+              "layout": 2.7,
+              "style": 0.6,
+              "script": 0.4
+            },
+            {
+              "ms": 7.7,
+              "layout": 1.3,
+              "style": 0.4,
+              "script": 0.1
+            },
+            {
+              "ms": 9.4,
+              "layout": 1.7,
+              "style": 0.3,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 71.9,
+              "layout": 5.1,
+              "style": 1.3,
+              "script": 2.2
+            },
+            {
+              "ms": 61,
+              "layout": 1.9,
+              "style": 0.4,
+              "script": 0.7
+            },
+            {
+              "ms": 55.6,
+              "layout": 3.5,
+              "style": 0.3,
+              "script": 0.9
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 89.1,
+            "filterToCurrent": 3.8,
+            "filterToAll": 7.7,
+            "filterToRecent": 8.4,
+            "groupOpen": 3.3,
+            "groupClose": 3.1,
+            "search": 70.9,
+            "searchClear": 17.7,
+            "showMore": 10.6,
+            "editOpen": 9.4,
+            "editSave": 61,
+            "nodesOpen": {
+              "panel": 454,
+              "page": 1886,
+              "rows": 25,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 454,
+              "page": 1886,
+              "rows": 25,
+              "heads": 30
+            }
+          }
+        },
+        "5000": {
+          "songs": 1000,
+          "open": {
+            "ms": 89.6,
+            "layout": 7.1,
+            "style": 2.9,
+            "script": 0.3
+          },
+          "nodesOpen": {
+            "panel": 436,
+            "page": 4746,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 57,
+            "page": 4367,
+            "rows": 4,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 10.7,
+              "layout": 1.4,
+              "style": 0.5,
+              "script": 0.4
+            },
+            {
+              "ms": 7.9,
+              "layout": 1.5,
+              "style": 0.4,
+              "script": 0.2
+            },
+            {
+              "ms": 2.6,
+              "layout": 0.6,
+              "style": 0.1,
+              "script": 0
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 24.1,
+              "layout": 9.4,
+              "style": 1.4,
+              "script": 0.1
+            },
+            {
+              "ms": 25.1,
+              "layout": 10.2,
+              "style": 1.4,
+              "script": 0.1
+            },
+            {
+              "ms": 20.9,
+              "layout": 8,
+              "style": 2,
+              "script": 0.1
+            }
+          ],
+          "nodesAll": {
+            "panel": 436,
+            "page": 4746,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 4776,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 35,
+              "layout": 7.1,
+              "style": 1.1,
+              "script": 0.1
+            },
+            {
+              "ms": 10.1,
+              "layout": 2.4,
+              "style": 0.5,
+              "script": 0
+            },
+            {
+              "ms": 16.8,
+              "layout": 6.3,
+              "style": 0.7,
+              "script": 0
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 7.1,
+                "layout": 0.8,
+                "style": 0.3,
+                "script": 0.1
+              },
+              {
+                "ms": 3,
+                "layout": 0.7,
+                "style": 0.2,
+                "script": 0
+              },
+              {
+                "ms": 3.1,
+                "layout": 0.6,
+                "style": 0.2,
+                "script": 0.1
+              }
+            ],
+            "close": [
+              {
+                "ms": 2.3,
+                "layout": 0.2,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 2,
+                "layout": 0.2,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 2,
+                "layout": 0.2,
+                "style": 0,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 93.9,
+              "layout": 34.3,
+              "style": 6.2,
+              "script": 0.3,
+              "nodes": {
+                "panel": 2884,
+                "page": 7194,
+                "rows": 200,
+                "heads": 116
+              },
+              "summary": "순간 920개 · 곡 598개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "곡 1",
+              "ms": 64.8,
+              "layout": 21.6,
+              "style": 2.9,
+              "script": 0.1,
+              "nodes": {
+                "panel": 2026,
+                "page": 6336,
+                "rows": 200,
+                "heads": 35
+              },
+              "summary": "순간 2645개 · 곡 539개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 84.2,
+              "layout": 35.9,
+              "style": 6.7,
+              "script": 0.3,
+              "nodes": {
+                "panel": 2998,
+                "page": 7308,
+                "rows": 162,
+                "heads": 143
+              },
+              "summary": "순간 162개 · 곡 143개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 20,
+              "layout": 5.5,
+              "style": 0.8,
+              "script": 0.2
+            },
+            {
+              "ms": 14.8,
+              "layout": 3.2,
+              "style": 0.9,
+              "script": 0.2
+            },
+            {
+              "ms": 18,
+              "layout": 4.8,
+              "style": 1.2,
+              "script": 0.1
+            }
+          ],
+          "showMore": {
+            "ms": 9.7,
+            "layout": 3.2,
+            "style": 0.9,
+            "script": 0.1
+          },
+          "nodesAfterMore": {
+            "panel": 675,
+            "page": 4985,
+            "rows": 21,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 8.9,
+              "layout": 0.6,
+              "style": 0.5,
+              "script": 0.3
+            },
+            {
+              "ms": 5.9,
+              "layout": 0.5,
+              "style": 0.1,
+              "script": 0
+            },
+            {
+              "ms": 7.6,
+              "layout": 1.9,
+              "style": 0.2,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 156.2,
+              "layout": 2.4,
+              "style": 0.7,
+              "script": 0.6
+            },
+            {
+              "ms": 151.8,
+              "layout": 1,
+              "style": 0.2,
+              "script": 0.7
+            },
+            {
+              "ms": 140.6,
+              "layout": 2.4,
+              "style": 0.3,
+              "script": 0.8
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 89.6,
+            "filterToCurrent": 7.9,
+            "filterToAll": 24.1,
+            "filterToRecent": 16.8,
+            "groupOpen": 3.1,
+            "groupClose": 2,
+            "search": 84.2,
+            "searchClear": 18,
+            "showMore": 9.7,
+            "editOpen": 7.6,
+            "editSave": 151.8,
+            "nodesOpen": {
+              "panel": 436,
+              "page": 4746,
+              "rows": 21,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 436,
+              "page": 4746,
+              "rows": 21,
+              "heads": 30
+            }
+          }
+        }
+      }
+    },
+    "perf-m11-6-r1-1440x900": {
+      "browser": "Chrome/157.0.8103.50",
+      "label": "m11-6-r1",
+      "viewport": "1440x900",
+      "cpuThrottle": 1,
+      "at": "2026-11-12T13:23:59.495Z",
+      "sizes": {
+        "1000": {
+          "songs": 200,
+          "open": {
+            "ms": 81.2,
+            "layout": 28.1,
+            "style": 4.2,
+            "script": 0.9
+          },
+          "nodesOpen": {
+            "panel": 454,
+            "page": 1887,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 73,
+            "page": 1506,
+            "rows": 6,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 8.1,
+              "layout": 0.5,
+              "style": 0.1,
+              "script": 0.5
+            },
+            {
+              "ms": 4.8,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.1
+            },
+            {
+              "ms": 4.1,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.1
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 23.5,
+              "layout": 8,
+              "style": 1.7,
+              "script": 0.6
+            },
+            {
+              "ms": 22.1,
+              "layout": 8.5,
+              "style": 1,
+              "script": 0.1
+            },
+            {
+              "ms": 14.4,
+              "layout": 5.4,
+              "style": 0.7,
+              "script": 0.3
+            }
+          ],
+          "nodesAll": {
+            "panel": 454,
+            "page": 1887,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 1899,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 24.2,
+              "layout": 6.1,
+              "style": 1.1,
+              "script": 0.1
+            },
+            {
+              "ms": 18.7,
+              "layout": 5.7,
+              "style": 1.7,
+              "script": 0.1
+            },
+            {
+              "ms": 18.5,
+              "layout": 6.1,
+              "style": 1,
+              "script": 0.1
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 7.8,
+                "layout": 1.7,
+                "style": 0.3,
+                "script": 0.3
+              },
+              {
+                "ms": 5.8,
+                "layout": 0.9,
+                "style": 0.2,
+                "script": 0.1
+              },
+              {
+                "ms": 3.2,
+                "layout": 0.4,
+                "style": 0.1,
+                "script": 0.2
+              }
+            ],
+            "close": [
+              {
+                "ms": 6,
+                "layout": 0.3,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 4.9,
+                "layout": 0.3,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 4.4,
+                "layout": 0.5,
+                "style": 0.1,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 92.1,
+              "layout": 39.7,
+              "style": 5.7,
+              "script": 0.6,
+              "nodes": {
+                "panel": 2455,
+                "page": 3888,
+                "rows": 164,
+                "heads": 103
+              },
+              "summary": "순간 164개 · 곡 103개"
+            },
+            {
+              "q": "곡 1",
+              "ms": 82.4,
+              "layout": 46.9,
+              "style": 4.5,
+              "script": 0.1,
+              "nodes": {
+                "panel": 1972,
+                "page": 3405,
+                "rows": 200,
+                "heads": 33
+              },
+              "summary": "순간 701개 · 곡 139개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 28.5,
+              "layout": 12.2,
+              "style": 1.5,
+              "script": 0.4,
+              "nodes": {
+                "panel": 712,
+                "page": 2145,
+                "rows": 37,
+                "heads": 33
+              },
+              "summary": "순간 37개 · 곡 33개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 11.4,
+              "layout": 4.4,
+              "style": 0.4,
+              "script": 0.1
+            },
+            {
+              "ms": 17.2,
+              "layout": 5,
+              "style": 0.8,
+              "script": 0.2
+            },
+            {
+              "ms": 18.7,
+              "layout": 6.1,
+              "style": 1.2,
+              "script": 0.2
+            }
+          ],
+          "showMore": {
+            "ms": 13.3,
+            "layout": 6.5,
+            "style": 1.3,
+            "script": 0.2
+          },
+          "nodesAfterMore": {
+            "panel": 698,
+            "page": 2131,
+            "rows": 25,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 352.6,
+              "layout": 2.3,
+              "style": 0.6,
+              "script": 0.2
+            },
+            {
+              "ms": 6.6,
+              "layout": 0.8,
+              "style": 0.2,
+              "script": 0.1
+            },
+            {
+              "ms": 7.5,
+              "layout": 0.7,
+              "style": 0.2,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 45.7,
+              "layout": 3,
+              "style": 0.6,
+              "script": 1.2
+            },
+            {
+              "ms": 43.5,
+              "layout": 2.4,
+              "style": 0.2,
+              "script": 0.4
+            },
+            {
+              "ms": 40.5,
+              "layout": 1.7,
+              "style": 0.3,
+              "script": 0.5
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 81.2,
+            "filterToCurrent": 4.8,
+            "filterToAll": 22.1,
+            "filterToRecent": 18.7,
+            "groupOpen": 5.8,
+            "groupClose": 4.9,
+            "search": 82.4,
+            "searchClear": 17.2,
+            "showMore": 13.3,
+            "editOpen": 7.5,
+            "editSave": 43.5,
+            "nodesOpen": {
+              "panel": 454,
+              "page": 1887,
+              "rows": 25,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 454,
+              "page": 1887,
+              "rows": 25,
+              "heads": 30
+            }
+          }
+        },
+        "5000": {
+          "songs": 1000,
+          "open": {
+            "ms": 89.2,
+            "layout": 6,
+            "style": 2.7,
+            "script": 0.3
+          },
+          "nodesOpen": {
+            "panel": 436,
+            "page": 4747,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 57,
+            "page": 4368,
+            "rows": 4,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 6.7,
+              "layout": 1.9,
+              "style": 0.2,
+              "script": 0.1
+            },
+            {
+              "ms": 6.1,
+              "layout": 1.5,
+              "style": 0.3,
+              "script": 0.1
+            },
+            {
+              "ms": 6.6,
+              "layout": 1.3,
+              "style": 0.4,
+              "script": 0.1
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 17.3,
+              "layout": 6.6,
+              "style": 1.1,
+              "script": 0.1
+            },
+            {
+              "ms": 18.4,
+              "layout": 5.8,
+              "style": 1,
+              "script": 0.1
+            },
+            {
+              "ms": 9.2,
+              "layout": 4.2,
+              "style": 0.5,
+              "script": 0
+            }
+          ],
+          "nodesAll": {
+            "panel": 436,
+            "page": 4747,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 4777,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 26.4,
+              "layout": 6,
+              "style": 0.8,
+              "script": 0
+            },
+            {
+              "ms": 22,
+              "layout": 4.5,
+              "style": 0.8,
+              "script": 0.1
+            },
+            {
+              "ms": 41.5,
+              "layout": 11.5,
+              "style": 2,
+              "script": 0.4
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 12.9,
+                "layout": 1.5,
+                "style": 0.3,
+                "script": 0.4
+              },
+              {
+                "ms": 10.3,
+                "layout": 1.6,
+                "style": 0.5,
+                "script": 0.1
+              },
+              {
+                "ms": 8.7,
+                "layout": 2.5,
+                "style": 0.2,
+                "script": 0.2
+              }
+            ],
+            "close": [
+              {
+                "ms": 5.1,
+                "layout": 0.6,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 4.2,
+                "layout": 0.3,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 3.7,
+                "layout": 0.4,
+                "style": 0.1,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 98.7,
+              "layout": 35.4,
+              "style": 6.7,
+              "script": 0.4,
+              "nodes": {
+                "panel": 2884,
+                "page": 7195,
+                "rows": 200,
+                "heads": 116
+              },
+              "summary": "순간 920개 · 곡 598개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "곡 1",
+              "ms": 57,
+              "layout": 18.1,
+              "style": 3.6,
+              "script": 0.1,
+              "nodes": {
+                "panel": 2026,
+                "page": 6337,
+                "rows": 200,
+                "heads": 35
+              },
+              "summary": "순간 2645개 · 곡 539개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 94.7,
+              "layout": 36.6,
+              "style": 6.7,
+              "script": 0.4,
+              "nodes": {
+                "panel": 2998,
+                "page": 7309,
+                "rows": 162,
+                "heads": 143
+              },
+              "summary": "순간 162개 · 곡 143개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 19.4,
+              "layout": 4.4,
+              "style": 0.7,
+              "script": 0.1
+            },
+            {
+              "ms": 13.7,
+              "layout": 3.2,
+              "style": 0.8,
+              "script": 0.1
+            },
+            {
+              "ms": 19.2,
+              "layout": 6.4,
+              "style": 1.8,
+              "script": 0.2
+            }
+          ],
+          "showMore": {
+            "ms": 13.7,
+            "layout": 6.5,
+            "style": 0.5,
+            "script": 0.1
+          },
+          "nodesAfterMore": {
+            "panel": 675,
+            "page": 4986,
+            "rows": 21,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 7.6,
+              "layout": 0.6,
+              "style": 0.5,
+              "script": 0.2
+            },
+            {
+              "ms": 7.6,
+              "layout": 0.7,
+              "style": 0.2,
+              "script": 0.1
+            },
+            {
+              "ms": 8.9,
+              "layout": 1.1,
+              "style": 0.2,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 156.8,
+              "layout": 3.1,
+              "style": 0.6,
+              "script": 0.6
+            },
+            {
+              "ms": 156.7,
+              "layout": 1.3,
+              "style": 0.2,
+              "script": 0.5
+            },
+            {
+              "ms": 164,
+              "layout": 1.6,
+              "style": 0.2,
+              "script": 0.5
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 89.2,
+            "filterToCurrent": 6.6,
+            "filterToAll": 17.3,
+            "filterToRecent": 26.4,
+            "groupOpen": 10.3,
+            "groupClose": 4.2,
+            "search": 94.7,
+            "searchClear": 19.2,
+            "showMore": 13.7,
+            "editOpen": 7.6,
+            "editSave": 156.8,
+            "nodesOpen": {
+              "panel": 436,
+              "page": 4747,
+              "rows": 21,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 436,
+              "page": 4747,
+              "rows": 21,
+              "heads": 30
+            }
+          }
+        }
+      }
+    },
+    "perf-m11-6-r2-1440x900": {
+      "browser": "Chrome/157.0.8103.50",
+      "label": "m11-6-r2",
+      "viewport": "1440x900",
+      "cpuThrottle": 1,
+      "at": "2026-11-12T13:26:27.820Z",
+      "sizes": {
+        "1000": {
+          "songs": 200,
+          "open": {
+            "ms": 75.1,
+            "layout": 27.4,
+            "style": 4.2,
+            "script": 0.7
+          },
+          "nodesOpen": {
+            "panel": 454,
+            "page": 1887,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 73,
+            "page": 1506,
+            "rows": 6,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 5.5,
+              "layout": 0.3,
+              "style": 0.1,
+              "script": 0.2
+            },
+            {
+              "ms": 2.8,
+              "layout": 0.1,
+              "style": 0.1,
+              "script": 0
+            },
+            {
+              "ms": 2.8,
+              "layout": 0.2,
+              "style": 0.1,
+              "script": 0.1
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 17.7,
+              "layout": 6,
+              "style": 1.5,
+              "script": 0.1
+            },
+            {
+              "ms": 14.3,
+              "layout": 4.7,
+              "style": 1.3,
+              "script": 0.1
+            },
+            {
+              "ms": 15.3,
+              "layout": 5.9,
+              "style": 0.9,
+              "script": 0.1
+            }
+          ],
+          "nodesAll": {
+            "panel": 454,
+            "page": 1887,
+            "rows": 25,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 1899,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 27,
+              "layout": 6.6,
+              "style": 1.5,
+              "script": 0.1
+            },
+            {
+              "ms": 22.4,
+              "layout": 8.6,
+              "style": 1.5,
+              "script": 0.1
+            },
+            {
+              "ms": 20.2,
+              "layout": 6.1,
+              "style": 1.8,
+              "script": 0.2
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 7.9,
+                "layout": 1.5,
+                "style": 0.3,
+                "script": 0.3
+              },
+              {
+                "ms": 5.7,
+                "layout": 1.1,
+                "style": 0.2,
+                "script": 0.2
+              },
+              {
+                "ms": 11.1,
+                "layout": 2,
+                "style": 0.5,
+                "script": 0.5
+              }
+            ],
+            "close": [
+              {
+                "ms": 7.2,
+                "layout": 0.2,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 3.7,
+                "layout": 0.4,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 7.3,
+                "layout": 0.6,
+                "style": 0.1,
+                "script": 0.3
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 146,
+              "layout": 57,
+              "style": 10.5,
+              "script": 1.5,
+              "nodes": {
+                "panel": 2455,
+                "page": 3888,
+                "rows": 164,
+                "heads": 103
+              },
+              "summary": "순간 164개 · 곡 103개"
+            },
+            {
+              "q": "곡 1",
+              "ms": 94.3,
+              "layout": 47.6,
+              "style": 3.7,
+              "script": 0.2,
+              "nodes": {
+                "panel": 1972,
+                "page": 3405,
+                "rows": 200,
+                "heads": 33
+              },
+              "summary": "순간 701개 · 곡 139개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 27.3,
+              "layout": 11.4,
+              "style": 2.1,
+              "script": 0.3,
+              "nodes": {
+                "panel": 712,
+                "page": 2145,
+                "rows": 37,
+                "heads": 33
+              },
+              "summary": "순간 37개 · 곡 33개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 37.2,
+              "layout": 9.6,
+              "style": 1.2,
+              "script": 0.3
+            },
+            {
+              "ms": 14.6,
+              "layout": 3.5,
+              "style": 0.5,
+              "script": 0.3
+            },
+            {
+              "ms": 14.5,
+              "layout": 4.5,
+              "style": 1,
+              "script": 0.2
+            }
+          ],
+          "showMore": {
+            "ms": 10.1,
+            "layout": 3.2,
+            "style": 0.7,
+            "script": 0.3
+          },
+          "nodesAfterMore": {
+            "panel": 698,
+            "page": 2131,
+            "rows": 25,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 368.2,
+              "layout": 2.3,
+              "style": 0.6,
+              "script": 0.4
+            },
+            {
+              "ms": 6.6,
+              "layout": 0.8,
+              "style": 0.2,
+              "script": 0.1
+            },
+            {
+              "ms": 6.3,
+              "layout": 1.1,
+              "style": 0.2,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 46.7,
+              "layout": 4.7,
+              "style": 0.8,
+              "script": 1.1
+            },
+            {
+              "ms": 45.3,
+              "layout": 1.6,
+              "style": 0.4,
+              "script": 0.4
+            },
+            {
+              "ms": 39.4,
+              "layout": 3,
+              "style": 0.3,
+              "script": 0.7
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 75.1,
+            "filterToCurrent": 2.8,
+            "filterToAll": 15.3,
+            "filterToRecent": 22.4,
+            "groupOpen": 7.9,
+            "groupClose": 7.2,
+            "search": 94.3,
+            "searchClear": 14.6,
+            "showMore": 10.1,
+            "editOpen": 6.6,
+            "editSave": 45.3,
+            "nodesOpen": {
+              "panel": 454,
+              "page": 1887,
+              "rows": 25,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 454,
+              "page": 1887,
+              "rows": 25,
+              "heads": 30
+            }
+          }
+        },
+        "5000": {
+          "songs": 1000,
+          "open": {
+            "ms": 95.4,
+            "layout": 7.2,
+            "style": 4.3,
+            "script": 0.2
+          },
+          "nodesOpen": {
+            "panel": 436,
+            "page": 4747,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesCurrent": {
+            "panel": 57,
+            "page": 4368,
+            "rows": 4,
+            "heads": 1
+          },
+          "filterToCurrent": [
+            {
+              "ms": 7,
+              "layout": 0.9,
+              "style": 0.3,
+              "script": 0.3
+            },
+            {
+              "ms": 6.3,
+              "layout": 1.6,
+              "style": 0.4,
+              "script": 0.1
+            },
+            {
+              "ms": 6,
+              "layout": 1.3,
+              "style": 0.4,
+              "script": 0.1
+            }
+          ],
+          "filterToAll": [
+            {
+              "ms": 20.3,
+              "layout": 6.8,
+              "style": 1.2,
+              "script": 0.1
+            },
+            {
+              "ms": 18.7,
+              "layout": 5.6,
+              "style": 1,
+              "script": 0.1
+            },
+            {
+              "ms": 16,
+              "layout": 5.3,
+              "style": 1,
+              "script": 0.1
+            }
+          ],
+          "nodesAll": {
+            "panel": 436,
+            "page": 4747,
+            "rows": 21,
+            "heads": 30
+          },
+          "nodesRecent": {
+            "panel": 466,
+            "page": 4777,
+            "rows": 50,
+            "heads": 0
+          },
+          "filterToRecent": [
+            {
+              "ms": 31,
+              "layout": 5.8,
+              "style": 0.9,
+              "script": 0.1
+            },
+            {
+              "ms": 20.9,
+              "layout": 6.3,
+              "style": 0.7,
+              "script": 0.1
+            },
+            {
+              "ms": 22.1,
+              "layout": 7.9,
+              "style": 1.7,
+              "script": 0.1
+            }
+          ],
+          "groupToggle": {
+            "open": [
+              {
+                "ms": 7.7,
+                "layout": 1.4,
+                "style": 0.3,
+                "script": 0.1
+              },
+              {
+                "ms": 6.8,
+                "layout": 1.5,
+                "style": 0.3,
+                "script": 0.1
+              },
+              {
+                "ms": 10.3,
+                "layout": 2.8,
+                "style": 0.5,
+                "script": 0.1
+              }
+            ],
+            "close": [
+              {
+                "ms": 4.1,
+                "layout": 0.3,
+                "style": 0,
+                "script": 0.1
+              },
+              {
+                "ms": 6.1,
+                "layout": 0.3,
+                "style": 0.1,
+                "script": 0.1
+              },
+              {
+                "ms": 4.2,
+                "layout": 0.3,
+                "style": 0,
+                "script": 0.1
+              }
+            ]
+          },
+          "search": [
+            {
+              "q": "후렴",
+              "ms": 94.7,
+              "layout": 32.3,
+              "style": 6.7,
+              "script": 0.3,
+              "nodes": {
+                "panel": 2884,
+                "page": 7195,
+                "rows": 200,
+                "heads": 116
+              },
+              "summary": "순간 920개 · 곡 598개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "곡 1",
+              "ms": 59.7,
+              "layout": 20.1,
+              "style": 4.3,
+              "script": 0.2,
+              "nodes": {
+                "panel": 2026,
+                "page": 6337,
+                "rows": 200,
+                "heads": 35
+              },
+              "summary": "순간 2645개 · 곡 539개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요."
+            },
+            {
+              "q": "소름 박자",
+              "ms": 90.9,
+              "layout": 34.9,
+              "style": 6.8,
+              "script": 0.3,
+              "nodes": {
+                "panel": 2998,
+                "page": 7309,
+                "rows": 162,
+                "heads": 143
+              },
+              "summary": "순간 162개 · 곡 143개"
+            }
+          ],
+          "searchClear": [
+            {
+              "ms": 20.4,
+              "layout": 4.5,
+              "style": 0.6,
+              "script": 0.2
+            },
+            {
+              "ms": 15.2,
+              "layout": 3.7,
+              "style": 0.9,
+              "script": 0.1
+            },
+            {
+              "ms": 23.7,
+              "layout": 5.9,
+              "style": 1.6,
+              "script": 0.2
+            }
+          ],
+          "showMore": {
+            "ms": 15.5,
+            "layout": 6.7,
+            "style": 0.6,
+            "script": 0.1
+          },
+          "nodesAfterMore": {
+            "panel": 675,
+            "page": 4986,
+            "rows": 21,
+            "heads": 60
+          },
+          "editOpen": [
+            {
+              "ms": 17.4,
+              "layout": 1.7,
+              "style": 1.2,
+              "script": 0.4
+            },
+            {
+              "ms": 13.8,
+              "layout": 2.4,
+              "style": 0.8,
+              "script": 0.3
+            },
+            {
+              "ms": 6.9,
+              "layout": 1,
+              "style": 0.2,
+              "script": 0.1
+            }
+          ],
+          "editSave": [
+            {
+              "ms": 267.9,
+              "layout": 3,
+              "style": 1.3,
+              "script": 1.5
+            },
+            {
+              "ms": 208.3,
+              "layout": 3.8,
+              "style": 0.3,
+              "script": 0.9
+            },
+            {
+              "ms": 139.5,
+              "layout": 1.7,
+              "style": 0.3,
+              "script": 0.4
+            }
+          ],
+          "persisted": 3,
+          "iframeSame": true,
+          "summary": {
+            "open": 95.4,
+            "filterToCurrent": 6.3,
+            "filterToAll": 18.7,
+            "filterToRecent": 22.1,
+            "groupOpen": 7.7,
+            "groupClose": 4.2,
+            "search": 90.9,
+            "searchClear": 20.4,
+            "showMore": 15.5,
+            "editOpen": 13.8,
+            "editSave": 208.3,
+            "nodesOpen": {
+              "panel": 436,
+              "page": 4747,
+              "rows": 21,
+              "heads": 30
+            },
+            "nodesAll": {
+              "panel": 436,
+              "page": 4747,
+              "rows": 21,
+              "heads": 30
+            }
+          }
+        }
+      }
+    }
+  }
+}

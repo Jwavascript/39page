@@ -1,254 +1,245 @@
 <script setup lang="ts">
 /**
- * 영상별로 묶은 Moment 목록 (M9-4, F14 · F16).
+ * 보관함의 Moment 목록 — 영상별 묶음(접기 · 펼치기) 또는 최근 순 평면 목록 (M9-4 → M11-4).
  *
- * **표현 컴포넌트다.** store 도 코디네이터도 모른다. 묶음을 props 로 받고,
- * 재생·삭제는 이벤트로 올린다 (`AGENTS.md` 규칙 3). `TrackList` 와
- * 같은 구조다 — 같은 앱의 같은 종류의 행이 같은 방식으로 움직인다.
+ * **표현 컴포넌트다.** store 도 코디네이터도 모른다. 무엇을 그릴지(`sections`)는
+ * `useMomentsArchive` 가 정하고, 이 컴포넌트는 그리고 누름을 이벤트로 올린다 (`AGENTS.md` 규칙 3).
  *
- * 메모 저장만 **결과를 기다리는 함수**(`saveNote`)로 받는다 (M10-3 안정화). 저장은
- * 탭 간 잠금 안에서 끝나고 거절될 수 있다(`conflict` · `busy`) — 그때 폼을 닫으면
- * 쓴 메모가 사라진다. 결과가 `true` 일 때만 닫는다.
- *
- * 삭제 확인은 **여기서** 받는다. 확인된 뒤에만 `remove` 를 올린다. 사용자
- * 데이터를 지우는 동작이므로 한 번 더 묻는다 (F16).
- *
- * 메모는 **일반 텍스트**로만 그린다. 보간(`{{ }}`)만 쓰고 HTML 로 해석하지
- * 않는다 — 사용자가 `<b>` 를 쓰면 `<b>` 가 보인다.
+ * - 묶음 머리는 **접기 단추**다 (`aria-expanded` · `aria-controls`, 제목 수준 4). 접힌 묶음은 줄을
+ *   그리지 않는다 — 1,000 · 5,000개에서 DOM 이 데이터 크기를 따라 자라지 않게 (M9-6).
+ * - 머리에 그 영상이 든 **목록**을 적고 누르면 음악 탭의 그 목록 · 그 곡으로 간다 (§5-4). 없으면
+ *   "목록에 없음" — Moment 는 라이브러리와 독립이라 그대로 남고 재생된다 (ADR 0019).
+ * - 줄 하나하나는 `MomentRow` 다. 어느 줄이 관리 · 편집 · 삭제 확인을 펼쳤는지는 **한 번에 하나**이고
+ *   여기서 정한다. 펼침이 사라지면 포커스를 갈 곳으로 옮긴다.
  */
 import { nextTick, ref } from 'vue'
 
-import { firstLine, formatMomentTime, type MomentGroup } from './momentsView'
+import MomentRow, { type MomentRowMode } from './MomentRow.vue'
+import type { ArchiveSection } from './useMomentsArchive'
+import { highlight } from './momentsSearch'
+
+/** 머리에 이름을 적는 목록 수. 더 있으면 "외 N" 으로 줄인다. */
+const MAX_LIST_LINKS = 3
 
 const props = defineProps<{
-  groups: readonly MomentGroup[]
-  /** 지금 재생 중인 영상. 그 묶음을 강조한다. */
-  currentVideoId: string | null
+  sections: readonly ArchiveSection[]
+  terms: readonly string[]
   maxNoteLength: number
-  /** 메모를 저장한다. 폼을 닫아도 되면 `true` — 거절되면 `false` 이고 쓴 메모를 지킨다. */
   saveNote: (momentId: string, note: string) => Promise<boolean>
+  /** DOM id 앞머리. */
+  idPrefix?: string
+  /** 방금 저장한 순간 (M11-7C) — 그 줄을 강조하고, 칸 안에서 보이게 한다. */
+  highlightId?: string | null
 }>()
 
 const emit = defineEmits<{
   play: [momentId: string]
   remove: [momentId: string]
+  toggle: [videoId: string]
+  'more-rows': [videoId: string]
+  'open-list': [playlistId: string, videoId: string]
+  /** 지운 뒤 목록에 포커스를 둘 곳이 없다 — 부모가 정한다(검색란 등). */
+  'focus-out': []
 }>()
 
-/** 메모 저장을 기다리는 중 — 두 번 저장되지 않게 버튼을 끈다. */
-const isSavingNote = ref(false)
+const prefix = (): string => props.idPrefix ?? 'moment'
 
-/** 메모를 고치는 중인 Moment. 한 번에 하나만 열린다. */
-const editingId = ref<string | null>(null)
-const draftNote = ref('')
-const editError = ref('')
+/** 펼친 줄 하나와 그 펼침의 종류. */
+const active = ref<{ id: string; mode: Exclude<MomentRowMode, 'idle'> } | null>(null)
 
-/** 삭제 확인 중인 Moment. `confirm()` 대신 그 줄 바로 아래에서 묻는다. */
-const pendingRemoveId = ref<string | null>(null)
+function modeOf(momentId: string): MomentRowMode {
+  return active.value?.id === momentId ? active.value.mode : 'idle'
+}
 
-/**
- * 목록 루트. 포커스를 옮길 때만 쓴다. `v-for` 안의 `ref` 는 배열이 되므로
- * 루트에서 찾는다 (`TrackList` 와 같은 이유).
- */
+/** 목록 루트. `v-for` 안의 `ref` 는 배열이 되므로 루트에서 찾는다 (`TrackList` 와 같은 이유). */
 const root = ref<HTMLElement | null>(null)
 
 function focusIn(selector: string): void {
+  void nextTick(() => root.value?.querySelector<HTMLElement>(selector)?.focus())
+}
+
+function toggleManage(momentId: string): void {
+  active.value = modeOf(momentId) === 'manage' ? null : { id: momentId, mode: 'manage' }
+}
+
+function closeEdit(momentId: string): void {
+  if (modeOf(momentId) === 'edit') active.value = null
+  // 폼이 사라진 자리에 포커스가 떨어지지 않게 그 줄의 "관리" 로 돌려준다.
+  focusIn(`[data-moment-manage="${momentId}"]`)
+}
+
+/** 취소하면 관리 메뉴로 돌아가 삭제 단추에 포커스 — 누르던 자리로 되돌린다. */
+function cancelRemove(momentId: string): void {
+  active.value = { id: momentId, mode: 'manage' }
+  focusIn(`[data-moment-remove="${momentId}"]`)
+}
+
+/**
+ * 지운 줄 다음에 포커스를 둘 곳 — 같은 묶음의 다음 줄, 없으면 앞 줄, 묶음이 비면 다음 묶음의
+ * 머리(없으면 앞 묶음). 지우기 **전에** 정한다 — 지운 뒤에는 줄이 없다.
+ */
+function nextFocusAfterRemove(momentId: string): string | null {
+  const sections = props.sections
+  const sectionIndex = sections.findIndex((s) => s.rows.some((r) => r.moment.id === momentId))
+  const section = sections[sectionIndex]
+  if (section === undefined) return null
+  const rowIndex = section.rows.findIndex((r) => r.moment.id === momentId)
+  const neighbour = section.rows[rowIndex + 1] ?? section.rows[rowIndex - 1]
+  if (neighbour !== undefined) return `[data-moment-play="${neighbour.moment.id}"]`
+  const other = sections[sectionIndex + 1] ?? sections[sectionIndex - 1]
+  if (other?.head != null) return `[data-group-toggle="${other.head.videoId}"]`
+  return null
+}
+
+function confirmRemove(momentId: string): void {
+  const target = nextFocusAfterRemove(momentId)
+  active.value = null
+  emit('remove', momentId)
+  // 지운 줄이 사라진 뒤 옮긴다. 갈 곳이 없으면 부모가 검색란 등으로 옮긴다.
   void nextTick(() => {
-    root.value?.querySelector<HTMLElement>(selector)?.focus()
+    void nextTick(() => {
+      const el = target === null ? null : root.value?.querySelector<HTMLElement>(target)
+      if (el != null) el.focus()
+      else emit('focus-out')
+    })
   })
 }
 
-function startEdit(momentId: string, note: string): void {
-  pendingRemoveId.value = null
-  editingId.value = momentId
-  draftNote.value = note
-  editError.value = ''
-  focusIn(`#moment-note-${momentId}`)
-}
-
-function closeEdit(): void {
-  const momentId = editingId.value
-  editingId.value = null
-  draftNote.value = ''
-  editError.value = ''
-  // 폼이 사라진 자리에 포커스가 떨어지지 않게 그 줄의 ✎ 로 돌려준다.
-  if (momentId !== null) focusIn(`[data-moment-edit="${momentId}"]`)
-}
-
-async function submitEdit(): Promise<void> {
-  const momentId = editingId.value
-  if (momentId === null || isSavingNote.value) return
-
-  if (draftNote.value.length > props.maxNoteLength) {
-    editError.value = `메모는 ${String(props.maxNoteLength)}자까지 쓸 수 있어요.`
-    return
-  }
-
-  isSavingNote.value = true
-  let done: boolean
-  try {
-    done = await props.saveNote(momentId, draftNote.value)
-  } finally {
-    isSavingNote.value = false
-  }
-  // 기다리는 동안 다른 줄을 열었으면 그 폼을 닫지 않는다.
-  if (done && editingId.value === momentId) closeEdit()
-}
-
-function requestRemove(momentId: string): void {
-  // 고치는 중에 삭제를 누르면 폼을 닫는다. 두 폼이 겹치지 않게 한다 (TrackList 와 같다).
-  editingId.value = null
-  draftNote.value = ''
-  editError.value = ''
-  pendingRemoveId.value = momentId
-}
-
-function cancelRemove(): void {
-  const momentId = pendingRemoveId.value
-  pendingRemoveId.value = null
-  if (momentId !== null) focusIn(`[data-moment-remove="${momentId}"]`)
-}
-
-function confirmRemove(): void {
-  const momentId = pendingRemoveId.value
-  if (momentId === null) return
-
-  pendingRemoveId.value = null
-  emit('remove', momentId)
-  // 지운 줄이 사라진다. 포커스를 목록의 첫 재생 버튼으로 옮긴다.
-  focusIn('.moment-play')
-}
-
-function noteLabel(note: string): string {
-  const line = firstLine(note)
-  return line === '' ? '메모 없음' : line
+function metaText(section: ArchiveSection): string {
+  const head = section.head
+  if (head === null) return ''
+  const count =
+    head.matched === head.total
+      ? `${String(head.total)}개`
+      : `${String(head.matched)} / ${String(head.total)}개`
+  return count
 }
 </script>
 
 <template>
   <div ref="root" class="moment-list">
-    <!-- :key 는 영상 ID 와 Moment id 다. 배열 인덱스를 쓰지 않는다. -->
-    <section
-      v-for="group in groups"
-      :key="group.videoId"
-      class="moment-group"
-      :class="{ 'is-current': group.videoId === currentVideoId }"
-      :aria-current="group.videoId === currentVideoId ? 'true' : undefined"
-      :aria-labelledby="`moment-group-${group.videoId}`"
-    >
-      <div class="group-head">
-        <h3 :id="`moment-group-${group.videoId}`" class="group-title" :title="group.title">
-          {{ group.title }}
-        </h3>
-        <!-- 색에만 기대지 않는다. 지금 곡인지, 목록에서 빠졌는지 글로 적는다. -->
-        <p class="group-meta">
-          {{ group.moments.length }}개<template v-if="group.videoId === currentVideoId">
-            · 재생 중</template
-          ><template v-if="group.titleSource !== 'library'"> · 목록에 없음</template>
-        </p>
-      </div>
-
-      <ul class="moment-rows">
-        <li v-for="moment in group.moments" :key="moment.id" class="moment-item">
-          <div class="moment">
+    <!-- :key 는 영상 ID · Moment id 다. 배열 인덱스를 쓰지 않는다. -->
+    <template v-for="section in sections" :key="section.key">
+      <section
+        v-if="section.head !== null"
+        class="moment-group"
+        :class="{ 'is-current': section.head.isCurrent, 'is-collapsed': !section.head.expanded }"
+        :aria-current="section.head.isCurrent ? 'true' : undefined"
+        :aria-labelledby="`${prefix()}-group-${section.head.videoId}`"
+      >
+        <div class="group-head">
+          <h4 class="group-heading">
             <button
               type="button"
-              class="moment-play"
-              :data-moment-play="moment.id"
-              :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 부터 재생`"
-              :title="`${formatMomentTime(moment.atSeconds)} 부터 재생`"
-              @click="emit('play', moment.id)"
+              class="group-toggle"
+              :data-group-toggle="section.head.videoId"
+              :aria-expanded="section.head.expanded"
+              :aria-controls="`${prefix()}-rows-${section.head.videoId}`"
+              @click="emit('toggle', section.head.videoId)"
             >
-              <span aria-hidden="true">▶</span>
-              <span class="moment-time">{{ formatMomentTime(moment.atSeconds) }}</span>
+              <span class="caret" aria-hidden="true">{{ section.head.expanded ? '▾' : '▸' }}</span>
+              <span :id="`${prefix()}-group-${section.head.videoId}`" class="group-title"
+                ><template v-for="(part, i) in highlight(section.head.title, terms)" :key="i"
+                  ><mark v-if="part.match">{{ part.text }}</mark
+                  ><template v-else>{{ part.text }}</template></template
+                ></span
+              >
+              <!-- 색에만 기대지 않는다. 개수 · 지금 곡 · 목록 여부를 글로 적는다. -->
+              <span class="group-meta"
+                >{{ metaText(section) }}<template v-if="section.head.isCurrent"> · 재생 중</template
+                ><template v-if="section.head.playlists.length === 0">
+                  · 목록에 없음</template
+                ></span
+              >
             </button>
-            <!-- 잘려도 전체 메모를 title 로 볼 수 있다. 텍스트로만 그린다. -->
-            <span
-              class="moment-note"
-              :class="{ 'is-empty': firstLine(moment.note) === '' }"
-              :title="moment.note"
-              >{{ noteLabel(moment.note) }}</span
+          </h4>
+          <p v-if="section.head.playlists.length > 0" class="group-lists">
+            <span class="lists-label">목록</span>
+            <button
+              v-for="list in section.head.playlists.slice(0, MAX_LIST_LINKS)"
+              :key="list.id"
+              type="button"
+              class="list-link"
+              :data-open-list="list.id"
+              :aria-label="`음악 보관함의 ${list.name} 목록에서 ${section.head.title} 보기`"
+              @click="emit('open-list', list.id, section.head.videoId)"
             >
-            <span class="moment-controls">
-              <button
-                type="button"
-                :data-moment-edit="moment.id"
-                :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 메모 수정`"
-                :title="`${formatMomentTime(moment.atSeconds)} 메모 수정`"
-                @click="startEdit(moment.id, moment.note)"
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                :data-moment-remove="moment.id"
-                :aria-label="`${group.title} ${formatMomentTime(moment.atSeconds)} 순간 삭제`"
-                :title="`${formatMomentTime(moment.atSeconds)} 순간 삭제`"
-                @click="requestRemove(moment.id)"
-              >
-                ×
-              </button>
+              {{ list.name }}
+            </button>
+            <span v-if="section.head.playlists.length > MAX_LIST_LINKS" class="lists-more">
+              외 {{ section.head.playlists.length - MAX_LIST_LINKS }}
             </span>
-          </div>
+          </p>
+        </div>
 
-          <!-- 고치는 줄 **바로 아래**에 둔다. 무엇의 메모인지 자리가 말해준다. -->
-          <form v-if="editingId === moment.id" class="edit-form" @submit.prevent="submitEdit">
-            <label class="label" :for="`moment-note-${moment.id}`">
-              {{ formatMomentTime(moment.atSeconds) }} 메모
-            </label>
-            <textarea
-              :id="`moment-note-${moment.id}`"
-              v-model="draftNote"
-              class="field field--area"
-              rows="3"
-              :maxlength="maxNoteLength"
-              :aria-invalid="editError !== '' || undefined"
-              :aria-describedby="`moment-note-${moment.id}-count`"
-            />
-            <p :id="`moment-note-${moment.id}-count`" class="counter">
-              {{ draftNote.length }} / {{ maxNoteLength }}
-            </p>
-            <p class="error-msg">{{ editError }}</p>
-            <div class="row-actions">
-              <button
-                type="submit"
-                class="pill pill--strong"
-                :disabled="isSavingNote"
-                :aria-busy="isSavingNote ? 'true' : 'false'"
-              >
-                저장
-              </button>
-              <button type="button" class="pill" @click="closeEdit">취소</button>
-            </div>
-          </form>
+        <ul
+          v-if="section.head.expanded"
+          :id="`${prefix()}-rows-${section.head.videoId}`"
+          class="moment-rows"
+        >
+          <MomentRow
+            v-for="row in section.rows"
+            :key="row.moment.id"
+            :moment="row.moment"
+            :song-title="row.songTitle"
+            :terms="terms"
+            :mode="modeOf(row.moment.id)"
+            :id-prefix="prefix()"
+            :max-note-length="maxNoteLength"
+            :save-note="saveNote"
+            @play="(id) => emit('play', id)"
+            @toggle-manage="toggleManage"
+            @edit="(id) => (active = { id, mode: 'edit' })"
+            @request-remove="(id) => (active = { id, mode: 'confirm' })"
+            @cancel-remove="cancelRemove"
+            @confirm-remove="confirmRemove"
+            @close-edit="closeEdit"
+          />
+        </ul>
+        <button
+          v-if="section.head.expanded && section.hiddenRows > 0"
+          type="button"
+          class="pill more-rows"
+          @click="emit('more-rows', section.head.videoId)"
+        >
+          이 곡의 순간 {{ section.hiddenRows }}개 더 보기
+        </button>
+      </section>
 
-          <div
-            v-if="pendingRemoveId === moment.id"
-            class="confirm"
-            role="alertdialog"
-            :aria-label="`${formatMomentTime(moment.atSeconds)} 순간 삭제 확인`"
-          >
-            <p class="confirm-text">
-              {{ formatMomentTime(moment.atSeconds) }} 순간을 지울까요? 메모도 함께 사라집니다.
-            </p>
-            <div class="row-actions">
-              <button type="button" class="pill pill--strong" @click="confirmRemove">삭제</button>
-              <button type="button" class="pill" @click="cancelRemove">취소</button>
-            </div>
-          </div>
-        </li>
+      <!--
+        평면 보기 — 묶지 않은 한 목록. 최근 보기는 줄마다 곡 제목을 적고, 이 곡 보기는 적지 않는다(M11-7C —
+        듣고 있는 곡이라 되풀이하지 않는다).
+      -->
+      <ul v-else class="moment-rows moment-rows--flat">
+        <MomentRow
+          v-for="row in section.rows"
+          :key="row.moment.id"
+          :moment="row.moment"
+          :song-title="row.songTitle"
+          :show-song-title="section.showSongTitle !== false"
+          :highlighted="row.moment.id === highlightId"
+          :terms="terms"
+          :mode="modeOf(row.moment.id)"
+          :id-prefix="prefix()"
+          :max-note-length="maxNoteLength"
+          :save-note="saveNote"
+          @play="(id) => emit('play', id)"
+          @toggle-manage="toggleManage"
+          @edit="(id) => (active = { id, mode: 'edit' })"
+          @request-remove="(id) => (active = { id, mode: 'confirm' })"
+          @cancel-remove="cancelRemove"
+          @confirm-remove="confirmRemove"
+          @close-edit="closeEdit"
+        />
       </ul>
-    </section>
+    </template>
   </div>
 </template>
 
 <style scoped>
-/*
- * 색과 치수는 모두 기존 토큰이다. 행은 `TrackList` 의 `.track` 값을, 버튼은
- * `.track-play` · `.track-controls` 값을 그대로 따른다 (새 치수·새 색 없음).
- */
 .moment-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .moment-group {
@@ -258,30 +249,62 @@ function noteLabel(note: string): string {
 }
 
 .group-head {
-  display: flex;
+  display: grid;
   min-width: 0;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  /* 머리(제목 · 수 · 목록)를 한 덩어리로 — 구분선은 목록 줄 아래에 둔다. 위에 두면 목록 줄이 다음 묶음처럼 보인다. */
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--drawer-head-border-color);
+  gap: 0;
 }
 
-/* 드로어의 `.drawer-section-title` 조판이다. 묶음의 머리말이다. */
-.group-title {
-  overflow: hidden;
-  min-width: 0;
+.group-heading {
   margin: 0;
+  font: inherit;
+}
+
+/* 묶음 머리 = 접기 단추. 줄 전체가 누르는 자리다 (44px). */
+.group-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  padding: 8px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  column-gap: 8px;
+  row-gap: 2px;
+  text-align: left;
+}
+
+.caret {
+  flex: none;
+  color: var(--drawer-sub-text-color);
+  font: 11px var(--font-mono);
+}
+
+/* 드로어의 `.drawer-section-title` 조판이다. 긴 제목은 줄을 바꾼다 (U12). */
+.group-title {
+  min-width: 0;
+  flex: 1 1 12em;
   color: var(--drawer-section-title-text-color);
-  font: 10px var(--font-mono);
-  letter-spacing: 0.12em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: 11px/1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
 }
 
 .group-meta {
   flex: none;
-  margin: 0;
   color: var(--row-meta-text-color);
   font: 10px var(--font-mono);
+}
+
+@media (hover: hover) {
+  .group-toggle:hover .group-title,
+  .list-link:hover {
+    color: var(--row-action-hover-text-color);
+  }
 }
 
 /* 지금 곡의 묶음. 색과 함께 "· 재생 중" 글자로도 알린다. */
@@ -289,8 +312,33 @@ function noteLabel(note: string): string {
   color: var(--accent-color);
 }
 
-.moment-group.is-current .moment {
-  border-color: var(--track-current-border-color);
+.group-lists {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--row-meta-text-color);
+  font: 10px var(--font-mono);
+  gap: 0 4px;
+}
+
+.lists-label {
+  margin-right: 2px;
+}
+
+/* 목록 이름 — 글자 링크처럼 보이되 누르는 자리는 44px. */
+.list-link {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--drawer-action-text-color);
+  font: 11px var(--font-mono);
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .moment-rows {
@@ -301,145 +349,9 @@ function noteLabel(note: string): string {
   list-style: none;
 }
 
-.moment-item {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-}
-
-/* 승인된 디자인의 `.track` 값을 따른다. */
-.moment {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  padding: 4px 7px 4px 3px;
-  border: 1px solid transparent;
-  background: var(--track-surface-color);
-  gap: 7px;
-}
-
-/*
- * `.track-play` 의 색·높이에 시간 글자를 붙였다. 누르는 것이 "그 시점부터
- * 재생" 이므로 시점이 버튼의 일부다.
- */
-.moment-play {
-  display: flex;
-  min-height: 29px;
-  flex: none;
-  align-items: center;
-  padding: 0 6px;
-  border: 0;
-  background: transparent;
-  color: var(--track-play-text-color);
-  gap: 6px;
-}
-
-.moment-play:hover {
-  color: var(--row-action-hover-text-color);
-}
-
-.moment-time {
-  color: var(--track-name-text-color);
-  font: 11px var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.moment-note {
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
-  color: var(--track-name-text-color);
-  font-size: 12px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.moment-note.is-empty {
-  color: var(--row-meta-text-color);
-  font-style: italic;
-}
-
-/* 승인된 디자인의 `.track-controls` 값을 따른다. */
-.moment-controls {
-  display: flex;
-  flex: none;
-  gap: 3px;
-}
-
-.moment-controls button {
-  min-width: 28px;
-  height: 29px;
-  border: 0;
-  background: transparent;
-  color: var(--row-action-text-color);
-}
-
-.moment-controls button:hover {
-  color: var(--row-action-hover-text-color);
-}
-
-/* `TrackList` 의 이름 변경 폼·삭제 확인과 같은 값이다. */
-.edit-form,
-.confirm {
-  padding: 10px 12px;
-  border: 1px solid var(--row-selected-border-color);
-  background: var(--row-selected-surface-color);
-}
-
-.confirm-text {
-  margin: 0 0 10px;
-  color: var(--row-text-color);
-  font: 12px/1.5 var(--font-mono);
-}
-
-.label {
-  display: block;
-  margin: 0 0 7px;
-  color: var(--label-text-color);
-  font: 11px var(--font-mono);
-}
-
-/* 승인된 디자인의 `.field` 값을 따른다. 여러 줄이라 높이만 내용에 맡긴다. */
-.field {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--field-border-color);
-  border-radius: var(--radius-field);
-  background: var(--field-surface-color);
-  color: var(--field-text-color);
-}
-
-.field--area {
-  min-height: 46px;
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.counter {
-  margin: 5px 0 0;
-  color: var(--row-meta-text-color);
-  font: 10px var(--font-mono);
-  text-align: right;
-}
-
-.error-msg {
-  min-height: 17px;
-  margin: 2px 0 0;
-  color: var(--error-text-color);
-  font-size: 12px;
-}
-
-.row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* 승인된 디자인의 `.pill` 값을 따른다. */
-.pill {
-  min-height: 36px;
+.more-rows {
+  justify-self: start;
+  min-height: 44px;
   padding: 7px 12px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
@@ -448,13 +360,13 @@ function noteLabel(note: string): string {
   font: 11px var(--font-mono);
 }
 
-.pill:hover {
-  background: var(--pill-surface-hover-color);
-}
-
-.pill--strong {
-  border-color: var(--accent-strong-color);
-  background: var(--accent-strong-color);
-  color: var(--accent-strong-text-color);
+mark {
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-color);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
 }
 </style>

@@ -10,7 +10,8 @@ import {
 } from '@/widgets/registry'
 
 describe('3. 등록된 위젯 조회', () => {
-  it('위젯 7종이 등록되어 있다', () => {
+  it('위젯 6종이 등록되어 있다', () => {
+    // M12-2 에서 `mascot` 을 뺐다 — 그 자리는 플레이어 위젯 안 Now Playing 카드다 (ADR 0032).
     // M6-4 에서 `playlist` 를 더했다. 첫 상호작용 위젯이다.
     // M9-4 에서 `moments` 를 더했다. 정보 열의 빈자리에 선다.
     expect([...REGISTERED_WIDGET_TYPES]).toEqual([
@@ -18,7 +19,6 @@ describe('3. 등록된 위젯 조회', () => {
       'clock',
       'weather',
       'player',
-      'mascot',
       'playlist',
       'moments',
     ])
@@ -102,21 +102,20 @@ describe('5. 레이아웃 인스턴스', () => {
     }
   })
 
-  it('7개 위젯이 각각 다른 영역에 배치된다', () => {
+  it('6개 위젯이 각각 다른 영역에 배치된다', () => {
     const areas = MVP_DASHBOARD_LAYOUT.items.map((item) => item.area)
-    expect(areas).toHaveLength(7)
-    expect(new Set(areas).size).toBe(7)
+    expect(areas).toHaveLength(6)
+    expect(new Set(areas).size).toBe(6)
   })
 
   it('승인된 프로토타입 배치를 따른다', () => {
     const byArea = Object.fromEntries(
       MVP_DASHBOARD_LAYOUT.items.map((item) => [item.area, item.widgetType]),
     )
-    // 왼쪽: 데크 위, 마스코트 아래. 가운데: 플레이어 위, 플레이리스트 아래.
+    // 왼쪽: 데크 위, NOW PLAYLIST 아래. 가운데: 플레이어(영상 + Now Playing 카드, M12-2).
     // 오른쪽: 시계 · 날씨 (M6-1 · M6-4), 그 아래 빈자리에 Moments (M9-4).
     expect(byArea).toEqual({
       deck: 'deck',
-      mascot: 'mascot',
       clock: 'clock',
       weather: 'weather',
       player: 'player',
