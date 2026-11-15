@@ -1550,6 +1550,12 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
     }
   })
 
+  it('보관함 줄의 "방금 저장" 은 글 폭만큼만 — grid 칸 폭으로 늘어나지 않는다 (M11-7C 실측 결함)', () => {
+    const css = readSource('src/features/moments/MomentRow.vue')
+    expect(/\.moment-text \{[^}]*display: grid/.test(css)).toBe(true)
+    expect(/\.new-badge \{[^}]*justify-self: start/.test(css)).toBe(true)
+  })
+
   it('저장 버튼의 활성 판정과 캡처 판정이 같은 값을 본다', () => {
     const capture = stripComments(readSource('src/features/moments/useMomentCapture.ts'))
     const coordinator = stripComments(

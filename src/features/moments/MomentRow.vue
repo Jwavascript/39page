@@ -252,8 +252,10 @@ async function submit(): Promise<void> {
   border-color: var(--accent-strong-color);
 }
 
+/* `.moment-text` 는 grid 다 — 칸 폭으로 늘어나지 않게 글 폭만 (M11-7C 실측에서 찾았다). */
 .new-badge {
   align-self: flex-start;
+  justify-self: start;
   padding: 0 5px;
   border: 1px solid var(--accent-strong-color);
   color: var(--drawer-title-text-color);

@@ -2444,7 +2444,7 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 
 - [x] §12 의 결정 선택 → ADR 0030 부분 채택 (7개, 2026-11-14)
 - [x] M11-7B — 아래 절
-- [ ] M11-7C — Moment 저장 모델, 이 곡 Moments, `library.moveTrackTo`, 트랙 끌기 · 키보드 · 메뉴 · 편집 모드, 같은 영상 제목 정책
+- [x] M11-7C — 아래 절 (같은 영상 제목 정책은 제안만 — Proposed)
 - [ ] M11-7D — 브랜드 Chrome 직접 사용 · Claude for Chrome 재평가 · 실기기 · 데이터 회귀 · 배포 판단
 
 ### M11-7B. 대시보드 · 보관함 UX 개편 · 기본 테마 — 완료 (2026-11-14, 브랜치 `m11-7b-dashboard-archive` · 배포 없음)
@@ -2465,9 +2465,32 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
 
 **남긴 TODO (M11-7C · 7D)**
 
-- [ ] M11-7C — Moment 저장 B (`useMomentCapture` 상태 기계), 트랙 편집 C (`library.moveTrackTo` · 끌기 · 키보드 · 모바일 편집 모드)
+- [x] M11-7C — Moment 저장 B, 트랙 편집 C (아래 M11-7C 절)
 - [ ] Proposed 결정: Moments 위젯 "이 곡 전체", 마지막 재생 목록 기억, 데크 본체 누름, 같은 영상의 다른 제목
 - [ ] 실기기 Android · iOS (데크 띠 · 쌓기 시트 · 회전), 브랜드 Chrome 직접 사용, 화면 낭독기, 브라우저 확대 200%
+- [ ] M11_RELEASE_READINESS 의 웹앱 판단을 M11-7 UI 로 다시 (M11-7D)
+
+### M11-7C. Moments UX 통합 · Moment 저장 B · 트랙 편집 C — 완료 (2026-11-15, 브랜치 `m11-7c-moments-track-ux` · 배포 없음)
+
+결정: ADR 0030 (#4 · #7 · #8 구현, 세부 "M11-7C 에서 정한 구현 세부"). 결과: [`../product/M11_7_UX_REDESIGN.md`](../product/M11_7_UX_REDESIGN.md) §16.
+
+| 단계 | 커밋      | 내용                                                                                                           |
+| ---- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| 7C-1 | `43622d3` | 영상 띠 Moments 보기 전용 · 위젯 이 곡 전체(지금 선) · 보관함 이 곡 → 전체 → 최근 · 이 곡 한 목록 관리 화면    |
+| 7C-2 | `737ac70` | Moment 저장 B — 잡기 → 메모 → 저장, 공유 초안 store `momentDraft`, 요청 id 로 한 번만, 실패 시 초안 유지       |
+| 7C-3 | `4625141` | `library.moveTrackTo` (`not-persisted`), 끌기 손잡이 · 키보드 · 편집 모드 · 관리 메뉴 맨 위/아래 · 삭제 포커스 |
+| 7C-4 | (이 절)   | 통합 검증 · 문서, "방금 저장" 표시 폭 결함 수정                                                                |
+
+- 시험: 웹앱 58 파일 · 2,024 (M11-7B 57 · 1,976). 확장 25 · 408 (코드 변경 없음).
+- 실제 Chrome · 실제 YouTube 27/27 (`m11-7c-results/real-chrome-youtube.json`, 첫 실행 18/27 은 하네스 결함 — §16-3).
+- 성능(5,000): M11-7B 대비 회귀 없음 (`m11-7c-results/perf-*.json`).
+- 저장 키 · 백업 형식 · 확장 저장 계약 변경 없음. 새 의존성 없음 (끌기는 포인터 이벤트로 직접 — SortableJS 등은 쓰지 않았다).
+
+**남긴 TODO (M11-7D 이후)**
+
+- [ ] Proposed 결정: 같은 영상의 대표 제목(ADR 0030 제안), 마지막 재생 목록 기억, 데크 본체 누름
+- [ ] 실기기 Android · iOS — 편집 모드 손가락 끌기 · iOS Safari 포인터 · 회전, 화면 낭독기 실제 낭독, 확대 200%
+- [ ] 저장 B 의 "잊은 초안"(새로고침하면 사라짐)을 사용자 시험으로 확인 (M11-7D)
 - [ ] M11_RELEASE_READINESS 의 웹앱 판단을 M11-7 UI 로 다시 (M11-7D)
 
 ---
