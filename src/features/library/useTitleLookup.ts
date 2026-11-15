@@ -38,6 +38,8 @@ export interface TitleLookup {
   markEdited(): void
   /** 양식을 비우거나 닫았다 — 처음 상태로. 진행 중인 조회는 버린다. */
   reset(): void
+  /** 빠른 제출은 debounce를 건너뛰고 진행 중 조회를 최대 4초까지 마친다. 실패해도 제출할 수 있다. */
+  prepareSubmit(): Promise<void>
 }
 
 export function useTitleLookup(url: Ref<string>, title: Ref<string>): TitleLookup {
@@ -50,6 +52,7 @@ export function useTitleLookup(url: Ref<string>, title: Ref<string>): TitleLooku
   let controller: AbortController | null = null
   /** 조회마다 올린다. 돌아온 결과의 번호가 지금과 다르면 버린다. */
   let generation = 0
+  let inFlight: Promise<void> | null = null
 
   function cancel(): void {
     if (timer !== null) clearTimeout(timer)
@@ -57,6 +60,7 @@ export function useTitleLookup(url: Ref<string>, title: Ref<string>): TitleLooku
     controller?.abort()
     controller = null
     generation += 1
+    inFlight = null
   }
 
   function canFill(): boolean {
@@ -107,7 +111,7 @@ export function useTitleLookup(url: Ref<string>, title: Ref<string>): TitleLooku
     const mine = generation
     timer = setTimeout(() => {
       timer = null
-      void lookup(parsed.videoId, mine)
+      inFlight = lookup(parsed.videoId, mine)
     }, TITLE_LOOKUP_DEBOUNCE_MS)
   })
 
@@ -115,6 +119,16 @@ export function useTitleLookup(url: Ref<string>, title: Ref<string>): TitleLooku
     edited.value = true
     cancel()
     status.value = 'idle'
+  }
+
+  async function prepareSubmit(): Promise<void> {
+    if (!canFill() || status.value === 'failed') return
+    const parsed = parseYouTubeVideoId(url.value)
+    if (!parsed.ok) return
+    if (timer !== null) clearTimeout(timer)
+    timer = null
+    inFlight ??= lookup(parsed.videoId, generation)
+    await inFlight
   }
 
   function reset(): void {
@@ -136,5 +150,5 @@ export function useTitleLookup(url: Ref<string>, title: Ref<string>): TitleLooku
     return ''
   })
 
-  return { status, message, markEdited, reset }
+  return { status, message, markEdited, reset, prepareSubmit }
 }

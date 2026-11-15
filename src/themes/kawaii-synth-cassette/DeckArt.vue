@@ -17,6 +17,7 @@
  *
  * 회전 애니메이션은 M4 다. 지금은 정지 상태이며, 재생 중인 것처럼 보이지 않는다.
  */
+withDefaults(defineProps<{ label?: string }>(), { label: 'KAWAII SYNTH MIX' })
 </script>
 
 <template>
@@ -24,7 +25,7 @@
     class="deck-art deck-art--kawaii-synth-cassette"
     viewBox="0 0 900 570"
     role="img"
-    aria-label="민트와 분홍 포인트가 있는 오리지널 카세트 데크"
+    :aria-label="`민트와 분홍 포인트가 있는 오리지널 카세트 데크 · ${label}`"
   >
     <defs>
       <linearGradient id="ksc-synthBody" x1=".07" y1=".02" x2=".94" y2="1">
@@ -87,17 +88,9 @@
       stroke-width="4"
     />
     <rect x="154" y="155" width="595" height="70" rx="7" fill="#143e52" />
-    <text
-      x="183"
-      y="195"
-      font-size="23"
-      font-family="ui-monospace,monospace"
-      letter-spacing="4"
-      fill="#dcfff6"
-      font-weight="bold"
-    >
-      KAWAII SYNTH MIX
-    </text>
+    <foreignObject class="cassette-label" x="183" y="173" width="430" height="32">
+      <div xmlns="http://www.w3.org/1999/xhtml" :title="label" :aria-label="label">{{ label }}</div>
+    </foreignObject>
     <rect x="630" y="170" width="100" height="35" rx="4" fill="#ff91bc" />
     <text
       x="680"
@@ -209,3 +202,16 @@
     </g>
   </svg>
 </template>
+
+<style scoped>
+.cassette-label div {
+  overflow: hidden;
+  color: #dcfff6;
+  font:
+    bold 23px/32px ui-monospace,
+    monospace;
+  letter-spacing: 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

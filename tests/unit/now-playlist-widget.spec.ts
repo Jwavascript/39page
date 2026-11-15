@@ -107,6 +107,25 @@ afterEach(() => {
 })
 
 describe('A. 큐가 없을 때 — 고른 목록을 "재생 대기" 로', () => {
+  it('카세트 레이블은 대기 목록 → 실제 큐 출처를 따르고 출처 불명은 기본 문구다', async () => {
+    const s = boot()
+    const label = () => s.wrapper.get('.cassette-label div')
+    expect(label().text()).toBe('ONE')
+    await startPlaying(s)
+    await s.library.selectPlaylist('two')
+    await settle()
+    expect(label().text()).toBe('ONE')
+    const long = '긴 한글 제목 日本語 プレイリスト English playlist '.repeat(2).slice(0, 60)
+    await s.library.renamePlaylist('one', long)
+    await settle()
+    expect(label().attributes('title')).toBe(long.trim())
+    expect(s.wrapper.get('.deck-art--kawaii-synth-cassette').attributes('aria-label')).toContain(
+      long.trim(),
+    )
+    s.playback.setQueue([track('external', C, 'Outside')], 0)
+    await settle()
+    expect(label().text()).toBe('KAWAII SYNTH MIX')
+  })
   it('고른 목록의 곡을 보이고, 재생 중이라고 말하지 않는다', () => {
     const s = boot()
 

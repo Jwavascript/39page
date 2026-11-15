@@ -63,6 +63,7 @@ export async function fetchYouTubeTitle(
   }, options.timeoutMs ?? TITLE_LOOKUP_TIMEOUT_MS)
   const onAbort = (): void => controller.abort()
   options.signal?.addEventListener('abort', onAbort, { once: true })
+  if (options.signal?.aborted) controller.abort()
 
   try {
     const response = await fetch(oembedUrl(videoId), {
@@ -76,7 +77,13 @@ export async function fetchYouTubeTitle(
     if (response.status === 401 || response.status === 403)
       return { ok: false, reason: 'unavailable' }
     if (!response.ok) return { ok: false, reason: 'network' }
-    const title = titleFromPayload(await response.json())
+    let payload: unknown
+    try {
+      payload = await response.json()
+    } catch {
+      return { ok: false, reason: timedOut ? 'timeout' : 'invalid' }
+    }
+    const title = titleFromPayload(payload)
     return title === null ? { ok: false, reason: 'invalid' } : { ok: true, title }
   } catch {
     return { ok: false, reason: timedOut ? 'timeout' : 'network' }

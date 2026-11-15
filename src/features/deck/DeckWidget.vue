@@ -45,6 +45,7 @@ import { computed, inject } from 'vue'
 
 import { ARCHIVE } from '@/features/archive/archiveController'
 import { useDeckTransport } from '@/features/deck/useDeckTransport'
+import { useDeckLabel } from '@/features/deck/useDeckLabel'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
 import { THEMES } from '@/themes'
@@ -80,6 +81,7 @@ const isPaused = computed<boolean>(() => playback.playerState === 'paused')
  * 코디네이터에게 넘긴다 (`AGENTS.md` 규칙 4).
  */
 const transport = useDeckTransport()
+const cassetteLabel = useDeckLabel()
 
 /** 플레이리스트 위젯을 펼치거나 접는다 (M7). */
 /**
@@ -101,6 +103,7 @@ function openLibrary(): void {
       -->
       <MonoVinylDeckArt :aria-hidden="theme.current !== 'mono-vinyl' || undefined" />
       <KawaiiCassetteDeckArt
+        :label="cassetteLabel"
         :aria-hidden="theme.current !== 'kawaii-synth-cassette' || undefined"
       />
 

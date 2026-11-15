@@ -106,6 +106,17 @@ function applyIntendedChanges(svg: string, prefix: string, rootClass: string): s
     throw new Error('레퍼런스에서 cassette-spool 그룹을 찾지 못했다')
   }
 
+  if (rootClass.includes('kawaii-synth-cassette')) {
+    out = out.replace(
+      'aria-label="민트와 분홍 포인트가 있는 오리지널 카세트 데크"',
+      ':aria-label="`민트와 분홍 포인트가 있는 오리지널 카세트 데크 · ${label}`"',
+    )
+    out = out.replace(
+      /<text\s+x="183"[\s\S]*?KAWAII\s+SYNTH\s+MIX\s*<\/text>/,
+      `<foreignObject class="cassette-label" x="183" y="173" width="430" height="32"><div xmlns="http://www.w3.org/1999/xhtml" :title="label" :aria-label="label">{{ label }}</div></foreignObject>`,
+    )
+  }
+
   return out
 }
 

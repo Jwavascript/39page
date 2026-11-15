@@ -84,7 +84,7 @@ describe('A. oEmbed 조회 — 던지지 않고 이유를 돌려준다', () => {
       [async () => new Response('', { status: 403 }), { ok: false, reason: 'unavailable' }],
       [async () => new Response('', { status: 500 }), { ok: false, reason: 'network' }],
       [async () => json({ title: '   ' }), { ok: false, reason: 'invalid' }],
-      [async () => new Response('<html>', { status: 200 }), { ok: false, reason: 'network' }],
+      [async () => new Response('<html>', { status: 200 }), { ok: false, reason: 'invalid' }],
       [
         async () => Promise.reject(new TypeError('Failed to fetch')),
         { ok: false, reason: 'network' },
@@ -242,7 +242,7 @@ describe('B. 양식 — 제목 칸만 채우고, 사용자 · 저장을 앞서�
     })
   })
 
-  it('조회를 기다리지 않고 추가한다 — 늦게 온 제목이 다음 링크의 칸을 채우지 않는다', async () => {
+  it('조회 중 제출은 같은 요청을 기다려 제목을 저장하고 다음 링크에는 남기지 않는다', async () => {
     vi.useFakeTimers()
     const id = nextId()
     let answer: (r: Response) => void = () => {}
@@ -254,16 +254,53 @@ describe('B. 양식 — 제목 칸만 채우고, 사용자 · 저장을 앞서�
     await wrapper.get('#track-url').setValue(`https://youtu.be/${id}`)
     await settle()
     await submit(wrapper) // 조회 중
-    expect(lastTrack(library)).toMatchObject({
-      videoId: id,
-      title: `YouTube · ${id}`,
-    })
+    expect(lastTrack(library)).toBeUndefined()
 
     answer(json({ title: 'Late Title' }))
     await flushPromises()
     await nextTick()
+    expect(lastTrack(library)).toMatchObject({ videoId: id, title: 'Late Title' })
     expect(titleInput(wrapper).element.value).toBe('')
     expect(statusLine(wrapper).text()).toBe('')
+  })
+
+  it('400ms 이전 제출도 즉시 조회하고 수동 제목은 보호한다', async () => {
+    vi.useFakeTimers()
+    const id = nextId()
+    const fetchMock = vi.fn<FetchLike>(async () => json({ title: '빠른 입력' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { wrapper, library } = await openForm()
+    await wrapper.get('#track-url').setValue(`https://youtu.be/${id}`)
+    await submit(wrapper)
+    expect(lastTrack(library)).toMatchObject({ videoId: id, title: '빠른 입력' })
+    expect(oembedCalls(fetchMock)).toHaveLength(1)
+    await titleInput(wrapper).setValue('수동 제목')
+    await wrapper.get('#track-url').setValue(`https://youtu.be/${nextId()}`)
+    await submit(wrapper)
+    expect(lastTrack(library)?.title).toBe('수동 제목')
+    expect(oembedCalls(fetchMock)).toHaveLength(1)
+  })
+
+  it('제출 중 타임아웃은 ID fallback으로 추가하며 영구히 막지 않는다', async () => {
+    vi.useFakeTimers()
+    const id = nextId()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            )
+          }),
+      ),
+    )
+    const { wrapper, library } = await openForm()
+    await wrapper.get('#track-url').setValue(`https://youtu.be/${id}`)
+    await submit(wrapper)
+    expect(lastTrack(library)).toBeUndefined()
+    await settle(TITLE_LOOKUP_TIMEOUT_MS)
+    expect(lastTrack(library)).toMatchObject({ videoId: id, title: `YouTube · ${id}` })
   })
 
   it('링크를 바꾸면 앞 영상의 (우리가 채운) 제목을 거두고 새로 묻는다', async () => {

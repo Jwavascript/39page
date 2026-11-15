@@ -84,6 +84,8 @@ const formError = ref('')
  * 반영되지 않게 하고, 성공 안내는 저장이 끝난 뒤에만 쓴다.
  */
 const isSaving = ref(false)
+const resolvingTitle = ref(false)
+let linkSession = 0
 /** 마지막 동작이 저장되지 않았는지. `persisted: false` 를 알린다. */
 const unsavedNotice = ref('')
 
@@ -138,6 +140,7 @@ const linkTarget = computed(() =>
 )
 
 function closeLinkForm(): void {
+  linkSession += 1
   titleLookup.reset()
   linkTargetId.value = null
   draftUrl.value = ''
@@ -192,7 +195,8 @@ const hasUnsavedInput = computed(
     draftTitle.value.trim() !== '' ||
     trackList.value?.hasUnsavedInput === true,
 )
-defineExpose({ startAddLink, revealVideo, focusHead, hasUnsavedInput, busy: isSaving })
+const busy = computed(() => isSaving.value || resolvingTitle.value)
+defineExpose({ startAddLink, revealVideo, focusHead, hasUnsavedInput, busy })
 
 /**
  * 영상별 Moment 수 — 곡 줄의 `◆ N` 배지 (M11-4 §5-4). 라이브러리는 Moments 를 모르고(ADR 0019),
@@ -213,7 +217,7 @@ function openMoments(videoId: string): void {
 
 async function submitLink(): Promise<void> {
   const targetId = linkTargetId.value
-  if (targetId === null || isSaving.value) return
+  if (targetId === null || isSaving.value || resolvingTitle.value) return
 
   const parsed = parseYouTubeVideoId(draftUrl.value)
   if (!parsed.ok) {
@@ -221,6 +225,22 @@ async function submitLink(): Promise<void> {
     linkError.value = '올바른 YouTube 영상 링크를 입력해주세요.'
     return
   }
+
+  const session = linkSession
+  resolvingTitle.value = true
+  try {
+    await titleLookup.prepareSubmit()
+  } finally {
+    resolvingTitle.value = false
+  }
+  const current = parseYouTubeVideoId(draftUrl.value)
+  if (
+    session !== linkSession ||
+    targetId !== linkTargetId.value ||
+    !current.ok ||
+    current.videoId !== parsed.videoId
+  )
+    return
 
   const result = await saving(
     library.addTrack(targetId, {
@@ -548,8 +568,8 @@ watch(
         <p id="track-url-error" class="error-msg">{{ linkError }}</p>
 
         <div class="drawer-actions">
-          <button type="submit" class="pill pill--strong" :disabled="isSaving">
-            이 목록에 추가
+          <button type="submit" class="pill pill--strong" :disabled="busy">
+            {{ resolvingTitle ? '제목 확인 중…' : '이 목록에 추가' }}
           </button>
           <button type="button" class="pill" @click="closeLinkForm">닫기</button>
         </div>
