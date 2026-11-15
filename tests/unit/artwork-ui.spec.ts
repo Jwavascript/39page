@@ -324,6 +324,17 @@ describe('E. Object URL 수명', () => {
 })
 
 describe('M12-6A — 편집 세션과 미리보기', () => {
+  it('편집 도구와 미리보기는 같은 본문에서 스크롤하고 작업 단추는 본문 밖에 유지한다', async () => {
+    const ctx = await setup()
+    await openSettingsFromManage(ctx, 'One')
+    await pickFile(ctx, fileOf(pngBytes(1), 'layout.png'))
+    const scroll = ctx.wrapper.get('.settings-scroll')
+    expect(scroll.find('.settings-workspace .settings-previews').exists()).toBe(true)
+    expect(scroll.find('.settings-workspace .settings-tools .display-controls').exists()).toBe(true)
+    expect(scroll.find('.settings-actions').exists()).toBe(false)
+    expect(ctx.wrapper.get('.settings-foot .pill--primary').text()).toBe('변경사항 저장')
+    ctx.wrapper.unmount()
+  })
   it('새 목록으로 이동할 때도 미저장 파일을 먼저 확인하고 폐기 뒤 설정 화면을 정리한다', async () => {
     const ctx = await setup()
     await openSettingsFromManage(ctx, 'One')

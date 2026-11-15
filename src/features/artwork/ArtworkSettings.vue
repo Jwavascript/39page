@@ -239,142 +239,155 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   <section class="artwork-settings" aria-labelledby="artwork-settings-title">
     <div class="settings-head">
       <h3 id="artwork-settings-title" ref="heading" class="settings-title" tabindex="-1">
-        앨범아트 <span class="settings-track">{{ track?.title ?? '(지워진 곡)' }}</span>
+        앨범아트 편집
+        <span class="settings-track" :title="track?.title">{{
+          track?.title ?? '(지워진 곡)'
+        }}</span>
       </h3>
       <button type="button" class="pill" aria-label="앨범아트 설정 닫기" @click="emit('close')">
         ← 곡 목록으로
       </button>
     </div>
 
-    <p v-if="unavailable" class="settings-warning" role="alert">
-      {{ ARTWORK_FAILURE_MESSAGE.unavailable }} 썸네일 · 기본 그림만 보입니다.
-    </p>
-    <p v-if="track === null" class="settings-warning" role="alert">
-      {{ ARTWORK_FAILURE_MESSAGE['track-missing'] }}
-    </p>
+    <div class="settings-scroll">
+      <p v-if="unavailable" class="settings-warning" role="alert">
+        {{ ARTWORK_FAILURE_MESSAGE.unavailable }} 썸네일 · 기본 그림만 보입니다.
+      </p>
+      <p v-if="track === null" class="settings-warning" role="alert">
+        {{ ARTWORK_FAILURE_MESSAGE['track-missing'] }}
+      </p>
 
-    <div class="settings-previews">
-      <figure class="preview">
-        <div class="preview-art">
-          <ArtworkPreview
-            :video-id="videoId"
-            :mode="current.mode"
-            :src="current.src"
-            :poster-src="current.posterSrc"
-            :animated="current.animated"
-            :display="savedDisplay"
-            :active="active"
-          />
+      <div class="settings-workspace">
+        <div class="settings-previews">
+          <figure class="preview">
+            <div class="preview-art">
+              <ArtworkPreview
+                :video-id="videoId"
+                :mode="current.mode"
+                :src="current.src"
+                :poster-src="current.posterSrc"
+                :animated="current.animated"
+                :display="savedDisplay"
+                :active="active"
+              />
+            </div>
+            <figcaption>지금: {{ currentLabel }}</figcaption>
+          </figure>
+          <figure class="preview preview--draft">
+            <div
+              class="preview-art"
+              :class="{ 'preview-art--adjustable': choice === 'custom' }"
+              @pointerdown="choice === 'custom' && !saving && drag.down($event)"
+              @pointermove="drag.move"
+              @pointerup="drag.end"
+              @pointercancel="drag.end"
+              @lostpointercapture="drag.end"
+            >
+              <ArtworkPreview
+                :video-id="videoId"
+                :mode="choice"
+                :src="choice === 'custom' ? (pendingUrl ?? current.src) : null"
+                :poster-src="pendingUrl !== null ? pendingPosterUrl : current.posterSrc"
+                :animated="choice === 'custom' && (pending?.animated ?? current.animated)"
+                :display="display"
+                :active="active"
+              />
+            </div>
+            <figcaption>저장 전 미리보기 {{ pendingInfo }}</figcaption>
+          </figure>
         </div>
-        <figcaption>지금: {{ currentLabel }}</figcaption>
-      </figure>
-      <figure class="preview preview--draft">
-        <div
-          class="preview-art"
-          :class="{ 'preview-art--adjustable': choice === 'custom' }"
-          @pointerdown="choice === 'custom' && !saving && drag.down($event)"
-          @pointermove="drag.move"
-          @pointerup="drag.end"
-          @pointercancel="drag.end"
-          @lostpointercapture="drag.end"
-        >
-          <ArtworkPreview
-            :video-id="videoId"
-            :mode="choice"
-            :src="choice === 'custom' ? (pendingUrl ?? current.src) : null"
-            :poster-src="pendingUrl !== null ? pendingPosterUrl : current.posterSrc"
-            :animated="choice === 'custom' && (pending?.animated ?? current.animated)"
-            :display="display"
-            :active="active"
-          />
-        </div>
-        <figcaption>저장 전 미리보기 {{ pendingInfo }}</figcaption>
-      </figure>
-    </div>
 
-    <fieldset class="settings-choices" :disabled="saving || unavailable || track === null">
-      <legend class="sr-only">앨범아트 고르기</legend>
-      <label class="choice">
-        <input v-model="choice" type="radio" name="artwork-choice" value="auto" />
-        YouTube 썸네일 사용
-      </label>
-      <label class="choice">
-        <input v-model="choice" type="radio" name="artwork-choice" value="default" />
-        39page 기본 그림 사용
-      </label>
-      <label class="choice">
-        <input
-          v-model="choice"
-          type="radio"
-          name="artwork-choice"
-          value="custom"
-          :disabled="pending === null && current.mode !== 'custom'"
-        />
-        내 이미지 · GIF
-      </label>
-      <div class="file-row">
-        <button type="button" class="pill" :disabled="checking" @click="fileInput?.click()">
-          {{ checking ? '확인하는 중…' : '파일 고르기' }}
-        </button>
-        <span class="file-hint">PNG · JPEG · WebP {{ stillLimit }}, GIF {{ gifLimit }} 까지</span>
-        <input
-          ref="fileInput"
-          class="sr-only"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          tabindex="-1"
-          aria-label="앨범아트 이미지 파일"
-          @change="onFile"
-        />
+        <div class="settings-tools">
+          <ArtworkDisplayControls
+            v-if="choice === 'custom'"
+            v-model="display"
+            :disabled="saving || checking || unavailable"
+          />
+
+          <fieldset class="settings-choices" :disabled="saving || unavailable || track === null">
+            <legend class="sr-only">앨범아트 고르기</legend>
+            <label class="choice">
+              <input v-model="choice" type="radio" name="artwork-choice" value="auto" />
+              YouTube 썸네일 사용
+            </label>
+            <label class="choice">
+              <input v-model="choice" type="radio" name="artwork-choice" value="default" />
+              39page 기본 그림 사용
+            </label>
+            <label class="choice">
+              <input
+                v-model="choice"
+                type="radio"
+                name="artwork-choice"
+                value="custom"
+                :disabled="pending === null && current.mode !== 'custom'"
+              />
+              내 이미지 · GIF
+            </label>
+            <div class="file-row">
+              <button type="button" class="pill" :disabled="checking" @click="fileInput?.click()">
+                {{ checking ? '확인하는 중…' : '파일 고르기' }}
+              </button>
+              <span class="file-hint"
+                >PNG · JPEG · WebP {{ stillLimit }}, GIF {{ gifLimit }} 까지</span
+              >
+              <input
+                ref="fileInput"
+                class="sr-only"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                tabindex="-1"
+                aria-label="앨범아트 이미지 파일"
+                @change="onFile"
+              />
+            </div>
+          </fieldset>
+        </div>
       </div>
-    </fieldset>
 
-    <ArtworkDisplayControls
-      v-if="choice === 'custom'"
-      v-model="display"
-      :disabled="saving || checking || unavailable"
-    />
-
-    <p class="settings-status" :class="{ 'is-warning': failed }" role="status" aria-live="polite">
-      {{ message }}
-    </p>
-
-    <div class="settings-actions">
-      <button type="button" class="pill" @click="emit('close')">취소</button>
-      <button type="button" class="pill pill--primary" :disabled="!canSave" @click="save">
-        {{ saving ? '저장하는 중…' : '저장' }}
-      </button>
+      <details class="settings-storage">
+        <summary>저장 공간 및 백업 안내</summary>
+        <p>
+          앨범아트 {{ store.usage.assets }}개 · {{ formatBytes(store.usage.bytes) }}
+          <template v-if="estimate?.quota != null">
+            · 브라우저 여유 약
+            {{ formatBytes(Math.max(0, estimate.quota - (estimate.usage ?? 0))) }}
+          </template>
+        </p>
+        <p class="storage-note">
+          앨범아트는 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 함께 사라집니다 — 데이터 ·
+          백업의 전체 백업(ZIP)으로 보관하세요.
+        </p>
+        <button v-if="estimate?.persisted === false" type="button" class="pill" @click="askPersist">
+          이 브라우저에 오래 보관 요청
+        </button>
+        <p v-if="persistNote !== ''" class="storage-note" role="status">{{ persistNote }}</p>
+      </details>
     </div>
 
-    <div class="settings-storage">
-      <p>
-        앨범아트 {{ store.usage.assets }}개 · {{ formatBytes(store.usage.bytes) }}
-        <template v-if="estimate?.quota != null">
-          · 브라우저 여유 약 {{ formatBytes(Math.max(0, estimate.quota - (estimate.usage ?? 0))) }}
-        </template>
+    <div class="settings-foot">
+      <p class="settings-status" :class="{ 'is-warning': failed }" role="status" aria-live="polite">
+        {{ message }}
       </p>
-      <p class="storage-note">
-        앨범아트는 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우면 함께 사라집니다 — 데이터 ·
-        백업의 전체 백업(ZIP)으로 보관하세요.
-      </p>
-      <button v-if="estimate?.persisted === false" type="button" class="pill" @click="askPersist">
-        이 브라우저에 오래 보관 요청
-      </button>
-      <p v-if="persistNote !== ''" class="storage-note" role="status">{{ persistNote }}</p>
+      <div class="settings-actions">
+        <button type="button" class="pill" :disabled="saving" @click="emit('close')">취소</button>
+        <button type="button" class="pill pill--primary" :disabled="!canSave" @click="save">
+          {{ saving ? '저장하는 중…' : '변경사항 저장' }}
+        </button>
+      </div>
     </div>
   </section>
 </template>
 
 <style scoped>
 .artwork-settings {
-  display: flex;
+  display: grid;
   min-width: 0;
   min-height: 0;
-  flex-direction: column;
-  padding: 14px 16px;
-  gap: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 0;
+  overflow: hidden;
+  container: artwork-editor / size;
 }
 
 .settings-head {
@@ -382,6 +395,36 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--drawer-head-border-color);
+}
+
+.settings-head > button {
+  flex: none;
+}
+
+.settings-scroll {
+  --preview-size: clamp(64px, 23cqh, 112px);
+  min-height: 0;
+  min-width: 0;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: calc(var(--preview-size) + 20px) 12px;
+}
+
+.settings-workspace {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+  gap: 12px;
+}
+.settings-tools {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
 }
 
 .settings-title {
@@ -398,6 +441,9 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   margin-top: 4px;
   font: 15px/1.35 var(--font-body);
   letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-warning {
@@ -410,18 +456,26 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 8px;
+  background: var(--drawer-surface-color);
 }
 
 .preview {
   display: flex;
-  width: 160px;
+  min-width: 0;
+  flex: 1 1 0;
   flex-direction: column;
   margin: 0;
   gap: 6px;
 }
 
 .preview-art {
-  width: 160px;
+  width: var(--preview-size);
+  height: var(--preview-size);
+  flex: none;
   aspect-ratio: 1;
   border: 1px solid var(--artwork-frame-border-color);
   background: var(--artwork-frame-surface-color);
@@ -479,9 +533,17 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
 }
 
 .settings-status {
-  min-height: 1.5em;
   margin: 0;
   font: 12px/1.5 var(--font-mono);
+}
+
+.settings-foot {
+  padding: 8px 12px;
+  border-top: 1px solid var(--drawer-head-border-color);
+  background: var(--drawer-surface-color);
+}
+.settings-status:not(:empty) {
+  margin-bottom: 6px;
 }
 
 .settings-status.is-warning {
@@ -502,6 +564,26 @@ const gifLimit = formatBytes(ARTWORK_LIMITS.gifBytes)
   border-top: 1px solid var(--drawer-head-border-color);
   font: 12px/1.5 var(--font-mono);
   gap: 6px;
+  margin-top: 16px;
+}
+
+.settings-storage summary {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+@container artwork-editor (min-width: 560px) {
+  .settings-workspace {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  .settings-previews {
+    flex-direction: column;
+  }
+  .settings-scroll {
+    --preview-size: clamp(96px, 30cqh, 160px);
+    scroll-padding-block-start: 12px;
+  }
 }
 
 .settings-storage p {
