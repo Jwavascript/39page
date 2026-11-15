@@ -1503,7 +1503,8 @@ describe('G. 영속성 · 테마 · 플레이어 DOM · 경계', () => {
       // M11-7C
       'src/features/moments/MomentCapture.vue',
       'src/features/moments/CurrentMomentsList.vue',
-      'src/features/moments/usePlaybackPosition.ts',
+      // M12-2 에서 playback 으로 옮겼다 — 카드도 쓴다. 여전히 코디네이터 계약만 쓴다.
+      'src/features/playback/usePlaybackPosition.ts',
       'src/stores/momentDraft.ts',
     ]) {
       const code = stripComments(readSource(file))

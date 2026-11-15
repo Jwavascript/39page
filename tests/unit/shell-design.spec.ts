@@ -130,7 +130,6 @@ describe('B. 정보 열 구분선', () => {
     // 구분선을 넣느라 래퍼가 끼면 iframe 의 부모가 바뀐다 (ADR 0002).
     for (const id of [
       'deck-main',
-      'mascot-main',
       'clock-main',
       'weather-main',
       'player-main',
@@ -146,8 +145,8 @@ describe('B. 정보 열 구분선', () => {
     const { wrapper } = mountApp()
     const host = wrapper.getComponent(WidgetHost).get('.widget-host').element
 
-    // 위젯 7개뿐이다 (M9-4 에서 Moments 가 더해졌다). 의사 요소는 요소 노드가 아니다.
-    expect(host.children).toHaveLength(7)
+    // 위젯 6개뿐이다 (M9-4 에서 Moments 가 더해졌고, M12-2 에서 마스코트가 빠졌다). 의사 요소는 요소 노드가 아니다.
+    expect(host.children).toHaveLength(6)
   })
 
   it('간격의 절반만큼 왼쪽으로 나간다', () => {
@@ -208,13 +207,14 @@ describe('B. 정보 열 구분선', () => {
    * 데크를 누르면 이 위젯이 펼쳐지므로 둘이 붙어 있어야 무엇이 열렸는지 눈으로
    * 따라갈 수 있다. 3열(정보)은 비워 둬서 우측 오버레이가 타일을 덮지 않는다.
    */
-  it('플레이리스트가 데크 아래, 마스코트가 2열 아래에 선다', () => {
+  it('플레이리스트가 데크 아래, 플레이어가 그 옆 세 행을 가로지른다', () => {
     const source = readSource('src/components/layout/WidgetHost.vue')
     const wide = source.slice(0, source.indexOf('@media (max-width: 1100px)'))
     const compact = source.slice(source.indexOf('@media (max-width: 1100px)'))
 
-    // 4 행 3 열은 M9-4 부터 Moments 다. 플레이리스트·마스코트 자리는 그대로다.
-    expect(wide).toContain("'playlist mascot moments'")
+    // 3 열 아래는 M9-4 부터 Moments 다. M12-2: 마스코트 행이 없어지고 영상 아래 카드는 플레이어 위젯 안이다.
+    expect(wide).toContain("'playlist player moments'")
+    expect(wide).not.toContain('mascot')
     // 세로에서는 데크 옆(이전의 시계·날씨 자리)이다 (요청 5).
     expect(compact).toContain("'deck playlist'")
     expect(compact).toContain("'clock weather'")
@@ -234,7 +234,7 @@ describe('B. 정보 열 구분선', () => {
 
     // M11-7B: 데크가 1·2 행, NOW PLAYLIST 가 그 아래 3·4 행이다. 남는 높이는 2 행(`1fr`)이 받아
     // 시계(1 행)와 날씨(2 행 위쪽)가 붙어 있다.
-    expect(wide).toContain('grid-template-rows: auto 1fr auto auto')
+    expect(wide).toContain('grid-template-rows: auto 1fr auto')
     expect(wide).toContain("'deck player weather'")
     /*
      * 그 빈자리(3·4 행)를 M9-4 부터 Music Moments 가 쓴다. 시계 · 날씨는 1 · 2 행(`auto`)이라 늘
@@ -243,7 +243,6 @@ describe('B. 정보 열 구분선', () => {
      * 마스코트)이 내려간다. 데크 · 플레이어는 위쪽 정렬이라 움직이지 않는다.
      */
     expect(wide).toContain("'playlist player moments'")
-    expect(wide).toContain("'playlist mascot moments'")
     expect(source).toMatch(/\[data-widget='moments'\]\s*\{[^}]*align-self: stretch;/)
     expect(source).not.toMatch(/contain: size;/)
   })

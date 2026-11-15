@@ -97,18 +97,21 @@ const placed = computed<PlacedWidget[]>(() =>
   grid-template-areas:
     'deck player clock'
     'deck player weather'
-    'playlist player moments'
-    'playlist mascot moments';
+    'playlist player moments';
   /*
    * 1 행은 **콘텐츠 높이**(`auto`), 2 행이 `1fr` 다. 데크는 1·2 행을 가로지르고 그 남는 높이를 2 행이
    * 받는다 — 시계(1 행)와 날씨(2 행 위쪽)는 서로 붙어 있고, 벌어지는 자리는 날씨 **아래**다.
-   * 3·4 행은 콘텐츠 높이다: NOW PLAYLIST 와 Music Moments 가 두 행을 가로지르고, 마스코트는 플레이어
-   * 아래 4 행에 선다.
+   * 3 행은 콘텐츠 높이다: NOW PLAYLIST 와 Music Moments 가 선다.
+   *
+   * M12-2 (ADR 0032): 4 행의 마스코트가 없어졌다. 영상 아래의 Now Playing 카드는 **플레이어 위젯 안**이라 플레이어가
+   * 1 ~ 3 행을 가로지른다 — 카드를 따로 된 그리드 칸으로 두면 세 열이 한 행 높이를 나눠 써서 영상과 카드 사이가
+   * 81 ~ 165px 벌어졌다 (실제 Chrome 실측, `docs/development/m12-results`). Moments 는 시계 · 날씨 아래 3 행의 남는
+   * 높이를 모두 쓴다 (`align-self: stretch`).
    *
    * (M7 까지는 행이 둘뿐이어서 시계가 1 행 위쪽에 붙은 뒤 아래로 빈 공간이 생긴 다음 날씨가 2 행
    * 시작에 붙었다. 그 벌어짐을 다시 만들지 않는다.)
    */
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto 1fr auto;
   /*
    * 3열의 최소값이 둘 다 근거가 있는 값이다.
    *
@@ -209,10 +212,9 @@ const placed = computed<PlacedWidget[]>(() =>
       'deck playlist'
       'player player'
       'moments moments'
-      'clock weather'
-      'mascot mascot';
+      'clock weather';
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   /*
@@ -258,7 +260,7 @@ const placed = computed<PlacedWidget[]>(() =>
  *
  * 두 열을 360px 까지 끌고 가면 데크 옆 반 칸(약 140px)에 플레이리스트가 끼고, 시계 · 날씨가 반 칸씩
  * 나눠 글자가 빽빽했다. 순서는 듣는 흐름이다 — **작은 데크 띠** → 영상 → **이 곡의 Moments(저장)** →
- * NOW PLAYLIST → 시계 → 날씨 → 마스코트. 저장이 영상 바로 아래에 있어 세로 화면에서도 닿는다.
+ * NOW PLAYLIST → 시계 → 날씨. (M12-2: 마스코트가 없어지고 영상 바로 아래가 Now Playing 카드다 — 플레이어 위젯 안.) 저장이 영상 바로 아래에 있어 세로 화면에서도 닿는다.
  *
  * M11-7B: 데크는 여기서 **작은 띠**다 (`DeckWidget` — 아트를 통째로 줄여 왼쪽에, 안내를 옆에). M11-6
  * 까지는 화면 폭의 데크(390px 에서 약 220px 높이)가 영상을 첫 화면 아래로 밀었다 (ADR 0030).
@@ -273,8 +275,7 @@ const placed = computed<PlacedWidget[]>(() =>
       'moments'
       'playlist'
       'clock'
-      'weather'
-      'mascot';
+      'weather';
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
   }
@@ -312,11 +313,10 @@ const placed = computed<PlacedWidget[]>(() =>
       'player moments'
       'player playlist'
       'deck playlist'
-      'clock weather'
-      'mascot mascot';
+      'clock weather';
     /* 왼쪽 열 360px 이상 — 16:9 영상이 202px 을 지킬 수 있는 폭 (위 머리말과 같은 근거). */
     grid-template-columns: minmax(360px, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   .widget-host > [data-widget='player'] {

@@ -18,7 +18,7 @@
 | JSON 백업         | `39page-backup` schemaVersion 1, 최대 8 MB, 미리보기 → 승인 → 섹션별 결과 (ADR 0018, `useBackupImport.ts`)                                                                                                                | ZIP 전체 백업은 이 파일을 **그대로 품는다** — 검증기 · 쓰기 경로를 다시 만들지 않는다             |
 | CSP               | 웹앱 문서에 CSP 가 없다. `bridge.html` 만 `frame-ancestors` 헤더가 있다 (`vite.config.ts`)                                                                                                                                | `i.ytimg.com` 썸네일 · `blob:` 이미지가 바로 된다. CSP 를 도입하면 `img-src` 에 둘을 넣어야 한다  |
 | 확장 저장 계약    | 확장은 브리지로 `library.addTrack` · `moments.add` 만 부른다 (ADR 0028)                                                                                                                                                   | Artwork 는 확장 계약에 들어가지 않는다. 확장으로 담은 곡은 자동(썸네일)이다                       |
-| 기존 마스코트     | `features/mascot/*` 는 위젯 레지스트리 · 레이아웃 · 테마 메타데이터(`mascot` 문구) · 토큰(`--mascot-*`)에서만 쓰인다                                                                                                      | 위젯을 Now Playing 카드로 바꾸고 마스코트 코드 · 토큰 · 문구를 지운다 (M12-2)                     |
+| 기존 마스코트     | `features/mascot/*` 는 위젯 레지스트리 · 레이아웃 · 테마 메타데이터(`mascot` 문구) · 토큰(`--mascot-*`)에서만 쓰인다                                                                                                      | 마스코트 위젯을 빼고 플레이어 위젯 안 Now Playing 카드로, 코드 · 토큰 · 문구를 지운다 (M12-2)     |
 
 ## 2. Artwork 데이터 모델
 

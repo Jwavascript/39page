@@ -8,12 +8,15 @@
  * SVG·Canvas 대신 CSS Grid 를 쓴 이유: 승인된 디자인이 그렇게 구현되어
  * 있고(`.mascot-screen`), 도트 개수가 192개뿐이라 가장 단순하다.
  *
+ * M12: 마스코트 패널이 없어지고(ADR 0032) Kawaii Synth Cassette 의 **기본 앨범아트**가 이 렌더러를 쓴다.
+ * 도트 크기 · 간격은 부모가 `--dot-size` · `--dot-gap` 으로 정한다 (기본 5px · 3px).
+ *
  * 색과 디스플레이 스타일은 테마 토큰이 결정한다. 이 컴포넌트에 테마별
  * 분기가 없다.
  */
 import { computed } from 'vue'
 
-import { patternSize, type DotPattern } from './patterns'
+import { patternSize, type DotPattern } from './dotPatterns'
 
 const props = defineProps<{ pattern: DotPattern }>()
 
@@ -32,8 +35,8 @@ const dots = computed(() =>
 
 <template>
   <!--
-    도트는 장식이다. 보조기기가 192개 노드를 읽지 않도록 숨긴다.
-    의미는 옆의 상태 문구가 전달한다.
+    도트는 장식이다. 보조기기가 도트 노드를 읽지 않도록 숨긴다.
+    의미는 옆의 곡 제목이 전달한다.
   -->
   <div
     class="dot-matrix"
@@ -53,44 +56,30 @@ const dots = computed(() =>
 </template>
 
 <style scoped>
-/* 승인된 디자인의 `.mascot-screen` 값을 따른다. */
+/* 승인된 디자인의 `.mascot-screen` 값을 따른다 (M12: 기본 앨범아트의 도트 화면). */
 .dot-matrix {
   display: grid;
   flex: none;
-  grid-auto-rows: 5px;
-  grid-template-columns: repeat(var(--dot-columns), 5px);
+  grid-auto-rows: var(--dot-size, 5px);
+  grid-template-columns: repeat(var(--dot-columns), var(--dot-size, 5px));
   align-content: center;
   justify-content: center;
   padding: 7px 10px;
-  border: 1px solid var(--mascot-screen-border-color);
-  background: var(--mascot-screen-surface-color);
-  box-shadow: var(--mascot-screen-shadow);
-  gap: 3px;
+  border: 1px solid var(--artwork-frame-border-color);
+  background: var(--artwork-frame-surface-color);
+  box-shadow: var(--artwork-frame-shadow);
+  gap: var(--dot-gap, 3px);
 }
 
 /* 승인된 디자인의 `.mascot-dot` 값을 따른다. */
 .dot {
-  width: 5px;
-  height: 5px;
+  width: var(--dot-size, 5px);
+  height: var(--dot-size, 5px);
   border-radius: var(--radius-circle);
   background: transparent;
 }
 
 .dot.is-on {
-  background: var(--mascot-dot-color);
-}
-
-/* 좁은 화면에서 도트를 줄인다. 승인된 디자인의 600px 규칙이다. */
-@media (max-width: 600px) {
-  .dot-matrix {
-    grid-auto-rows: 4px;
-    grid-template-columns: repeat(var(--dot-columns), 4px);
-    gap: 2px;
-  }
-
-  .dot {
-    width: 4px;
-    height: 4px;
-  }
+  background: var(--artwork-dot-color);
 }
 </style>

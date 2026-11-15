@@ -11,12 +11,14 @@
  */
 import { THEME_KEYS, type ThemeKey } from '@/shared/types'
 
-/** 테마별 마스코트 문구. 승인된 디자인의 문구를 따른다. */
-export interface MascotCopy {
-  /** 전광판 옆의 상태 문구. */
-  message: string
-  /** 그 아래의 보조 문구. */
-  sub: string
+/**
+ * 테마별 기본 앨범아트 문구 (M12, ADR 0032).
+ *
+ * 마스코트 패널의 승인된 상태 문구(`SIGNAL READY` · `MIXTAPE READY`)를 기본 그림의 글자로 잇는다.
+ */
+export interface ArtworkCopy {
+  /** 기본 그림 아래쪽의 짧은 글자. */
+  defaultLabel: string
 }
 
 /** 테마별 데크 문구. 승인된 디자인의 문구를 따른다. */
@@ -39,13 +41,8 @@ export interface ThemeMetadata {
   label: string
   /** 테마의 성격을 한 줄로 설명한다. */
   description: string
-  /**
-   * 마스코트 문구.
-   *
-   * 테마별로 다른 **외형 문구**이므로 메타데이터에 둔다. 재생 상태에 따른
-   * 문구 전환은 M4 이며 이 값과 별개다.
-   */
-  mascot: MascotCopy
+  /** 기본 앨범아트 문구 (M12 — 마스코트 문구를 대신한다). */
+  artwork: ArtworkCopy
   /** 데크 문구. 데크를 눌러 Record Library 를 여는 흐름에 쓴다. */
   deck: DeckCopy
   /**
@@ -64,7 +61,7 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     // M11-7B: 표시 순서가 둘째가 됐다 (번호만 — 키와 디자인은 그대로).
     label: '02 / MONO VINYL',
     description: '따뜻한 회갈색 금속 턴테이블. 검은 LP와 아이보리 도트.',
-    mascot: { message: 'SIGNAL READY', sub: 'a little life inside your music' },
+    artwork: { defaultLabel: 'SIGNAL READY' },
     footerLabel: 'MONO VINYL · ANALOG × DIGITAL',
     deck: {
       // M11-3: 이 트리거가 여는 것이 플레이리스트 선반에서 **음악 보관함**으로 바뀌었다.
@@ -81,7 +78,7 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     // M11-7B: Theme 1 · 새 사용자의 기본 테마.
     label: '01 / SYNTH CASSETTE',
     description: '민트 카세트 데크에 분홍 포인트. 90s 신스 레트로 디지털.',
-    mascot: { message: 'MIXTAPE READY', sub: 'a tiny melody from tomorrow' },
+    artwork: { defaultLabel: 'MIXTAPE READY' },
     footerLabel: 'SYNTH CASSETTE · PIXEL × KAWAII',
     deck: {
       openLabel: '카세트를 눌러 음악 보관함 열기',

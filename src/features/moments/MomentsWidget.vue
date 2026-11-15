@@ -30,7 +30,7 @@ import MomentCapture from './MomentCapture.vue'
 import MomentsStatusBanner from './MomentsStatusBanner.vue'
 import { formatMomentTime } from './momentsView'
 import { useMomentsBrowser } from './useMomentsBrowser'
-import { usePlaybackPosition } from './usePlaybackPosition'
+import { usePlaybackPosition } from '@/features/playback/usePlaybackPosition'
 
 const browser = useMomentsBrowser()
 const moments = useMomentsStore()

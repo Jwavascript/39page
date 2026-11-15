@@ -175,16 +175,16 @@
   --toast-shadow: 0 10px 24px #0008;
   --link-text-color: #dfd1ba;
 
-  /* ---------- 마스코트 ---------- */
-  --mascot-panel-background: linear-gradient(105deg, #101111, #1e1d1a);
-  --mascot-panel-border-color: #49453f;
-  --mascot-panel-shadow: none;
-  --mascot-screen-surface-color: #060707;
-  --mascot-screen-border-color: #373631;
-  --mascot-screen-shadow: none;
-  --mascot-dot-color: #ffffff;
-  --mascot-label-text-color: #9c978c;
-  --mascot-message-text-color: #e3e0d8;
-  --mascot-sub-text-color: #8f897d;
-  --mascot-corner-text-color: #757269;
+  /* ---------- Now Playing 카드 · 앨범아트 (M12 — 마스코트 패널 토큰을 이었다) ---------- */
+  --artwork-card-background: linear-gradient(105deg, #101111, #1e1d1a);
+  --artwork-card-border-color: #49453f;
+  --artwork-card-shadow: none;
+  --artwork-frame-surface-color: #060707;
+  --artwork-frame-border-color: #373631;
+  --artwork-frame-shadow: none;
+  --artwork-dot-color: #ffffff;
+  --artwork-label-text-color: #9c978c;
+  --artwork-message-text-color: #e3e0d8;
+  --artwork-sub-text-color: #8f897d;
+  --artwork-accent-color: #757269;
 }

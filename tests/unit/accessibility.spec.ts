@@ -287,7 +287,8 @@ describe('E. 장식과 상태', () => {
     const { wrapper } = mountApp()
 
     expect(wrapper.get('.dot-matrix').attributes('aria-hidden')).toBe('true')
-    expect(wrapper.get('.mascot-corner').attributes('aria-hidden')).toBe('true')
+    // M12-2: 마스코트 코너 장식 대신 기본 앨범아트 — 곡 제목이 옆에 있다.
+    expect(wrapper.get('.default-artwork').attributes('aria-hidden')).toBe('true')
     expect(wrapper.get('.wxicon').attributes('aria-hidden')).toBe('true')
   })
 

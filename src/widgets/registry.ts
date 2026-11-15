@@ -16,7 +16,6 @@ import type { Component } from 'vue'
 import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/shared/types'
 import DeckWidget from '@/features/deck/DeckWidget.vue'
 import NowPlaylistWidget from '@/features/library/NowPlaylistWidget.vue'
-import MascotPanel from '@/features/mascot/MascotPanel.vue'
 import MomentsWidget from '@/features/moments/MomentsWidget.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import ClockWidget from '@/widgets/clock/ClockWidget.vue'
@@ -74,14 +73,6 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultArea: 'deck',
     ...NOT_EDITABLE,
   },
-  mascot: {
-    type: 'mascot',
-    title: '마스코트',
-    // M1-6에서 정적 도트 마스코트로 교체했다. 애니메이션은 M4 다.
-    component: MascotPanel,
-    defaultArea: 'mascot',
-    ...NOT_EDITABLE,
-  },
   clock: {
     type: 'clock',
     title: '시계',
@@ -133,7 +124,8 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
   player: {
     type: 'player',
     title: 'YouTube 플레이어',
-    // M1-5에서 플레이스홀더를 PlayerSurface 로 교체했다.
+    // M1-5에서 플레이스홀더를 PlayerSurface 로 교체했다. M12-2: 영상 바로 아래 Now Playing 카드를 품는다
+    // (마스코트 위젯 자리 — ADR 0032).
     // 실제 YouTube 어댑터는 M3에서 주입한다.
     component: PlayerSurface,
     defaultArea: 'player',

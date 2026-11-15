@@ -447,7 +447,6 @@ describe('B. 테마 전환 안정성', () => {
     expect(ids()).toEqual(before)
     expect(before).toEqual([
       'deck-main',
-      'mascot-main',
       'clock-main',
       'weather-main',
       'player-main',

@@ -2506,7 +2506,18 @@ YouTube 탭 ─ content script(격리 세계) ─ 닫힌 shadow root ─ 패널 
   트랙 삭제에 되돌리기 없음. 웹앱 문서에 CSP 없음. 확장 계약은 Artwork 와 무관.
 - 산출물: UX 문서 · 기술 설계 · ADR 0032 · 0033 · 0034 · 로드맵 (M11-7D 를 M12 뒤로).
 
-### M12-2 ~ M12-5
+### M12-2. Now Playing 레이아웃 — 완료 (2026-11-15)
+
+- 마스코트 위젯 · 코드 · 토큰 · 문구 삭제 → 플레이어 위젯 안 영상 바로 아래 **Now Playing 카드**(그림 · 제목 · 상태 · 지금 초 · 조작 ·
+  안내). 영상 위 제목 · 조작은 카드로 옮김 (사본 없음). 그림: YouTube `hqdefault` 썸네일(no-referrer, 실패 · 120×90 → 기본) → 테마별
+  기본 그림(카세트 도트 · LP). 사용자 업로드는 없음 (M12-3).
+- 카드를 따로 된 그리드 위젯으로 두는 첫 안은 실제 Chrome 에서 영상 ↔ 카드 81 ~ 165px 벌어짐 · NOW PLAYLIST 270px 밀림 → 위젯 안으로
+  (ADR 0032 결정 2).
+- `usePlaybackPosition` 을 moments → playback 으로 옮김 (카드와 Moments 위젯이 함께 쓴다).
+- 시험: 58 파일 · 2,017 (마스코트 시험 삭제, 카드 · 그림 28개 추가). 실제 Chrome · YouTube 36/36 (`m12-results/real-chrome-layout.json`).
+  하네스 결함 1건: 전체 페이지 스크린샷(`captureBeyondViewport`)이 뷰포트를 잠깐 4×4 로 바꿔 가시성 가드가 멈췄다 — 뷰포트 스크린샷으로 바꿈.
+
+### M12-3 ~ M12-5
 
 (단계마다 이 절에 커밋 · 시험 결과를 덧붙인다.)
 

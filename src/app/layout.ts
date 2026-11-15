@@ -5,8 +5,9 @@
  * 이동·크기 변경은 MVP 범위 밖이다 (`docs/product/BACKLOG.md` §1).
  *
  * 배치는 승인된 프로토타입을 따른다.
- *   왼쪽  상단: 데크(LP/카세트), 하단: 마스코트
- *   가운데: YouTube 재생 영역, 그 아래 플레이리스트 (M6)
+ *   왼쪽  상단: 데크(LP/카세트), 하단: NOW PLAYLIST (M11-7B)
+ *   가운데: YouTube 영상과 그 바로 아래 Now Playing 카드 (M12-2 — 카드는 플레이어 위젯 안, ADR 0032)
+ *   M12-2 에서 마스코트 위젯(`mascot-main`)을 뺐다 — 그 자리를 카드가 쓴다
  *   오른쪽 위에서 아래로: 시계, 날씨, Music Moments (M9-4)
  *
  * 실제 좌표는 `WidgetHost`의 `grid-template-areas`가 정의한다. 여기서는
@@ -22,7 +23,6 @@ export const MVP_DASHBOARD_LAYOUT: DashboardLayout = {
   version: DASHBOARD_LAYOUT_VERSION,
   items: [
     { instanceId: 'deck-main', widgetType: 'deck', area: 'deck' },
-    { instanceId: 'mascot-main', widgetType: 'mascot', area: 'mascot' },
     { instanceId: 'clock-main', widgetType: 'clock', area: 'clock' },
     { instanceId: 'weather-main', widgetType: 'weather', area: 'weather' },
     { instanceId: 'player-main', widgetType: 'player', area: 'player' },

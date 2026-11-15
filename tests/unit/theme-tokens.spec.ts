@@ -197,12 +197,13 @@ describe('복합 배경을 단순화하지 않았는지', () => {
     expect(actual).toContain('repeating-linear-gradient')
   })
 
-  it('마스코트 패널 그라디언트가 테마별로 보존된다', () => {
-    expect(squash(tokensOf(THEME_CSS['mono-vinyl']).get('--mascot-panel-background') ?? '')).toBe(
+  // M12-2: 마스코트 패널이 Now Playing 카드가 되며 그 그라디언트를 카드 토큰이 잇는다 (ADR 0032).
+  it('마스코트 패널 그라디언트가 Now Playing 카드 토큰으로 테마별로 보존된다', () => {
+    expect(squash(tokensOf(THEME_CSS['mono-vinyl']).get('--artwork-card-background') ?? '')).toBe(
       squash(referenceDeclaration(REFERENCE_V09, '.mascot-panel', 'background')),
     )
     expect(
-      squash(tokensOf(THEME_CSS['kawaii-synth-cassette']).get('--mascot-panel-background') ?? ''),
+      squash(tokensOf(THEME_CSS['kawaii-synth-cassette']).get('--artwork-card-background') ?? ''),
     ).toBe(squash(referenceDeclaration(REFERENCE_V09, '.theme-kawaii .mascot-panel', 'background')))
   })
 })
@@ -232,8 +233,8 @@ describe('테마별 주요 토큰 값', () => {
     ['--row-selected-border-color', '#c5b7a3', '#92ead9'],
     ['--toast-surface-color', '#ded3c1', '#a7ffdf'],
     ['--toast-text-color', '#2d261f', '#17384a'],
-    ['--mascot-dot-color', '#ffffff', '#a8ffe7'],
-    ['--mascot-message-text-color', '#e3e0d8', '#ffafd2'],
+    ['--artwork-dot-color', '#ffffff', '#a8ffe7'],
+    ['--artwork-message-text-color', '#e3e0d8', '#ffafd2'],
     ['--deck-open-focus-ring-color', '#eee2d0', '#ff8fc3'],
   ]
 
