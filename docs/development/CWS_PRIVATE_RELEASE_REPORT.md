@@ -43,7 +43,7 @@ SHA-256:
 | root             | prepare-production-bridge.mjs 거부 검사 (Node spawnSync) | 잘못된 ID·개발 고정 ID·기존 로컬 ID 3개 모두 nonzero 거부 확인   |
 | root             | curl.exe -f -sS -L -D ... https://39page.com/bridge.html | 307 → 200, 양쪽 frame-ancestors none 재확인                      |
 | root             | curl.exe -f -sS -D ... https://39page.com/               | 루트 200, 읽기 전용 확인                                         |
-| root             | git diff --check                                         | 통과                                                             |
+| root             | git diff 562f8c1 --check                                 | 통과                                                             |
 
 초기 root format:check는 수집한 원본 production-bridge.html 때문에 실패했다. 원문을 변형하지 않고 해당 HTTP 증거 파일만 `.prettierignore`에 추가해 해결했다. 이후 최종 검사를 다시 실행했다. Node localStorage ExperimentalWarning과 Vite configLoader 향후 변경 안내는 출력됐으나 해당 명령들은 성공했다.
 
@@ -72,3 +72,5 @@ TODO:
 - Chrome 116 실측, 사람 UAT 및 Private 사용자 검증 후 Public 전환 결정.
 
 이 작업은 push·main 변경·운영 배포·심사 제출·결제를 수행하지 않았다. 다음 사용자 작업은 [출시 안내 1절](CWS_PRIVATE_RELEASE.md)의 최초 업로드와 공식 Item ID 전달이다.
+
+HTTP 헤더 캡처의 끝 빈 줄은 staged whitespace 검사에서 지적되어 정리했다. 헤더 값과 중간 리다이렉트 블록은 유지했다. HTML 응답 본문은 원문 그대로 보존했다.
