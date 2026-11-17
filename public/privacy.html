@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>39page 개인정보처리방침</title
+  ><style>
+    body {
+      margin: 0;
+      background: #fafbf8;
+      color: #18302b;
+      font:
+        17px/1.8 system-ui,
+        sans-serif;
+    }
+    main {
+      max-width: 850px;
+      margin: auto;
+      padding: 48px 24px;
+    }
+    h1 {
+      font-size: 30px;
+    }
+    h2 {
+      font-size: 23px;
+      margin-top: 40px;
+    }
+    a {
+      color: #225c69;
+    }
+    .item {
+      padding-left: 14px;
+    }
+  </style>
+  <main>
+    <a href="/">39page</a>
+    <h1>39page 개인정보처리방침</h1>
+    <p>시행일: 2026년 11월 18일</p>
+    <h2>목적과 처리 정보</h2>
+    <p>
+      39page Chrome 확장은 사용자가 아이콘이나 단축키로 실행한 YouTube 영상에서 URL의 영상 ID, 영상
+      제목, 현재 재생 시점을 읽습니다. 사용자가 입력한 Moment 메모와 플레이리스트 이름도 저장에
+      사용합니다. 패널이 열려 있는 동안 선택한 영상의 상태를 확인하며, 페이지가 바뀌면 저장 대상을
+      바꿀지 사용자에게 알립니다. 전체 방문 기록이나 다른 사이트의 내용을 자동으로 수집하지
+      않습니다.
+    </p>
+    <p>
+      선택적인 39page 사이트 접근 권한을 허용하면, 패널에서 이 브라우저의 39page 플레이리스트
+      이름·곡 수·선택 영상의 중복 위치와 Moments 시점을 조회합니다. 곡·Moment 저장은 사용자가 저장
+      버튼을 눌러야 수행합니다. 권한을 거부하면 수집 화면을 새 탭으로 열어 확인 후 저장할 수
+      있습니다. 권한은 Chrome 확장 설정에서 철회할 수 있습니다.
+    </p>
+    <h2>저장과 전달</h2>
+    <p>
+      확장은 chrome.storage 권한을 선언하지 않고 chrome.storage.sync/local에 수집 내용을 영구
+      보관하지 않습니다. 탭 세션·저장 요청·임시 메모는 확장 메모리에 존재하며 패널이나 브라우저를
+      닫으면 사라질 수 있습니다.
+    </p>
+    <p>
+      곡·목록·Moments·설정은 39page.com의 브라우저 localStorage에 저장합니다. 사용자 업로드
+      artwork는 IndexedDB에 저장합니다. 다른 프로필·다른 origin·다른 기기로 자동 동기화하지
+      않습니다. 확장 삭제만으로 39page 사이트 저장 내용이 삭제되지는 않습니다.
+    </p>
+    <p>
+      직접 저장은 숨은 확장 문서의 https://39page.com/bridge.html 웹페이지와 postMessage로 정보를
+      교환합니다. 이 정보는 브라우저 내 다른 문맥인 39page 웹페이지에 전달됩니다. 현재 소스에는
+      곡·메모·목록을 서버 API에 업로드하거나 계정에 동기화하는 기능이 없습니다. 웹페이지 코드가 받아
+      처리하는 사실까지 부정하는 전송 없음이라는 뜻은 아닙니다.
+    </p>
+    <p>
+      수집 화면에서는 영상 ID·제목·시점을 https://39page.com/#collect 뒤 fragment에 싣습니다.
+      fragment는 HTTP 요청 대상에 포함되지 않지만 브라우저 주소·기록과 웹페이지 JS에서 보일 수
+      있습니다. 메모는 Collect URL에 넣지 않으며 새 화면에서 직접 입력합니다.
+    </p>
+    <h2>네트워크와 외부 서비스</h2>
+    <p class="item">
+      &#8226; 39page.com 페이지·브리지·정적 자원을 요청할 때 Cloudflare 호스팅에 IP 주소·요청
+      경로·시간·브라우저 정보 같은 통상적인 HTTP 정보가 전달될 수 있습니다. 호스팅 서비스의 운영
+      로그와 네트워크 진단 정보는 해당 서비스의 정책과 설정에 따라 처리됩니다.
+    </p>
+    <p class="item">
+      &#8226; 2026-11-17 운영 응답에는 Cloudflare NEL/Report-To 헤더가 있습니다. 지원 브라우저가
+      네트워크 오류 보고를 Cloudflare의 a.nel.cloudflare.com에 보낼 수 있습니다. 앱 분석 SDK가 없는
+      것과 호스팅의 네트워크 진단 보고는 구분합니다.
+    </p>
+    <p class="item">
+      &#8226; 확장 패키지는 원격 폰트·분석 SDK·광고 SDK를 포함하지 않습니다. 확장 탭에서 읽은 내용을
+      분석 서버에 전송하는 코드도 없습니다.
+    </p>
+    <p class="item">
+      &#8226; 웹앱에서 음악을 재생하면 YouTube iframe/API, 썸네일을 표시하면 i.ytimg.com, 제목 자동
+      조회를 실행하면 YouTube oEmbed에 요청합니다. 영상 ID와 통상적인 접속 정보가 해당 서비스에
+      전달될 수 있습니다. 외부 서비스는 자체 정책에 따라 데이터를 처리합니다.
+    </p>
+    <p class="item">
+      &#8226; 웹앱 날씨 위젯은 Open-Meteo에 고정 좌표의 날씨를 요청합니다. 사용자의 GPS 위치를
+      요청하지 않습니다. 숨은 저장 브리지는 플레이어·날씨 위젯을 구동하지 않습니다.
+    </p>
+    <h2>이용 제한과 제공</h2>
+    <p>
+      이 구현에는 사용자 수집 내용을 판매하거나 광고·신용 평가에 사용하는 기능이 없습니다. 위에
+      설명한 웹호스팅·외부 리소스 요청과 사용자가 직접 실행한 파일 내보내기·가져오기 외에, 서버 기반
+      공개 공유·클라우드 계정 동기화를 제공하지 않습니다. 메모에 민감한 개인정보를 적지 않도록
+      주의해 주세요.
+    </p>
+    <p>
+      Google API와 Chrome 확장 API를 통해 받은 정보의 사용 및 전달은
+      <a href="https://developer.chrome.com/docs/webstore/program-policies/policies"
+        >Chrome Web Store 사용자 데이터 정책</a
+      >의 Limited Use 요건을 준수합니다. 기능 제공에 필요한 목적으로만 사용합니다.
+    </p>
+    <h2>보관·백업·삭제</h2>
+    <p>
+      로컬 데이터는 사용자가 삭제하거나 브라우저가 사이트 데이터를 지울 때까지 보관됩니다.
+      곡·목록·Moments는 39page UI에서 삭제할 수 있습니다. 브라우저의 39page.com 사이트 데이터를
+      삭제하면 localStorage와 IndexedDB의 내용이 삭제되므로 먼저 백업하세요. 확장 제거·재설치는 웹앱
+      데이터 삭제 수단이 아닙니다.
+    </p>
+    <p>
+      39page의 데이터 관리 기능에서 JSON/이미지 포함 ZIP 백업을 내보내고 가져올 수 있습니다. 내보낸
+      파일에는 메모·목록·이미지 등이 포함될 수 있으므로 직접 관리하고 삭제해야 합니다. 서버에 별도
+      사본이 없는 로컬 데이터는 백업 없이 삭제하면 복구할 수 없습니다.
+    </p>
+    <h2>문의와 시행</h2>
+    <p>
+      지원 및 개인정보 관련 문의: <a href="mailto:jwavascript@gmail.com">jwavascript@gmail.com</a>
+    </p>
+    <p>
+      이 방침은 2026년 11월 18일부터 적용됩니다. 변경 시 이 페이지에 변경 내용과 시행일을
+      안내합니다.
+    </p>
+  </main>
+</html>
