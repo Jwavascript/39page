@@ -1,0 +1,30 @@
+HTTP/1.1 307 Temporary Redirect
+Date: Tue, 17 Nov 2026 14:25:21 GMT
+Content-Length: 0
+Connection: keep-alive
+Location: /bridge
+content-security-policy: frame-ancestors 'none'
+referrer-policy: no-referrer
+x-content-type-options: nosniff
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=ND%2FxCSKzzrtW63iICD%2FsZ3IWj7EnaKD5Ot1%2FnVW1dAVwjsvMKnK2lzI0KlKK6vergelqywPyTmRfBMtxBfwb%2Bd2kzDqGLb%2Fg%2BLwc3s%2F52TSL1GI7k1CCaUXnBBjs"}]}
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server: cloudflare
+CF-RAY: a5bf677b2dc2afbd-NRT
+alt-svc: h3=":443"; ma=86400
+
+HTTP/1.1 200 OK
+Date: Tue, 17 Nov 2026 14:25:21 GMT
+Content-Type: text/html
+Transfer-Encoding: chunked
+Connection: keep-alive
+CF-Cache-Status: HIT
+Cache-Control: public, max-age=0, must-revalidate
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-security-policy: frame-ancestors 'none'
+referrer-policy: no-referrer
+x-content-type-options: nosniff
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=plbm6EfnWcNp7EzYfiNt25hBkXC3SESRJ1x0FyRHezTsJbs7vbO25z3b%2FSbZA1JiU7Io%2BFgUnJTqmFCCwYy1yOGx8GAdUvHjuSABO%2BwcR8%2FL39Xy3IVRzpYrKPAs"}]}
+Server: cloudflare
+CF-RAY: a5bf677bfe63afbd-NRT
+alt-svc: h3=":443"; ma=86400
+

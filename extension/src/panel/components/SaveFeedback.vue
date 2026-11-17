@@ -82,7 +82,7 @@ const heading = computed(() => {
       <p>{{ UNAVAILABLE_COPY[state.reason] }}</p>
       <div class="actions">
         <button
-          v-if="state.reason === 'bridge-failed'"
+          v-if="state.reason === 'bridge-failed' || state.reason === 'timeout'"
           type="button"
           class="btn"
           @click="emit('reconnect')"

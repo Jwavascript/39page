@@ -5,6 +5,7 @@
  */
 import { computed } from 'vue'
 
+import { listFailureCopy } from '../panelCopy'
 import { MAX_NAME, type Saves } from '../useSaves'
 
 import SaveFeedback from './SaveFeedback.vue'
@@ -60,7 +61,7 @@ function confirmDuplicate(): void {
       39page 플레이리스트를 불러오는 중…
     </p>
     <p v-else-if="s.listPhase.value === 'failed'" class="muted" role="alert">
-      플레이리스트를 불러오지 못했어요.
+      {{ listFailureCopy(s.listFailure.value) }}
       <button type="button" class="link" @click="s.loadLists()">다시 불러오기</button>
     </p>
     <p v-else-if="s.listPhase.value === 'blocked'" class="muted" role="alert">

@@ -93,6 +93,39 @@ function fake(options: { granted?: boolean } = {}) {
   }
 }
 
+describe('BUG-001 조회 오류 안내와 복구', () => {
+  it.each([
+    ['permission', '접근 권한이 없어'],
+    ['not-allowed', '아직 확장의 바로 저장을 받지 않아요'],
+    ['timeout', '연결 시간이 초과'],
+    ['bridge-failed', '오프라인'],
+  ] as const)('%s 원인, Collect와 재시도, 자동 쓰기 없음', async (reason, text) => {
+    const f = fake()
+    f.setAnswer(() => ({ outcome: 'unavailable', reason }))
+    const w = await boot(f)
+    expect(w.text()).toContain(text)
+    expect(f.writes()).toHaveLength(0)
+    expect(w.text()).toContain('39page 수집 화면으로 열기')
+    f.setAnswer(() => ({ outcome: 'ok', data: { status: 'ready', playlists: [] } }))
+    await w
+      .findAll('button')
+      .find((b) => b.text() === '다시 불러오기')
+      ?.trigger('click')
+    await flushPromises()
+    expect(w.text()).toContain('어느 플레이리스트에 담을까요?')
+    expect(w.text()).not.toContain(text)
+    expect(f.writes()).toHaveLength(0)
+  })
+
+  it('데이터 오류는 연결 오류와 구별한다', async () => {
+    const f = fake()
+    f.setAnswer(() => ({ outcome: 'error', error: { code: 'internal', retryable: true } }))
+    const w = await boot(f)
+    expect(w.text()).toContain('플레이리스트 데이터를 조회하지 못했어요')
+    expect(f.writes()).toHaveLength(0)
+  })
+})
+
 async function boot(f: ReturnType<typeof fake>) {
   const wrapper = mount(PanelApp, {
     attachTo: document.body,

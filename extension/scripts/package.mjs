@@ -9,6 +9,7 @@
  *   읽어 항목과 내용이 dist 와 같은지 확인한다. 하나라도 어긋나면 ZIP 을 남기지 않는다.
  */
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -186,6 +187,28 @@ rmSync(zipPath, { force: true })
 writeFileSync(zipPath, zip)
 const sha256 = createHash('sha256').update(zip).digest('hex')
 writeFileSync(`${zipPath}.sha256`, `${sha256}  ${zipName}\n`)
+// ZIP 외부에 기록한다. 사용자에게 실제 빌드 출처와 작업 트리 상태를 전달한다.
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
+writeFileSync(
+  `${zipPath}.provenance.json`,
+  `${JSON.stringify(
+    {
+      commit: git('rev-parse', 'HEAD'),
+      branch: git('branch', '--show-current'),
+      workingTree: git('status', '--porcelain'),
+      mode: 'production',
+      version: manifest.version,
+      sha256,
+      bytes: zip.length,
+      files: files.map((file) => ({
+        path: file.name,
+        sha256: createHash('sha256').update(file.data).digest('hex'),
+      })),
+    },
+    null,
+    2,
+  )}\n`,
+)
 
 console.log(
   `패키지 — release/${zipName} (${String(zip.length)} 바이트, 파일 ${String(files.length)}개)`,

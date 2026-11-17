@@ -1,0 +1,36 @@
+{
+  "browser": "Chrome/157.0.8103.79",
+  "localUnpackedId": "cohaolbkljpklihbcnfkbogcdpokppke",
+  "storeInstall": false,
+  "results": [
+    {
+      "id": "manifest",
+      "title": "실제 production 확장 로드",
+      "pass": true,
+      "ms": 109,
+      "details": {
+        "pass": true,
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "panel",
+      "title": "실제 YouTube 패널·권한 안내·Collect 폴백",
+      "pass": true,
+      "ms": 312,
+      "details": {
+        "pass": true
+      }
+    },
+    {
+      "id": "collect",
+      "title": "수집 화면은 명시적 클릭 뒤 HTTPS fragment로 열린다",
+      "pass": true,
+      "ms": 113,
+      "details": {
+        "pass": true,
+        "url": "https://39page.com/#collect?v=1&kind=track&videoId=aqz-KE-bpKQ&title=Big+Buck+Bunny+60fps+4K+-+Official+Blender+Foundation+Short+Film&req=23e10383-69ca-46c3-8eb4-26d36e2c5615"
+      }
+    }
+  ]
+}

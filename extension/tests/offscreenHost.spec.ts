@@ -41,6 +41,17 @@ const request = (id = 'req-0000000000000001') => ({
 })
 
 describe('offscreen 문서', () => {
+  it('신뢰하는 창과 origin이어도 버전 없는/다른 버전의 ready는 무시한다', () => {
+    const s = setup()
+    for (const v of [undefined, 0, 2, '1']) {
+      s.host.onFrameMessage({
+        source: s.win,
+        origin: ORIGIN,
+        data: { ns: '39page-bridge', v, kind: 'ready' },
+      })
+    }
+    expect(s.host.state()).toBe('loading')
+  })
   it('서비스 워커가 아닌 보낸 쪽(패널 · content script · 다른 주소)은 무시한다', async () => {
     const s = setup()
     const ready = { target: 'offscreen', kind: 'ready', gen: 3 }
@@ -70,18 +81,18 @@ describe('offscreen 문서', () => {
     s.host.onFrameMessage({
       source: s.win,
       origin: 'https://evil.example',
-      data: { ns: '39page-bridge', kind: 'ready' },
+      data: { ns: '39page-bridge', v: 1, kind: 'ready' },
     })
     s.host.onFrameMessage({
       source: {},
       origin: ORIGIN,
-      data: { ns: '39page-bridge', kind: 'ready' },
+      data: { ns: '39page-bridge', v: 1, kind: 'ready' },
     })
     expect(s.host.state()).toBe('loading')
     s.host.onFrameMessage({
       source: s.win,
       origin: ORIGIN,
-      data: { ns: '39page-bridge', kind: 'ready', status: { a: 1 } },
+      data: { ns: '39page-bridge', v: 1, kind: 'ready', status: { a: 1 } },
     })
     expect(await waiting).toEqual({ ok: true, status: { a: 1 } })
   })
@@ -91,7 +102,7 @@ describe('offscreen 문서', () => {
     refused.host.onFrameMessage({
       source: refused.win,
       origin: ORIGIN,
-      data: { ns: '39page-bridge', kind: 'refused' },
+      data: { ns: '39page-bridge', v: 1, kind: 'refused' },
     })
     expect(await refused.ask({ target: 'offscreen', kind: 'ready', gen: 3 })).toEqual({
       ok: false,
@@ -109,7 +120,7 @@ describe('offscreen 문서', () => {
     s.host.onFrameMessage({
       source: s.win,
       origin: ORIGIN,
-      data: { ns: '39page-bridge', kind: 'ready' },
+      data: { ns: '39page-bridge', v: 1, kind: 'ready' },
     })
     const answer = s.ask({
       target: 'offscreen',
@@ -168,7 +179,7 @@ describe('offscreen 문서', () => {
     host.onFrameMessage({
       source: win,
       origin: ORIGIN,
-      data: { ns: '39page-bridge', kind: 'ready' },
+      data: { ns: '39page-bridge', v: 1, kind: 'ready' },
     })
     host.onRuntimeMessage({ target: 'offscreen', kind: 'ready', gen: 3 }, SW, () => {})
     await vi.advanceTimersByTimeAsync(10)
