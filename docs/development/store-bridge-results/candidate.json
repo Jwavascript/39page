@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-11-18T16:24:54.894Z",
+  "sourceCommit": "c75410014f275718a5bd735c7348121ffcbd4eda",
+  "extensionId": "aaihanclknbboaehbjpmlcefkbgdeima",
+  "headers": "/bridge.html\n  Content-Security-Policy: frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n/bridge\n  Content-Security-Policy: frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n",
+  "bridgeAsset": "assets/bridge-_-fyh6TX.js",
+  "differences": [
+    "_headers",
+    "assets/bridge-C4cijQlM.js",
+    "assets/bridge-_-fyh6TX.js",
+    "bridge.html"
+  ],
+  "unchanged": [
+    "assets/main-D4MmuasD.js",
+    "assets/main-Dzhhksy8.css",
+    "assets/moments-BBtXHUgc.js",
+    "favicon.ico",
+    "index.html",
+    "privacy.html"
+  ],
+  "closed": {
+    "bridge.html": "8b7fdb5a15973eb32d5a85f84431eaa737ab85dee5b7cf505bb956c1734df096",
+    "favicon.ico": "db74ab0b78338c1f778f8398c45f4103c99aea0e845a3118a7750b4eeafd3445",
+    "index.html": "d6f3932f853d6d3ced9fbe1cf18713d7e506389d6fad6c9ee7973246eecfc9aa",
+    "privacy.html": "303b6aea8621873bb781d93467aa6cfd188d6a063ddfae9964b0b1b415f61e8e",
+    "_headers": "065bfa983bf27ac346bad6ac6c3b230185bd9a8ca9f561366d50c93cb9740cf2",
+    "assets/bridge-C4cijQlM.js": "d3af7d39c2f0af9dc8657bb1d31e4ec939478c934a504101a1eab7c21d8bbad7",
+    "assets/main-D4MmuasD.js": "010993f29e485bbdc964f58407808d58d4e60f7738edc367c676d526b6a5e5f5",
+    "assets/main-Dzhhksy8.css": "e90dace8b71ddfd9b1030da050836a9da4e871c2f2d96b327f833c6471d58cd5",
+    "assets/moments-BBtXHUgc.js": "d848169c22728f0a8bee4bfb5b506504a122add004d38f4d2b6c96be05c4ff73"
+  },
+  "store": {
+    "bridge.html": "77efa64dacbfbf4a10f9cca4a406e57419a96b386f8920a50539b0b8b2be955f",
+    "favicon.ico": "db74ab0b78338c1f778f8398c45f4103c99aea0e845a3118a7750b4eeafd3445",
+    "index.html": "d6f3932f853d6d3ced9fbe1cf18713d7e506389d6fad6c9ee7973246eecfc9aa",
+    "privacy.html": "303b6aea8621873bb781d93467aa6cfd188d6a063ddfae9964b0b1b415f61e8e",
+    "_headers": "e97f406d13137e5b0305c4e407ee7c83a2d889d182a303c1dbe5c0fc0430f77c",
+    "assets/bridge-_-fyh6TX.js": "0c2a248928f5137b18db741e07e7b4cdd05f48c40f1ec8cfed20afca47690b81",
+    "assets/main-D4MmuasD.js": "010993f29e485bbdc964f58407808d58d4e60f7738edc367c676d526b6a5e5f5",
+    "assets/main-Dzhhksy8.css": "e90dace8b71ddfd9b1030da050836a9da4e871c2f2d96b327f833c6471d58cd5",
+    "assets/moments-BBtXHUgc.js": "d848169c22728f0a8bee4bfb5b506504a122add004d38f4d2b6c96be05c4ff73"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-11-18T16:25:31.021Z",
+  "routes": [
+    {
+      "route": "/bridge.html",
+      "url": "https://39page.com/bridge",
+      "status": 200,
+      "redirected": true,
+      "csp": "frame-ancestors 'none'",
+      "xFrameOptions": null,
+      "bridgeAsset": "/assets/bridge-C4cijQlM.js"
+    },
+    {
+      "route": "/bridge",
+      "url": "https://39page.com/bridge",
+      "status": 200,
+      "redirected": false,
+      "csp": "frame-ancestors 'none'",
+      "xFrameOptions": null,
+      "bridgeAsset": "/assets/bridge-C4cijQlM.js"
+    }
+  ],
+  "lastSuccessfulBuild": [
+    {
+      "name": "Workers Builds: 39page",
+      "conclusion": "success",
+      "url": "https://dash.cloudflare.com/c95f10b309b1ca9f92958201237f0ba6/workers/services/view/39page/production/builds/60e5a563-4e06-484d-896c-2fcc36026766",
+      "summary": "\nBuild ID: [60e5a563-4e06-484d-896c-2fcc36026766](https://dash.cloudflare.com/c95f10b309b1ca9f92958201237f0ba6/workers/services/view/39page/production/builds/60e5a563-4e06-484d-896c-2fcc36026766)\nScript: [39page](https://dash.cloudflare.com/c95f10b309b1ca9f92958201237f0ba6/workers/services/view/39page/production)\nVersion ID: e7e5b98f-ddd8-475e-8018-109350e8b140\n"
+    }
+  ],
+  "activeWorkerVersionConfirmed": false
+}
