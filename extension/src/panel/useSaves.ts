@@ -141,15 +141,10 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
         allowDuplicate: allowDuplicate.value,
       })
     }
-    if (music.state.value.phase === 'done') {
-      allowDuplicate.value = false
-      await loadLists()
-    }
   }
 
   async function retryMusic(): Promise<void> {
     await music.retry()
-    if (music.state.value.phase === 'done') await loadLists()
   }
 
   async function saveMoment(): Promise<void> {
@@ -170,8 +165,22 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
   // 고른 것이 바뀌면 앞 결과를 지운다 (결과를 모르는 요청은 확인할 수 있게 남긴다).
   const settled = (request: SaveRequest) =>
     request.state.value.phase !== 'uncertain' && request.state.value.phase !== 'partial'
+  // 저장 · 재시도 · 저장 여부 확인 모두, 성공이 확인된 뒤 다음 담기를 새로 고르게 한다.
+  watch(
+    () => music.state.value.phase,
+    (phase) => {
+      if (phase !== 'done') return
+      selected.value = null
+      creating.value = false
+      newName.value = ''
+      allowDuplicate.value = false
+      void loadLists()
+    },
+  )
   watch([selected, creating], () => {
     allowDuplicate.value = false
+    // 성공 후 자동 선택 해제는 완료 안내를 지우지 않는다. 새 선택에서는 지운다.
+    if (music.state.value.phase === 'done' && selected.value === null && !creating.value) return
     if (settled(music)) music.reset()
   })
   watch(
