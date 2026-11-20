@@ -1,0 +1,169 @@
+{
+  "observedAt": "2026-11-20T14:10:39.707Z",
+  "base": "https://39page.com",
+  "results": [
+    {
+      "name": "데이터 · 백업: 단추는 전체 백업 내보내기 · 백업 가져오기뿐, 설명 · 공유 없음",
+      "pass": true,
+      "details": {
+        "buttons": ["×", "전체 백업 내보내기", "백업 가져오기"],
+        "text": "데이터 · 백업 × 전체 백업 내보내기백업 가져오기"
+      }
+    },
+    {
+      "name": "데크 공유 → 공유 대화상자만 뜬다 · 고르는 칸 없음 · 카드 다음 링크",
+      "pass": true,
+      "details": {
+        "share": true,
+        "data": false,
+        "kind": "플레이리스트",
+        "name": "여름 밤 플레이리스트",
+        "detail": "3곡",
+        "options": 0,
+        "text": "공유×플레이리스트여름 밤 플레이리스트3곡카드를 그리는 중… 이미지 복사 이미지 저장 링크 복사 링크를 가진 누구나 내용을 볼 수 있어요."
+      }
+    },
+    {
+      "name": "목록: J카드 · 링크에 곡 이름, Moments 없음",
+      "pass": true,
+      "details": {
+        "card": {
+          "src": "blob:https://39page.com/0b3883a3-28bd-4baa-be85-2a7007ba9308",
+          "template": "jcard",
+          "size": "1080x1350",
+          "art": "false"
+        },
+        "tracks": 3,
+        "moments": null
+      }
+    },
+    {
+      "name": "390px: 공유 대화상자가 화면 안",
+      "pass": true,
+      "details": {
+        "left": 16,
+        "right": 374,
+        "scroll": 390
+      }
+    },
+    {
+      "name": "목록(Mono): LP 뒷면",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/1322e299-668a-4df2-868f-2e0d63bee6b9",
+        "template": "lp",
+        "size": "1080x1080",
+        "art": "false"
+      }
+    },
+    {
+      "name": "곡: 대상 한 줄 · Moments 3개와 메모가 링크에 기본으로",
+      "pass": true,
+      "details": {
+        "state": {
+          "kind": "곡",
+          "detail": "Moment 3개"
+        },
+        "moments": [
+          [0, 12],
+          [0, 83, "여기 후렴, 이어폰으로 꼭 들어 봐"],
+          [
+            0,
+            201,
+            "마지막 브릿지에서 숨 들이쉬는 소리까지 들려서 좋아하는 부분. 이 노래를 처음 들었던 겨울 밤 생각이 나요"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "곡(Kawaii): 싱글 · 그림 없음 · 높이는 내용만큼",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/119cfc8c-238a-4c1c-a18a-c8cb03989305",
+        "template": "single",
+        "size": "1080x860",
+        "art": "false"
+      }
+    },
+    {
+      "name": "곡(Mono): 싱글 · 그림 없음",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/6d1d403e-ac71-47c8-af6e-ca5eb63e3881",
+        "template": "single",
+        "size": "1080x730",
+        "art": "false"
+      }
+    },
+    {
+      "name": "Moments 없는 곡: 곡 이름만 (1080×640)",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/7e1da897-885c-4b90-b45e-620e0326bd1a",
+        "template": "single",
+        "size": "1080x640",
+        "art": "false"
+      }
+    },
+    {
+      "name": "Moment: 시점 · 메모 기본 포함 · 싱글",
+      "pass": true,
+      "details": {
+        "detail": "3:21",
+        "moment": [
+          0,
+          201,
+          "마지막 브릿지에서 숨 들이쉬는 소리까지 들려서 좋아하는 부분. 이 노래를 처음 들었던 겨울 밤 생각이 나요"
+        ],
+        "card": {
+          "src": "blob:https://39page.com/5bed42c0-c4fd-49b9-971b-381a109d8250",
+          "template": "single",
+          "size": "1080x692",
+          "art": "false"
+        }
+      }
+    },
+    {
+      "name": "그림 있는 곡(Kawaii): 싱글에 그 그림",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/236928a4-98ec-4145-925d-4fa4e02cd8db",
+        "template": "single",
+        "size": "1080x938",
+        "art": "true"
+      }
+    },
+    {
+      "name": "그림 있는 곡(Mono): 싱글에 그 그림",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/43d66b61-5dec-4905-a9b8-dfcbf8accb83",
+        "template": "single",
+        "size": "1080x818",
+        "art": "true"
+      }
+    },
+    {
+      "name": "12곡 목록: 영수증",
+      "pass": true,
+      "details": {
+        "src": "blob:https://39page.com/339a756c-9f72-4d01-aa58-f98fe5c1b2cd",
+        "template": "receipt",
+        "size": "1080x1428",
+        "art": "false"
+      }
+    },
+    {
+      "name": "받는 쪽: 링크를 열면 미리보기 (목록 이름)",
+      "pass": true,
+      "details": {
+        "received": "39PAGE · 공유 링크 × 공유받은 목록드라이브 12곡곡 12개 다른 사람이 만든 링크예요. 내용을 확인한 뒤 고르세요 — 누르기 전에는 아무것도 저장하지 않아요. 01드라이브 곡 102드라이브 곡 203드라이브"
+      }
+    },
+    {
+      "name": "Esc 로 닫고 연 단추로 포커스가 돌아온다",
+      "pass": true,
+      "details": {}
+    }
+  ]
+}

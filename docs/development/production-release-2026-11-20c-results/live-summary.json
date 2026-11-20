@@ -1,0 +1,51 @@
+{
+  "observedAt": "2026-11-20T14:12:25.035Z",
+  "commit": "7d494b0679680999fc7538cc14b46636848a9279",
+  "runs": [
+    {
+      "name": "smoke",
+      "source": "docs/development/release-gate-results/check/smoke.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T14:06:13.323Z",
+      "exitCode": 0,
+      "checks": 7,
+      "passed": 7
+    },
+    {
+      "name": "queue",
+      "source": "docs/development/playback-ux-results/check/queue.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T14:08:04.642Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "search",
+      "source": "docs/development/playback-ux-results/check/search.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T14:10:06.870Z",
+      "exitCode": 0,
+      "checks": 5,
+      "passed": 5
+    },
+    {
+      "name": "share-dialog",
+      "source": "docs/development/share-dialog-results/check/share-dialog.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T14:10:17.282Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "ux",
+      "source": "docs/development/m12-6-results/check/ux.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T14:11:04.940Z",
+      "exitCode": 0,
+      "checks": 47,
+      "passed": 47
+    }
+  ]
+}

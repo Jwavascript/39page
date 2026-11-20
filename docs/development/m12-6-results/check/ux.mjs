@@ -293,16 +293,16 @@ try {
     await t.text('.link-form button', '닫기')
     await t.click('[aria-label="Bunny B 관리"]')
     await t.click('[aria-label="Bunny B 공유"]')
+    // ADR 0043 — 공유 대화상자가 그 곡을 대상으로 연다. 파일(ZIP) 공유는 없어졌다 — 전체 백업만 내려받는다.
     record(
       'Track management selects exact playlist and track',
       await t.ev(
-        `document.querySelector('[aria-label="공유할 목록"]').value==='b' && document.querySelector('[aria-label="공유할 범위"]').value==='b1'`,
+        `document.querySelector('.share-dialog .target-kind')?.textContent==='곡' && document.querySelector('.share-dialog .target-name')?.textContent==='Bunny B'`,
       ),
     )
-    await t.download(() => t.text('.share button', '공유 파일 만들기'))
-    await t.value('[aria-label="공유할 범위"]', '', 'change')
-    await t.download(() => t.text('.share button', '공유 파일 만들기'), 'playlist-share.zip')
-    await t.download(() => t.text('.backup button', '전체 백업 (ZIP) 내보내기'))
+    await t.click('[aria-label="공유 닫기"]')
+    await t.click('.app-nav button:nth-child(2)')
+    await t.download(() => t.text('.backup button', '전체 백업 내보내기'))
     await t.click('[aria-label="데이터 닫기"]')
     await t.click('.strip-close')
     await t.ev(`window.__iframe=document.querySelector('.player-mount iframe'); true`)
@@ -412,40 +412,7 @@ try {
         restored.hashes.every(([id, hash]) => id === hash),
       restored,
     )
-    await t.file('.share input[type="file"]', path.join(OUT, 'share.zip'))
-    await waitFor(() => t.ev(`!!document.querySelector('.share-preview')`), {
-      label: 'share preview',
-    })
-    await t.text('.share-preview button', '가져오기')
-    await waitFor(
-      () => t.ev(`document.querySelector('.share').textContent.includes('곡 1개를 더했습니다')`),
-      { label: 'share restore' },
-    )
-    const shared = await t.db()
-    record(
-      'Track share restores crop with new track IDs',
-      shared.links.length === 3 &&
-        shared.links.filter((l) => l.display.zoom === 2).length === 2 &&
-        shared.assets.length === 1,
-      shared.links,
-    )
-    await t.file('.share input[type="file"]', path.join(OUT, 'playlist-share.zip'))
-    await waitFor(() => t.ev(`!!document.querySelector('.share-preview')`), {
-      label: 'playlist share preview',
-    })
-    await t.text('.share-preview button', '가져오기')
-    await waitFor(
-      () => t.ev(`document.querySelector('.share').textContent.includes('곡 3개를 더했습니다')`),
-      { label: 'playlist share restore' },
-    )
-    const playlistShared = await t.db()
-    record(
-      'Playlist share restores exact scope and crop',
-      playlistShared.links.length === 4 &&
-        playlistShared.assets.length === 1 &&
-        playlistShared.links.filter((l) => l.display.zoom === 2).length === 3,
-      playlistShared.links,
-    )
+    // 파일(ZIP) 공유 가져오기는 ADR 0043 에서 없어졌다 — 그 두 확인을 뺐다.
   })
 } catch (error) {
   record('Harness completed all scenarios', false, { error: error.stack })

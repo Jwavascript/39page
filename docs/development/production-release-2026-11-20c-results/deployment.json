@@ -1,0 +1,38 @@
+{
+  "recordedAt": "2026-11-20T14:15:00+00:00",
+  "releaseSHA": "7d494b0679680999fc7538cc14b46636848a9279",
+  "previousSHA": "8941c77526914af7d45e1922bcb89cc05d20e201",
+  "branch": "feat/share-dialog",
+  "pushedAt": "2026-11-20T14:03:43Z",
+  "forcePush": false,
+  "workerBuildIdFromCI": "fb200e17-97fb-419f-a6ea-caf6932a6aed",
+  "workerVersionFromCI": "234ec425-4c70-45ab-bcc3-a958ed69989b",
+  "ciCompletedAt": "2026-11-20T14:05:38Z",
+  "previousSuccessfulWorkerVersionFromCI": "3e9c8737-25ef-446c-9d2d-f1a8ea90eee0",
+  "gitRollbackRef": "rollback/share-dialog",
+  "rollbackExecuted": false,
+  "httpChecks": 16,
+  "httpPassed": 16,
+  "liveChecks": 89,
+  "livePassed": 89,
+  "liveFirstRun": "ux stopped at 15/16 — two steps of the M12-6 check still used the share pickers and ZIP file sharing removed by ADR 0043; check updated (ZIP share import checks removed with the feature), re-run 47/47",
+  "liveSuitesRetired": [
+    "sharelink (sender options)",
+    "sharecard (option toggles)",
+    "share-entry (art toggle)"
+  ],
+  "localChecks": {
+    "webTests": 2225,
+    "webTestFiles": 72,
+    "extensionTests": 430,
+    "typeCheck": true,
+    "lint": true,
+    "format": true,
+    "webBuild": true,
+    "realChromeShareDialog": "15/15"
+  },
+  "storageFormatChanged": false,
+  "userProfileTouched": false,
+  "extensionStoreUpload": false,
+  "dependenciesAdded": false
+}
