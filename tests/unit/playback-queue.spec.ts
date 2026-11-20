@@ -1,12 +1,13 @@
 /**
- * M11-7B — 재생 큐 보기 · 큐의 출처 · 큐 안의 자리로 재생 · 출처 목록으로 다시 뜨기.
+ * M11-7B · ADR 0038 — 재생 큐 보기 · 큐의 출처 · 큐 안의 자리로 재생 · 출처 목록 따르기 · 셔플 · 반복.
  *
- * NOW PLAYLIST 위젯이 기대는 계약이다 (`playbackCoordinator.ts` 의 `PlaybackQueue`).
+ * NOW PLAYLIST 위젯이 기대는 계약이다 (`playbackCoordinator.ts` 의 `PlaybackQueue` · `PlaybackModes`).
  *
- *   큐가 있으면 큐(스냅샷)와 그 출처, 없으면 `null` — 고른 목록과 섞지 않는다
+ *   큐가 있으면 큐와 그 출처, 없으면 `null` — 고른 목록과 섞지 않는다
  *   출처는 큐를 만드는 쪽이 적는다. 모르면 추정하지 않는다
- *   출처 목록을 고쳐도 큐는 그대로다. 사용자가 고를 때만 새 순서를 따른다
+ *   출처 목록을 고치면 큐가 바로 따라간다 — 지금 곡 · 재생 위치는 끊기지 않는다 (ADR 0038)
  *   지금 곡은 트랙 id 로 찾는다 — 같은 영상이 여러 번 있어도 헷갈리지 않는다
+ *   셔플 · 반복은 메모리에만 있고, 바꿔도 플레이어에 명령하지 않는다
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -14,7 +15,10 @@ import { resolve } from 'node:path'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createPlaybackCoordinator } from '@/features/playback/createPlaybackCoordinator'
+import {
+  createPlaybackCoordinator,
+  type PlaybackCoordinatorOptions,
+} from '@/features/playback/createPlaybackCoordinator'
 import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import type { PlayerPresence } from '@/features/playback/playerVisibility'
 import { STORAGE_KEYS } from '@/shared/storage'
@@ -42,13 +46,13 @@ async function makePlaylist(name: string, videos: readonly string[]): Promise<st
   return id
 }
 
-async function setup(presence?: PlayerPresence) {
+async function setup(presence?: PlayerPresence, options?: PlaybackCoordinatorOptions) {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
   const listA = await makePlaylist('A', [VIDEO[0], VIDEO[1], VIDEO[2]])
   const listB = await makePlaylist('B', [VIDEO[3], VIDEO[0]])
 
-  const coordinator = createPlaybackCoordinator()
+  const coordinator = createPlaybackCoordinator(options)
   const fake = new FakePlayerAdapter()
   const attachment = coordinator.attachAdapter(fake, presence)
   fake.mount(document.createElement('div'), attachment.events)
@@ -79,7 +83,6 @@ describe('A. 큐 보기 — 큐가 있을 때만, 고른 목록과 따로', () =
     expect(view?.index).toBe(1)
     expect(view?.source).toEqual({ playlistId: listA, name: 'A' })
     expect(view?.sourceState).toBe('in-sync')
-    expect(view?.canResync).toBe(false)
   })
 
   it('다른 목록을 **고르기만** 해서는 큐도 출처도 바뀌지 않는다', async () => {
@@ -247,65 +250,69 @@ describe('C. 큐 안의 자리로 재생', () => {
   })
 })
 
-describe('D. 큐는 스냅샷 — 출처 목록을 고쳐도 그대로, 고를 때만 새 순서', () => {
-  it('출처 목록의 순서를 바꾸면 큐는 그대로이고 상태가 changed 가 된다', async () => {
-    const { coordinator, library, listA, ids, titles, fake } = await setup()
-    coordinator.playTrack(listA, ids(listA)[1] ?? '')
-    const loads = fake.calls.load.length
-
-    // A 2 를 맨 위로: [A 2, A 1, A 3]
-    await library.moveTrack(listA, ids(listA)[1] ?? '', 'up')
-
-    expect(titles()).toEqual(['A 1', 'A 2', 'A 3'])
-    expect(coordinator.queue.value?.index).toBe(1)
-    expect(coordinator.queue.value?.sourceState).toBe('changed')
-    expect(coordinator.queue.value?.canResync).toBe(true)
-    // 다음 곡은 **옛 순서**를 따른다 — 사용자가 고르기 전에는.
-    expect(fake.calls.load).toHaveLength(loads)
-  })
-
-  it('다시 뜨면 지금 곡은 그대로이고 큐 · 위치만 새 순서가 된다 — 플레이어에 명령하지 않는다', async () => {
+describe('D. 큐는 출처 목록을 따른다 — 안내 없이, 지금 곡은 끊기지 않게 (ADR 0038)', () => {
+  it('순서를 바꾸면 큐 · 위치가 바로 새 순서가 되고 플레이어에는 아무 명령도 가지 않는다', async () => {
     const { coordinator, library, playback, listA, ids, titles, fake } = await setup()
     const playingId = ids(listA)[1] ?? ''
     coordinator.playTrack(listA, playingId)
     fake.emitStateChange('playing')
-    await library.moveTrack(listA, playingId, 'up')
     const calls = JSON.stringify(fake.calls)
 
-    expect(coordinator.resyncQueueFromSource()).toEqual({ ok: true })
+    // A 2 를 맨 위로: [A 2, A 1, A 3]
+    await library.moveTrack(listA, playingId, 'up')
 
     expect(titles()).toEqual(['A 2', 'A 1', 'A 3'])
     expect(coordinator.queue.value?.index).toBe(0)
-    expect(coordinator.nowPlaying.value?.trackId).toBe(playingId)
     expect(coordinator.queue.value?.sourceState).toBe('in-sync')
+    expect(coordinator.nowPlaying.value?.trackId).toBe(playingId)
     // 적재 · 재생 · 일시정지 · 시점 이동 — 아무 명령도 가지 않았다. 소리가 끊기지 않는다.
     expect(JSON.stringify(fake.calls)).toBe(calls)
     expect(playback.hasStartedPlaying).toBe(true)
     expect(playback.playerState).toBe('playing')
-    // 이제 다음 곡은 새 순서의 다음이다.
+    expect(playback.statusMessage).toBe('')
+    // 다음 곡은 새 순서의 다음이다.
     coordinator.next()
     expect(coordinator.nowPlaying.value?.videoId).toBe(VIDEO[0])
   })
 
-  it('곡을 추가 · 삭제 · 이름 바꾸기 해도 큐는 그대로이고 changed 로 알린다', async () => {
-    const { coordinator, library, listA, ids, titles } = await setup()
+  it('보관함의 끌어 놓기(moveTrackTo)도 같다', async () => {
+    const { coordinator, library, listA, ids, titles, fake } = await setup()
+    coordinator.playPlaylist(listA)
+    const loads = fake.calls.load.length
+
+    await library.moveTrackTo(listA, ids(listA)[0] ?? '', 2)
+
+    expect(titles()).toEqual(['A 2', 'A 3', 'A 1'])
+    expect(coordinator.queue.value?.index).toBe(2)
+    expect(fake.calls.load).toHaveLength(loads)
+  })
+
+  it('곡을 추가하면 큐 끝에 바로 붙고, 이름을 바꾸면 큐의 제목도 바뀐다', async () => {
+    const { coordinator, library, playback, listA, ids, titles } = await setup()
     coordinator.playPlaylist(listA)
 
     await library.addTrack(listA, { videoId: VIDEO[3], title: 'A 4' })
-    expect(titles()).toEqual(['A 1', 'A 2', 'A 3'])
-    expect(coordinator.queue.value?.sourceState).toBe('changed')
-
-    coordinator.resyncQueueFromSource()
     expect(titles()).toEqual(['A 1', 'A 2', 'A 3', 'A 4'])
+    expect(coordinator.queue.value?.sourceState).toBe('in-sync')
 
-    await library.renameTrack(listA, ids(listA)[2] ?? '', 'A 3 (새 이름)')
-    expect(titles()[2]).toBe('A 3')
-    expect(coordinator.queue.value?.sourceState).toBe('changed')
+    await library.renameTrack(listA, ids(listA)[0] ?? '', 'A 1 (새 이름)')
+    expect(titles()[0]).toBe('A 1 (새 이름)')
+    expect(playback.currentTrack?.title).toBe('A 1 (새 이름)')
+    expect(playback.statusMessage).toBe('')
+  })
 
-    await library.removeTrack(listA, ids(listA)[3] ?? '')
-    expect(titles()).toHaveLength(4)
-    coordinator.resyncQueueFromSource()
-    expect(titles()).toEqual(['A 1', 'A 2', 'A 3 (새 이름)'])
+  it('다른 곡을 지우면 큐에서 빠지고 지금 곡의 자리는 트랙 id 로 다시 찾는다', async () => {
+    const { coordinator, library, listA, ids, titles, fake } = await setup()
+    const playingId = ids(listA)[2] ?? ''
+    coordinator.playTrack(listA, playingId)
+    const loads = fake.calls.load.length
+
+    await library.removeTrack(listA, ids(listA)[0] ?? '')
+
+    expect(titles()).toEqual(['A 2', 'A 3'])
+    expect(coordinator.queue.value?.index).toBe(1)
+    expect(coordinator.nowPlaying.value?.trackId).toBe(playingId)
+    expect(fake.calls.load).toHaveLength(loads)
   })
 
   it('같은 영상이 두 번 있는 목록에서 순서가 바뀌어도 지금 곡을 트랙 id 로 찾는다', async () => {
@@ -317,25 +324,36 @@ describe('D. 큐는 스냅샷 — 출처 목록을 고쳐도 그대로, 고를 �
 
     // 셋째를 한 칸 위로: [0a, 0b, 1]
     await library.moveTrack(twice, before[2] ?? '', 'up')
-    coordinator.resyncQueueFromSource()
 
     // videoId 로 찾았다면 0 번(첫 VIDEO[0])에 섰을 것이다.
     expect(coordinator.queue.value?.index).toBe(1)
     expect(coordinator.nowPlaying.value?.trackId).toBe(before[2])
   })
 
-  it('지금 곡이 바뀐 목록에 없으면 다시 뜨기를 거절하고 큐를 그대로 둔다', async () => {
-    const { coordinator, library, listA, ids, titles } = await setup()
-    const playingId = ids(listA)[0] ?? ''
+  it('지금 곡이 지워지면 다음 곡으로 넘어간다 (자세한 경우는 playback-errors D)', async () => {
+    const { coordinator, library, listA, ids, titles, fake } = await setup()
     coordinator.playPlaylist(listA)
+    fake.emitStateChange('playing')
 
-    // 다른 탭이 지운 것처럼 — 재생 쪽에 알리지 않고 라이브러리에서만 지운다.
-    await library.removeTrack(listA, playingId)
+    await library.removeTrack(listA, ids(listA)[0] ?? '')
 
-    expect(coordinator.queue.value?.sourceState).toBe('changed')
-    expect(coordinator.queue.value?.canResync).toBe(false)
-    expect(coordinator.resyncQueueFromSource()).toEqual({ ok: false, reason: 'track-not-found' })
+    expect(titles()).toEqual(['A 2', 'A 3'])
+    expect(coordinator.nowPlaying.value?.videoId).toBe(VIDEO[1])
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEO[1],
+      autoplay: true,
+    })
+  })
+
+  it('다른 목록을 고쳐도 큐는 그대로다', async () => {
+    const { coordinator, library, listA, listB, titles } = await setup()
+    coordinator.playPlaylist(listA)
+    const tracks = coordinator.queue.value?.tracks
+
+    await library.addTrack(listB, { videoId: VIDEO[2], title: 'B 3' })
+
     expect(titles()).toEqual(['A 1', 'A 2', 'A 3'])
+    expect(coordinator.queue.value?.tracks).toBe(tracks)
   })
 
   it('출처 목록이 지워지면 deleted — 큐는 남고, 이름은 큐를 뜬 때의 것이다', async () => {
@@ -347,18 +365,168 @@ describe('D. 큐는 스냅샷 — 출처 목록을 고쳐도 그대로, 고를 �
     expect(titles()).toEqual(['A 1', 'A 2', 'A 3'])
     expect(coordinator.queue.value?.sourceState).toBe('deleted')
     expect(coordinator.queue.value?.source).toEqual({ playlistId: listA, name: 'A' })
-    expect(coordinator.resyncQueueFromSource()).toEqual({
-      ok: false,
-      reason: 'playlist-not-found',
-    })
+  })
+})
+
+describe('F. 셔플 · 반복 (ADR 0038)', () => {
+  /** 늘 0 을 주는 난수 — Fisher–Yates 가 정해진 순서를 낸다. */
+  const zero = () => 0
+
+  it('기본값은 둘 다 꺼짐이다', async () => {
+    const { coordinator } = await setup()
+    expect(coordinator.modes.value).toEqual({ shuffle: false, repeat: 'off' })
   })
 
-  it('큐가 없거나 출처를 모르면 다시 뜨기를 거절한다', async () => {
-    const { coordinator } = await setup()
-    expect(coordinator.resyncQueueFromSource()).toEqual({ ok: false, reason: 'no-source' })
+  it('재생 중 셔플을 켜면 지금 곡이 맨 앞, 나머지는 섞이고 — 플레이어에는 명령하지 않는다', async () => {
+    const { coordinator, library, playback, listA, ids, titles, fake } = await setup(undefined, {
+      random: zero,
+    })
+    await library.addTrack(listA, { videoId: VIDEO[3], title: 'A 4' })
+    const playingId = ids(listA)[1] ?? ''
+    coordinator.playTrack(listA, playingId)
+    fake.emitStateChange('playing')
+    const calls = JSON.stringify(fake.calls)
 
-    coordinator.playMoment({ videoId: 'zzzzzzzzzzz', atSeconds: 1 })
-    expect(coordinator.resyncQueueFromSource()).toEqual({ ok: false, reason: 'no-source' })
+    coordinator.setShuffle(true)
+
+    expect(coordinator.modes.value.shuffle).toBe(true)
+    // random = 0 → 나머지 [A 1, A 3, A 4] 가 [A 3, A 4, A 1] 로 섞인다 (Fisher–Yates).
+    expect(titles()).toEqual(['A 2', 'A 3', 'A 4', 'A 1'])
+    expect(coordinator.queue.value?.index).toBe(0)
+    expect(coordinator.nowPlaying.value?.trackId).toBe(playingId)
+    expect(JSON.stringify(fake.calls)).toBe(calls)
+    expect(playback.playerState).toBe('playing')
+  })
+
+  it('셔플을 끄면 목록 순서로 돌아가 지금 곡의 자리에 선다', async () => {
+    const { coordinator, listA, ids, titles } = await setup(undefined, { random: zero })
+    coordinator.playTrack(listA, ids(listA)[1] ?? '')
+    coordinator.setShuffle(true)
+
+    coordinator.setShuffle(false)
+
+    expect(titles()).toEqual(['A 1', 'A 2', 'A 3'])
+    expect(coordinator.queue.value?.index).toBe(1)
+  })
+
+  it('셔플이 켜져 있으면 "처음부터" 의 첫 곡도 무작위이고 모든 곡이 한 번씩 있다', async () => {
+    const { coordinator, listA, titles } = await setup(undefined, { random: () => 0.99 })
+    coordinator.setShuffle(true)
+
+    coordinator.playPlaylist(listA)
+
+    expect(titles()[0]).toBe('A 3')
+    expect([...titles()].sort()).toEqual(['A 1', 'A 2', 'A 3'])
+    expect(coordinator.queue.value?.index).toBe(0)
+  })
+
+  it('셔플 중에 곡을 고르면 그 곡부터, 나머지는 섞여 뒤에 온다', async () => {
+    const { coordinator, listA, ids, titles } = await setup(undefined, { random: zero })
+    coordinator.setShuffle(true)
+
+    coordinator.playTrack(listA, ids(listA)[2] ?? '')
+
+    expect(titles()[0]).toBe('A 3')
+    expect([...titles()].sort()).toEqual(['A 1', 'A 2', 'A 3'])
+  })
+
+  it('셔플 중 목록이 바뀌면 섞인 순서를 지키고, 새 곡은 아직 듣지 않은 자리에 끼운다', async () => {
+    const { coordinator, library, listA, ids, titles } = await setup(undefined, { random: zero })
+    coordinator.setShuffle(true)
+    const playingId = ids(listA)[1] ?? ''
+    coordinator.playTrack(listA, playingId)
+    const shuffledOrder = titles()
+
+    // 순서 바꾸기 — 섞인 순서는 그대로다.
+    await library.moveTrack(listA, ids(listA)[2] ?? '', 'up')
+    expect(titles()).toEqual(shuffledOrder)
+
+    // 추가 — 지금 곡(맨 앞) 뒤 어딘가에.
+    await library.addTrack(listA, { videoId: VIDEO[3], title: 'A 4' })
+    expect(titles()[0]).toBe('A 2')
+    expect([...titles()].sort()).toEqual(['A 1', 'A 2', 'A 3', 'A 4'])
+    expect(coordinator.queue.value?.index).toBe(0)
+
+    // 삭제 — 그 곡만 빠진다.
+    const other = ids(listA).find((id) => id !== playingId) ?? ''
+    await library.removeTrack(listA, other)
+    expect(titles()).toHaveLength(3)
+    expect(titles()[0]).toBe('A 2')
+    expect(coordinator.nowPlaying.value?.trackId).toBe(playingId)
+  })
+
+  it('반복이 꺼져 있으면 큐 끝에서 멈춘다 (기존 동작)', async () => {
+    const { coordinator, playback, listA, fake } = await setup()
+    coordinator.playPlaylist(listA)
+    coordinator.playQueueIndex(2)
+    fake.emitStateChange('playing')
+
+    fake.emitStateChange('ended')
+
+    expect(coordinator.queue.value?.index).toBe(2)
+    expect(playback.statusMessage).toContain('마지막 곡')
+    expect(coordinator.next()).toBe(false)
+  })
+
+  it('전체 반복 — 마지막 곡이 끝나면 처음 곡, ⏭ · ⏮ 도 끝과 처음을 잇는다', async () => {
+    const { coordinator, playback, listA, fake } = await setup()
+    coordinator.setRepeat('all')
+    coordinator.playPlaylist(listA)
+    coordinator.playQueueIndex(2)
+    fake.emitStateChange('playing')
+
+    fake.emitStateChange('ended')
+
+    expect(coordinator.queue.value?.index).toBe(0)
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEO[0],
+      autoplay: true,
+    })
+    expect(playback.statusMessage).toBe('')
+
+    expect(coordinator.previous()).toBe(true)
+    expect(coordinator.queue.value?.index).toBe(2)
+    expect(coordinator.next()).toBe(true)
+    expect(coordinator.queue.value?.index).toBe(0)
+  })
+
+  it('한 곡 반복 — 곡이 끝나면 같은 곡을 처음부터, ⏭ 는 평소처럼 다음 곡', async () => {
+    const { coordinator, listA, fake } = await setup()
+    coordinator.setRepeat('one')
+    coordinator.playPlaylist(listA)
+    fake.emitStateChange('playing')
+    const loads = fake.calls.load.length
+
+    fake.emitStateChange('ended')
+
+    expect(coordinator.queue.value?.index).toBe(0)
+    expect(fake.calls.load).toHaveLength(loads + 1)
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEO[0],
+      autoplay: true,
+    })
+
+    expect(coordinator.next()).toBe(true)
+    expect(coordinator.queue.value?.index).toBe(1)
+  })
+
+  it('잘못된 반복 값은 무시한다', async () => {
+    const { coordinator } = await setup()
+    coordinator.setRepeat('sometimes' as never)
+    expect(coordinator.modes.value.repeat).toBe('off')
+  })
+
+  it('큐가 없을 때 고른 셔플 · 반복은 다음 큐부터 적용되고, 백업 복원으로 큐를 비워도 남는다', async () => {
+    const { coordinator, listA, titles } = await setup(undefined, { random: zero })
+    coordinator.setShuffle(true)
+    coordinator.setRepeat('one')
+    expect(coordinator.queue.value).toBeNull()
+
+    coordinator.playPlaylist(listA)
+    expect([...titles()].sort()).toEqual(['A 1', 'A 2', 'A 3'])
+
+    coordinator.libraryReplaced()
+    expect(coordinator.modes.value).toEqual({ shuffle: true, repeat: 'one' })
   })
 })
 
@@ -369,10 +537,11 @@ describe('E. 저장 · 경계', () => {
 
     coordinator.playPlaylist(listA)
     coordinator.playQueueIndex(1)
-    coordinator.resyncQueueFromSource()
+    coordinator.setShuffle(true)
+    coordinator.setRepeat('all')
 
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toBe(before)
-    // 새 키가 생기지 않았다 (테마 · Moments 는 이 시험에서 쓰지 않았다).
+    // 새 키가 생기지 않았다 — 셔플 · 반복도 저장하지 않는다 (테마 · Moments 는 이 시험에서 쓰지 않았다).
     const keys = Object.keys(globalThis.localStorage).filter((key) => key.startsWith('39page'))
     expect(keys.filter((key) => !key.startsWith('39page.library'))).toEqual([])
   })

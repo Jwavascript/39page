@@ -140,7 +140,7 @@ describe('B. 링크 등록 UI', () => {
     ['빈 입력', ''],
     ['공백', '   '],
     ['다른 사이트', 'https://vimeo.com/12345'],
-    ['URL 이 아님', 'not a url'],
+    ['scheme 없는 YouTube 주소', 'youtube.com/watch?v=dQw4w9WgXcQ'],
     ['재생목록 경로', 'https://www.youtube.com/playlist?list=PLabc'],
   ])('17. %s 은 오류를 표시하고 폼을 닫지 않는다', async (_label, url) => {
     const { wrapper, library, id } = await setup()
@@ -164,6 +164,65 @@ describe('B. 링크 등록 UI', () => {
 
     expect((wrapper.get('#track-url').element as HTMLInputElement).value).toBe(typed)
     expect((wrapper.get('#track-title').element as HTMLInputElement).value).toBe('제목 유지')
+  })
+
+  it('17. 주소가 아닌 글(곡 이름)은 오류 대신 "YouTube에서 찾기" 검색어로 옮긴다', async () => {
+    const { wrapper, library, id } = await setup()
+
+    await openLinkForm(wrapper)
+    await submitLink(wrapper, '아이유 밤편지')
+
+    expect(library.getPlaylist(id)?.tracks).toEqual([])
+    expect(wrapper.get('#track-url-error').text()).toBe(
+      '링크가 아니에요. 아래 "YouTube에서 검색" 으로 찾아보세요.',
+    )
+    expect((wrapper.get('#yt-search-query').element as HTMLInputElement).value).toBe(
+      '아이유 밤편지',
+    )
+    // 링크 칸의 글은 그대로다.
+    expect((wrapper.get('#track-url').element as HTMLInputElement).value).toBe('아이유 밤편지')
+    // 브라우저 기본 검사(type="url")가 제출을 막지 않아야 이 안내가 나온다 — 실제 Chrome 에서 확인한 차이.
+    expect(wrapper.get('form.link-form').attributes('novalidate')).toBeDefined()
+  })
+
+  it('YouTube에서 검색 — 검색 결과 페이지를 새 탭으로 연다 (API 키 없음 · 링크 추가는 제출되지 않는다)', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { wrapper, library, id } = await setup()
+    await openLinkForm(wrapper)
+
+    // 링크 양식과 따로 된 검색 양식이다.
+    expect(wrapper.find('form.link-form #yt-search-query').exists()).toBe(false)
+    await wrapper.get('#yt-search-query').setValue('  아이유   밤편지 ')
+    await wrapper.get('form.yt-search').trigger('submit')
+    await flushPromises()
+
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(open).toHaveBeenCalledWith(
+      'https://www.youtube.com/results?search_query=%EC%95%84%EC%9D%B4%EC%9C%A0%20%EB%B0%A4%ED%8E%B8%EC%A7%80',
+      '_blank',
+      'noopener,noreferrer',
+    )
+    expect(library.getPlaylist(id)?.tracks).toEqual([])
+    expect(wrapper.get('#track-url-error').text()).toBe('')
+    // 검색어를 저장하지 않는다.
+    expect(Object.keys(globalThis.localStorage).filter((key) => /search/i.test(key))).toEqual([])
+    open.mockRestore()
+  })
+
+  it('검색 칸은 링크 양식과 함께 열리고 닫히며, 다시 열면 비어 있다', async () => {
+    const { wrapper } = await setup()
+    expect(wrapper.find('form.yt-search').exists()).toBe(false)
+
+    await openLinkForm(wrapper)
+    await wrapper.get('#yt-search-query').setValue('검색어')
+    await byText(wrapper, '.link-form .pill', '닫기')?.trigger('click')
+    await nextTick()
+    expect(wrapper.find('form.yt-search').exists()).toBe(false)
+
+    await openLinkForm(wrapper)
+    expect((wrapper.get('#yt-search-query').element as HTMLInputElement).value).toBe('')
+    // 링크 칸으로 바로 가는 것은 그대로다 (M11 U15).
+    expect(document.activeElement).toBe(wrapper.get('#track-url').element)
   })
 
   it('18. 제목을 비우면 기본 제목을 쓴다', async () => {

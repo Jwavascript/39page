@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { isYouTubeVideoId, parseYouTubeVideoId, youtubeWatchUrl } from '@/shared/utils/youtube'
+import {
+  isYouTubeVideoId,
+  parseYouTubeVideoId,
+  youtubeSearchUrl,
+  youtubeWatchUrl,
+  YOUTUBE_SEARCH_MAX_LENGTH,
+} from '@/shared/utils/youtube'
 
 /** 유효한 11자 영상 ID. `_`와 `-`를 포함해 허용 문자 전체를 덮는다. */
 const ID = 'dQw4w9WgXcQ'
@@ -144,5 +150,40 @@ describe('youtubeWatchUrl (M3-5)', () => {
 
     expect(videoId).toBe(ID)
     expect(youtubeWatchUrl(videoId)).toBe(`https://www.youtube.com/watch?v=${ID}`)
+  })
+})
+
+describe('youtubeSearchUrl — 검색 결과 페이지 주소 (API 키 없음)', () => {
+  const PREFIX = 'https://www.youtube.com/results?search_query='
+
+  it('검색어를 인코딩해 결과 페이지 주소를 만든다', () => {
+    expect(youtubeSearchUrl('IU Through the Night')).toBe(`${PREFIX}IU%20Through%20the%20Night`)
+    expect(youtubeSearchUrl('아이유')).toBe(`${PREFIX}${encodeURIComponent('아이유')}`)
+  })
+
+  it('앞뒤 공백을 지우고 공백을 하나로 모은다', () => {
+    expect(youtubeSearchUrl('  a \n\t b  ')).toBe(`${PREFIX}a%20b`)
+  })
+
+  it('주소에 쓰이는 글자도 그대로 검색어가 된다 — 주소를 바꾸지 못한다', () => {
+    expect(youtubeSearchUrl('a&b=c#d?e/f')).toBe(`${PREFIX}a%26b%3Dc%23d%3Fe%2Ff`)
+    const url = new URL(youtubeSearchUrl('x&search_query=evil'))
+    expect(url.origin).toBe('https://www.youtube.com')
+    expect(url.searchParams.getAll('search_query')).toEqual(['x&search_query=evil'])
+  })
+
+  it('비어 있으면 YouTube 첫 화면이다', () => {
+    expect(youtubeSearchUrl('')).toBe('https://www.youtube.com/')
+    expect(youtubeSearchUrl('   ')).toBe('https://www.youtube.com/')
+  })
+
+  it(`${String(YOUTUBE_SEARCH_MAX_LENGTH)} 글자에서 자른다 — 한글 · 이모지도 글자 단위로`, () => {
+    const long = '가'.repeat(YOUTUBE_SEARCH_MAX_LENGTH + 50)
+    const query = new URL(youtubeSearchUrl(long)).searchParams.get('search_query') ?? ''
+    expect(Array.from(query)).toHaveLength(YOUTUBE_SEARCH_MAX_LENGTH)
+    const emoji = '🎵'.repeat(YOUTUBE_SEARCH_MAX_LENGTH + 1)
+    const cut = new URL(youtubeSearchUrl(emoji)).searchParams.get('search_query') ?? ''
+    expect(Array.from(cut)).toHaveLength(YOUTUBE_SEARCH_MAX_LENGTH)
+    expect(cut).not.toContain(String.fromCharCode(0xfffd))
   })
 })

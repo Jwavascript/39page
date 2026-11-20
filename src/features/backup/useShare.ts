@@ -111,6 +111,18 @@ export function useShareExport(): ShareExportModel {
  * 가져오기
  * ------------------------------------------------------------------ */
 
+/**
+ * 같은 이름이 있으면 "(2)" · "(3)" … — 파일 공유 · 링크 공유 가져오기가 같은 규칙을 쓴다. 순수 함수다.
+ */
+export function uniquePlaylistName(existing: Iterable<string>, name: string): string {
+  const names = new Set(existing)
+  if (!names.has(name)) return name
+  for (let n = 2; ; n += 1) {
+    const candidate = `${name} (${String(n)})`
+    if (!names.has(candidate)) return candidate
+  }
+}
+
 export interface ShareImportPreview {
   readonly kind: 'track' | 'playlist'
   readonly name: string
@@ -211,14 +223,11 @@ export function useShareImport(): ShareImportModel {
     }
   }
 
-  /** 같은 이름이 있으면 "(2)" · "(3)" … */
   function uniqueName(name: string): string {
-    const names = new Set(library.playlists.map((playlist) => playlist.name))
-    if (!names.has(name)) return name
-    for (let n = 2; ; n += 1) {
-      const candidate = `${name} (${String(n)})`
-      if (!names.has(candidate)) return candidate
-    }
+    return uniquePlaylistName(
+      library.playlists.map((playlist) => playlist.name),
+      name,
+    )
   }
 
   async function apply(): Promise<void> {

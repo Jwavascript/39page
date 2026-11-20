@@ -124,8 +124,12 @@ describe('B. 내용', () => {
       wrapper.get('.now-playing-card [data-artwork-source]').attributes('data-artwork-source'),
     ).toBe('default')
     expect(wrapper.find('.now-playing-card .np-art img').exists()).toBe(false)
-    for (const button of wrapper.findAll('.now-playing-card .round')) {
+    for (const button of wrapper.findAll('.now-playing-card .controls-left .round')) {
       expect(button.attributes('disabled')).toBeDefined()
+    }
+    // 셔플 · 반복은 곡이 없어도 고를 수 있다 — 다음에 시작하는 재생부터 적용된다 (ADR 0038).
+    for (const button of wrapper.findAll('.now-playing-card .round.mode')) {
+      expect(button.attributes('disabled')).toBeUndefined()
     }
   })
 

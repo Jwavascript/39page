@@ -22,7 +22,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { PlayerState, Track } from '@/shared/types'
+import type { PlayerState, RepeatMode, Track } from '@/shared/types'
 
 /** 상태 메시지의 어조. 승인된 디자인의 `.status` / `.status.warning`에 대응한다. */
 export type StatusTone = 'info' | 'warning'
@@ -49,13 +49,25 @@ export const usePlaybackStore = defineStore('playback', () => {
   const currentTrack = ref<Track | null>(null)
 
   /**
-   * 재생 대기열.
+   * 재생 대기열 — **실제 재생 순서**다. 셔플이 켜져 있으면 섞인 순서다.
    *
-   * 재생 시작 시점의 플레이리스트 **스냅샷**이다. 재생 중 라이브러리를
-   * 편집해도 큐가 즉시 흔들리지 않는다 (`MVP_SPEC.md` F4). 스냅샷을 만드는
-   * 연동은 M3이다.
+   * 트랙은 라이브러리의 **복사본**이다 (라이브러리 객체를 직접 들고 있지 않다). 출처 목록을 고치면
+   * 코디네이터가 새 복사본으로 다시 맞춘다 (ADR 0038 — M3 ~ M11 의 "재생 시작 시점 스냅샷" 을 대체).
    */
   const queue = ref<Track[]>([])
+
+  /**
+   * 같은 트랙들의 **목록 순서** (ADR 0038). 셔플이 꺼져 있으면 `queue` 와 같은 순서다.
+   *
+   * 셔플을 끌 때 돌아갈 순서이고, 출처 목록과 견줄 기준이다. `setQueue` 가 `queue` 와 함께 바꾼다.
+   */
+  const queueListOrder = ref<Track[]>([])
+
+  /** 셔플 (ADR 0038). 저장하지 않는다. 순서를 섞는 일은 코디네이터가 한다. */
+  const shuffle = ref<boolean>(false)
+
+  /** 반복 (ADR 0038). 저장하지 않는다. `advance` · `back` 이 이것을 보고 끝에서 돌아간다. */
+  const repeat = ref<RepeatMode>('off')
 
   /** 큐 안의 현재 위치. 큐가 비면 `NO_QUEUE_INDEX`다. */
   const queueIndex = ref<number>(NO_QUEUE_INDEX)
@@ -130,27 +142,35 @@ export const usePlaybackStore = defineStore('playback', () => {
    *
    * 불변조건: `queueIndex`는 큐 범위 안이거나, 큐가 비면 `NO_QUEUE_INDEX`다.
    * `currentTrack`은 항상 `queue[queueIndex]`와 일치한다.
+   *
+   * `listOrder` 는 같은 트랙들의 목록 순서다 (ADR 0038). 생략하면 `tracks` 와 같다 — 셔플하지 않은 큐.
+   *
+   * **출처를 맨 마지막에 바꾼다.** 코디네이터는 출처 목록을 동기 관찰자로 지켜본다 — 출처가 바뀌는
+   * 순간 큐 · 위치 · 목록 순서가 이미 새 값이어야 관찰자가 반쯤 바뀐 큐를 보지 않는다.
    */
   function setQueue(
     tracks: readonly Track[],
     startIndex = 0,
     source: QueueSource | null = null,
+    listOrder: readonly Track[] = tracks,
   ): void {
     queue.value = [...tracks]
 
     if (queue.value.length === 0) {
+      queueListOrder.value = []
       queueIndex.value = NO_QUEUE_INDEX
       currentTrack.value = null
       queueSource.value = null
       return
     }
 
-    // 출처는 큐와 **함께** 바뀐다. 넘기지 않으면 "모른다" 다 — 이전 큐의 출처가 남지 않는다.
-    queueSource.value = source === null ? null : { ...source }
-
+    queueListOrder.value = [...listOrder]
     const clamped = Math.min(Math.max(startIndex, 0), queue.value.length - 1)
     queueIndex.value = clamped
     currentTrack.value = queue.value[clamped] ?? null
+
+    // 출처는 큐와 **함께** 바뀐다. 넘기지 않으면 "모른다" 다 — 이전 큐의 출처가 남지 않는다.
+    queueSource.value = source === null ? null : { ...source }
   }
 
   /** 큐 안의 위치를 옮긴다. 범위를 벗어난 값은 무시한다. */
@@ -162,19 +182,35 @@ export const usePlaybackStore = defineStore('playback', () => {
     return true
   }
 
+  /** 반복이 켜져 있으면 큐 끝과 처음이 이어진다. */
+  const wraps = computed<boolean>(() => repeat.value !== 'off')
+
   /**
    * 큐에서 한 칸 앞으로 간다.
    *
-   * 큐 끝에서는 **움직이지 않고** `false` 를 돌려준다. 처음으로 돌아가지
-   * 않는다 — 반복은 MVP 범위 밖이다 (M3-0.1, `BACKLOG.md` §5).
+   * 큐 끝에서는 반복이 꺼져 있으면 **움직이지 않고** `false` 다 (M3-0.1). 반복(`all` · `one`)이
+   * 켜져 있으면 처음으로 돌아간다 (ADR 0038). 빈 큐에서는 어느 경우에도 `false` 다.
    */
   function advance(): boolean {
+    const last = queue.value.length - 1
+    if (queueIndex.value >= last && wraps.value && last >= 0) return setQueueIndex(0)
     return setQueueIndex(queueIndex.value + 1)
   }
 
-  /** 큐에서 한 칸 뒤로 간다. 큐 처음에서는 움직이지 않는다. */
+  /** 큐에서 한 칸 뒤로 간다. 큐 처음에서는 반복이 꺼져 있으면 움직이지 않고, 켜져 있으면 끝으로 간다. */
   function back(): boolean {
+    const last = queue.value.length - 1
+    if (queueIndex.value <= 0 && wraps.value && last >= 0) return setQueueIndex(last)
     return setQueueIndex(queueIndex.value - 1)
+  }
+
+  /** 셔플 표시만 바꾼다. 순서를 섞는 일은 코디네이터가 `setQueue` 로 한다. */
+  function setShuffle(on: boolean): void {
+    shuffle.value = on
+  }
+
+  function setRepeat(mode: RepeatMode): void {
+    repeat.value = mode
   }
 
   function setPlayerState(next: PlayerState): void {
@@ -191,10 +227,15 @@ export const usePlaybackStore = defineStore('playback', () => {
     hasStartedPlaying.value = value
   }
 
-  /** 안전한 빈 상태로 되돌린다. */
+  /**
+   * 안전한 빈 상태로 되돌린다.
+   *
+   * 셔플 · 반복은 **그대로 둔다** — 큐의 상태가 아니라 사용자가 고른 재생 방식이다 (ADR 0038).
+   */
   function reset(): void {
     currentTrack.value = null
     queue.value = []
+    queueListOrder.value = []
     queueIndex.value = NO_QUEUE_INDEX
     queueSource.value = null
     playerState.value = 'idle'
@@ -206,8 +247,11 @@ export const usePlaybackStore = defineStore('playback', () => {
   return {
     currentTrack,
     queue,
+    queueListOrder,
     queueIndex,
     queueSource,
+    shuffle,
+    repeat,
     playerState,
     statusMessage,
     statusTone,
@@ -215,10 +259,13 @@ export const usePlaybackStore = defineStore('playback', () => {
     isEmpty,
     isPlaying,
     isPositionReliable,
+    wraps,
     setQueue,
     setQueueIndex,
     advance,
     back,
+    setShuffle,
+    setRepeat,
     setPlayerState,
     setStatus,
     setHasStartedPlaying,

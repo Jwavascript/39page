@@ -5,7 +5,8 @@ export type { LibraryData, Playlist, Track, TrackSource } from './music'
 
 export type { Moment, MomentSource, MomentsData } from './moments'
 
-export type { PlayerState } from './player'
+export type { PlayerState, RepeatMode } from './player'
+export { REPEAT_MODES } from './player'
 
 export type { DashboardLayout, GridArea, WidgetInstance, WidgetType } from './widget'
 export { WIDGET_TYPES, isWidgetType } from './widget'

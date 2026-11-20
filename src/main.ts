@@ -14,6 +14,8 @@ import './themes/kawaii-synth-cassette/deck.css'
 import App from './app/App.vue'
 import CollectApp from './app/CollectApp.vue'
 import { resolveEntry } from './app/entry'
+import { SHARE_CARD_RENDERER } from './features/backup/shareCard'
+import { lazyShareCardRenderer } from './features/backup/shareCardLazy'
 import { PLAYER_ADAPTER_FACTORY } from './features/playback/PlayerAdapter'
 import { YouTubeIFramePlayerAdapter } from './features/playback/YouTubeIFramePlayerAdapter'
 import { useArtworkStore } from './stores/artwork'
@@ -86,6 +88,12 @@ if (resolveEntry(globalThis.location.hash) === 'collect') {
    * 첫 load() 에서 생긴다 (ADR 0008).
    */
   app.provide(PLAYER_ADAPTER_FACTORY, () => new YouTubeIFramePlayerAdapter())
+
+  /*
+   * 공유 카드 이미지를 그리는 함수 (ADR 0041). 캔버스 그리기 코드는 **처음 카드를 그릴 때** 내려받는다 — 공유 화면을 열지
+   * 않는 보통 방문의 첫 화면 묶음을 키우지 않는다. 테스트는 가짜를 넣는다 (플레이어 어댑터 팩토리와 같은 방식).
+   */
+  app.provide(SHARE_CARD_RENDERER, lazyShareCardRenderer)
 
   app.mount('#app')
 }

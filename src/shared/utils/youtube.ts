@@ -157,3 +157,21 @@ export function youtubeWatchUrl(videoId: string, atSeconds?: number): string | n
   if (atSeconds === undefined || !Number.isSafeInteger(atSeconds) || atSeconds < 0) return base
   return `${base}&t=${String(atSeconds)}s`
 }
+
+/** 검색어의 최대 길이(글자). 이보다 길면 자른다 — 주소가 끝없이 길어지지 않게. */
+export const YOUTUBE_SEARCH_MAX_LENGTH = 200
+
+/**
+ * YouTube **검색 결과 페이지** 주소 (API 키 없음 — 사용자가 새 탭에서 여는 일반 링크다).
+ *
+ * 39page 는 검색어를 어디에도 보내지 않는다. 사용자가 단추를 누르면 브라우저가 이 주소를 연다. 검색어는 앞뒤 공백을
+ * 지우고 공백을 하나로 모은 뒤 `YOUTUBE_SEARCH_MAX_LENGTH` 글자에서 자르고 인코딩한다. 비어 있으면 YouTube 첫 화면이다.
+ */
+export function youtubeSearchUrl(query: string): string {
+  const normalized = Array.from(query.replace(/\s+/g, ' ').trim())
+    .slice(0, YOUTUBE_SEARCH_MAX_LENGTH)
+    .join('')
+    .trim()
+  if (normalized === '') return 'https://www.youtube.com/'
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(normalized)}`
+}

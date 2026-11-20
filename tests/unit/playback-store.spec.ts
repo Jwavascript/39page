@@ -132,6 +132,74 @@ describe('Playback Store — 기본 불변조건', () => {
     expect(playback.isPositionReliable).toBe(false)
   })
 
+  describe('목록 순서 · 셔플 · 반복 (ADR 0038)', () => {
+    it('목록 순서를 따로 주지 않으면 재생 순서와 같다', () => {
+      const playback = usePlaybackStore()
+      playback.setQueue(TRACKS, 0)
+
+      expect(playback.queueListOrder).toEqual(TRACKS)
+    })
+
+    it('재생 순서와 목록 순서를 함께 둔다 — 지금 곡은 재생 순서로 정한다', () => {
+      const playback = usePlaybackStore()
+      playback.setQueue([...TRACKS.slice(2), ...TRACKS.slice(0, 2)], 0, null, TRACKS)
+
+      expect(playback.queue.map((t) => t.id)).toEqual(['t3', 't1', 't2'])
+      expect(playback.queueListOrder.map((t) => t.id)).toEqual(['t1', 't2', 't3'])
+      expect(playback.currentTrack?.id).toBe('t3')
+    })
+
+    it('빈 큐 · reset 은 목록 순서도 비운다', () => {
+      const playback = usePlaybackStore()
+      playback.setQueue(TRACKS, 0)
+      playback.setQueue([])
+      expect(playback.queueListOrder).toEqual([])
+
+      playback.setQueue(TRACKS, 0)
+      playback.reset()
+      expect(playback.queueListOrder).toEqual([])
+    })
+
+    it('반복이 꺼져 있으면 끝 · 처음에서 멈춘다', () => {
+      const playback = usePlaybackStore()
+      playback.setQueue(TRACKS, 2)
+      expect(playback.advance()).toBe(false)
+      playback.setQueueIndex(0)
+      expect(playback.back()).toBe(false)
+    })
+
+    it('반복(all · one)이 켜져 있으면 끝과 처음이 이어진다', () => {
+      const playback = usePlaybackStore()
+      for (const mode of ['all', 'one'] as const) {
+        playback.setRepeat(mode)
+        playback.setQueue(TRACKS, 2)
+        expect(playback.advance()).toBe(true)
+        expect(playback.queueIndex).toBe(0)
+        expect(playback.back()).toBe(true)
+        expect(playback.queueIndex).toBe(2)
+      }
+    })
+
+    it('빈 큐에서는 반복이 켜져 있어도 움직이지 않는다', () => {
+      const playback = usePlaybackStore()
+      playback.setRepeat('all')
+      expect(playback.advance()).toBe(false)
+      expect(playback.back()).toBe(false)
+      expect(playback.queueIndex).toBe(NO_QUEUE_INDEX)
+    })
+
+    it('reset 은 셔플 · 반복을 되돌리지 않는다 — 사용자가 고른 재생 방식이다', () => {
+      const playback = usePlaybackStore()
+      playback.setShuffle(true)
+      playback.setRepeat('one')
+
+      playback.reset()
+
+      expect(playback.shuffle).toBe(true)
+      expect(playback.repeat).toBe('one')
+    })
+  })
+
   describe('위치 신뢰 판정 (M9-4)', () => {
     it('현재 트랙과 재생 시작이 모두 있어야 믿는다', () => {
       const playback = usePlaybackStore()

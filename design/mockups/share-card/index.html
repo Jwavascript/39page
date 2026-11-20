@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>공유 카드 시안 — 구현 아님</title>
+    <link rel="stylesheet" href="cards.css" />
+  </head>
+  <body>
+    <div class="not-impl">
+      구현 아님 · 공유 카드 이미지 비교 시안 (2026-11-20) · QR 은 모양만 흉내 낸 예시 — 실제 링크가 아님 · 곡 이름은 예시
+    </div>
+    <h1>공유 카드 이미지 — 세 갈래 시안</h1>
+    <p class="lead">
+      게시판에 올리고 이미지에 공유 링크를 거는 용도. 폭 1080px 실제 크기로 그렸다. 리서치(<code
+        >docs/product/SHARE_CARD_RESEARCH.md</code
+      >)를 따라 곡 이름은 한 줄 40px, YouTube 썸네일 · 로고는 넣지 않고 39page 도트 그림을 쓴다. QR 은 링크가 짧을 때만(곡 하나 ·
+      Moment · 짧은 목록) 넣는다. 곡 이름의 "(Official Video)" · "MV" 같은 꼬리는 카드에서만 뗀다.
+    </p>
+
+    <section class="row">
+      <figure>
+        <div class="card card--jcard" id="card-a-playlist">
+          <div class="strip">
+            <span class="wordmark">39PAGE</span>
+            <span class="tag">MIXTAPE</span>
+            <span class="chip">2026.11.20</span>
+          </div>
+          <div class="jcard">
+            <div class="jcard-front">
+              <div>
+                <h2 class="jcard-title">여름 밤 플레이리스트</h2>
+                <p class="jcard-meta">10 TRACKS · MOMENT 2</p>
+              </div>
+              <div class="reels"><span></span><span></span></div>
+            </div>
+            <div class="jcard-spine">
+              <span class="clip">여름 밤 플레이리스트</span><span class="code">39P · 10</span>
+            </div>
+            <div class="jcard-inside">
+              <p class="side">SIDE A</p>
+              <ol data-tracks="0-5" data-side="A"></ol>
+              <p class="side">SIDE B</p>
+              <ol data-tracks="5-10" data-side="B"></ol>
+            </div>
+          </div>
+          <div class="foot">
+            <div>
+              <span class="listen">▶ 39page 에서 듣기</span>
+              <p class="hint">링크는 이 이미지 · 글 본문에 있어요</p>
+            </div>
+            <div class="count">10곡 · ◆ 2<br />39page.com</div>
+          </div>
+        </div>
+        <figcaption>
+          A. 카세트 J카드 (Kawaii Synth Cassette) · 1080×1350 (4:5) · 10곡까지 — 위 띠(8%) · 앞면 제목 84px(30%) · 등(5%) ·
+          속지 SIDE A/B 곡 40px(48%) · 바닥(15%). 목록 링크는 길어 QR 을 넣지 않는다. 11–44곡은 1080×1920 에서 A/B 를 나란히.
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="card card--single" id="card-a-moment">
+          <div class="strip">
+            <span class="wordmark">39PAGE</span>
+            <span class="tag">MOMENT</span>
+            <span class="chip">2026.11.20</span>
+          </div>
+          <div class="single-art dots" data-dots="note"></div>
+          <h2 class="single-title">아이유 - 밤편지 (Through the Night)</h2>
+          <div class="single-chip"><span>▶ 1:23 부터</span></div>
+          <p class="single-note">“여기 후렴, 이어폰으로 꼭 들어 봐”</p>
+          <div class="single-foot">
+            <div class="qr" data-qr="45"></div>
+            <div>
+              <span class="listen">▶ 39page 에서 듣기</span>
+              <p class="hint">폰 카메라로 QR 을 비추거나,<br />이미지 · 글 본문의 링크를 누르세요</p>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          A′. 곡 하나 · Moment — 39page 도트 그림(앨범아트 자리, 썸네일 아님) · 제목 64px 두 줄 · 시점 칩 · 메모(보내는 사람이 넣을
+          때만). 링크가 약 170–230자라 QR 이 성기다(버전 8–10, 이 크기에서 점 하나 약 5px).
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="row">
+      <figure>
+        <div class="card card--lp" id="card-b-playlist">
+          <div class="lp-disc"></div>
+          <div class="lp-catalog">39PAGE RECORDS · 39P-1120</div>
+          <h2 class="lp-title">여름 밤 플레이리스트</h2>
+          <p class="lp-meta">10 TRACKS · 2 MOMENTS · 2026.11.20</p>
+          <div class="lp">
+            <p class="side">SIDE A</p>
+            <ol data-tracks="0-5" data-side="A"></ol>
+            <p class="side">SIDE B</p>
+            <ol data-tracks="5-10" data-side="B"></ol>
+          </div>
+          <div class="lp-foot">
+            <span class="wordmark">39PAGE</span>
+            <span class="listen-text">▶ 39page 에서 듣기 · 링크는 이미지 · 본문에</span>
+          </div>
+        </div>
+        <figcaption>
+          B. LP 뒷면 (Mono Vinyl) · 1080×1080 (1:1) · 한 단 10곡까지 — 머리(카탈로그 · 제목 72px · 곡 수) · SIDE A/B 한 단 · 굵은
+          선 아래 브랜드와 안내. 정사각형이라 카카오톡 · 인스타그램에도 그대로. 11–30곡은 1080×1350 · 두 단.
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="row">
+      <figure>
+        <div class="card card--receipt" id="card-c-playlist">
+          <div class="receipt">
+            <div class="stamp">MIXTAPE ♥</div>
+            <div class="r-head">
+              <div class="wordmark">39PAGE</div>
+              <div class="r-meta">MIX RECEIPT · 2026.11.20 21:42</div>
+              <div class="r-name">여름 밤 플레이리스트</div>
+              <div class="r-meta">NO. 0012 · 10 TRACKS</div>
+            </div>
+            <div class="dash"></div>
+            <div class="r-cols"><span>#</span><span>TITLE</span><span style="text-align: right">◆</span></div>
+            <div data-receipt="0-10"></div>
+            <div class="dash"></div>
+            <div class="total"><span>TOTAL</span><span>10 TRACKS</span></div>
+            <div class="total"><span>MOMENTS</span><span>2</span></div>
+            <div class="dash"></div>
+            <div class="r-foot">
+              <div class="qr" data-qr="49"></div>
+              <div>
+                <div class="r-listen">▶ 39page 에서 듣기</div>
+                <div class="r-hint">폰 카메라로 QR 을 비추거나<br />이미지 · 본문의 링크를 누르세요</div>
+              </div>
+            </div>
+            <div class="thanks">THANK YOU FOR LISTENING ♪</div>
+          </div>
+        </div>
+        <figcaption>
+          C. 영수증 (Kawaii 종이: 민트 · 남색 글자 · 분홍 도장) · 폭 1080, 높이는 곡 수만큼 (10곡 ≈ 1,560) — 줄마다 곡 하나, Moment
+          는 오른쪽에 시점. 10곡짜리 목록도 곡 이름을 뺀 짧은 링크(약 190자)면 QR 이 들어간다.
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="card card--receipt is-mono" id="card-c-long">
+          <div class="receipt">
+            <div class="r-head">
+              <div class="wordmark">39PAGE</div>
+              <div class="r-meta">MIX RECEIPT · 2026.11.20</div>
+              <div class="r-name">드라이브 50곡</div>
+              <div class="r-meta">NO. 0013 · 50 TRACKS</div>
+            </div>
+            <div class="dash"></div>
+            <div data-receipt="0-20" data-long="1"></div>
+            <div class="r-more">+30곡 더 · 총 50곡</div>
+            <div class="dash"></div>
+            <div class="total"><span>TOTAL</span><span>50 TRACKS</span></div>
+            <div class="dash"></div>
+            <div class="r-listen" style="text-align: center">▶ 39page 에서 전체 듣기</div>
+            <div class="r-hint" style="text-align: center">링크는 이미지 · 글 본문에 있어요</div>
+          </div>
+        </div>
+        <figcaption>
+          C′. 긴 목록 (Mono 종이: 베이지 · 검은 글자) · 1080 × 약 2,000 — 앞 20곡 + "+30곡 더 · 총 50곡". 목록 링크(곡 이름 빼도 약
+          800자)는 QR 로 읽히지 않을 만큼 촘촘해져 넣지 않는다. 게시판 전용 긴 판(1080×3240)이면 약 43곡까지.
+        </figcaption>
+      </figure>
+    </section>
+
+    <h1>게시판에서 줄여 보인 모습</h1>
+    <p class="lead">
+      폰(본문 폭 약 340–394px)에서는 1080px 이미지가 0.31–0.36배, 데스크톱 게시판(800–950px)에서는 0.74–0.88배로 보인다. 아래는
+      360px(폰)과 850px(디시인사이드 본문) 로 줄인 같은 카드 — 곡 이름 40px 가 폰에서 약 13px 이 된다.
+    </p>
+    <div class="scaled" id="scaled"></div>
+
+    <script>
+      // 시안용 예시 데이터 — 실제 앱이 아니다. 39page 의 곡 이름은 한 덩어리(대개 "가수 - 제목")다.
+      const BASE = [
+        '아이유 - 밤편지 (Through the Night) MV',
+        'AKMU - 어떻게 이별까지 사랑하겠어, 널 사랑하는 거지',
+        'Lauv - Paris in the Rain [Official Audio]',
+        '검정치마 - EVERYTHING',
+        'NewJeans (뉴진스) Ditto Official MV',
+        '잔나비 - 주저하는 연인들을 위해',
+        'Crush - 잊어버리지마 (Feat. 태연)',
+        '혁오 - TOMBOY',
+        'Daniel Caesar - Best Part (feat. H.E.R.)',
+        '백예린 - Square (2017)',
+        '10CM - 봄이 좋냐??',
+        'Coldplay - Yellow (Official Video)',
+        '데이식스 - 한 페이지가 될 수 있게',
+        'The Weeknd - Blinding Lights (Official Audio)',
+        '윤하 - 사건의 지평선 (Event Horizon)',
+        'Bruno Mars - Just The Way You Are',
+        '성시경 - 거리에서',
+        'Jeff Bernat - Call You Mine',
+        '볼빨간사춘기 - 여행',
+        'Ed Sheeran - Shape of You [Official Video]',
+      ]
+      const MOMENTS = new Map([
+        [0, '1:23'],
+        [6, '2:41'],
+      ])
+      // 카드에서만 떼는 꼬리 — 저장된 이름은 그대로다.
+      const tidy = (title) =>
+        title
+          .replace(/\s*[[(](?:official[^\])]*|m\/?v|audio|video|lyrics?[^\])]*|가사|뮤직비디오)[\])]/gi, '')
+          .replace(/\s+(?:official\s+)?m\/?v$/i, '')
+          .trim()
+
+      for (const list of document.querySelectorAll('ol[data-tracks]')) {
+        const [from, to] = list.dataset.tracks.split('-').map(Number)
+        for (let n = from; n < to; n += 1) {
+          const li = document.createElement('li')
+          li.innerHTML = '<span class="no"></span><span class="t clip"></span><span class="m"></span>'
+          li.children[0].textContent = `${list.dataset.side}${n - from + 1}`
+          li.children[1].textContent = tidy(BASE[n % BASE.length])
+          li.children[2].textContent = MOMENTS.has(n) ? `◆${MOMENTS.get(n)}` : ''
+          list.append(li)
+        }
+      }
+
+      for (const box of document.querySelectorAll('[data-receipt]')) {
+        const [from, to] = box.dataset.receipt.split('-').map(Number)
+        for (let n = from; n < to; n += 1) {
+          const row = document.createElement('div')
+          row.className = 'r-item'
+          row.innerHTML = '<span></span><span class="t clip"></span><span class="m"></span>'
+          row.children[0].textContent = String(n + 1).padStart(2, '0')
+          row.children[1].textContent = tidy(BASE[n % BASE.length])
+          row.children[2].textContent = !box.dataset.long && MOMENTS.has(n) ? `◆${MOMENTS.get(n)}` : ''
+          box.append(row)
+        }
+      }
+
+      // 도트 그림 — 12×12, 음표 모양만 분홍.
+      const NOTE = [
+        '............',
+        '......####..',
+        '......#..##.',
+        '......#...#.',
+        '......#.....',
+        '......#.....',
+        '......#.....',
+        '..#####.....',
+        '.######.....',
+        '.######.....',
+        '..####......',
+        '............',
+      ]
+      for (const box of document.querySelectorAll('[data-dots]')) {
+        for (const line of NOTE)
+          for (const cell of line) {
+            const dot = document.createElement('i')
+            if (cell === '#') dot.className = 'on'
+            box.append(dot)
+          }
+      }
+
+      // QR 모양 흉내 — 실제 부호화가 아니다. 숫자 = 한 변의 점 수(버전), 둘레 4칸 여백.
+      function fakeQr(size, seed) {
+        let s = seed
+        const rnd = () => ((s = (s * 1103515245 + 12345) % 2147483648) >>> 16) / 32768
+        const cells = []
+        const finder = (x, y) =>
+          `<rect x="${x}" y="${y}" width="7" height="7" fill="#111"/><rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="#fff"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#111"/>`
+        const inFinder = (x, y) =>
+          (x < 8 && y < 8) || (x > size - 9 && y < 8) || (x < 8 && y > size - 9)
+        for (let y = 0; y < size; y += 1)
+          for (let x = 0; x < size; x += 1)
+            if (!inFinder(x, y) && rnd() > 0.52)
+              cells.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="#111"/>`)
+        return `<svg viewBox="-4 -4 ${size + 8} ${size + 8}" shape-rendering="crispEdges"><rect x="-4" y="-4" width="${size + 8}" height="${size + 8}" fill="#fff"/>${finder(0, 0)}${finder(size - 7, 0)}${finder(0, size - 7)}${cells.join('')}</svg>`
+      }
+      let seed = 7
+      for (const box of document.querySelectorAll('[data-qr]')) {
+        box.innerHTML = fakeQr(Number(box.dataset.qr), (seed += 13))
+      }
+
+      // 줄여 보인 모습
+      const scaled = document.getElementById('scaled')
+      const views = [
+        ['card-a-playlist', 360, 'A · 폰 360px'],
+        ['card-b-playlist', 360, 'B · 폰 360px'],
+        ['card-c-playlist', 360, 'C · 폰 360px'],
+        ['card-a-moment', 360, "A′ · 폰 360px"],
+        ['card-a-playlist', 850, 'A · 데스크톱 게시판 850px'],
+      ]
+      for (const [id, width, label] of views) {
+        const card = document.getElementById(id)
+        const wrap = document.createElement('div')
+        const frame = document.createElement('div')
+        frame.className = 'frame'
+        const ratio = width / card.offsetWidth
+        frame.style.width = `${width}px`
+        frame.style.height = `${Math.round(card.offsetHeight * ratio)}px`
+        const clone = card.cloneNode(true)
+        clone.removeAttribute('id')
+        clone.style.transform = `scale(${ratio})`
+        clone.style.transformOrigin = '0 0'
+        frame.append(clone)
+        const caption = document.createElement('p')
+        caption.className = 'label'
+        caption.textContent = label
+        wrap.append(frame, caption)
+        scaled.append(wrap)
+      }
+    </script>
+  </body>
+</html>

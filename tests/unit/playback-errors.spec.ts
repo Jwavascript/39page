@@ -297,96 +297,143 @@ describe('C. 늦게 도착한 사건', () => {
   })
 })
 
-/* ---------- D. 재생 중 트랙 삭제 ---------- */
+/* ---------- D. 재생 중 트랙 삭제 (ADR 0038) ---------- */
 
+/*
+ * 큐는 출처 목록을 따라간다. 지금 곡이 지워지면 M3-5 처럼 멈추고 안내하지 않고, 다음 곡으로 넘어간다 —
+ * 소리가 나던 중이면 재생하고, 아니면 올려 두기만 한다. 재생 쪽에 따로 알리지 않는다 (`trackRemoved` 없음).
+ */
 describe('D. 재생 중 트랙 삭제', () => {
-  it('재생 중이던 곡이 지워지면 멈추고 안내한다', async () => {
+  it('재생 중이던 곡이 지워지면 안내 없이 다음 곡을 재생한다', async () => {
     const { coordinator, playback, fake, library, playlistId } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
-    const [first] = trackIds(library, playlistId)
+    const [first, second] = trackIds(library, playlistId)
 
-    library.removeTrack(playlistId, first ?? '')
-    coordinator.trackRemoved(first ?? '')
+    await library.removeTrack(playlistId, first ?? '')
 
-    expect(fake.calls.pause).toBe(1)
-    expect(playback.statusMessage).toContain('삭제돼 재생을 멈췄습니다')
-    expect(playback.statusTone).toBe('warning')
+    expect(playback.currentTrack?.id).toBe(second)
+    expect(playback.queue.map((track) => track.title)).toEqual(['Track 2', 'Track 3'])
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEOS[1],
+      autoplay: true,
+    })
+    expect(fake.calls.pause).toBe(0)
+    expect(playback.statusMessage).toBe('')
   })
 
-  it('큐는 스냅샷이라 그대로 남는다', async () => {
+  it('일시정지 중이면 다음 곡을 올려 두기만 하고 재생하지 않는다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup()
+    coordinator.playPlaylist(playlistId)
+    fake.emitStateChange('playing')
+    fake.emitStateChange('paused')
+    const [first, second] = trackIds(library, playlistId)
+
+    await library.removeTrack(playlistId, first ?? '')
+
+    expect(playback.currentTrack?.id).toBe(second)
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEOS[1],
+      autoplay: false,
+    })
+    expect(playback.hasStartedPlaying).toBe(false)
+  })
+
+  it('옮긴 곡이 재생되기 전에 온 ENDED 는 한 곡을 더 건너뛰지 않는다', async () => {
     const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
-    const [first] = trackIds(library, playlistId)
+    const [first, second] = trackIds(library, playlistId)
 
-    library.removeTrack(playlistId, first ?? '')
-    coordinator.trackRemoved(first ?? '')
-
-    expect(playback.queue).toHaveLength(3)
-    expect(playback.queueIndex).toBe(0)
-    expect(playback.currentTrack?.id).toBe(first)
-  })
-
-  it('다음 곡으로 자동 전환하지 않는다', async () => {
-    const { coordinator, playback, library, playlistId, fake } = await setup()
-    coordinator.playPlaylist(playlistId)
-    fake.emitStateChange('playing')
-    const [first] = trackIds(library, playlistId)
-
-    coordinator.trackRemoved(first ?? '')
-
-    expect(playback.queueIndex).toBe(0)
-    expect(fake.calls.load).toHaveLength(1)
-  })
-
-  it('멈춘 뒤 ENDED 가 와도 큐가 흐르지 않는다', async () => {
-    const { coordinator, playback, library, playlistId, fake } = await setup()
-    coordinator.playPlaylist(playlistId)
-    fake.emitStateChange('playing')
-    const [first] = trackIds(library, playlistId)
-
-    coordinator.trackRemoved(first ?? '')
+    await library.removeTrack(playlistId, first ?? '')
+    // 지운 곡의 늦은 끝 신호.
     fake.emitStateChange('ended')
 
-    expect(playback.queueIndex).toBe(0)
+    expect(playback.currentTrack?.id).toBe(second)
   })
 
-  it('지금 재생 중이 아닌 곡을 지우면 아무 일도 없다', async () => {
+  it('오류 안내가 떠 있던 곡을 지우면 안내가 지워진다 — 그 곡은 이제 없다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup()
+    coordinator.playPlaylist(playlistId)
+    fake.emitError({ kind: 'embed-not-allowed', code: 150 })
+    expect(playback.statusMessage).not.toBe('')
+    const [first] = trackIds(library, playlistId)
+
+    await library.removeTrack(playlistId, first ?? '')
+
+    expect(playback.statusMessage).toBe('')
+    expect(playback.queue).toHaveLength(2)
+  })
+
+  it('마지막 곡을 지우면(반복 끔) 앞 곡에 서서 멈춘다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup()
+    const ids = trackIds(library, playlistId)
+    coordinator.playTrack(playlistId, ids[2] ?? '')
+    fake.emitStateChange('playing')
+
+    await library.removeTrack(playlistId, ids[2] ?? '')
+
+    expect(playback.currentTrack?.id).toBe(ids[1])
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEOS[1],
+      autoplay: false,
+    })
+  })
+
+  it('마지막 곡을 지우면(전체 반복) 처음 곡을 재생한다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup()
+    const ids = trackIds(library, playlistId)
+    coordinator.setRepeat('all')
+    coordinator.playTrack(playlistId, ids[2] ?? '')
+    fake.emitStateChange('playing')
+
+    await library.removeTrack(playlistId, ids[2] ?? '')
+
+    expect(playback.currentTrack?.id).toBe(ids[0])
+    expect(fake.calls.load[fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEOS[0],
+      autoplay: true,
+    })
+  })
+
+  it('하나뿐인 곡을 지우면 멈추고 큐를 비운다', async () => {
+    const { coordinator, playback, fake, library, playlistId } = await setup(1)
+    coordinator.playPlaylist(playlistId)
+    fake.emitStateChange('playing')
+    const [only] = trackIds(library, playlistId)
+
+    await library.removeTrack(playlistId, only ?? '')
+
+    expect(fake.calls.pause).toBe(1)
+    expect(playback.queue).toHaveLength(0)
+    expect(playback.currentTrack).toBeNull()
+    expect(coordinator.queue.value).toBeNull()
+  })
+
+  it('지금 곡이 아닌 곡을 지우면 큐에서 빠질 뿐 플레이어에는 아무 명령도 가지 않는다', async () => {
     const { coordinator, playback, library, playlistId, fake } = await setup()
     coordinator.playPlaylist(playlistId)
     fake.emitStateChange('playing')
     const ids = trackIds(library, playlistId)
+    const calls = JSON.stringify(fake.calls)
 
-    coordinator.trackRemoved(ids[2] ?? '')
+    await library.removeTrack(playlistId, ids[2] ?? '')
 
-    expect(fake.calls.pause).toBe(0)
+    expect(JSON.stringify(fake.calls)).toBe(calls)
+    expect(playback.queue.map((track) => track.title)).toEqual(['Track 1', 'Track 2'])
+    expect(playback.currentTrack?.id).toBe(ids[0])
     expect(playback.statusMessage).toBe('')
   })
 
   it('재생 중인 것이 없으면 아무 일도 없다', async () => {
-    const { coordinator, playback, library, playlistId, fake } = await setup()
+    const { playback, library, playlistId, fake } = await setup()
     const ids = trackIds(library, playlistId)
 
-    coordinator.trackRemoved(ids[0] ?? '')
+    await library.removeTrack(playlistId, ids[0] ?? '')
 
     expect(fake.calls.pause).toBe(0)
+    expect(fake.calls.load).toHaveLength(0)
     expect(playback.statusMessage).toBe('')
-  })
-
-  it('사용자가 다시 고르면 재생이 이어진다', async () => {
-    const { coordinator, playback, library, playlistId, fake } = await setup()
-    coordinator.playPlaylist(playlistId)
-    fake.emitStateChange('playing')
-    const ids = trackIds(library, playlistId)
-    coordinator.trackRemoved(ids[0] ?? '')
-
-    library.removeTrack(playlistId, ids[0] ?? '')
-    const remaining = trackIds(library, playlistId)
-    coordinator.playTrack(playlistId, remaining[0] ?? '')
-
-    expect(playback.statusMessage).toBe('')
-    expect(playback.queue).toHaveLength(2)
   })
 })
 
@@ -511,7 +558,7 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
     expect(placeholder.classes()).toContain('is-hidden')
   })
 
-  it('드로어에서 재생 중인 트랙을 지우면 멈추고 안내한다', async () => {
+  it('드로어에서 재생 중인 트랙을 지우면 안내 없이 다음 곡을 재생한다 (ADR 0038)', async () => {
     const context = await seeded()
     await context.wrapper.get('.now-playlist .play-all').trigger('click')
     await flushPromises()
@@ -527,9 +574,13 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
     await context.wrapper.get('.confirm .pill--strong').trigger('click')
     await flushPromises()
 
-    expect(context.fake.calls.pause).toBe(1)
-    expect(context.wrapper.get('.status').text()).toContain('삭제돼 재생을 멈췄습니다')
-    expect(context.playback.queue).toHaveLength(2)
+    expect(context.fake.calls.pause).toBe(0)
+    expect(context.wrapper.get('.status').text()).not.toContain('삭제')
+    expect(context.playback.queue.map((track) => track.title)).toEqual(['Track 2'])
+    expect(context.fake.calls.load[context.fake.calls.load.length - 1]).toEqual({
+      videoId: VIDEOS[1],
+      autoplay: true,
+    })
   })
 
   it('드로어에서 다른 트랙을 지우면 재생이 계속된다', async () => {

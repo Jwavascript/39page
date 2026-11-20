@@ -8,6 +8,8 @@
  * - 재생 큐가 있으면 **큐**(실제 재생 순서)를, 없으면 보관함에서 고른 목록을 **"재생 대기"** 로 보인다.
  *   둘을 섞어 보이지 않는다 — 판단은 `useNowPlaylist` 가 한다 (`AGENTS.md` 규칙 3).
  * - 줄을 누르면 그 곡을 재생한다. 목록 이름 바꾸기 · 삭제 · 곡 정렬 같은 **관리는 없다** — 보관함의 일이다.
+ * - 큐는 출처 목록을 따라간다 — 곡 추가 · 삭제 · 순서 변경에 안내 상자를 띄우지 않는다 (ADR 0038).
+ * - "목록 바꾸기" 로 고르면 재생 중일 때는 그 목록을 바로 처음부터 재생한다 (ADR 0038).
  * - "목록 바꾸기" 는 위젯 **안에서** 펼친다. 떠 있는 팝오버를 쓰지 않는다 — 좁은 배치에서 이 위젯
  *   아래가 영상이고, 가시성 측정은 우리 UI 가 영상을 덮은 것을 알지 못한다 (`playerVisibility.ts`).
  * - 곡이 많으면 넓은 화면은 **위젯 안에서** 스크롤하고(높이 고정 · 페이지로 새지 않음 · 더 있음 표시),
@@ -86,6 +88,9 @@ onBeforeUnmount(() => {
         </p>
         <p v-if="model.view.value === 'queue'" class="widget-sub">
           {{ model.position.value }} / {{ model.trackCount.value }}곡
+          <span v-if="model.modesText.value !== null" class="modes"
+            >· {{ model.modesText.value }}</span
+          >
           <template v-if="model.otherSelectedName.value !== null">
             · 보관함에서 보는 목록: {{ model.otherSelectedName.value }}
           </template>
@@ -93,6 +98,9 @@ onBeforeUnmount(() => {
         <p v-else-if="model.view.value === 'standby'" class="widget-sub">
           {{ model.trackCount.value === 0 ? '비어 있음' : `${model.trackCount.value}곡` }}
           <template v-if="model.trackCount.value > 0"> · 곡을 누르면 그 곡부터 재생</template>
+          <template v-if="model.playingElsewhereName.value !== null">
+            · 지금 재생: {{ model.playingElsewhereName.value }}
+          </template>
         </p>
       </div>
       <button
@@ -111,9 +119,11 @@ onBeforeUnmount(() => {
       {{ model.notice.value }}
     </p>
 
-    <!-- 목록 바꾸기 — 위젯 안에서 곡 줄 대신 펼친다. 고르기만 해서는 재생이 바뀌지 않는다. -->
+    <!-- 목록 바꾸기 — 위젯 안에서 곡 줄 대신 펼친다. 재생 중이면 고른 목록을 바로 처음부터 재생한다. -->
     <div v-if="model.isPickerOpen.value" id="now-playlist-picker" class="picker">
-      <p class="picker-hint">볼 목록을 고르세요. 고르기만 해서는 지금 재생이 바뀌지 않아요.</p>
+      <p class="picker-hint">
+        {{ model.pickPlays.value ? '고른 목록을 처음부터 바로 재생해요.' : '볼 목록을 고르세요.' }}
+      </p>
       <ul class="picker-rows">
         <li v-for="choice in model.choices.value" :key="choice.id">
           <button
@@ -134,36 +144,13 @@ onBeforeUnmount(() => {
     </div>
 
     <template v-else>
-      <!-- 큐 보기: 출처 목록이 바뀌었거나 지워졌으면 알린다. 큐는 그대로다 (스냅샷). -->
-      <div
-        v-if="model.sourceState.value === 'changed'"
-        class="source-notice"
-        role="status"
-        aria-live="polite"
-      >
-        <template v-if="model.canResync.value">
-          <p>목록이 변경됐어요. 지금은 재생을 시작할 때의 순서로 이어집니다.</p>
-          <button type="button" class="pill" @click="model.resync()">새 순서로 이어 재생</button>
-        </template>
-        <template v-else>
-          <p>목록이 변경됐고, 지금 곡은 그 목록에서 빠졌어요. 지금 큐는 그대로 재생돼요.</p>
-          <button type="button" class="pill" @click="model.restartSource()">
-            바뀐 목록을 처음부터 재생
-          </button>
-        </template>
-      </div>
-      <p v-else-if="model.sourceState.value === 'deleted'" class="source-notice" role="status">
+      <!--
+        큐 보기: 곡 추가 · 삭제 · 순서 변경은 큐가 바로 따라가므로 알리지 않는다 (ADR 0038). 출처 목록 자체가
+        지워진 경우만 알린다 — 따라갈 목록이 없어 큐가 그대로 끝까지 재생된다.
+      -->
+      <p v-if="model.sourceState.value === 'deleted'" class="source-notice" role="status">
         이 목록은 보관함에서 지워졌어요. 지금 큐는 끝까지 재생할 수 있어요.
       </p>
-
-      <!-- 대기 보기인데 따로 재생 중인 큐가 있다 — 무엇이 재생 중인지 말하고 돌아갈 길을 둔다. -->
-      <div v-if="model.playingElsewhereName.value !== null" class="source-notice" role="status">
-        <p>
-          지금은 ‘{{ model.playingElsewhereName.value }}’ 을(를) 재생 중이에요. 이 목록의 곡을
-          누르면 이 목록으로 바꿔 재생해요.
-        </p>
-        <button type="button" class="pill" @click="model.showQueue()">재생 중인 큐 보기</button>
-      </div>
 
       <p v-if="model.view.value === 'none'" class="empty">
         아직 플레이리스트가 없어요.<br />보관함에서 목록을 만들고 YouTube 링크를 담아 보세요.
@@ -386,10 +373,9 @@ onBeforeUnmount(() => {
   line-height: 1.55;
 }
 
-.source-notice p {
-  min-width: 0;
-  flex: 1 1 180px;
-  margin: 0;
+/* 셔플 · 반복 — 번호가 재생 순서라는 것을 함께 알린다. */
+.modes {
+  color: var(--drawer-title-text-color);
 }
 
 .empty,

@@ -68,3 +68,7 @@
 - [0035](0035-m12-6-edit-sessions-and-artwork-display.md): M12-6 편집 세션·제목 제출·카세트 레이블·비파괴 구도·ZIP/공유 v2 (채택).
 - [0036](0036-collapsible-dashboard-header.md): 페이지 메모리의 헤더 접기·펼치기, 스크롤·포커스 유지, F11 독립 (채택).
 - [0037](0037-extension-cassette-design.md): 확장 팝업·패널의 Cassette 토큰·카세트·상태 표현 재사용, 웹앱 테마 동기화 제외 (채택).
+- [0038](0038-queue-follows-source-and-play-modes.md): 재생 큐는 출처 목록을 따르고(안내 없음), 목록 바꾸기는 바로 재생, 셔플·반복은 메모리 모드 (채택).
+- [0039](0039-youtube-search-without-api.md): 곡 찾기는 API 키 없이 YouTube 검색 결과 페이지를 새 탭으로 연다 — 검색어를 보내거나 저장하지 않음 (채택).
+- [0040](0040-share-links-in-url-fragment.md): 첨부 없이 공유하는 링크 — 내용을 주소 조각(`#share?v=1&d=`)에 압축해 싣고, 받는 사람이 미리보기에서 고른다 (채택).
+- [0041](0041-share-card-image.md): 공유 카드 이미지 — 링크와 같은 내용을 테마 틀(카세트 J카드 · LP 뒷면 · 영수증 · 싱글)로 그린 PNG, QR · 안내 문구 없음, 시스템 글꼴 (채택).

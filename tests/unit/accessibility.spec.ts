@@ -160,7 +160,7 @@ describe('B. 키보드 경로', () => {
 describe('C. 컨트롤 이름과 크기', () => {
   it('트랜스포트는 네이티브 button 이고 이름이 동작을 말한다', () => {
     const { wrapper } = mountApp()
-    const buttons = wrapper.findAll('.action-row button')
+    const buttons = wrapper.findAll('.action-row .controls-left button')
 
     expect(buttons).toHaveLength(3)
     expect(buttons.map((button) => button.attributes('aria-label'))).toEqual([
@@ -168,7 +168,14 @@ describe('C. 컨트롤 이름과 크기', () => {
       '재생',
       '다음 곡',
     ])
-    for (const button of buttons) {
+    // 셔플 · 반복 (ADR 0038) — 따로 묶인 네이티브 button 이고, 켜짐을 aria-pressed 로 말한다.
+    const modes = wrapper.findAll('.action-row button.mode')
+    expect(modes.map((button) => button.attributes('aria-label'))).toEqual([
+      '셔플',
+      '반복: 반복 끔 (누르면 전체 반복)',
+    ])
+    expect(modes.map((button) => button.attributes('aria-pressed'))).toEqual(['false', 'false'])
+    for (const button of [...buttons, ...modes]) {
       expect(button.element.tagName).toBe('BUTTON')
       expect(button.attributes('type')).toBe('button')
       expect(button.attributes('role')).toBeUndefined()

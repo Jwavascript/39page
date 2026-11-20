@@ -375,11 +375,11 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     expect(player().iframe).toBe(iframe)
   })
 
-  it('재생 중 드로어에서 목록을 편집해도 큐가 그대로다', async () => {
+  it('재생 중 드로어에서 목록을 편집하면 큐가 따라오지만 플레이어는 다시 만들지도 적재하지도 않는다', async () => {
     const { wrapper, playback } = await setup()
     await startPlaylist(wrapper)
     player().fireStateChange(PLAYING)
-    const before = [...playback.queue]
+    const playingId = playback.currentTrack?.id
 
     // 두 번째 트랙을 위로 올린다.
     await openTrackManage(wrapper, 'Track 2')
@@ -391,8 +391,10 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')
     await nextTick()
 
-    expect(playback.queue).toEqual(before)
-    expect(playback.queueIndex).toBe(0)
+    // 큐 = [Track 2, Track 1] — 지금 곡(Track 1)은 그대로이고 자리만 옮겼다 (ADR 0038).
+    expect(playback.queue.map((track) => track.title)).toEqual(['Track 2', 'Track 1'])
+    expect(playback.currentTrack?.id).toBe(playingId)
+    expect(playback.queueIndex).toBe(1)
     expect(player().loadCalls).toEqual([])
     expect(FakeYtPlayer.instances).toHaveLength(1)
   })

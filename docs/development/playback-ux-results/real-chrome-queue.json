@@ -1,0 +1,236 @@
+{
+  "when": "2026-11-20T07:01:07.396Z",
+  "passed": 15,
+  "total": 15,
+  "results": [
+    {
+      "name": "재생 시작 — 목록 A 첫 곡",
+      "pass": true,
+      "details": {
+        "video": "aqz-KE-bpKQ",
+        "rows": ["A1 Bunny", "A2 Sintel", "A3 Demo"]
+      }
+    },
+    {
+      "name": "곡 추가 — 큐 끝에 바로 붙고 안내 없이 같은 영상이 이어진다",
+      "pass": true,
+      "details": {
+        "rows": ["A1 Bunny", "A2 Sintel", "A3 Demo", "A4 Added"],
+        "sub": "1 / 4곡",
+        "timeBefore": 3.531523135421753,
+        "timeAfter": 5.334085047683716
+      }
+    },
+    {
+      "name": "순서 변경 — 지금 곡 표시만 옮기고 재생 위치는 그대로",
+      "pass": true,
+      "details": {
+        "rows": ["A2 Sintel", "A3 Demo", "A4 Added", "A1 Bunny"],
+        "sub": "4 / 4곡",
+        "time": 6.861395967575073
+      }
+    },
+    {
+      "name": "지금 곡(마지막 자리) 삭제, 반복 끔 — 앞 곡에 서서 멈추고 안내가 없다",
+      "pass": true,
+      "details": {
+        "title": "A4 Added",
+        "ytState": 5,
+        "rows": ["A2 Sintel", "A3 Demo", "A4 Added"],
+        "status": ""
+      }
+    },
+    {
+      "name": "재생 중 지금 곡 삭제 — 안내 없이 다음 곡을 재생",
+      "pass": true,
+      "details": {
+        "rows": ["A3 Demo", "A4 Added"],
+        "video": "M7lc1UVf-VE"
+      }
+    },
+    {
+      "name": "목록 바꾸기 — 고른 목록을 처음부터 바로 재생, 안내 상자 없음",
+      "pass": true,
+      "details": {
+        "hint": "고른 목록을 처음부터 바로 재생해요.",
+        "listName": "LIST B",
+        "rows": ["B1 Sintel", "B2 Bunny"]
+      }
+    },
+    {
+      "name": "빈 목록 고르기 — 재생은 그대로, 부제에 지금 재생",
+      "pass": true,
+      "details": {
+        "view": "standby",
+        "sub": "비어 있음 · 지금 재생: LIST B"
+      }
+    },
+    {
+      "name": "재생 중인 목록을 다시 고르면 큐 보기 — 처음부터 다시 틀지 않는다",
+      "pass": true,
+      "details": {
+        "time": 3.355884011444092
+      }
+    },
+    {
+      "name": "셔플 · 전체 반복 켜기 — aria-pressed · 부제 표시 · 지금 곡이 01",
+      "pass": true,
+      "details": {
+        "modes": [
+          {
+            "label": "셔플",
+            "pressed": "true"
+          },
+          {
+            "label": "반복: 전체 반복 (누르면 한 곡 반복)",
+            "pressed": "true"
+          }
+        ],
+        "sub": "1 / 2곡 · 셔플 · 전체 반복",
+        "currentRow": "01"
+      }
+    },
+    {
+      "name": "전체 반복 — 마지막 곡이 끝나면 처음 곡을 재생 (실제 ended)",
+      "pass": true,
+      "details": {
+        "title": "B1 Sintel"
+      }
+    },
+    {
+      "name": "한 곡 반복 — 끝나면 같은 곡을 처음부터 (실제 ended)",
+      "pass": true,
+      "details": {
+        "time": 0.17606206294250487,
+        "label": "반복: 한 곡 반복 (누르면 반복 끔)"
+      }
+    },
+    {
+      "name": "테마 전환 — 재생 · 셔플 · 반복이 그대로다",
+      "pass": true,
+      "details": {
+        "theme": "mono-vinyl",
+        "label": "반복: 한 곡 반복 (누르면 반복 끔)"
+      }
+    },
+    {
+      "name": "단추 배치 (보관함 닫힘) — 6개 폭에서 🔀 ⏮ ▶ ⏭ 🔁 한 줄 · 카드 안 · 겹침 없음 · 44px · 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "layout": [
+          {
+            "width": 1440,
+            "archive": "closed",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": false,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 449
+          },
+          {
+            "width": 1024,
+            "archive": "closed",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": false,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 640
+          },
+          {
+            "width": 768,
+            "archive": "closed",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": false,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 640
+          },
+          {
+            "width": 390,
+            "archive": "closed",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": true,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 338
+          },
+          {
+            "width": 360,
+            "archive": "closed",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": true,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 308
+          },
+          {
+            "width": 320,
+            "archive": "closed",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": true,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 268
+          }
+        ]
+      }
+    },
+    {
+      "name": "단추 배치 (보관함 열림) — 넓은 띠는 다섯 단추 한 줄, 좁은 한 줄 카드는 재생 단추 셋 · 넘침 없음",
+      "pass": true,
+      "details": {
+        "opened": [
+          {
+            "width": 1440,
+            "layout": "strip",
+            "oneLine": true,
+            "rowCount": 5,
+            "underArt": false,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 472
+          },
+          {
+            "width": 390,
+            "layout": "stack",
+            "oneLine": true,
+            "rowCount": 3,
+            "underArt": null,
+            "inside": true,
+            "overlap": false,
+            "minSide": 44,
+            "pageOverflow": false,
+            "cardWidth": 338
+          }
+        ]
+      }
+    },
+    {
+      "name": "셔플 · 반복은 저장소 키를 만들지 않는다",
+      "pass": true,
+      "details": {
+        "keys": ["39page.library", "39page.library.rev", "39page.theme"]
+      }
+    }
+  ]
+}

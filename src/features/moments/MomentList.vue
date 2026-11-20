@@ -30,6 +30,8 @@ const props = defineProps<{
   idPrefix?: string
   /** 방금 저장한 순간 (M11-7C) — 그 줄을 강조하고, 칸 안에서 보이게 한다. */
   highlightId?: string | null
+  /** 관리 메뉴에 "링크로 공유" 를 보일지 (ADR 0040). 공유는 부모가 연다. */
+  canShare?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,6 +40,8 @@ const emit = defineEmits<{
   toggle: [videoId: string]
   'more-rows': [videoId: string]
   'open-list': [playlistId: string, videoId: string]
+  /** 그 순간을 링크로 공유 (ADR 0040). */
+  share: [momentId: string]
   /** 지운 뒤 목록에 포커스를 둘 곳이 없다 — 부모가 정한다(검색란 등). */
   'focus-out': []
 }>()
@@ -187,7 +191,9 @@ function metaText(section: ArchiveSection): string {
             :id-prefix="prefix()"
             :max-note-length="maxNoteLength"
             :save-note="saveNote"
+            :can-share="canShare === true"
             @play="(id) => emit('play', id)"
+            @share="(id) => emit('share', id)"
             @toggle-manage="toggleManage"
             @edit="(id) => (active = { id, mode: 'edit' })"
             @request-remove="(id) => (active = { id, mode: 'confirm' })"
@@ -223,7 +229,9 @@ function metaText(section: ArchiveSection): string {
           :id-prefix="prefix()"
           :max-note-length="maxNoteLength"
           :save-note="saveNote"
+          :can-share="canShare === true"
           @play="(id) => emit('play', id)"
+          @share="(id) => emit('share', id)"
           @toggle-manage="toggleManage"
           @edit="(id) => (active = { id, mode: 'edit' })"
           @request-remove="(id) => (active = { id, mode: 'confirm' })"

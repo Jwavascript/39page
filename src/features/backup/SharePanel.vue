@@ -1,20 +1,24 @@
 <script setup lang="ts">
 /**
- * 파일 공유 (M12-4, ARTWORK_DESIGN §8) — 데이터 · 백업 대화상자 안.
+ * 공유 (M12-4 파일 · ADR 0040 링크) — 데이터 · 백업 대화상자 안.
  *
- * 만들기: 목록 하나(또는 그 목록의 곡 하나) · 그 그림 · (켰을 때만) 그 곡들의 Moments 를 ZIP 하나로.
- * 가져오기: 미리보기 → 새 목록 / 기존 목록에 추가 · 같은 영상 처리 · Moments 넣기 → 가져오기.
- *
- * 서버 · 공개 링크가 없다 — 파일을 직접 주고받는다.
+ * 대상: 목록 하나(또는 그 목록의 곡 하나), 또는 Moment 하나(링크로만).
+ * - 링크로 공유 (`ShareLinkBox`): 내용을 주소 조각에 담은 링크 — 파일을 올릴 수 없는 게시판 · 메신저용. 서버가 없다.
+ * - 파일로 공유 (ZIP): 그 곡들 · 그림 · (켰을 때만) Moments 를 ZIP 하나로.
+ * 가져오기: 미리보기 → 새 목록 / 기존 목록에 추가 · 같은 영상 처리 · Moments 넣기 → 가져오기. 링크로 받은 공유는
+ * 링크를 열면 대시보드의 미리보기(`ShareLinkDialog`)가 받는다.
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import type { ShareRequest } from '@/shared/types/share'
 
 import { formatBytes } from '@/shared/utils/bytes'
+import { formatTimestamp } from '@/shared/utils/time'
 import { useLibraryStore } from '@/stores/library'
 import { useMomentsStore } from '@/stores/moments'
 
+import ShareLinkBox from './ShareLinkBox.vue'
 import { useShareExport, useShareImport } from './useShare'
+import type { ShareLinkTarget } from './useShareLink'
 
 const library = useLibraryStore()
 const props = defineProps<{ request?: ShareRequest | null }>()
@@ -36,24 +40,62 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const playlist = computed(() => library.getPlaylist(playlistId.value) ?? null)
 watch(playlistId, () => (trackId.value = ''), { flush: 'sync' })
 const targetError = ref('')
+
+/** Moment 하나를 공유하는 중이면 그 id (링크로만). `''` 이면 목록 · 곡을 고르는 보통 모드. */
+const momentId = ref('')
+const moment = computed(() =>
+  momentId.value === '' ? null : (moments.moments.find((m) => m.id === momentId.value) ?? null),
+)
+/** Moment 의 곡 이름 — 라이브러리(고른 목록 먼저)의 지금 이름, 없으면 Moment 를 저장할 때의 제목. */
+const momentTitle = computed<string>(() => {
+  const current = moment.value
+  if (current === null) return ''
+  const lists = [library.selectedPlaylist, ...library.playlists]
+  for (const list of lists) {
+    const found = list?.tracks.find((track) => track.videoId === current.videoId)
+    if (found !== undefined) return found.title
+  }
+  return current.title
+})
+
 watch(
   () => props.request?.seq,
   async () => {
     const request = props.request
     if (request == null) return
     includeMoments.value = false
-    const target = library.getPlaylist(request.playlistId)
-    const valid =
-      target !== undefined &&
-      (request.trackId === undefined || target.tracks.some((track) => track.id === request.trackId))
-    playlistId.value = valid ? request.playlistId : ''
-    trackId.value = valid ? (request.trackId ?? '') : ''
-    targetError.value = valid ? '' : '공유할 목록이나 곡이 사라졌어요. 대상을 다시 골라 주세요.'
+    if ('momentId' in request) {
+      const exists = moments.moments.some((m) => m.id === request.momentId)
+      momentId.value = exists ? request.momentId : ''
+      targetError.value = exists ? '' : '공유할 Moment 가 사라졌어요. 대상을 다시 골라 주세요.'
+    } else {
+      momentId.value = ''
+      const target = library.getPlaylist(request.playlistId)
+      const valid =
+        target !== undefined &&
+        (request.trackId === undefined ||
+          target.tracks.some((track) => track.id === request.trackId))
+      playlistId.value = valid ? request.playlistId : ''
+      trackId.value = valid ? (request.trackId ?? '') : ''
+      targetError.value = valid ? '' : '공유할 목록이나 곡이 사라졌어요. 대상을 다시 골라 주세요.'
+    }
     await nextTick()
     focusExport()
   },
   { immediate: true },
 )
+
+/** 링크로 공유할 대상. */
+const linkTarget = computed<ShareLinkTarget | null>(() => {
+  if (moment.value !== null) {
+    return { kind: 'moment', moment: moment.value, title: momentTitle.value }
+  }
+  const list = playlist.value
+  if (list === null || list.tracks.length === 0) return null
+  if (trackId.value === '') return { kind: 'playlist', playlist: list }
+  const track = list.tracks.find((item) => item.id === trackId.value)
+  return track === undefined ? null : { kind: 'track', playlist: list, track }
+})
 
 /** 넣을 Moments 수 — 켜기 전에 몇 개가 나가는지 보인다. */
 const momentCount = computed(() => {
@@ -91,12 +133,20 @@ function onFile(event: Event): void {
 <template>
   <section class="share" aria-labelledby="share-title">
     <div class="rule" />
-    <h3 id="share-title" ref="exportHeading" class="share-title" tabindex="-1">
-      SHARE · 파일로 공유
-    </h3>
+    <h3 id="share-title" ref="exportHeading" class="share-title" tabindex="-1">SHARE · 공유</h3>
     <p v-if="targetError" role="status">{{ targetError }}</p>
 
-    <div class="share-form">
+    <!-- Moment 하나 — 링크로만 공유한다. 목록 · 곡 고르기로 돌아갈 수 있다. -->
+    <div v-if="moment !== null" class="moment-target">
+      <p>
+        Moment —
+        <strong>{{ momentTitle === '' ? `YouTube · ${moment.videoId}` : momentTitle }}</strong> ·
+        {{ formatTimestamp(moment.atSeconds) }}
+      </p>
+      <button type="button" class="pill" @click="momentId = ''">목록 · 곡 공유로 바꾸기</button>
+    </div>
+
+    <div v-else class="share-form">
       <label class="field">
         목록
         <select v-model="playlistId" aria-label="공유할 목록">
@@ -114,6 +164,12 @@ function onFile(event: Event): void {
           </option>
         </select>
       </label>
+    </div>
+
+    <ShareLinkBox :target="linkTarget" />
+
+    <h4 v-if="moment === null" class="share-sub">파일로 공유 (ZIP)</h4>
+    <div v-if="moment === null" class="share-form">
       <label class="check">
         <input v-model="includeMoments" type="checkbox" />
         이 곡들의 Moments {{ momentCount }}개도 넣기
@@ -127,9 +183,9 @@ function onFile(event: Event): void {
         {{ share.busy.value ? '만드는 중…' : '공유 파일 만들기' }}
       </button>
     </div>
-    <p class="share-note">
-      고른 곡의 제목 · 영상 · 순서 · 앨범아트만 들어갑니다. 다른 목록 · 테마는 들어가지 않고,
-      Moments 는 켰을 때만.
+    <p v-if="moment === null" class="share-note">
+      앨범아트까지 넘길 때 쓰세요. 고른 곡의 제목 · 영상 · 순서 · 앨범아트만 들어갑니다. 다른 목록 ·
+      테마는 들어가지 않고, Moments 는 켰을 때만.
     </p>
     <p
       v-if="share.notice.value !== ''"
@@ -241,6 +297,30 @@ function onFile(event: Event): void {
   height: 1px;
   margin-bottom: 14px;
   background: var(--rule-color);
+}
+
+.share-sub {
+  margin: 12px 0 0;
+  color: var(--drawer-title-text-color);
+  font: 12px var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.moment-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 8px 0;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.moment-target p {
+  min-width: 0;
+  flex: 1 1 200px;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .share-title {

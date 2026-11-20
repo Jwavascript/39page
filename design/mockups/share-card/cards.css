@@ -1,0 +1,665 @@
+/*
+ * 공유 카드 비교 시안 — 구현 아님 (2026-11-20).
+ * 색은 src/themes 의 두 테마 tokens.css 에서 옮겨 적었다. 토큰이 바뀌어도 시안은 따라가지 않는다.
+ * 카드는 실제 픽셀 크기(폭 1080)로 그린다. 글자 크기는 리서치의 하한을 따른다 — 곡 이름 40px(최소 36),
+ * 보조 32px, 카드 제목 80px 이상, 바닥글 · 브랜드 28px 이상 (폰에서 0.31–0.36 배로 줄어 보인다).
+ */
+:root {
+  --kawaii-bg: #10202c;
+  --kawaii-mint: #e2fff6;
+  --kawaii-dim: #769dac;
+  --kawaii-dot: #a8ffe7;
+  --kawaii-pink: #ff9bc5;
+  --kawaii-ink: #2a1730;
+  --kawaii-paper: #fff4f9;
+  --kawaii-receipt: #dbfff4;
+  --mono-bg: #171614;
+  --mono-ink: #e9e2d7;
+  --mono-accent: #d5cab9;
+  --mono-dim: #8f887b;
+  --mono-line: #504a41;
+  --mono-paper: #ded4c6;
+  --sans: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 40px;
+  background: #0b0d10;
+  color: #dfe6ea;
+  font-family: var(--sans);
+}
+
+.not-impl {
+  margin: -40px -40px 30px;
+  padding: 10px 40px;
+  background: #ffe066;
+  color: #222;
+  font: 700 18px var(--sans);
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+}
+
+.lead {
+  max-width: 1200px;
+  margin: 0 0 30px;
+  color: #a9b4bb;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 60px;
+  gap: 40px;
+}
+
+figure {
+  margin: 0;
+}
+
+figcaption {
+  max-width: 1080px;
+  margin-top: 12px;
+  color: #c4ced4;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  width: 1080px;
+  /* 한글은 낱말 안에서 끊지 않는다 (CSS keep-all — 캔버스 구현에서도 같은 규칙). */
+  word-break: keep-all;
+}
+
+/* 카드마다 붙는 "시안" 표 — 스크린샷만 보고도 구현이 아님을 알게. */
+.card::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  padding: 6px 14px;
+  background: rgb(255 224 102 / 92%);
+  color: #222;
+  content: '시안 · 구현 아님';
+  font: 700 18px var(--sans);
+}
+
+.clip {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qr {
+  display: block;
+  flex: none;
+  background: #fff;
+}
+
+.qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 도트 그림 — 점 10px · 간격 24px (압축에 버티게 점 6px 이상 · 간격 8px 이상). 글자를 얹지 않는다. */
+.dots {
+  display: grid;
+  padding: 18px;
+  grid-template-columns: repeat(12, 1fr);
+  place-items: center;
+}
+
+.dots i {
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--kawaii-dot);
+  opacity: 0.28;
+}
+
+.dots i.on {
+  background: var(--kawaii-pink);
+  opacity: 1;
+}
+
+/* ================================================================== *
+ * A. 카세트 J카드 — Kawaii Synth Cassette (1080 × 1350, 4:5) · 10곡까지
+ * ================================================================== */
+
+.card--jcard {
+  height: 1350px;
+  padding: 0 56px;
+  background: var(--kawaii-bg);
+  color: var(--kawaii-mint);
+}
+
+.strip {
+  display: flex;
+  height: 116px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.wordmark {
+  font: 700 30px var(--mono);
+  letter-spacing: 0.16em;
+}
+
+.strip .tag {
+  color: var(--kawaii-pink);
+  font: 700 30px var(--mono);
+  letter-spacing: 0.14em;
+}
+
+.strip .chip {
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: var(--kawaii-pink);
+  color: var(--kawaii-ink);
+  font: 700 28px var(--mono);
+}
+
+.jcard {
+  display: grid;
+  height: 1030px;
+  border: 5px solid var(--kawaii-pink);
+  border-radius: 26px;
+  background: var(--kawaii-paper);
+  color: var(--kawaii-ink);
+  grid-template-rows: 262px 70px 1fr;
+  overflow: hidden;
+}
+
+.jcard-front {
+  display: grid;
+  align-items: center;
+  padding: 22px 40px;
+  gap: 30px;
+  grid-template-columns: 1fr 200px;
+}
+
+.jcard-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font: 800 80px/1.12 var(--sans);
+  letter-spacing: -0.02em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.jcard-meta {
+  margin: 10px 0 0;
+  color: #8a3a66;
+  font: 700 32px var(--mono);
+}
+
+/* 테이프 릴 둘 — 굵은 선(6px)만. 글자를 얹지 않는다. */
+.reels {
+  display: flex;
+  height: 136px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border: 6px solid var(--kawaii-ink);
+  border-radius: 75px;
+}
+
+.reels span {
+  width: 76px;
+  height: 76px;
+  border: 6px solid var(--kawaii-ink);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--kawaii-pink) 0 16px, transparent 17px);
+}
+
+.jcard-spine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  background: var(--kawaii-pink);
+  font: 800 36px var(--sans);
+  gap: 24px;
+}
+
+.jcard-spine .code {
+  flex: none;
+  font: 700 28px var(--mono);
+}
+
+.jcard-inside {
+  padding: 16px 40px 8px;
+}
+
+.side {
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 3px dashed #e98ab6;
+  color: #b8326f;
+  font: 800 28px var(--mono);
+  letter-spacing: 0.12em;
+}
+
+.side + ol {
+  margin: 2px 0 10px;
+}
+
+.jcard ol,
+.lp ol {
+  padding: 0;
+  list-style: none;
+}
+
+.jcard li {
+  display: grid;
+  height: 52px;
+  align-items: center;
+  border-bottom: 2px solid #f6cfe2;
+  gap: 16px;
+  grid-template-columns: 56px 1fr 92px;
+}
+
+.jcard li .no {
+  color: #b8326f;
+  font: 700 30px var(--mono);
+}
+
+.jcard li .t {
+  font: 700 40px/1.3 var(--sans);
+}
+
+.jcard li .m {
+  color: #b8326f;
+  font: 700 28px var(--mono);
+  text-align: right;
+}
+
+.foot {
+  display: flex;
+  height: 204px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.listen {
+  display: inline-block;
+  padding: 10px 26px;
+  border-radius: 999px;
+  background: var(--kawaii-pink);
+  color: var(--kawaii-ink);
+  font: 800 34px var(--sans);
+}
+
+.hint {
+  margin: 14px 0 0;
+  color: var(--kawaii-dim);
+  font: 600 28px/1.4 var(--sans);
+}
+
+.foot .count {
+  color: var(--kawaii-mint);
+  font: 700 30px/1.5 var(--mono);
+  text-align: right;
+}
+
+/* A′ 곡 하나 · Moment */
+.card--single {
+  height: 1350px;
+  padding: 0 56px;
+  background: var(--kawaii-bg);
+  color: var(--kawaii-mint);
+}
+
+.single-art {
+  width: 520px;
+  height: 520px;
+  margin: 8px auto 0;
+  border: 5px solid var(--kawaii-pink);
+  border-radius: 26px;
+  background: #142c3a;
+}
+
+.single-title {
+  display: -webkit-box;
+  margin: 36px 0 0;
+  overflow: hidden;
+  font: 800 64px/1.2 var(--sans);
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.single-chip {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.single-chip span {
+  padding: 8px 26px;
+  border: 4px solid var(--kawaii-pink);
+  border-radius: 999px;
+  color: var(--kawaii-pink);
+  font: 800 36px var(--mono);
+}
+
+.single-note {
+  display: -webkit-box;
+  max-width: 900px;
+  margin: 20px auto 0;
+  overflow: hidden;
+  font: 600 36px/1.4 var(--sans);
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.single-foot {
+  display: flex;
+  align-items: center;
+  margin-top: 40px;
+  gap: 36px;
+}
+
+.single-foot .qr {
+  width: 268px;
+  height: 268px;
+}
+
+/* ================================================================== *
+ * B. LP 뒷면 — Mono Vinyl (1080 × 1080, 1:1) · 한 단 10곡까지
+ * ================================================================== */
+
+.card--lp {
+  height: 1080px;
+  padding: 64px 72px 0;
+  background: linear-gradient(140deg, #1f1d1a, var(--mono-bg) 70%);
+  color: var(--mono-ink);
+}
+
+/* 반쯤 보이는 레코드 — 굵은 홈(6px 간격). 글자를 얹지 않는다. */
+.lp-disc {
+  position: absolute;
+  top: -170px;
+  right: -170px;
+  width: 470px;
+  height: 470px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--mono-accent) 0 62px, #2a2723 63px 70px, transparent 71px),
+    repeating-radial-gradient(circle, #0f0e0c 0 4px, #24211d 4px 8px);
+}
+
+.lp-catalog {
+  color: var(--mono-dim);
+  font: 600 28px var(--mono);
+  letter-spacing: 0.14em;
+}
+
+.lp-title {
+  display: -webkit-box;
+  max-width: 740px;
+  margin: 14px 0 0;
+  overflow: hidden;
+  font: 800 72px/1.14 var(--sans);
+  letter-spacing: -0.02em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.lp-meta {
+  margin: 12px 0 0;
+  color: var(--mono-accent);
+  font: 600 30px var(--mono);
+}
+
+.lp {
+  margin-top: 30px;
+}
+
+.lp .side {
+  border-bottom: 2px solid var(--mono-line);
+  color: var(--mono-accent);
+}
+
+.lp li {
+  display: grid;
+  height: 52px;
+  align-items: center;
+  gap: 18px;
+  grid-template-columns: 62px 1fr 96px;
+}
+
+.lp li .no {
+  color: var(--mono-dim);
+  font: 600 28px var(--mono);
+}
+
+.lp li .t {
+  font: 600 40px/1.3 var(--sans);
+}
+
+.lp li .m {
+  color: var(--mono-accent);
+  font: 600 28px var(--mono);
+  text-align: right;
+}
+
+.lp-foot {
+  position: absolute;
+  right: 72px;
+  bottom: 52px;
+  left: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 22px;
+  border-top: 3px solid var(--mono-line);
+  gap: 20px;
+}
+
+.lp-foot .wordmark {
+  font-size: 28px;
+}
+
+.lp-foot .listen-text {
+  color: var(--mono-accent);
+  font: 700 30px var(--sans);
+}
+
+/* ================================================================== *
+ * C. 영수증 — 두 테마 (폭 1080, 높이는 곡 수만큼: 약 796 + 56 × N)
+ * ================================================================== */
+
+.card--receipt {
+  padding: 56px 0 74px;
+  background: var(--kawaii-bg);
+}
+
+.card--receipt.is-mono {
+  background: var(--mono-bg);
+}
+
+.receipt {
+  position: relative;
+  width: 880px;
+  margin: 0 auto;
+  padding: 50px 56px 64px;
+  background: var(--kawaii-receipt);
+  color: var(--kawaii-bg);
+  font: 600 30px/1.4 var(--mono);
+}
+
+.is-mono .receipt {
+  background: var(--mono-paper);
+  color: var(--mono-bg);
+}
+
+/* 톱니 끝 — 굵게(18px). */
+.receipt::after {
+  position: absolute;
+  right: 0;
+  bottom: -18px;
+  left: 0;
+  height: 18px;
+  background:
+    linear-gradient(135deg, var(--kawaii-receipt) 50%, transparent 50%) 0 0 / 36px 18px,
+    linear-gradient(225deg, var(--kawaii-receipt) 50%, transparent 50%) 0 0 / 36px 18px;
+  content: '';
+}
+
+.is-mono .receipt::after {
+  background:
+    linear-gradient(135deg, var(--mono-paper) 50%, transparent 50%) 0 0 / 36px 18px,
+    linear-gradient(225deg, var(--mono-paper) 50%, transparent 50%) 0 0 / 36px 18px;
+}
+
+.stamp {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  padding: 8px 18px;
+  border: 5px solid var(--kawaii-pink);
+  border-radius: 12px;
+  color: #d83f87;
+  font: 800 28px var(--mono);
+  transform: rotate(8deg);
+}
+
+.r-head {
+  text-align: center;
+}
+
+.r-head .wordmark {
+  font-size: 34px;
+}
+
+.r-name {
+  display: -webkit-box;
+  margin: 14px 0 6px;
+  overflow: hidden;
+  font: 800 60px/1.2 var(--sans);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.r-meta {
+  font-size: 28px;
+}
+
+.dash {
+  margin: 22px 0;
+  border-top: 4px dashed currentcolor;
+  opacity: 0.55;
+}
+
+.r-cols,
+.r-item {
+  display: grid;
+  align-items: center;
+  gap: 16px;
+  grid-template-columns: 52px 1fr 104px;
+}
+
+.r-cols {
+  font-size: 26px;
+  opacity: 0.7;
+}
+
+.r-item {
+  height: 56px;
+}
+
+.r-item .t {
+  font: 700 40px/1.3 var(--sans);
+}
+
+.r-item .m {
+  font-size: 28px;
+  text-align: right;
+}
+
+.r-more {
+  margin-top: 6px;
+  font: 800 34px var(--sans);
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+}
+
+.r-foot {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  gap: 30px;
+}
+
+.r-foot .qr {
+  width: 260px;
+  height: 260px;
+}
+
+.r-foot > div:last-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.r-listen {
+  font: 800 36px/1.3 var(--sans);
+  white-space: nowrap;
+}
+
+.r-hint {
+  margin-top: 10px;
+  font: 600 28px/1.4 var(--sans);
+  opacity: 0.75;
+}
+
+.thanks {
+  margin-top: 26px;
+  font-size: 28px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* ---------- 줄여 보인 모습 ---------- */
+
+.scaled {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 30px;
+}
+
+.scaled .frame {
+  overflow: hidden;
+  border: 1px solid #333;
+}
+
+.scaled .label {
+  margin: 6px 0 0;
+  color: #a9b4bb;
+  font-size: 15px;
+}

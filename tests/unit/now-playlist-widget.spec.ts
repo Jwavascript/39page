@@ -5,9 +5,9 @@
  *
  *   재생 큐가 있으면 큐, 없으면 고른 목록을 "재생 대기" 로 — 섞지 않는다
  *   출처를 모르면 목록 이름을 지어내지 않는다
- *   볼 목록을 바꾸는 것만으로는 재생이 바뀌지 않는다
+ *   재생 중에 "목록 바꾸기" 로 고르면 그 목록을 바로 처음부터 재생한다 (ADR 0038)
  *   줄을 누르면 그 곡 — 같은 영상이 여러 번 있어도 누른 그 줄
- *   출처 목록이 바뀌면 알리고, 사용자가 고를 때만 새 순서
+ *   출처 목록이 바뀌면 큐가 바로 따라간다 — 안내 상자 없이 (ADR 0038)
  *   관리(이름 · 삭제 · 정렬)는 위젯에 없다
  */
 import { readFileSync } from 'node:fs'
@@ -27,7 +27,13 @@ import type { Playlist } from '@/shared/types'
 import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 
-import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import {
+  HIDDEN_RECT,
+  VISIBLE_RECT,
+  installPlayerRect,
+  setPlayerRect,
+  uninstallPlayerRect,
+} from '../support/playerLayout'
 
 const A = 'aaaaaaaaaaa'
 const B = 'bbbbbbbbbbb'
@@ -253,7 +259,7 @@ describe('B. 큐가 있을 때 — 큐를 보인다', () => {
   })
 })
 
-describe('C. 목록 바꾸기 — 보기만 바뀐다', () => {
+describe('C. 목록 바꾸기 — 재생 중이면 고른 목록을 바로 재생한다 (ADR 0038)', () => {
   it('위젯 안에서 펼치고, 재생 중인 목록과 고른 목록을 글로 구분한다', async () => {
     const s = boot()
     await startPlaying(s, 0)
@@ -263,6 +269,7 @@ describe('C. 목록 바꾸기 — 보기만 바뀐다', () => {
     await toggle.trigger('click')
 
     expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(widget(s).get('.picker-hint').text()).toBe('고른 목록을 처음부터 바로 재생해요.')
     const rows = widget(s).findAll('.picker-row')
     expect(rows.map((row) => row.get('.picker-name').text())).toEqual(['ONE', 'TWO', 'EMPTY'])
     expect(rows[0]?.text()).toContain('재생 중인 목록')
@@ -272,65 +279,74 @@ describe('C. 목록 바꾸기 — 보기만 바뀐다', () => {
     expect(widget(s).find('#now-playlist-picker').exists()).toBe(true)
   })
 
-  it('다른 목록을 고르면 그 목록을 "재생 대기" 로 보이고, 재생은 그대로다', async () => {
+  it('재생 중에 다른 목록을 고르면 안내 없이 그 목록을 처음부터 바로 재생한다', async () => {
+    const s = boot()
+    await startPlaying(s, 1)
+
+    await widget(s).get('.switch-list').trigger('click')
+    await widget(s).findAll('.picker-row')[1]?.trigger('click')
+    await settle()
+
+    expect(widget(s).attributes('data-view')).toBe('queue')
+    expect(widget(s).get('.list-name').text()).toBe('TWO')
+    expect(rowTitles(s)).toEqual(['Charlie', 'Alpha in two'])
+    expect(s.playback.queueSource).toEqual({ playlistId: 'two', name: 'TWO' })
+    expect(s.playback.currentTrack?.id).toBe('t4')
+    expect(s.fake.calls.load[s.fake.calls.load.length - 1]).toEqual({ videoId: C, autoplay: true })
+    // 안내 상자가 없고, 펼친 목록은 닫힌다.
+    expect(widget(s).find('.source-notice').exists()).toBe(false)
+    expect(widget(s).find('#now-playlist-picker').exists()).toBe(false)
+    // 고른 목록은 저장된다 (기존 selectPlaylist).
+    expect(s.library.selectedPlaylistId).toBe('two')
+  })
+
+  it('빈 목록을 고르면 재생은 그대로이고, 그 목록을 "재생 대기" 로 보이며 지금 재생을 부제에 적는다', async () => {
     const s = boot()
     await startPlaying(s, 1)
     const loads = s.fake.calls.load.length
 
     await widget(s).get('.switch-list').trigger('click')
+    await widget(s).findAll('.picker-row')[2]?.trigger('click')
+    await settle()
+
+    expect(widget(s).attributes('data-view')).toBe('standby')
+    expect(widget(s).get('.list-name').text()).toBe('EMPTY')
+    expect(widget(s).text()).toContain('이 목록은 비어 있어요')
+    expect(widget(s).get('.widget-sub').text()).toContain('지금 재생: ONE')
+    expect(widget(s).find('.source-notice').exists()).toBe(false)
+    expect(s.playback.queueSource?.playlistId).toBe('one')
+    expect(s.playback.currentTrack?.id).toBe('t2')
+    expect(s.fake.calls.load).toHaveLength(loads)
+  })
+
+  it('영상이 가려져 재생하지 못하면 고른 목록을 "재생 대기" 로 보이고 이유를 말한다 — 곡을 누르면 다시 시도', async () => {
+    const s = boot()
+    await startPlaying(s, 0)
+    const loads = s.fake.calls.load.length
+    setPlayerRect(HIDDEN_RECT)
+
+    await widget(s).get('.switch-list').trigger('click')
     await widget(s).findAll('.picker-row')[1]?.trigger('click')
     await settle()
 
-    // 보기: TWO, 재생 대기.
     expect(widget(s).attributes('data-view')).toBe('standby')
     expect(widget(s).get('.list-name').text()).toBe('TWO')
-    expect(widget(s).get('.state-chip').text()).toBe('재생 대기')
-    expect(rowTitles(s)).toEqual(['Charlie', 'Alpha in two'])
-    expect(widget(s).text()).toContain('지금은 ‘ONE’ 을(를) 재생 중이에요')
-    // 재생: 그대로.
-    expect(s.playback.currentTrack?.id).toBe('t2')
+    expect(widget(s).get('.widget-notice').text()).toContain('영상이 가려져')
     expect(s.playback.queueSource?.playlistId).toBe('one')
-    expect(s.playback.playerState).toBe('playing')
     expect(s.fake.calls.load).toHaveLength(loads)
-    // 고른 목록은 저장된다 (기존 selectPlaylist).
-    expect(s.library.selectedPlaylistId).toBe('two')
-  })
 
-  it('"재생 중인 큐 보기" 로 돌아온다', async () => {
-    const s = boot()
-    await startPlaying(s, 0)
-    await widget(s).get('.switch-list').trigger('click')
-    await widget(s).findAll('.picker-row')[1]?.trigger('click')
-    await settle()
-
-    await widget(s)
-      .findAll('.source-notice .pill')
-      .find((button) => button.text() === '재생 중인 큐 보기')
-      ?.trigger('click')
-    await settle()
-
-    expect(widget(s).attributes('data-view')).toBe('queue')
-    expect(widget(s).get('.list-name').text()).toBe('ONE')
-  })
-
-  it('대기 목록의 곡을 누르면 그때 큐가 바뀌고 큐 보기로 돌아온다', async () => {
-    const s = boot()
-    await startPlaying(s, 0)
-    await widget(s).get('.switch-list').trigger('click')
-    await widget(s).findAll('.picker-row')[1]?.trigger('click')
-    await settle()
-
+    setPlayerRect(VISIBLE_RECT)
     await clickRow(s, 1)
 
     expect(s.playback.queueSource).toEqual({ playlistId: 'two', name: 'TWO' })
     expect(s.playback.currentTrack?.id).toBe('t5')
     expect(widget(s).attributes('data-view')).toBe('queue')
-    expect(widget(s).get('.list-name').text()).toBe('TWO')
   })
 
-  it('재생 중인 목록을 다시 고르면 큐 보기다', async () => {
+  it('재생 중인 목록을 다시 고르면 큐 보기다 — 처음부터 다시 틀지 않는다', async () => {
     const s = boot()
-    await startPlaying(s, 0)
+    await startPlaying(s, 1)
+    const loads = s.fake.calls.load.length
     await s.library.selectPlaylist('two')
     await widget(s).get('.switch-list').trigger('click')
     await widget(s).findAll('.picker-row')[0]?.trigger('click')
@@ -338,80 +354,89 @@ describe('C. 목록 바꾸기 — 보기만 바뀐다', () => {
 
     expect(widget(s).attributes('data-view')).toBe('queue')
     expect(s.library.selectedPlaylistId).toBe('one')
+    expect(s.playback.currentTrack?.id).toBe('t2')
+    expect(s.fake.calls.load).toHaveLength(loads)
+  })
+
+  it('재생 큐가 없으면 고른 목록을 "재생 대기" 로 보일 뿐 재생하지 않는다', async () => {
+    const s = boot()
+
+    await widget(s).get('.switch-list').trigger('click')
+    expect(widget(s).get('.picker-hint').text()).toBe('볼 목록을 고르세요.')
+    await widget(s).findAll('.picker-row')[1]?.trigger('click')
+    await settle()
+
+    expect(widget(s).attributes('data-view')).toBe('standby')
+    expect(widget(s).get('.list-name').text()).toBe('TWO')
+    expect(s.playback.queue).toEqual([])
+    expect(s.fake.calls.load).toHaveLength(0)
   })
 })
 
-describe('D. 큐는 스냅샷 — 출처 목록이 바뀌면 알리고, 고를 때만 새 순서', () => {
-  it('순서를 바꾸면 큐는 그대로이고 안내가 뜬다. "새 순서로 이어 재생" 을 눌러야 바뀐다', async () => {
+describe('D. 큐는 출처 목록을 따른다 — 안내 없이, 지금 곡은 끊기지 않게 (ADR 0038)', () => {
+  it('순서를 바꾸면 줄 순서와 지금 곡 표시가 바로 바뀌고, 안내도 플레이어 명령도 없다', async () => {
     const s = boot()
     await startPlaying(s, 1)
+    const calls = JSON.stringify(s.fake.calls)
 
     // 기존 기능으로 순서를 바꾼다: Bravo 를 맨 위로.
     await s.library.moveTrack('one', 't2', 'up')
     await settle()
 
-    expect(rowTitles(s)).toEqual(['Alpha', 'Bravo', 'Alpha again'])
-    const notice = widget(s).get('.source-notice')
-    expect(notice.text()).toContain('목록이 변경됐어요')
-    const calls = JSON.stringify(s.fake.calls)
-
-    await notice.get('.pill').trigger('click')
-    await settle()
-
     expect(rowTitles(s)).toEqual(['Bravo', 'Alpha', 'Alpha again'])
     expect(s.playback.currentTrack?.id).toBe('t2')
     expect(widget(s).get('.track-row.is-current').text()).toContain('Bravo')
+    expect(widget(s).get('.widget-sub').text()).toContain('1 / 3곡')
     expect(widget(s).find('.source-notice').exists()).toBe(false)
     // 플레이어에는 아무 명령도 가지 않았다 — 소리 · 재생 위치가 끊기지 않는다.
     expect(JSON.stringify(s.fake.calls)).toBe(calls)
     expect(s.playback.playerState).toBe('playing')
   })
 
-  it('보관함의 끌어 놓기 · 맨 위/아래(moveTrackTo)도 같다 — 큐 · 위치 · 플레이어는 그대로, 고를 때만 새 순서 (M11-7C)', async () => {
+  it('보관함의 끌어 놓기 · 맨 위/아래(moveTrackTo)도 같다 (M11-7C)', async () => {
     const s = boot()
     await startPlaying(s, 0)
     s.fake.emitPosition(37)
     await settle()
     const calls = JSON.stringify(s.fake.calls)
-    const queueBefore = s.playback.queue.map((t) => t.id)
 
     // Alpha(t1) 를 맨 아래로 — 트랙 id 로 옮긴다(같은 영상 A 가 둘이다).
     expect(await s.library.moveTrackTo('one', 't1', 2)).toMatchObject({ ok: true })
     await settle()
 
-    expect(s.playback.queue.map((t) => t.id)).toEqual(queueBefore)
-    expect(s.playback.currentTrack?.id).toBe('t1')
-    expect(JSON.stringify(s.fake.calls)).toBe(calls)
-    const notice = widget(s).get('.source-notice')
-    expect(notice.text()).toContain('목록이 변경됐어요')
-
-    await notice.get('.pill').trigger('click')
-    await settle()
     expect(s.playback.queue.map((t) => t.id)).toEqual(['t2', 't3', 't1'])
     expect(s.playback.currentTrack?.id).toBe('t1')
     expect(s.playback.queueIndex).toBe(2)
-    // 다시 맞춰도 플레이어에 명령이 가지 않는다 — 재생 위치가 처음으로 돌아가지 않는다.
+    // 플레이어에 명령이 가지 않는다 — 재생 위치가 처음으로 돌아가지 않는다.
     expect(JSON.stringify(s.fake.calls)).toBe(calls)
     expect(s.playback.playerState).toBe('playing')
+    expect(widget(s).find('.source-notice').exists()).toBe(false)
   })
 
-  it('지금 곡이 목록에서 빠졌으면 이어 재생 대신 "바뀐 목록을 처음부터 재생" 을 준다', async () => {
+  it('곡을 추가하면 바로 큐 끝에 붙는다 — 확장 저장 · 다른 탭의 변경도 같은 길이다', async () => {
     const s = boot()
     await startPlaying(s, 0)
 
-    // 다른 탭에서 지운 것처럼 — 재생 쪽에 알리지 않고 지운다.
+    await s.library.addTrack('one', { videoId: C, title: 'Charlie in one' })
+    await settle()
+
+    expect(rowTitles(s)).toEqual(['Alpha', 'Bravo', 'Alpha again', 'Charlie in one'])
+    expect(widget(s).get('.widget-sub').text()).toContain('1 / 4곡')
+    expect(widget(s).find('.source-notice').exists()).toBe(false)
+    expect(s.playback.currentTrack?.id).toBe('t1')
+  })
+
+  it('지금 곡을 지우면 안내 없이 다음 곡으로 넘어가 재생한다', async () => {
+    const s = boot()
+    await startPlaying(s, 0)
+
     await s.library.removeTrack('one', 't1')
     await settle()
 
-    const notice = widget(s).get('.source-notice')
-    expect(notice.text()).toContain('지금 곡은 그 목록에서 빠졌어요')
-    expect(notice.get('.pill').text()).toBe('바뀐 목록을 처음부터 재생')
-    expect(rowTitles(s)).toEqual(['Alpha', 'Bravo', 'Alpha again'])
-
-    await notice.get('.pill').trigger('click')
-    await settle()
-    expect(s.playback.queue.map((t) => t.id)).toEqual(['t2', 't3'])
-    expect(s.playback.queueIndex).toBe(0)
+    expect(rowTitles(s)).toEqual(['Bravo', 'Alpha again'])
+    expect(widget(s).get('.track-row.is-current').text()).toContain('Bravo')
+    expect(widget(s).find('.source-notice').exists()).toBe(false)
+    expect(s.fake.calls.load[s.fake.calls.load.length - 1]).toEqual({ videoId: B, autoplay: true })
   })
 
   it('출처 목록이 지워지면 그렇다고 말하고 큐는 남는다', async () => {
@@ -424,6 +449,30 @@ describe('D. 큐는 스냅샷 — 출처 목록이 바뀌면 알리고, 고를 �
     expect(widget(s).attributes('data-view')).toBe('queue')
     expect(widget(s).get('.list-name').text()).toBe('ONE')
     expect(widget(s).get('.source-notice').text()).toContain('지워졌어요')
+    expect(rowTitles(s)).toEqual(['Alpha', 'Bravo', 'Alpha again'])
+  })
+
+  it('셔플 · 반복을 켜면 부제에 적는다 — 줄 번호가 재생 순서라는 것을 함께 알린다', async () => {
+    const s = boot()
+    await startPlaying(s, 0)
+    const modeButtons = () => s.wrapper.findAll('.now-playing-card button.mode')
+
+    await modeButtons()[0]?.trigger('click')
+    await modeButtons()[1]?.trigger('click')
+    await settle()
+
+    expect(widget(s).get('.widget-sub').text()).toContain('셔플 · 전체 반복')
+    expect(modeButtons()[0]?.attributes('aria-pressed')).toBe('true')
+    expect(modeButtons()[1]?.attributes('aria-label')).toBe('반복: 전체 반복 (누르면 한 곡 반복)')
+    // 지금 곡이 맨 앞으로 온다.
+    expect(widget(s).get('.track-row.is-current').text()).toContain('01')
+    expect(s.playback.currentTrack?.id).toBe('t1')
+
+    await modeButtons()[1]?.trigger('click')
+    await modeButtons()[1]?.trigger('click')
+    await modeButtons()[0]?.trigger('click')
+    await settle()
+    expect(widget(s).get('.widget-sub').text()).not.toContain('셔플')
     expect(rowTitles(s)).toEqual(['Alpha', 'Bravo', 'Alpha again'])
   })
 })
