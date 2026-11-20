@@ -202,7 +202,13 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
           {{ transport.subtitle.value
           }}<span v-if="positionText !== null" class="now-position"> · {{ positionText }}</span>
         </p>
+      </div>
 
+      <!--
+        조작 · 안내. 넓은 카드에서는 그림 옆 칸(제목 아래)에, 좁은 카드에서는 그림 아래 전체 폭에 선다 — 재생 단추 다섯 개가
+        한 줄에 들어가게 (ADR 0038). 배치는 아래 컨테이너 쿼리가 정한다.
+      -->
+      <div class="np-actions">
         <PlayerTransport
           :shows-pause="transport.showsPause.value"
           :can-toggle="transport.canToggle.value"
@@ -210,9 +216,14 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
           :can-next="transport.canNext.value"
           :toggle-label="transport.toggleLabel.value"
           :youtube-url="transport.youtubeUrl.value"
+          :shuffle="transport.shuffle.value"
+          :repeat="transport.repeat.value"
+          :repeat-label="transport.repeatLabel.value"
           @previous="transport.previous"
           @toggle="transport.toggle"
           @next="transport.next"
+          @shuffle="transport.toggleShuffle"
+          @repeat="transport.cycleRepeat"
         />
 
         <p
@@ -242,6 +253,10 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   container: now-playing / inline-size;
 }
 
+/*
+ * 그림 | 제목 위, 그림 | 조작 아래. 그림은 두 줄에 걸치고, 둘째 줄(1fr)이 남는 높이를 받아 제목과 조작 사이가
+ * 벌어지지 않는다. 좁은 카드에서는 조작이 그림 아래 전체 폭으로 내려간다 (맨 아래 컨테이너 쿼리).
+ */
 .np-body {
   --np-art-size: 148px;
 
@@ -251,11 +266,16 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   border: 1px solid var(--artwork-card-border-color);
   background: var(--artwork-card-background);
   box-shadow: var(--artwork-card-shadow);
-  gap: 16px;
+  column-gap: 16px;
+  grid-template-areas:
+    'art info'
+    'art actions';
   grid-template-columns: var(--np-art-size) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
 }
 
 .np-art {
+  grid-area: art;
   position: relative;
   width: var(--np-art-size);
   aspect-ratio: 1;
@@ -318,10 +338,19 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   place-items: center;
 }
 
-.np-info {
+.np-info,
+.np-actions {
   display: flex;
   min-width: 0;
   flex-direction: column;
+}
+
+.np-info {
+  grid-area: info;
+}
+
+.np-actions {
+  grid-area: actions;
 }
 
 /* 승인된 디자인의 `.eyebrow` 값을 따른다 (영상 위에서 옮겨 왔다). */
@@ -355,7 +384,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   overflow-wrap: anywhere;
 }
 
-.np-info :deep(.action-row) {
+.np-actions :deep(.action-row) {
   flex-wrap: wrap;
   padding-top: 10px;
 }
@@ -390,7 +419,20 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
     --np-art-size: 112px;
 
     padding: 12px;
-    gap: 12px;
+    column-gap: 12px;
+  }
+}
+
+/*
+ * 그림 옆 칸이 재생 단추 한 줄(243px)보다 좁아지는 카드 — 조작을 그림 아래 전체 폭으로 내린다. 390px 폰(카드 약
+ * 358px)은 한 줄에 326px 를, 320px 폰(약 286px)은 266px 를 쓴다.
+ */
+@container now-playing (max-width: 400px) {
+  .np-body {
+    grid-template-areas:
+      'art info'
+      'actions actions';
+    grid-template-rows: auto auto;
   }
 }
 
@@ -400,7 +442,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
     --np-art-size: 88px;
 
     padding: 10px;
-    gap: 10px;
+    column-gap: 10px;
   }
 
   .now-title {
@@ -419,7 +461,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   --np-art-size: 72px;
 
   padding: 10px;
-  gap: 12px;
+  column-gap: 12px;
 }
 
 [data-archive-layout='strip'] .now-playing-card .eyebrow,
@@ -443,7 +485,6 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   border: 0;
   background: none;
   box-shadow: none;
-  grid-template-columns: minmax(0, 1fr);
 }
 
 [data-archive-layout='stack'] .now-playing-card .np-art,
@@ -454,20 +495,30 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
 [data-archive-layout='side'] .now-playing-card .now-sub,
 [data-archive-layout='stack'] .now-playing-card .external,
 [data-archive-layout='side'] .now-playing-card .external,
+[data-archive-layout='stack'] .now-playing-card .mode,
+[data-archive-layout='side'] .now-playing-card .mode,
 [data-archive-layout='stack'] .now-playing-card .mute-note,
 [data-archive-layout='side'] .now-playing-card .mute-note {
   display: none;
 }
 
+/* 제목 칸과 조작 칸을 풀어 카드 격자에 바로 놓는다 — 제목 | 조작, 아래 안내. */
 [data-archive-layout='stack'] .now-playing-card .np-info,
-[data-archive-layout='side'] .now-playing-card .np-info {
-  display: grid;
+[data-archive-layout='side'] .now-playing-card .np-info,
+[data-archive-layout='stack'] .now-playing-card .np-actions,
+[data-archive-layout='side'] .now-playing-card .np-actions {
+  display: contents;
+}
+
+[data-archive-layout='stack'] .now-playing-card .np-body,
+[data-archive-layout='side'] .now-playing-card .np-body {
   align-items: center;
   column-gap: 10px;
   grid-template-areas:
     'title controls'
     'status status';
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
 }
 
 [data-archive-layout='stack'] .now-playing-card .now-title,

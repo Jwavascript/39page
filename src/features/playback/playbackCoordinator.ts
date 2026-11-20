@@ -13,14 +13,14 @@
  *
  * 누가 무엇을 쓰는가:
  *   `RecordLibraryDrawer` → `PlaybackRequests` · `PlaybackLibraryNotices`
- *   `PlayerTransport`     → `PlaybackTransport` (버튼 3개)
+ *   `PlayerTransport`     → `PlaybackTransport` (버튼 3개) · `PlaybackModes` (셔플 · 반복, ADR 0038)
  *   `PlayerSurface`       → `attachAdapter` (플레이어·가시성 연결만)
  *   `DashboardShell`      → `PlaybackVisibility` (가리기 전 통지)
  *   Moments UI (M9-4)     → `PlaybackMoments` (시점 캡처 · Moment 재생)
  */
 import type { InjectionKey, Ref } from 'vue'
 
-import type { Track } from '@/shared/types'
+import type { RepeatMode, Track } from '@/shared/types'
 
 import type { PlayerAdapter, PlayerAdapterEvents } from './PlayerAdapter'
 import type { PlayerPresence } from './playerVisibility'
@@ -154,7 +154,7 @@ export interface PlaybackRequests {
  * 트랜스포트 명령 (M3-3). 컨트롤 3개가 쓰는 부분이다.
  *
  * UI 는 `PlayerAdapter` 도 YouTube API 도 직접 부르지 않는다. 여기를 거친다.
- * 반복·셔플·탐색·볼륨 명령을 두지 않는다 (M3-0.1 · 0.3 · 0.4).
+ * 탐색·볼륨 명령을 두지 않는다 (M3-0.3 · 0.4). 셔플 · 반복은 `PlaybackModes` 다 (ADR 0038).
  */
 export interface PlaybackTransport {
   /**
@@ -168,40 +168,63 @@ export interface PlaybackTransport {
   /**
    * 다음 곡으로 간다.
    *
-   * 큐 끝에서는 **움직이지 않고** `false`. 처음으로 돌아가지 않는다 (M3-0.1).
+   * 큐 끝에서는 반복이 꺼져 있으면 **움직이지 않고** `false` (M3-0.1), 켜져 있으면 처음으로 간다.
    */
   next(): boolean
 
-  /** 이전 곡으로 간다. 큐 처음에서는 움직이지 않고 `false`. */
+  /** 이전 곡으로 간다. 큐 처음에서는 반복이 꺼져 있으면 움직이지 않고 `false`, 켜져 있으면 끝으로 간다. */
   previous(): boolean
 }
 
 /**
- * 라이브러리 변경 통지 (M3-5). Record Library UI 가 쓴다.
+ * 반복 모드의 이름 (ADR 0038). Now Playing 카드의 반복 단추와 NOW PLAYLIST 의 표시가 같은 말을 쓴다 —
+ * 두 표면이 공유하는 모듈이 이 계약 파일이다 (`PLAY_REFUSED_HIDDEN_MESSAGE` 와 같은 이유).
+ */
+export const REPEAT_LABEL: Readonly<Record<RepeatMode, string>> = {
+  off: '반복 끔',
+  all: '전체 반복',
+  one: '한 곡 반복',
+}
+
+/** 지금 재생 방식 (ADR 0038). */
+export interface PlaybackModesView {
+  readonly shuffle: boolean
+  readonly repeat: RepeatMode
+}
+
+/**
+ * 셔플 · 반복 (ADR 0038). Now Playing 카드의 단추가 쓰고, NOW PLAYLIST 가 표시만 읽는다.
  *
- * 큐는 스냅샷이므로 라이브러리를 고쳐도 자동으로 끊기지 않는다. 재생 중인
- * 곡이 지워진 경우만 예외다 — 멈추고 알려야 한다 (`MVP_SPEC.md` F4).
- * 그 판단을 코디네이터가 하도록 **사실만** 알린다.
+ * **저장하지 않는다** — 큐처럼 이 탭의 메모리에만 있다. 바꿔도 지금 곡 · 재생 위치는 그대로다 —
+ * 플레이어에는 아무 명령도 가지 않고 큐의 순서만 바뀐다.
+ */
+export interface PlaybackModes {
+  readonly modes: Readonly<Ref<PlaybackModesView>>
+
+  /**
+   * 셔플을 켜거나 끈다.
+   *
+   * 켜면 지금 곡을 큐의 맨 앞에 두고 나머지를 섞는다. 끄면 목록 순서로 돌아가 지금 곡의 자리에 선다.
+   * 큐가 없으면 표시만 바뀌고, 다음에 시작하는 큐부터 섞인다.
+   */
+  setShuffle(on: boolean): void
+
+  setRepeat(mode: RepeatMode): void
+}
+
+/**
+ * 라이브러리 변경 통지 (M3-5). 백업 복원이 쓴다.
+ *
+ * 트랙 하나의 추가 · 삭제 · 순서 · 이름 변경은 **알릴 필요가 없다** — 코디네이터가 큐의 출처 목록을 직접
+ * 지켜보고 따라간다 (ADR 0038). M3-5 의 `trackRemoved` 는 그래서 없앴다.
  */
 export interface PlaybackLibraryNotices {
   /**
-   * 트랙이 라이브러리에서 지워졌다.
-   *
-   * 지금 재생 중인 트랙이면 멈추고 안내한다. 아니면 아무 일도 없다.
-   * 큐는 어느 경우에도 바뀌지 않는다.
-   */
-  trackRemoved(trackId: string): void
-
-  /**
    * 라이브러리가 **통째로 교체됐다** (M8-3, 백업 복원).
    *
-   * 멈추고 **큐를 비운다.** 트랙 하나가 지워진 것과 다르게 다루는 이유:
-   *
-   * 큐는 재생 시작 시점의 스냅샷이고, 라이브러리를 편집해도 흔들리지 않는 것이
-   * 그 성질이다 (`MVP_SPEC.md` F4). 그런데 통째로 교체되면 큐가 가리키는
-   * 라이브러리 자체가 사라진다 — 계속 재생하면 사용자가 **목록에서 찾을 수
-   * 없는 곡**이 흐르고, 다음·이전은 없는 트랙 사이를 오간다. 스냅샷을 지키는
-   * 것이 오히려 혼란이 되는 유일한 경우다.
+   * 멈추고 **큐를 비운다.** 큐가 출처 목록을 따라가더라도 교체는 다르게 다룬다 — 같은 id 의 목록이 새
+   * 내용으로 돌아올 수 있고, 복원은 사용자가 "지금까지와 다른 보관함" 을 고른 것이다. 듣던 곡이 이어지면
+   * 무엇이 복원됐는지 헷갈린다. 목록에서 다시 고르게 한다.
    *
    * **교체가 성공했을 때만 부른다.** 실패한 복원 때문에 재생을 멈추지 않는다.
    */
@@ -278,7 +301,7 @@ export interface PlaybackNowPlaying {
 }
 
 /* ------------------------------------------------------------------ *
- * 재생 큐 보기 (M11-7B, ADR 0030)
+ * 재생 큐 보기 (M11-7B, ADR 0030 · ADR 0038)
  * ------------------------------------------------------------------ */
 
 /**
@@ -287,11 +310,12 @@ export interface PlaybackNowPlaying {
  * | 값          | 뜻                                                                         |
  * | ----------- | -------------------------------------------------------------------------- |
  * | `unknown`   | 출처를 모른다 (목록 밖 영상의 Moment 재생 등). **목록 이름을 추정하지 않는다** |
- * | `in-sync`   | 출처 목록이 큐와 같다 (트랙 id · 순서 · 영상 · 제목)                         |
- * | `changed`   | 출처 목록이 큐를 뜬 뒤에 바뀌었다 — 큐는 **그대로**다 (스냅샷)               |
+ * | `in-sync`   | 큐가 출처 목록을 따르고 있다 — 곡 추가 · 삭제 · 순서 · 이름이 바로 반영된다   |
  * | `deleted`   | 출처 목록이 지워졌다 — 큐는 끝까지 재생할 수 있다                            |
+ *
+ * M11-7B 의 `changed`(목록이 바뀌었는데 큐는 그대로)는 없앴다 — 큐가 목록을 바로 따라간다 (ADR 0038).
  */
-export type QueueSourceState = 'unknown' | 'in-sync' | 'changed' | 'deleted'
+export type QueueSourceState = 'unknown' | 'in-sync' | 'deleted'
 
 /**
  * 지금 재생 큐의 **읽기 전용 보기**.
@@ -300,7 +324,7 @@ export type QueueSourceState = 'unknown' | 'in-sync' | 'changed' | 'deleted'
  * (`SYSTEM_DESIGN.md` §6.1). 화면은 playback store 를 직접 보지 않고 이것을 읽는다 (ADR 0009).
  */
 export interface QueueView {
-  /** 큐의 트랙 — 재생을 시작할 때의 스냅샷, **실제 재생 순서**다. */
+  /** 큐의 트랙 — **실제 재생 순서**다 (셔플이면 섞인 순서). */
   readonly tracks: readonly Track[]
   /** 지금 곡의 큐 안 위치 (0 부터). */
   readonly index: number
@@ -310,23 +334,7 @@ export interface QueueView {
    */
   readonly source: { readonly playlistId: string; readonly name: string } | null
   readonly sourceState: QueueSourceState
-  /**
-   * `changed` 일 때, **지금 곡(트랙 id)이 바뀐 목록에 아직 있는가.** 있으면 `resyncQueueFromSource()` 로
-   * 끊지 않고 새 순서를 이어 갈 수 있다. 없으면 이어 갈 자리가 없다 — 목록을 새로 재생해야 한다.
-   */
-  readonly canResync: boolean
 }
-
-/** `resyncQueueFromSource()` 가 거절한 이유. 어느 경우에도 큐와 재생은 그대로다. */
-export type QueueResyncFailure =
-  /** 큐가 없거나 출처를 모른다 */
-  | 'no-source'
-  /** 출처 목록이 지워졌다 */
-  | 'playlist-not-found'
-  /** 지금 곡이 바뀐 목록에 없다 — 이어 갈 자리가 없다 */
-  | 'track-not-found'
-
-export type QueueResyncResult = { ok: true } | { ok: false; reason: QueueResyncFailure }
 
 export interface PlaybackQueue {
   /** 지금 큐. 큐가 비어 있으면 `null` — 화면은 그때 고른 목록을 "재생 대기" 로 보인다. */
@@ -341,21 +349,13 @@ export interface PlaybackQueue {
    * 범위를 벗어나면 `track-not-found`.
    */
   playQueueIndex(index: number): PlayRequestResult
-
-  /**
-   * 큐를 **출처 목록의 지금 모습**으로 다시 뜬다 — 사용자가 명시적으로 고를 때만 부른다.
-   *
-   * 지금 곡은 **트랙 id** 로 찾는다 (영상 id 가 아니다 — 같은 영상이 여러 번 있을 수 있다). 찾으면
-   * 큐와 위치만 바꾸고 **플레이어에는 아무 명령도 보내지 않는다** — 소리 · 재생 위치가 끊기지 않고,
-   * 다음 · 이전 곡이 새 순서를 따른다. 찾지 못하면 아무것도 바꾸지 않고 거절한다.
-   */
-  resyncQueueFromSource(): QueueResyncResult
 }
 
 export interface PlaybackCoordinator
   extends
     PlaybackNowPlaying,
     PlaybackQueue,
+    PlaybackModes,
     PlaybackRequests,
     PlaybackTransport,
     PlaybackLibraryNotices,

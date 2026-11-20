@@ -277,17 +277,25 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
     expect(context.fake.calls.load).toHaveLength(1)
   })
 
-  it('키가 라이브러리 트랙을 복사해 큐로 쓴다 — 편집해도 큐가 흔들리지 않는다', async () => {
+  it('키가 라이브러리 트랙을 복사해 큐로 쓰고, 목록에 곡을 더하면 큐가 따라온다 (ADR 0038)', async () => {
     const context = mountApp()
     const id = await seed(context.library)
     await nextTick()
     await cassettePlay(context).trigger('click')
 
-    const before = context.playback.queue.map((item) => item.id)
-    context.library.addTrack(id, { videoId: VIDEO_A, title: 'THREE' })
+    const source = context.library.getPlaylist(id)?.tracks ?? []
+    // 값은 같지만 객체는 다르다 — 큐는 라이브러리 객체를 직접 들고 있지 않다.
+    expect(context.playback.queue[0]).toEqual(source[0])
+    expect(context.playback.queue[0]).not.toBe(source[0])
+
+    const current = context.playback.currentTrack?.id
+    await context.library.addTrack(id, { videoId: VIDEO_A, title: 'THREE' })
     await nextTick()
 
-    expect(context.playback.queue.map((item) => item.id)).toEqual(before)
+    expect(context.playback.queue.map((item) => item.id)).toEqual(
+      context.library.getPlaylist(id)?.tracks.map((track) => track.id),
+    )
+    expect(context.playback.currentTrack?.id).toBe(current)
   })
 
   it('재생을 요청한 목록이 선택 상태로 남는다', async () => {

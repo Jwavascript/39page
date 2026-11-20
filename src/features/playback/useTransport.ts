@@ -9,11 +9,11 @@
  */
 import { computed, inject, type ComputedRef } from 'vue'
 
-import type { PlayerState } from '@/shared/types'
+import type { PlayerState, RepeatMode } from '@/shared/types'
 import { youtubeWatchUrl } from '@/shared/utils/youtube'
 import { usePlaybackStore } from '@/stores/playback'
 
-import { PLAYBACK_COORDINATOR } from './playbackCoordinator'
+import { PLAYBACK_COORDINATOR, REPEAT_LABEL } from './playbackCoordinator'
 
 /**
  * 재생 상태를 사람이 읽는 말로.
@@ -39,6 +39,9 @@ const STATE_LABEL: Readonly<Record<PlayerState, string>> = {
 const EMPTY_TITLE = '재생할 음악을 선택하세요'
 const EMPTY_SUBTITLE = '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.'
 const EMPTY_QUEUE_STATUS = '재생 목록을 만들고 YouTube 링크를 추가해 보세요.'
+
+/** 반복 단추를 누를 때의 순서 — 끔 → 전체 → 한 곡 → 끔 (ADR 0038). */
+const NEXT_REPEAT: Readonly<Record<RepeatMode, RepeatMode>> = { off: 'all', all: 'one', one: 'off' }
 
 export interface TransportModel {
   /** `NOW PLAYING` 아래 큰 제목. */
@@ -77,9 +80,18 @@ export interface TransportModel {
   /** 영상이 아직 없어 안내를 띄울지. 어댑터 소유 영역 **밖**에 그린다. */
   showsPlaceholder: ComputedRef<boolean>
 
+  /** 셔플이 켜져 있는가 (ADR 0038). */
+  shuffle: ComputedRef<boolean>
+  repeat: ComputedRef<RepeatMode>
+  /** 반복 단추의 접근성 이름 — 지금 모드와 누르면 바뀔 모드. 예: `반복: 전체 반복 (누르면 한 곡 반복)` */
+  repeatLabel: ComputedRef<string>
+
   toggle(): void
   previous(): void
   next(): void
+  toggleShuffle(): void
+  /** 끔 → 전체 → 한 곡 → 끔. */
+  cycleRepeat(): void
 }
 
 export function useTransport(): TransportModel {
@@ -136,9 +148,20 @@ export function useTransport(): TransportModel {
   const showsPlaceholder = computed<boolean>(() => playback.currentTrack === null)
 
   const canToggle = computed<boolean>(() => playback.currentTrack !== null)
-  const canPrevious = computed<boolean>(() => playback.queueIndex > 0)
+  // 반복이 켜져 있으면 큐 끝과 처음이 이어진다 — 곡이 있으면 언제나 옮길 수 있다 (ADR 0038).
+  const canPrevious = computed<boolean>(
+    () => playback.queueIndex > 0 || (playback.wraps && playback.queue.length > 0),
+  )
   const canNext = computed<boolean>(
-    () => playback.queueIndex >= 0 && playback.queueIndex < playback.queue.length - 1,
+    () =>
+      playback.queueIndex >= 0 &&
+      (playback.queueIndex < playback.queue.length - 1 || playback.wraps),
+  )
+
+  const shuffle = computed<boolean>(() => playback.shuffle)
+  const repeat = computed<RepeatMode>(() => playback.repeat)
+  const repeatLabel = computed<string>(
+    () => `반복: ${REPEAT_LABEL[repeat.value]} (누르면 ${REPEAT_LABEL[NEXT_REPEAT[repeat.value]]})`,
   )
 
   /*
@@ -160,6 +183,15 @@ export function useTransport(): TransportModel {
     coordinator?.next()
   }
 
+  // 셔플 · 반복은 큐가 없어도 고를 수 있다 — 다음에 시작하는 큐부터 적용된다.
+  function toggleShuffle(): void {
+    coordinator?.setShuffle(!playback.shuffle)
+  }
+
+  function cycleRepeat(): void {
+    coordinator?.setRepeat(NEXT_REPEAT[playback.repeat])
+  }
+
   return {
     title,
     subtitle,
@@ -172,8 +204,13 @@ export function useTransport(): TransportModel {
     canNext,
     youtubeUrl,
     showsPlaceholder,
+    shuffle,
+    repeat,
+    repeatLabel,
     toggle,
     previous,
     next,
+    toggleShuffle,
+    cycleRepeat,
   }
 }

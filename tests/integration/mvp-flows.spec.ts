@@ -465,15 +465,16 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
   })
 })
 
-describe('9. 플레이리스트 편집 후 큐 안정성', () => {
-  it('재생 중 트랙을 추가·정렬·이름 변경해도 큐가 흔들리지 않는다', async () => {
+describe('9. 플레이리스트 편집 후 큐 — 목록을 따르고 지금 곡은 끊기지 않는다 (ADR 0038)', () => {
+  it('재생 중 트랙을 추가·정렬·이름 변경하면 큐가 바로 따라오고, 플레이어에는 명령이 가지 않는다', async () => {
     const session = boot()
     await openDrawer(session)
     await addTrack(session, VIDEO_URL, 'ONE')
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
 
-    const queueBefore = session.playback.queue.map((track) => track.id)
+    const playingId = session.playback.currentTrack?.id
+    const loadsBefore = session.fake.calls.load.length
 
     // 트랙 추가
     await addTrack(session, 'https://www.youtube.com/embed/aqz-KE-bpKQ', 'THREE')
@@ -492,9 +493,17 @@ describe('9. 플레이리스트 편집 후 큐 안정성', () => {
     await flushPromises()
     await nextTick()
 
-    expect(session.playback.queue.map((track) => track.id)).toEqual(queueBefore)
-    expect(session.playback.queueIndex).toBe(0)
+    // 큐 = 목록의 지금 모습. 지금 곡(ONE)은 그대로이고 자리만 옮겼다.
+    expect(session.playback.queue.map((track) => track.id)).toEqual(
+      session.library.selectedPlaylist?.tracks.map((track) => track.id),
+    )
+    expect(session.playback.queue.map((track) => track.title)).toEqual(['TWO', 'ONE', 'THREE'])
+    expect(session.playback.currentTrack?.id).toBe(playingId)
+    expect(session.playback.queueIndex).toBe(1)
     expect(session.playback.playerState).toBe('playing')
+    expect(session.fake.calls.load).toHaveLength(loadsBefore)
+    // 안내 상자가 없다.
+    expect(session.wrapper.find('.now-playlist .source-notice').exists()).toBe(false)
     expect(session.library.selectedPlaylist?.name).toBe('RENAMED')
   })
 
@@ -511,43 +520,54 @@ describe('9. 플레이리스트 편집 후 큐 안정성', () => {
   })
 })
 
-describe('10. 재생 중인 트랙 삭제', () => {
-  it('멈추고 안내하며 큐는 스냅샷으로 남는다', async () => {
+describe('10. 재생 중인 트랙 삭제 (ADR 0038)', () => {
+  async function deleteTrack(session: ReturnType<typeof boot>, title: string) {
+    await openTrackManage(session.wrapper, title)
+    await session.wrapper.get(`[aria-label="${title} 삭제"]`).trigger('click')
+    await flushPromises()
+    await session.wrapper.get('.confirm .pill--strong').trigger('click')
+    await flushPromises()
+    await nextTick()
+  }
+
+  it('재생 중이던 곡을 지우면 안내 없이 다음 곡으로 넘어가 재생하고, 큐에서도 빠진다', async () => {
     const session = boot()
     await openDrawer(session)
     await addTrack(session, VIDEO_URL, 'ONE')
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
 
-    await openTrackManage(session.wrapper, 'ONE')
-    await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
-    await flushPromises()
-    await session.wrapper.get('.confirm .pill--strong').trigger('click')
-    await flushPromises()
-    await nextTick()
+    await deleteTrack(session, 'ONE')
 
-    expect(session.fake.calls.pause).toBe(1)
-    expect(session.wrapper.get('.status').text()).toContain('삭제돼 재생을 멈췄습니다')
-    expect(session.playback.queue).toHaveLength(2)
-    expect(session.library.selectedPlaylist?.tracks).toHaveLength(1)
+    const two = session.library.selectedPlaylist?.tracks[0]
+    expect(session.playback.queue.map((track) => track.title)).toEqual(['TWO'])
+    expect(session.playback.currentTrack?.id).toBe(two?.id)
+    expect(session.fake.calls.load[session.fake.calls.load.length - 1]).toEqual({
+      videoId: two?.videoId,
+      autoplay: true,
+    })
+    expect(session.playback.statusMessage).toBe('')
+    expect(session.wrapper.get('.now-playing-card .status').text()).not.toContain('삭제')
   })
 
-  it('멈춘 뒤 ENDED 가 와도 다음 곡이 흐르지 않는다', async () => {
+  it('일시정지 중에 지우면 다음 곡을 올려 두기만 하고 재생하지 않는다', async () => {
     const session = boot()
     await openDrawer(session)
     await addTrack(session, VIDEO_URL, 'ONE')
     await addTrack(session, SECOND_URL, 'TWO')
     await startPlaying(session, 0)
-
-    await openTrackManage(session.wrapper, 'ONE')
-    await session.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
-    await flushPromises()
-    await session.wrapper.get('.confirm .pill--strong').trigger('click')
-    await flushPromises()
-    session.fake.emitStateChange('ended')
+    session.fake.emitStateChange('paused')
     await nextTick()
 
-    expect(session.playback.queueIndex).toBe(0)
+    await deleteTrack(session, 'ONE')
+
+    const two = session.library.selectedPlaylist?.tracks[0]
+    expect(session.playback.currentTrack?.id).toBe(two?.id)
+    expect(session.fake.calls.load[session.fake.calls.load.length - 1]).toEqual({
+      videoId: two?.videoId,
+      autoplay: false,
+    })
+    expect(session.playback.statusMessage).toBe('')
   })
 })
 

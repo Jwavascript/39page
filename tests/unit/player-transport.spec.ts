@@ -82,7 +82,8 @@ async function startPlaylist(wrapper: Wrapper) {
   await nextTick()
 }
 
-const controls = (wrapper: Wrapper) => wrapper.findAll('.round')
+// 재생 단추 셋 — 셔플 · 반복(`.mode`, ADR 0038)은 따로 본다.
+const controls = (wrapper: Wrapper) => wrapper.findAll('.controls-left .round')
 const previousButton = (wrapper: Wrapper) => controls(wrapper)[0]
 const toggleButton = (wrapper: Wrapper) => controls(wrapper)[1]
 const nextButton = (wrapper: Wrapper) => controls(wrapper)[2]
@@ -293,6 +294,71 @@ describe('C. 이전 / 다음', () => {
 
     expect(playback.queueIndex).toBe(0)
     expect(fake.calls.load).toHaveLength(1)
+  })
+})
+
+describe('C-2. 셔플 · 반복 단추 (ADR 0038)', () => {
+  const modes = (wrapper: Wrapper) => wrapper.findAll('.now-playing-card button.mode')
+
+  it('큐가 없어도 누를 수 있고, 켜짐을 aria-pressed 로 말한다', async () => {
+    const { wrapper, playback } = await setup()
+    const [shuffle, repeat] = modes(wrapper)
+
+    expect(shuffle?.attributes('disabled')).toBeUndefined()
+    expect(shuffle?.attributes('aria-pressed')).toBe('false')
+    await shuffle?.trigger('click')
+    expect(playback.shuffle).toBe(true)
+    expect(shuffle?.attributes('aria-pressed')).toBe('true')
+    expect(shuffle?.classes()).toContain('is-on')
+
+    expect(repeat?.attributes('aria-label')).toBe('반복: 반복 끔 (누르면 전체 반복)')
+  })
+
+  it('반복은 끔 → 전체 → 한 곡 → 끔 으로 돈다 — 한 곡은 아이콘의 1 로 구분한다', async () => {
+    const { wrapper, playback } = await setup()
+    const repeat = () => modes(wrapper)[1]
+
+    await repeat()?.trigger('click')
+    expect(playback.repeat).toBe('all')
+    expect(repeat()?.attributes('aria-pressed')).toBe('true')
+    expect(repeat()?.find('.mode-one').exists()).toBe(false)
+
+    await repeat()?.trigger('click')
+    expect(playback.repeat).toBe('one')
+    expect(repeat()?.attributes('aria-label')).toBe('반복: 한 곡 반복 (누르면 반복 끔)')
+    expect(repeat()?.find('.mode-one').text()).toBe('1')
+
+    await repeat()?.trigger('click')
+    expect(playback.repeat).toBe('off')
+    expect(repeat()?.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('반복이 켜져 있으면 마지막 곡의 ⏭ · 첫 곡의 ⏮ 가 켜지고 끝과 처음을 잇는다', async () => {
+    const { wrapper, playback } = await setup(2)
+    await startPlaylist(wrapper)
+    expect(disabledFlags(wrapper)).toEqual([true, false, false])
+
+    await modes(wrapper)[1]?.trigger('click')
+    expect(disabledFlags(wrapper)).toEqual([false, false, false])
+
+    await previousButton(wrapper)?.trigger('click')
+    await nextTick()
+    expect(playback.queueIndex).toBe(1)
+    await nextButton(wrapper)?.trigger('click')
+    await nextTick()
+    expect(playback.queueIndex).toBe(0)
+  })
+
+  it('셔플 · 반복을 바꿔도 플레이어에는 아무 명령도 가지 않는다', async () => {
+    const { wrapper, fake } = await setup()
+    await startPlaylist(wrapper)
+    const calls = JSON.stringify(fake.calls)
+
+    await modes(wrapper)[0]?.trigger('click')
+    await modes(wrapper)[1]?.trigger('click')
+    await modes(wrapper)[0]?.trigger('click')
+
+    expect(JSON.stringify(fake.calls)).toBe(calls)
   })
 })
 

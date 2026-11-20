@@ -306,8 +306,8 @@ const MOVE_REFUSED: Record<string, string> = {
 /**
  * 트랙을 목록의 `toIndex` 자리로 (끌어 놓기 · 키보드 · 관리 메뉴 · 편집 모드). 트랙 id 로 옮긴다.
  *
- * 재생은 건드리지 않는다 — 큐는 재생을 시작할 때의 스냅샷이다. NOW PLAYLIST 가 "목록이 바뀌었어요" 를
- * 보이고, 큐를 새 순서로 맞출지는 사용자가 고른다 (ADR 0030 · M11-7B).
+ * 재생은 여기서 건드리지 않는다 — 이 목록이 재생 중이면 코디네이터가 목록을 지켜보다 큐를 새 순서로
+ * 맞춘다. 지금 곡 · 재생 위치는 그대로다 (ADR 0038).
  */
 async function reorderTrack(trackId: string, toIndex: number): Promise<void> {
   const target = library.selectedPlaylist
@@ -342,17 +342,11 @@ async function removeTrack(trackId: string): Promise<void> {
   const target = library.selectedPlaylist
   if (target === null) return
 
-  // 지워진 것이 확인된 뒤에만 재생 쪽에 알린다 — 거절됐으면 곡은 그대로 있다.
-  if (reportResult(await library.removeTrack(target.id, trackId))) {
-    /*
-     * 재생 중이던 곡이면 멈추고 안내해야 한다 (`MVP_SPEC.md` F4, M3-5).
-     *
-     * 큐는 스냅샷이라 라이브러리에서 지워도 자동으로 끊기지 않는다. 그래서
-     * **사실만** 알리고, 멈출지 말지는 코디네이터가 정한다. 이 컴포넌트는
-     * 여전히 `playback` store 도 `PlayerAdapter` 도 모른다.
-     */
-    playback?.trackRemoved(trackId)
-  }
+  /*
+   * 재생 쪽에 따로 알리지 않는다 (ADR 0038 — M3-5 의 `trackRemoved` 를 없앴다). 이 목록이 재생 중이면
+   * 코디네이터가 목록을 지켜보다 큐에서 그 곡을 뺀다. 지금 곡이었으면 다음 곡으로 넘어간다.
+   */
+  reportResult(await library.removeTrack(target.id, trackId))
 }
 
 function resetForm(): void {

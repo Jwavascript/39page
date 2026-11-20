@@ -1,16 +1,18 @@
 /**
- * NOW PLAYLIST 위젯의 판단 (M11-7B, ADR 0030).
+ * NOW PLAYLIST 위젯의 판단 (M11-7B, ADR 0030 · ADR 0038).
  *
  * 위젯이 보여 주는 것은 둘 중 하나다 — **섞지 않는다.**
  *
  * | 보기      | 언제                                              | 무엇                                   |
  * | --------- | ------------------------------------------------- | -------------------------------------- |
- * | `queue`   | 재생 큐가 있다                                    | 큐(스냅샷) — 실제 재생 순서 · 지금 곡  |
- * | `standby` | 큐가 없다, 또는 사용자가 다른 목록을 **보는 중**  | 보관함에서 고른 목록 — "재생 대기"     |
+ * | `queue`   | 재생 큐가 있다                                    | 큐 — 실제 재생 순서 · 지금 곡          |
+ * | `standby` | 큐가 없다, 또는 고른 목록을 **재생하지 못했다**   | 보관함에서 고른 목록 — "재생 대기"     |
  * | `none`    | 큐도 고른 목록도 없다                             | 빈 상태 안내                           |
  *
- * - "고른 목록"(`library.selectedPlaylistId`)과 "재생 큐"(`coordinator.queue`)는 다른 상태다. 목록을
- *   **바꿔 보는 것만으로는 재생이 바뀌지 않는다** — 곡을 누르거나 "처음부터 재생" 을 눌러야 큐가 바뀐다.
+ * - "고른 목록"(`library.selectedPlaylistId`)과 "재생 큐"(`coordinator.queue`)는 다른 상태다. 다만 재생 중에
+ *   **"목록 바꾸기" 로 고르면 그 목록을 바로 처음부터 재생한다** (ADR 0038 — M11-7B 의 "고르기만 해서는
+ *   재생이 바뀌지 않는다" 를 대체). 빈 목록이거나 영상이 가려져 재생하지 못하면 그 목록을 "재생 대기" 로 보인다.
+ * - 큐는 출처 목록을 따라간다 — 곡 추가 · 삭제 · 순서 변경에 안내를 띄우지 않는다 (ADR 0038).
  * - 큐의 출처는 코디네이터가 준다. 모르면(`unknown`) 목록 이름을 지어내지 않고 "현재 재생 큐" 라 한다.
  * - 재생은 **요청만** 한다. playback store 를 보지 않는다 (ADR 0009) — 코디네이터 계약만 안다.
  * - 저장하는 것은 "고른 목록" 하나뿐이고(기존 `selectPlaylist`) 새 저장 상태를 만들지 않는다.
@@ -22,6 +24,7 @@ import { LIBRARY_BUSY_MESSAGE, LIBRARY_CONFLICT_MESSAGE } from '@/features/libra
 import {
   PLAYBACK_COORDINATOR,
   PLAY_REFUSED_HIDDEN_MESSAGE,
+  REPEAT_LABEL,
   type PlayRequestFailure,
   type PlayRequestResult,
   type QueueSourceState,
@@ -67,11 +70,14 @@ export interface NowPlaylistModel {
   /** 큐 보기에서 지금 곡의 자리 (1 부터). 대기 보기에서는 `null`. */
   readonly position: ComputedRef<number | null>
   readonly sourceState: ComputedRef<QueueSourceState | null>
-  readonly canResync: ComputedRef<boolean>
   /** 큐 보기에서, 보관함에서 고른 목록이 큐의 출처와 다를 때 그 이름. 같거나 없으면 `null`. */
   readonly otherSelectedName: ComputedRef<string | null>
-  /** 대기 보기에서, 따로 재생 중인 큐의 이름. 큐가 없으면 `null`. */
+  /** 대기 보기에서, 따로 재생 중인 큐의 이름. 큐가 없으면 `null`. 안내 상자 없이 부제에 짧게 적는다. */
   readonly playingElsewhereName: ComputedRef<string | null>
+  /** 큐 보기에서 셔플 · 반복이 켜져 있으면 그 이름들 (예: `셔플 · 전체 반복`). 모두 꺼져 있으면 `null`. */
+  readonly modesText: ComputedRef<string | null>
+  /** "목록 바꾸기" 로 고르면 바로 재생하는가 — 재생 큐가 있을 때다. 펼친 목록의 안내 문구가 이것을 따른다. */
+  readonly pickPlays: ComputedRef<boolean>
   readonly choices: ComputedRef<readonly PlaylistChoice[]>
   readonly isPickerOpen: Ref<boolean>
   readonly isExpanded: Ref<boolean>
@@ -79,14 +85,12 @@ export interface NowPlaylistModel {
 
   playRow(row: NowPlaylistRow): void
   playStandbyFromStart(): void
-  /** 바뀐 출처 목록으로 큐를 다시 뜬다 — 지금 곡 · 재생 위치는 그대로. */
-  resync(): void
-  /** 바뀐 출처 목록을 처음부터 재생한다 — 지금 곡이 그 목록에서 빠져 이어 갈 수 없을 때. */
-  restartSource(): void
   togglePicker(): void
-  /** 그 목록을 **본다** (고른 목록을 바꾼다). 재생은 바뀌지 않는다. */
+  /**
+   * 그 목록을 고른다 (고른 목록을 바꾼다). 재생 큐가 있으면 **그 목록을 처음부터 바로 재생**한다 —
+   * 재생 중인 목록을 고르면 그 큐를 보인다. 큐가 없으면 "재생 대기" 로 보일 뿐이다.
+   */
   pick(id: string): Promise<void>
-  showQueue(): void
   /** 보관함 음악 탭에서 지금 보이는 목록을 편집한다. */
   openInArchive(): Promise<void>
   /** 고른 목록의 링크 추가로 바로 간다 (빈 목록). */
@@ -116,8 +120,8 @@ export function useNowPlaylist(): NowPlaylistModel {
   const queue = computed(() => coordinator?.queue.value ?? null)
 
   /**
-   * 큐가 있는데도 사용자가 **다른 목록을 보고 있는지.** "목록 바꾸기" 로 고르면 켜지고, 새 큐가
-   * 시작되거나 "재생 중인 큐 보기" 를 누르면 꺼진다. 화면 하나의 UI 상태라 저장하지 않는다.
+   * 큐가 있는데도 **고른 다른 목록을 보이는 중인지.** "목록 바꾸기" 로 고른 목록을 재생하지 못했을 때(빈 목록 ·
+   * 영상이 가려짐) 켜지고, 새 큐가 시작되거나 재생 중인 목록을 다시 고르면 꺼진다. 저장하지 않는다.
    */
   const isBrowsing = ref(false)
   const isPickerOpen = ref(false)
@@ -168,7 +172,6 @@ export function useNowPlaylist(): NowPlaylistModel {
   const sourceState = computed<QueueSourceState | null>(() =>
     view.value === 'queue' ? (queue.value?.sourceState ?? null) : null,
   )
-  const canResync = computed<boolean>(() => queue.value?.canResync ?? false)
 
   const otherSelectedName = computed<string | null>(() => {
     if (view.value !== 'queue' || selected.value === null) return null
@@ -178,6 +181,18 @@ export function useNowPlaylist(): NowPlaylistModel {
   const playingElsewhereName = computed<string | null>(() =>
     view.value === 'standby' && queue.value !== null ? queueName.value : null,
   )
+
+  const modesText = computed<string | null>(() => {
+    const modes = coordinator?.modes.value
+    if (view.value !== 'queue' || modes === undefined) return null
+    const parts = [
+      ...(modes.shuffle ? ['셔플'] : []),
+      ...(modes.repeat === 'off' ? [] : [REPEAT_LABEL[modes.repeat]]),
+    ]
+    return parts.length === 0 ? null : parts.join(' · ')
+  })
+
+  const pickPlays = computed<boolean>(() => queue.value !== null)
 
   const choices = computed<readonly PlaylistChoice[]>(() => {
     const playingId = queue.value?.source?.playlistId ?? null
@@ -220,20 +235,6 @@ export function useNowPlaylist(): NowPlaylistModel {
     request(() => coordinator?.playPlaylist(playlist.id))
   }
 
-  function resync(): void {
-    const result = coordinator?.resyncQueueFromSource()
-    notice.value =
-      result === undefined || result.ok
-        ? ''
-        : '새 순서로 이어 갈 수 없어요. 목록을 다시 재생해 주세요.'
-  }
-
-  function restartSource(): void {
-    const sourceId = queue.value?.source?.playlistId
-    if (sourceId === undefined) return
-    request(() => coordinator?.playPlaylist(sourceId))
-  }
-
   function togglePicker(): void {
     isPickerOpen.value = !isPickerOpen.value
   }
@@ -252,15 +253,32 @@ export function useNowPlaylist(): NowPlaylistModel {
         return
       }
     }
-    // 재생 중인 목록을 골랐으면 큐를 본다. 다른 목록이면 그 목록을 "재생 대기" 로 본다 — 재생은 그대로.
-    isBrowsing.value = queue.value !== null && queue.value.source?.playlistId !== id
     isPickerOpen.value = false
     isExpanded.value = false
-  }
 
-  function showQueue(): void {
-    isBrowsing.value = false
-    isExpanded.value = false
+    // 큐가 없으면 고른 목록을 "재생 대기" 로 보일 뿐이다 — 아무것도 재생하고 있지 않았다.
+    // 재생 중인 목록을 다시 골랐으면 그 큐를 보인다 (처음부터 다시 틀지 않는다).
+    const current = queue.value
+    if (current === null || current.source?.playlistId === id) {
+      isBrowsing.value = false
+      return
+    }
+
+    // 재생 중에 다른 목록을 골랐다 — 그 목록을 처음부터 바로 재생한다 (ADR 0038). 빈 목록은 재생할 수 없으니
+    // "재생 대기" 로 보인다 (링크 추가로 이어진다). 지금 재생은 그대로다.
+    const playlist = library.getPlaylist(id)
+    if (playlist === undefined || playlist.tracks.length === 0) {
+      isBrowsing.value = true
+      return
+    }
+
+    await archive?.stepAside()
+    const result = coordinator?.playPlaylist(id)
+    // 재생하지 못했으면(영상이 가려짐 등) 고른 목록을 "재생 대기" 로 보인다 — 곡을 누르면 다시 시도된다.
+    if (result !== undefined && !result.ok) {
+      isBrowsing.value = true
+      notice.value = REFUSED_MESSAGE[result.reason]
+    }
   }
 
   async function openInArchive(): Promise<void> {
@@ -299,20 +317,18 @@ export function useNowPlaylist(): NowPlaylistModel {
     trackCount,
     position,
     sourceState,
-    canResync,
     otherSelectedName,
     playingElsewhereName,
+    modesText,
+    pickPlays,
     choices,
     isPickerOpen,
     isExpanded,
     notice,
     playRow,
     playStandbyFromStart,
-    resync,
-    restartSource,
     togglePicker,
     pick,
-    showQueue,
     openInArchive,
     addLink,
     openArchive,

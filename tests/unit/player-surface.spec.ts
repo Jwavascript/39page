@@ -129,7 +129,9 @@ describe('A. 어댑터 수명주기', () => {
     expect(wrapper.get('.status').classes()).toContain('is-warning')
     // 컨트롤은 있지만 누를 수 없다.
     expect(
-      wrapper.findAll('.round').every((button) => button.attributes('disabled') !== undefined),
+      wrapper
+        .findAll('.controls-left .round')
+        .every((button) => button.attributes('disabled') !== undefined),
     ).toBe(true)
   })
 })
@@ -295,12 +297,18 @@ describe('B. DOM 인스턴스 동일성', () => {
     }
   })
 
-  it('컨트롤은 네이티브 button 세 개뿐이다', () => {
+  it('재생 컨트롤은 네이티브 button 세 개 · 셔플 · 반복 두 개다', () => {
     const { wrapper } = mountSurfaceWithFake()
-    const buttons = wrapper.findAll('button')
+    const buttons = wrapper.findAll('.controls-left button')
 
-    // 이전 · 재생/일시정지 · 다음. 탐색 바도 볼륨도 없다 (M3-0.4).
+    // 이전 · 재생/일시정지 · 다음. 탐색 바도 볼륨도 없다 (M3-0.4). 셔플 · 반복은 따로 묶는다 (ADR 0038).
+    expect(wrapper.findAll('button')).toHaveLength(5)
+    expect(wrapper.findAll('button.mode')).toHaveLength(2)
     expect(buttons).toHaveLength(3)
+    // 한 줄 — 셔플 · 이전 · 재생 · 다음 · 반복 순서로 같은 묶음 안에 있다.
+    expect(
+      wrapper.findAll('.transport button').map((button) => button.attributes('aria-label')),
+    ).toEqual(['셔플', '이전 곡', '재생', '다음 곡', '반복: 반복 끔 (누르면 전체 반복)'])
     expect(buttons.map((button) => button.attributes('type'))).toEqual([
       'button',
       'button',

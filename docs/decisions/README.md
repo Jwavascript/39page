@@ -68,3 +68,4 @@
 - [0035](0035-m12-6-edit-sessions-and-artwork-display.md): M12-6 편집 세션·제목 제출·카세트 레이블·비파괴 구도·ZIP/공유 v2 (채택).
 - [0036](0036-collapsible-dashboard-header.md): 페이지 메모리의 헤더 접기·펼치기, 스크롤·포커스 유지, F11 독립 (채택).
 - [0037](0037-extension-cassette-design.md): 확장 팝업·패널의 Cassette 토큰·카세트·상태 표현 재사용, 웹앱 테마 동기화 제외 (채택).
+- [0038](0038-queue-follows-source-and-play-modes.md): 재생 큐는 출처 목록을 따르고(안내 없음), 목록 바꾸기는 바로 재생, 셔플·반복은 메모리 모드 (채택).

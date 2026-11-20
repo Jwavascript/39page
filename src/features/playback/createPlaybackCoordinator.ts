@@ -43,10 +43,15 @@
  * Moments store 의 일이고 그 둘을 잇는 것은 UI 다 (`MOMENTS_DESIGN.md` §4).
  * 시점 이동도 **적재된 플레이어에 보내는 명령**이라 iframe 은 바뀌지 않는다
  * (ADR 0002).
+ *
+ * 큐는 출처 목록을 따른다 (ADR 0038): 목록에 곡을 더하거나 · 지우거나 · 순서나 이름을 바꾸면 큐가 바로
+ * 같아진다. 라이브러리는 여전히 **읽기만** 한다 — 이 파일이 출처 목록을 지켜보고 playback store 에 쓴다.
+ * 셔플 · 반복도 여기서 큐의 순서와 끝 처리로 구현한다.
  */
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
-import type { Track } from '@/shared/types'
+import { REPEAT_MODES, type RepeatMode, type Track } from '@/shared/types'
+import { insertedRandomly, randomIndex, shuffled, type RandomSource } from '@/shared/utils/shuffle'
 import { isYouTubeVideoId } from '@/shared/utils/youtube'
 import { defaultTrackTitle, useLibraryStore } from '@/stores/library'
 import { isValidAtSeconds } from '@/stores/moments'
@@ -64,14 +69,14 @@ import type {
   MomentTarget,
   NowPlaying,
   PlaybackCoordinator,
+  PlaybackModesView,
   PlayerAttachment,
   PlayRequestResult,
-  QueueResyncResult,
   QueueView,
 } from './playbackCoordinator'
 import type { PlayerHiddenReason, PlayerPresence } from './playerVisibility'
 
-/** 큐 끝에서 멈췄을 때. 반복하지 않는다 (M3-0.1). */
+/** 반복이 꺼진 채로 큐 끝에서 멈췄을 때 (M3-0.1). */
 const QUEUE_FINISHED_MESSAGE = '마지막 곡까지 재생했습니다.'
 
 /**
@@ -125,15 +130,36 @@ function errorMessage(info: PlayerErrorInfo): string {
   return info.code === null ? base : `${base} (오류 ${String(info.code)})`
 }
 
-/** 재생 중인 트랙이 라이브러리에서 지워졌을 때 (`MVP_SPEC.md` F4). */
-const TRACK_REMOVED_MESSAGE = '재생 중이던 곡이 목록에서 삭제돼 재생을 멈췄습니다.'
-
 /** 라이브러리가 통째로 교체됐을 때 (M8-3). */
 const LIBRARY_REPLACED_MESSAGE = '백업을 복원해 재생을 멈췄습니다. 목록에서 다시 골라주세요.'
 
-export function createPlaybackCoordinator(): PlaybackCoordinator {
+export interface PlaybackCoordinatorOptions {
+  /** 셔플에 쓸 난수 (ADR 0038). 테스트가 순서를 정할 때만 넘긴다. 기본값은 `Math.random`. */
+  readonly random?: RandomSource
+}
+
+/** 두 트랙 목록이 같은가 — 트랙 id · 영상 · 제목과 그 순서. */
+function sameTracks(a: readonly Track[], b: readonly Track[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((track, position) => {
+      const other = b[position]
+      return (
+        other !== undefined &&
+        other.id === track.id &&
+        other.videoId === track.videoId &&
+        other.title === track.title
+      )
+    })
+  )
+}
+
+export function createPlaybackCoordinator(
+  options: PlaybackCoordinatorOptions = {},
+): PlaybackCoordinator {
   const library = useLibraryStore()
   const playback = usePlaybackStore()
+  const random: RandomSource = options.random ?? Math.random
 
   /** 등록된 어댑터. 반응형이 아니다 (ADR 0006). */
   let adapter: PlayerAdapter | null = null
@@ -177,14 +203,32 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   let awaitingUserAction = false
 
   /**
-   * 라이브러리의 트랙을 **큐 스냅샷**으로 복사한다.
+   * 라이브러리의 트랙을 큐에 넣을 **복사본**으로 만든다.
    *
-   * 배열만이 아니라 트랙 객체까지 복사한다. 얕게 복사하면 큐와 라이브러리가
-   * 같은 객체를 가리켜, "재생 중 목록을 편집해도 큐는 그대로" 라는 보장이
-   * 라이브러리의 구현 세부(제자리 수정을 하지 않는다)에 기대게 된다.
+   * 배열만이 아니라 트랙 객체까지 복사한다. 큐가 라이브러리 객체를 직접 들고 있으면 플레이어 쪽 상태가
+   * 라이브러리의 구현 세부(제자리 수정을 하지 않는다)에 기댄다. 목록이 바뀌면 `followSource` 가 새
+   * 복사본으로 다시 맞춘다 (ADR 0038).
    */
   function snapshot(tracks: readonly Track[]): Track[] {
     return tracks.map((track) => ({ ...track }))
+  }
+
+  /**
+   * 목록 순서의 트랙들로 **재생 순서**를 만든다 (ADR 0038).
+   *
+   * 셔플이 꺼져 있으면 목록 순서 그대로다. 켜져 있으면 시작 곡을 맨 앞에 두고 나머지를 섞는다 — 시작
+   * 곡은 지금 들릴 곡이고, 나머지는 반복이 꺼져 있어도 한 번씩 들린다.
+   */
+  function playOrder(
+    list: readonly Track[],
+    startIndex: number,
+  ): { tracks: Track[]; index: number } {
+    const first = list[startIndex]
+    if (!playback.shuffle || first === undefined || list.length <= 1) {
+      return { tracks: [...list], index: startIndex }
+    }
+    const rest = list.filter((_, position) => position !== startIndex)
+    return { tracks: [first, ...shuffled(rest, random)], index: 0 }
   }
 
   /**
@@ -266,6 +310,20 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     commandCurrentTrack()
   }
 
+  /**
+   * 지금 곡을 **소리 없이** 플레이어에 올려 둔다 (ADR 0038).
+   *
+   * 지금 곡이 목록에서 지워져 다른 곡으로 옮겼는데 재생을 이어 가지 않을 때 쓴다. 화면의 "지금 곡" 과
+   * 플레이어에 올라간 영상이 어긋나지 않게 한다 — 어긋나면 ▶ 가 지운 곡을 다시 튼다.
+   */
+  function cueCurrentTrack(): void {
+    const track = playback.currentTrack
+    if (track === null) return
+
+    playback.setHasStartedPlaying(false)
+    adapter?.load(track.videoId, { autoplay: false })
+  }
+
   /** 안내를 지우고 대기 상태를 푼다. 사용자의 요청이 받아들여졌을 때다. */
   function clearStatus(): void {
     visibilityNotice = false
@@ -285,7 +343,9 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       return { ok: false, reason: 'player-hidden' }
     }
 
-    playback.setQueue(snapshot(tracks), index, source)
+    const list = snapshot(tracks)
+    const order = playOrder(list, index)
+    playback.setQueue(order.tracks, order.index, source, list)
     startCurrent()
     return { ok: true }
   }
@@ -296,7 +356,9 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     // 빈 목록은 재생할 수 없다. 큐도 건드리지 않는다.
     if (playlist.tracks.length === 0) return { ok: false, reason: 'empty-playlist' }
 
-    return startQueue(playlist.tracks, 0, { playlistId: playlist.id, name: playlist.name })
+    // 셔플이면 "처음부터" 의 첫 곡도 무작위다 — 늘 같은 곡으로 시작하면 섞은 것 같지 않다.
+    const start = playback.shuffle ? randomIndex(playlist.tracks.length, random) : 0
+    return startQueue(playlist.tracks, start, { playlistId: playlist.id, name: playlist.name })
   }
 
   function playTrack(playlistId: string, trackId: string): PlayRequestResult {
@@ -333,28 +395,159 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     return { ok: true }
   }
 
+  /* ---------------------------------------------------------------- *
+   * 큐가 출처 목록을 따른다 (ADR 0038)
+   * ---------------------------------------------------------------- */
+
   /**
-   * 큐를 출처 목록의 지금 모습으로 다시 뜬다.
+   * 큐를 출처 목록의 지금 모습에 맞춘다. 출처 목록이 바뀔 때마다 아래 관찰자가 **동기로** 부른다 —
+   * 보관함 편집 · 확장 저장 · 다른 탭의 변경이 모두 같은 길이다. 안내를 띄우지 않는다.
    *
-   * 지금 곡을 **트랙 id** 로 찾아 그 자리에 선다. 어댑터에는 아무 명령도 보내지 않는다 — 적재된 영상 ·
-   * 재생 위치 · `hasStartedPlaying` 이 그대로다. 재생을 **시작**하는 것이 아니므로 가시성 가드도 없다.
+   * | 지금 곡                 | 큐                                         | 플레이어                          |
+   * | ----------------------- | ------------------------------------------ | --------------------------------- |
+   * | 바뀐 목록에 **있다**    | 새 목록(셔플이면 섞인 순서 유지 + 새 곡 끼움) · 지금 곡 자리 | **명령 없음** — 소리 · 위치 그대로 |
+   * | 지워졌고 뒤에 곡이 있다 | 새 목록 · 지운 곡 다음 곡                  | 소리가 나던 중이면 그 곡을 재생, 아니면 올려만 둔다 |
+   * | 지워졌고 뒤에 곡이 없다 | 반복이면 처음 곡(위와 같다), 아니면 앞쪽 마지막 곡 | 올려만 둔다 (큐 끝처럼 멈춘다)    |
+   * | 지워져 목록이 비었다    | 비운다                                     | 멈춘다                            |
+   *
+   * 지금 곡은 **트랙 id** 로 찾는다 (같은 영상이 여러 번 있을 수 있다). 출처 목록이 지워지면 따라갈 것이
+   * 없으므로 큐는 그대로 끝까지 재생된다 (`deleted`).
    */
-  function resyncQueueFromSource(): QueueResyncResult {
+  function followSource(list: readonly Track[]): void {
     const source = playback.queueSource
     const current = playback.currentTrack
-    if (source === null || current === null) return { ok: false, reason: 'no-source' }
+    if (source === null || current === null) return
+    if (sameTracks(list, playback.queueListOrder)) return
+
+    const fresh = snapshot(list)
+    const byId = new Map(fresh.map((track) => [track.id, track]))
+    const oldQueue = playback.queue
+    const oldIndex = playback.queueIndex
+    const currentSurvives = byId.has(current.id)
+
+    let order: Track[] = fresh
+    if (playback.shuffle) {
+      // 지금까지 섞인 순서를 지키고(지운 곡만 빼고 · 이름은 새것으로), 새 곡은 아직 듣지 않은 자리에 끼운다.
+      const kept = oldQueue.flatMap((track) => {
+        const next = byId.get(track.id)
+        return next === undefined ? [] : [next]
+      })
+      const keptIds = new Set(kept.map((track) => track.id))
+      const added = fresh.filter((track) => !keptIds.has(track.id))
+      const before = oldQueue.slice(0, oldIndex).filter((track) => byId.has(track.id)).length
+      order = insertedRandomly(kept, added, currentSurvives ? before : before - 1, random)
+    }
 
     const playlist = library.getPlaylist(source.playlistId)
-    if (playlist === undefined) return { ok: false, reason: 'playlist-not-found' }
+    const nextSource: QueueSource = {
+      playlistId: source.playlistId,
+      name: playlist?.name ?? source.name,
+    }
 
-    const index = playlist.tracks.findIndex((track) => track.id === current.id)
-    if (index === -1) return { ok: false, reason: 'track-not-found' }
+    if (currentSurvives) {
+      const at = order.findIndex((track) => track.id === current.id)
+      playback.setQueue(order, at, nextSource, fresh)
+      return
+    }
 
-    playback.setQueue(snapshot(playlist.tracks), index, {
-      playlistId: playlist.id,
-      name: playlist.name,
-    })
-    return { ok: true }
+    // 지금 곡이 목록에서 빠졌다.
+    if (order.length === 0) {
+      stopForEmptySource()
+      return
+    }
+
+    const indexOf = (track: Track): number => order.findIndex((item) => item.id === track.id)
+    let target = -1
+    for (const track of oldQueue.slice(oldIndex + 1)) {
+      target = indexOf(track)
+      if (target !== -1) break
+    }
+    let continues = target !== -1
+    if (target === -1 && playback.wraps) {
+      target = 0
+      continues = true
+    }
+    if (target === -1) {
+      // 뒤에 남은 곡이 없다 — 큐 끝처럼 앞쪽의 마지막 곡에 서서 멈춘다.
+      for (const track of oldQueue.slice(0, oldIndex).reverse()) {
+        target = indexOf(track)
+        if (target !== -1) break
+      }
+      if (target === -1) target = order.length - 1
+    }
+
+    const wasSounding = isSounding()
+    playback.setQueue(order, target, nextSource, fresh)
+    // 지운 곡에 붙어 있던 안내(오류 등)는 더 이상 사실이 아니다.
+    clearStatus()
+
+    if (continues && wasSounding) {
+      const blocked = startBlock()
+      if (blocked === null) {
+        commandCurrentTrack()
+        return
+      }
+      refuseStart(blocked)
+    }
+    cueCurrentTrack()
+  }
+
+  /** 지금 곡이 지워져 출처 목록이 비었다 — 멈추고 큐를 비운다. 셔플 · 반복은 그대로다. */
+  function stopForEmptySource(): void {
+    adapter?.pause()
+    playback.reset()
+    awaitingUserAction = false
+    visibilityNotice = false
+  }
+
+  /*
+   * 출처 목록을 지켜본다. 라이브러리는 목록을 바꿀 때마다 **새 배열**로 갈아 끼우므로(`replaceTracks` ·
+   * `restore`) 배열 참조가 바뀌면 내용이 바뀐 것이다. 동기 관찰자인 이유: 목록이 바뀐 순간과 큐가 따라간
+   * 순간 사이에 "다음 곡" · 화면이 옛 큐를 보는 틈을 두지 않는다. `setQueue` 는 출처를 맨 마지막에 바꾸므로
+   * 큐를 새로 뜨는 중에 불려도 반쯤 바뀐 큐를 보지 않는다.
+   */
+  watch(
+    () => {
+      const source = playback.queueSource
+      return source === null ? undefined : library.getPlaylist(source.playlistId)?.tracks
+    },
+    (tracks) => {
+      if (tracks !== undefined) followSource(tracks)
+    },
+    { flush: 'sync' },
+  )
+
+  /* ---------------------------------------------------------------- *
+   * 셔플 · 반복 (ADR 0038)
+   * ---------------------------------------------------------------- */
+
+  const modes = computed<PlaybackModesView>(() => ({
+    shuffle: playback.shuffle,
+    repeat: playback.repeat,
+  }))
+
+  /**
+   * 셔플을 켜거나 끈다. 지금 곡 · 재생 위치는 그대로다 — 플레이어에 명령하지 않고 큐의 순서만 바꾼다.
+   *
+   * 켜면 지금 곡을 맨 앞에 두고 나머지를 섞는다. 끄면 목록 순서로 돌아가 지금 곡의 자리에 선다.
+   */
+  function setShuffle(on: boolean): void {
+    if (playback.shuffle === on) return
+    playback.setShuffle(on)
+
+    const current = playback.currentTrack
+    if (current === null) return
+    const list = playback.queueListOrder
+    const at = list.findIndex((track) => track.id === current.id)
+    if (at === -1) return
+
+    const order = playOrder(list, at)
+    playback.setQueue(order.tracks, order.index, playback.queueSource, list)
+  }
+
+  function setRepeat(mode: RepeatMode): void {
+    if (!REPEAT_MODES.includes(mode)) return
+    playback.setRepeat(mode)
   }
 
   /**
@@ -436,8 +629,14 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       return
     }
 
+    // 한 곡 반복 — 같은 자리에서 처음부터 다시 (ADR 0038). 수동 ⏭ · ⏮ 는 평소처럼 옮긴다.
+    if (playback.repeat === 'one') {
+      commandCurrentTrack()
+      return
+    }
+
     if (!playback.advance()) {
-      // 큐 끝. 반복하지 않고 멈춘다 (M3-0.1).
+      // 큐 끝. 반복이 꺼져 있으면 멈춘다 (M3-0.1). 전체 반복이면 `advance` 가 처음으로 돌아간다.
       playback.setStatus(QUEUE_FINISHED_MESSAGE)
       return
     }
@@ -558,7 +757,7 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
    *
    * 셋째 줄은 M9-1 §4-2 에 없던 것을 M9-3 이 더했다. 듣고 있던 큐 안의 영상인데
    * 선택 목록이 바뀌었다는 이유로 큐를 갈아치우면, 사용자가 듣던 순서가
-   * 예고 없이 바뀐다. 큐는 재생 시작 시점의 스냅샷이고 그 성질을 지킨다.
+   * 예고 없이 바뀐다. 듣던 큐(셔플이면 섞인 순서)를 지킨다.
    *
    * 가시성 가드는 **다른 재생 요청과 같다** (ADR 0011). 가려져 있으면 큐도
    * 바꾸지 않고 `player-hidden` 으로 거절한다. 거절 문구도 같은 자리에 뜬다.
@@ -612,7 +811,9 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
       const located = locateInLibrary(videoId)
       // 목록에서 찾았으면 그 목록이 출처다. 어디에도 없으면 출처를 **모른다** (추정하지 않는다).
       if (located !== null) {
-        playback.setQueue(snapshot(located.tracks), located.index, located.source)
+        const list = snapshot(located.tracks)
+        const order = playOrder(list, located.index)
+        playback.setQueue(order.tracks, order.index, located.source, list)
       } else playback.setQueue([standaloneTrack(videoId, target.title)], 0)
     }
 
@@ -667,28 +868,6 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
         'warning',
       )
     },
-  }
-
-  /**
-   * 라이브러리에서 트랙이 지워졌다 (M3-5, `MVP_SPEC.md` F4).
-   *
-   * 큐는 스냅샷이라 **자동으로 끊기지 않는다.** 지금 그 곡을 틀고 있었다면
-   * 멈추고 알린다. 큐는 그대로 둔다 — 스냅샷이라는 보장을 여기서 깨면
-   * "재생 중 목록을 편집해도 큐가 흔들리지 않는다" 가 무너진다.
-   *
-   * 자동으로 다음 곡으로 넘기지도 않는다. 사용자가 방금 뭔가를 지웠고,
-   * 그 결과로 다른 곡이 울리기 시작하면 놀란다 (M3-0.7 과 같은 이유).
-   *
-   * 트랙 id 는 `createId()` 가 만든 UUID 라서 플레이리스트가 달라도 겹치지
-   * 않는다. 같은 영상을 두 목록에 넣어도 id 는 서로 다르다.
-   */
-  function trackRemoved(trackId: string): void {
-    if (playback.currentTrack?.id !== trackId) return
-
-    adapter?.pause()
-    awaitingUserAction = true
-    visibilityNotice = false
-    playback.setStatus(TRACK_REMOVED_MESSAGE, 'warning')
   }
 
   /**
@@ -819,8 +998,8 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
   /**
    * 지금 큐 — 읽기 전용 보기 (M11-7B, `QueueView`).
    *
-   * 출처 상태는 **라이브러리의 지금 모습과 큐(스냅샷)를 견줘** 정한다. 견주는 것은 트랙 id · 영상 ·
-   * 제목과 그 순서다 — 순서 바꾸기 · 추가 · 삭제 · 이름 바꾸기가 모두 "바뀜" 이다.
+   * 출처 목록이 있으면 큐는 그 목록을 따르고 있다 (`followSource` 가 동기로 맞춘다 — ADR 0038). 이름은
+   * 목록의 **지금 이름**이다.
    */
   const queue = computed<QueueView | null>(() => {
     const tracks = playback.queue
@@ -828,33 +1007,16 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
 
     const index = playback.queueIndex
     const stored = playback.queueSource
-    if (stored === null) {
-      return { tracks, index, source: null, sourceState: 'unknown', canResync: false }
-    }
+    if (stored === null) return { tracks, index, source: null, sourceState: 'unknown' }
 
     const playlist = library.getPlaylist(stored.playlistId)
-    if (playlist === undefined) {
-      return { tracks, index, source: stored, sourceState: 'deleted', canResync: false }
-    }
+    if (playlist === undefined) return { tracks, index, source: stored, sourceState: 'deleted' }
 
-    const same =
-      playlist.tracks.length === tracks.length &&
-      playlist.tracks.every((track, position) => {
-        const queued = tracks[position]
-        return (
-          queued !== undefined &&
-          queued.id === track.id &&
-          queued.videoId === track.videoId &&
-          queued.title === track.title
-        )
-      })
-    const currentId = playback.currentTrack?.id
     return {
       tracks,
       index,
       source: { playlistId: playlist.id, name: playlist.name },
-      sourceState: same ? 'in-sync' : 'changed',
-      canResync: !same && playlist.tracks.some((track) => track.id === currentId),
+      sourceState: 'in-sync',
     }
   })
 
@@ -862,13 +1024,14 @@ export function createPlaybackCoordinator(): PlaybackCoordinator {
     nowPlaying,
     queue,
     playQueueIndex,
-    resyncQueueFromSource,
+    modes,
+    setShuffle,
+    setRepeat,
     playPlaylist,
     playTrack,
     togglePlay,
     next,
     previous,
-    trackRemoved,
     libraryReplaced,
     playerWillHide,
     revalidatePlayerVisibility,

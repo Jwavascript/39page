@@ -147,7 +147,7 @@ describe('A. 재생 요청', () => {
   })
 })
 
-describe('B. 큐 스냅샷 독립성', () => {
+describe('B. 큐는 라이브러리의 복사본이고, 출처 목록을 따른다 (ADR 0038)', () => {
   it('큐의 트랙은 라이브러리와 다른 객체다', async () => {
     const { library, playback, coordinator, playlistId } = await setup()
 
@@ -159,18 +159,22 @@ describe('B. 큐 스냅샷 독립성', () => {
     expect(playback.queue[0]).not.toBe(source[0])
   })
 
-  it('재생 중 트랙을 추가·삭제·이동해도 큐가 그대로다', async () => {
+  it('재생 중 트랙을 추가·삭제·이동하면 큐가 목록의 지금 모습이 되고 지금 곡을 지킨다', async () => {
     const { library, playback, coordinator, playlistId } = await setup()
-    coordinator.playPlaylist(playlistId)
-    const before = { queue: [...playback.queue], index: playback.queueIndex }
     const ids = trackIds(library, playlistId)
+    coordinator.playTrack(playlistId, ids[1] ?? '')
 
-    library.addTrack(playlistId, { videoId: VIDEO[0], title: 'Track 4' })
-    library.removeTrack(playlistId, ids[0] ?? '')
-    library.moveTrack(playlistId, ids[2] ?? '', 'up')
+    await library.addTrack(playlistId, { videoId: VIDEO[0], title: 'Track 4' })
+    await library.removeTrack(playlistId, ids[0] ?? '')
+    await library.moveTrack(playlistId, ids[2] ?? '', 'up')
 
-    expect(playback.queue).toEqual(before.queue)
-    expect(playback.queueIndex).toBe(before.index)
+    const listed = library.getPlaylist(playlistId)?.tracks ?? []
+    expect(playback.queue).toEqual(listed)
+    expect(playback.queue.map((track) => track.title)).toEqual(['Track 3', 'Track 2', 'Track 4'])
+    expect(playback.currentTrack?.id).toBe(ids[1])
+    expect(playback.queueIndex).toBe(1)
+    // 따라간 뒤에도 라이브러리와 다른 객체다.
+    expect(playback.queue[0]).not.toBe(listed[0])
   })
 
   it('재생 중인 목록의 이름을 바꾸거나 지워도 큐가 그대로다', async () => {
@@ -950,16 +954,20 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.queue.map((track) => track.title)).toEqual(['B has it too'])
     })
 
-    it('큐는 라이브러리의 스냅샷이다 — 이후 편집에 흔들리지 않는다', async () => {
-      const { coordinator, library, playback, playlistId } = await setup()
+    it('Moment 로 시작한 큐도 출처 목록을 따른다 — 지금 곡은 그대로 (ADR 0038)', async () => {
+      const { coordinator, library, playback, fake, playlistId } = await setup()
       const ids = trackIds(library, playlistId)
 
       coordinator.playMoment({ videoId: VIDEO[1], atSeconds: 7 })
-      library.removeTrack(playlistId, ids[2] ?? '')
-      library.renameTrack(playlistId, ids[1] ?? '', 'RENAMED')
+      const loads = fake.calls.load.length
+      await library.removeTrack(playlistId, ids[2] ?? '')
+      await library.renameTrack(playlistId, ids[1] ?? '', 'RENAMED')
 
-      expect(playback.queue).toHaveLength(3)
-      expect(playback.currentTrack?.title).toBe('Track 2')
+      expect(playback.queue).toHaveLength(2)
+      expect(playback.currentTrack?.id).toBe(ids[1])
+      expect(playback.currentTrack?.title).toBe('RENAMED')
+      // 시점을 실어 적재한 그 재생이 이어진다 — 다시 적재하지 않는다.
+      expect(fake.calls.load).toHaveLength(loads)
     })
 
     it('라이브러리에서 지운 영상의 Moment 는 그 한 곡만으로 재생한다', async () => {
@@ -1018,16 +1026,17 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
       expect(playback.currentTrack?.title).toBe(`YouTube · ${ORPHAN}`)
     })
 
-    it('단일 곡의 id 는 라이브러리 트랙 id 와 겹치지 않아 trackRemoved 에 걸리지 않는다', async () => {
+    it('목록 밖 단일 곡은 출처가 없어 라이브러리를 편집해도 흔들리지 않는다', async () => {
       const { coordinator, playback, fake, library, playlistId } = await setup()
       const ids = trackIds(library, playlistId)
       coordinator.playMoment({ videoId: ORPHAN, atSeconds: 1 })
       const current = playback.currentTrack
+      const calls = JSON.stringify(fake.calls)
 
       // 라이브러리의 어떤 트랙을 지워도 단일 곡 재생은 멈추지 않는다.
-      for (const id of ids) coordinator.trackRemoved(id)
+      for (const id of ids) await library.removeTrack(playlistId, id)
 
-      expect(fake.calls.pause).toBe(0)
+      expect(JSON.stringify(fake.calls)).toBe(calls)
       expect(playback.currentTrack).toBe(current)
       expect(ids).not.toContain(current?.id)
     })
