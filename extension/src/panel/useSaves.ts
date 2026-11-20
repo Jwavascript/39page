@@ -9,7 +9,7 @@
  */
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 
-import type { BridgeState } from '@/shared/bridgeMessages'
+import type { BridgeCallResult, BridgeState } from '@/shared/bridgeMessages'
 
 import type { PanelBridge } from './panelBridge'
 import type { PanelModel } from './usePanel'
@@ -23,6 +23,8 @@ export interface PlaylistView {
   readonly positions: readonly number[]
 }
 
+type ListFailure = Exclude<BridgeCallResult, { outcome: 'ok' }>
+
 export type ListPhase = 'idle' | 'loading' | 'ready' | 'blocked' | 'failed'
 
 export const MAX_NOTE = 500
@@ -32,6 +34,7 @@ export interface Saves {
   readonly access: Readonly<Ref<BridgeState | null>>
   readonly granting: Readonly<Ref<boolean>>
   readonly lists: Readonly<Ref<readonly PlaylistView[]>>
+  readonly listFailure: Readonly<Ref<ListFailure | null>>
   readonly listPhase: Readonly<Ref<ListPhase>>
   readonly selected: Ref<string | null>
   readonly creating: Ref<boolean>
@@ -55,6 +58,7 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
   const access = ref<BridgeState | null>(null)
   const granting = ref(false)
   const lists = ref<readonly PlaylistView[]>([])
+  const listFailure = ref<ListFailure | null>(null)
   const listPhase = ref<ListPhase>('idle')
   const selected = ref<string | null>(null)
   const creating = ref(false)
@@ -77,12 +81,14 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
   async function loadLists(): Promise<void> {
     const target = panel.video.value
     if (access.value?.permission !== 'granted') return
+    listFailure.value = null
     listPhase.value = 'loading'
     const result = await bridge.call(
       { op: 'library/list', videoId: target?.videoId ?? null },
       bridge.newRequestId(),
     )
     if (result.outcome !== 'ok') {
+      listFailure.value = result
       listPhase.value = 'failed'
       if (result.outcome === 'unavailable' && result.reason === 'permission') await refreshAccess()
       return
@@ -135,15 +141,10 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
         allowDuplicate: allowDuplicate.value,
       })
     }
-    if (music.state.value.phase === 'done') {
-      allowDuplicate.value = false
-      await loadLists()
-    }
   }
 
   async function retryMusic(): Promise<void> {
     await music.retry()
-    if (music.state.value.phase === 'done') await loadLists()
   }
 
   async function saveMoment(): Promise<void> {
@@ -164,8 +165,22 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
   // 고른 것이 바뀌면 앞 결과를 지운다 (결과를 모르는 요청은 확인할 수 있게 남긴다).
   const settled = (request: SaveRequest) =>
     request.state.value.phase !== 'uncertain' && request.state.value.phase !== 'partial'
+  // 저장 · 재시도 · 저장 여부 확인 모두, 성공이 확인된 뒤 다음 담기를 새로 고르게 한다.
+  watch(
+    () => music.state.value.phase,
+    (phase) => {
+      if (phase !== 'done') return
+      selected.value = null
+      creating.value = false
+      newName.value = ''
+      allowDuplicate.value = false
+      void loadLists()
+    },
+  )
   watch([selected, creating], () => {
     allowDuplicate.value = false
+    // 성공 후 자동 선택 해제는 완료 안내를 지우지 않는다. 새 선택에서는 지운다.
+    if (music.state.value.phase === 'done' && selected.value === null && !creating.value) return
     if (settled(music)) music.reset()
   })
   watch(
@@ -188,6 +203,7 @@ export function useSaves(bridge: PanelBridge, panel: PanelModel): Saves {
     granting,
     lists,
     listPhase,
+    listFailure,
     selected,
     creating,
     newName,

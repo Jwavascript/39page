@@ -10,7 +10,12 @@
  *
  * `chrome.*` 와 DOM 은 밖에서 넣는다 — 시험이 가짜를 끼운다.
  */
-import { BRIDGE_NAMESPACE, isOffscreenMessage, type OffscreenReply } from '@/shared/bridgeMessages'
+import {
+  BRIDGE_NAMESPACE,
+  BRIDGE_PROTOCOL_VERSION,
+  isOffscreenMessage,
+  type OffscreenReply,
+} from '@/shared/bridgeMessages'
 
 export interface FrameLike {
   readonly contentWindow: { postMessage(message: unknown, targetOrigin: string): void } | null
@@ -96,7 +101,8 @@ export function createOffscreenHost(deps: OffscreenHostDeps): OffscreenHost {
   function onFrameMessage(event: { source: unknown; origin: string; data: unknown }): void {
     if (event.source !== deps.frame.contentWindow || event.origin !== deps.bridgeOrigin) return
     const data = event.data
-    if (!isRecord(data) || data.ns !== BRIDGE_NAMESPACE) return
+    if (!isRecord(data) || data.ns !== BRIDGE_NAMESPACE || data.v !== BRIDGE_PROTOCOL_VERSION)
+      return
     if (data.kind === 'ready') {
       state = 'ready'
       status = data.status ?? null

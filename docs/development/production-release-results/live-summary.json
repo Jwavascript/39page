@@ -1,0 +1,17 @@
+{
+  "commit": "cac19d56a5a4c4986fbead4cbf3156f2b7274e99",
+  "runs": [
+    {
+      "name": "smoke",
+      "origin": "https://39page.com",
+      "checks": 9,
+      "passed": 9
+    },
+    {
+      "name": "ux",
+      "origin": "https://39page.com",
+      "checks": 49,
+      "passed": 49
+    }
+  ]
+}

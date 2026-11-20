@@ -25,6 +25,9 @@ describe('브리지 응답 헤더 · 허용 확장 ID', () => {
     expect(bridgeExtensionIds({ VITE_BRIDGE_EXTENSION_IDS: ` ${STORE} ` })).toEqual([STORE])
     expect(() => bridgeExtensionIds({ VITE_BRIDGE_EXTENSION_IDS: 'bad-id' })).toThrow('형식')
     expect(() => bridgeExtensionIds({ VITE_BRIDGE_EXTENSION_IDS: DEV })).toThrow('개발용')
+    expect(() =>
+      bridgeExtensionIds({ VITE_BRIDGE_EXTENSION_IDS: 'mfijienedkbogcldkjfjjmgbfkfidocb' }),
+    ).toThrow('개발용')
     expect(
       bridgeExtensionIds({ VITE_BRIDGE_EXTENSION_IDS: DEV, VITE_BRIDGE_DEV_BUILD: '1' }),
     ).toEqual([DEV])

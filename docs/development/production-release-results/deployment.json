@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-11-15T15:37:13.640765+00:00",
+  "releaseSHA": "cac19d56a5a4c4986fbead4cbf3156f2b7274e99",
+  "previousSHA": "2bc8fd2af9ac2609ce2f565a19c6ab185253d497",
+  "workerVersionFromCI": "0c291394-e72a-4830-b09d-c083a5d143cf",
+  "previousSuccessfulWorkerVersionFromCI": "712b48f1-eedb-4ea4-8f12-c566b0efab78",
+  "gitRollbackRef": "rollback/m11-m12",
+  "gitRollbackSHA": "4fb96cde2c6a1669fe3a816e80c7cf93c8c5f0c5",
+  "rollbackExecuted": false,
+  "userConfirmedEmptyProductionProfile": true,
+  "cloudflareDashboardSettingsRead": false,
+  "effectiveBridgePolicyVerified": "disabled",
+  "httpChecks": 11,
+  "httpPassed": 11,
+  "liveChecks": 58,
+  "livePassed": 58,
+  "localChecks": {
+    "webTests": 2127,
+    "webTestFiles": 67,
+    "extensionTests": 420,
+    "extensionTestFiles": 26,
+    "typeCheck": true,
+    "lint": true,
+    "format": true,
+    "webBuild": true,
+    "extensionBuildAndManifest": true
+  },
+  "sourceComparedToGate": "identical",
+  "extensionStoreUpload": false,
+  "dependenciesAdded": false
+}

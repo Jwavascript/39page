@@ -3,7 +3,12 @@
  */
 import { formatTimestamp } from '@web/shared/utils/time'
 
-import type { BridgeErrorCode, UnavailableReason, UncertainReason } from '@/shared/bridgeMessages'
+import type {
+  BridgeCallResult,
+  BridgeErrorCode,
+  UnavailableReason,
+  UncertainReason,
+} from '@/shared/bridgeMessages'
 import type { CaptureRefusal } from '@/shared/messages'
 
 export const formatTime = formatTimestamp
@@ -16,6 +21,8 @@ export const ACCESS_COPY = {
 } as const
 
 export const UNAVAILABLE_COPY: Readonly<Record<UnavailableReason, string>> = {
+  timeout:
+    '39page 연결 시간이 초과됐어요. 네트워크 문제나 운영 브리지의 확장 지원 설정 때문일 수 있어요. 다시 연결하거나 수집 화면으로 열어 주세요.',
   permission:
     '39page 접근 권한이 없어 저장하지 않았어요. 위에서 허용하거나 수집 화면으로 열어 주세요.',
   'bridge-failed':
@@ -59,4 +66,14 @@ export const CAPTURE_REFUSED: Readonly<Record<CaptureRefusal, string>> = {
   'not-started': '재생이 시작되지 않아 시점을 잡지 않았어요. 재생한 뒤 다시 잡아 주세요.',
   unreadable: '재생 시점을 읽지 못했어요. 다시 잡아 주세요.',
   'not-watch': '시청 페이지에서만 시점을 잡을 수 있어요.',
+}
+
+/** 조회 오류는 저장 결과와 구별한다. CSP 차단과 오프라인은 확정하지 않는다. */
+export function listFailureCopy(
+  result: Exclude<BridgeCallResult, { outcome: 'ok' }> | null,
+): string {
+  if (result?.outcome === 'unavailable') return UNAVAILABLE_COPY[result.reason]
+  if (result?.outcome === 'uncertain' && result.reason === 'timeout')
+    return UNAVAILABLE_COPY.timeout
+  return '플레이리스트 데이터를 조회하지 못했어요. 39page에서 저장소 상태를 확인하고 다시 불러오거나 수집 화면으로 열어 주세요.'
 }

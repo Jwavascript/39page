@@ -146,8 +146,13 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
     } catch {
       return 'bridge-failed'
     }
-    if (reply === TIMEOUT || !isReply(reply)) return 'bridge-failed'
-    if (!reply.ok) return reply.transport === 'not-allowed' ? 'not-allowed' : 'bridge-failed'
+    if (reply === TIMEOUT) return 'timeout'
+    if (!isReply(reply)) return 'bridge-failed'
+    if (!reply.ok) {
+      if (reply.transport === 'not-allowed') return 'not-allowed'
+      if (reply.transport === 'not-ready' || reply.transport === 'timeout') return 'timeout'
+      return 'bridge-failed'
+    }
     return 'ready'
   }
 
@@ -236,7 +241,7 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
       await closeQuietly()
       return write
         ? { outcome: 'uncertain', reason: 'timeout' }
-        : { outcome: 'unavailable', reason: 'bridge-failed' }
+        : { outcome: 'unavailable', reason: 'timeout' }
     }
     if (!isReply(reply)) {
       return write
@@ -259,7 +264,7 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
       // 브리지에 보냈는데 답이 없다.
       return write
         ? { outcome: 'uncertain', reason: 'timeout' }
-        : { outcome: 'unavailable', reason: 'bridge-failed' }
+        : { outcome: 'unavailable', reason: 'timeout' }
     }
 
     const answer = parseBridgeAnswer(reply.answer)

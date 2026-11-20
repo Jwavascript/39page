@@ -171,7 +171,7 @@ describe('저장 브리지 연결', () => {
     })
     expect(await s.client.call(READ, 'req-0000000000000006')).toEqual({
       outcome: 'unavailable',
-      reason: 'bridge-failed',
+      reason: 'timeout',
     })
   })
 
@@ -231,7 +231,7 @@ describe('저장 브리지 연결', () => {
     const s = setup({ responder: async () => ({ ok: false, transport: 'not-ready' }) })
     expect(await s.client.call(READ, REQ)).toEqual({
       outcome: 'unavailable',
-      reason: 'bridge-failed',
+      reason: 'timeout',
     })
     s.setResponder(async (m) =>
       m.kind === 'ready'

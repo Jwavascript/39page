@@ -8,3 +8,6 @@ dist
 coverage
 node_modules
 *.log
+
+# Preserve the observed production HTTP body byte-for-byte.
+docs/development/cws-private-results/production-bridge.html

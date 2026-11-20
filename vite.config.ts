@@ -8,6 +8,8 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 const EXTENSION_ID = /^[a-p]{32}$/
 /** 개발 · 시험용 고정 ID (확장 개발 빌드의 공개 키, ADR 0028 결정 14). 운영 빌드에 들어가면 안 된다. */
 const DEV_EXTENSION_ID = 'pkagnijdhfmkodpdfgdehfdghcgbfpoa'
+/** BUG-001 재현에 사용한 압축해제 설치 ID. 공식 Store ID로 취급하지 않는다. */
+const LOCAL_EXTENSION_ID = 'mfijienedkbogcldkjfjjmgbfkfidocb'
 
 /**
  * 브리지를 부를 수 있는 확장 ID (`VITE_BRIDGE_EXTENSION_IDS`, 쉼표) — 빌드 때 검사한다 (M11-6).
@@ -21,7 +23,10 @@ export function bridgeExtensionIds(env: Record<string, string | undefined>): str
     .filter((id) => id !== '')
   const bad = ids.filter((id) => !EXTENSION_ID.test(id))
   if (bad.length > 0) throw new Error(`VITE_BRIDGE_EXTENSION_IDS 형식이 아니다 — ${bad.join(', ')}`)
-  if (ids.includes(DEV_EXTENSION_ID) && env.VITE_BRIDGE_DEV_BUILD !== '1') {
+  if (
+    ids.some((id) => id === DEV_EXTENSION_ID || id === LOCAL_EXTENSION_ID) &&
+    env.VITE_BRIDGE_DEV_BUILD !== '1'
+  ) {
     throw new Error(
       '개발용 확장 ID 가 브리지 허용 목록에 있다 — 시험 빌드면 VITE_BRIDGE_DEV_BUILD=1 을 함께 준다',
     )

@@ -125,6 +125,8 @@ export type UncertainReason =
   | 'permission-changed'
 
 export type UnavailableReason =
+  /** 준비 신호 또는 읽기 응답의 시간 초과. 원인은 단정하지 않는다. */
+  | 'timeout'
   /** 39page 사이트 접근 권한이 없다 — 패널이 요청하거나 수집 화면으로 간다. */
   | 'permission'
   /** offscreen 문서 · 브리지 페이지를 띄우지 못했다 (오프라인 · 39page 장애). */

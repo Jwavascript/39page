@@ -31,6 +31,9 @@ function fake(options: { granted?: boolean } = {}) {
   const calls: { payload: BridgePayload; requestId: string }[] = []
   let answer: (payload: BridgePayload, requestId: string) => BridgeCallResult = (payload) => {
     if (payload.op === 'library/list') {
+      const added = calls.some(
+        (call) => call.payload.op === 'track/add' && call.payload.playlistId === 'drive',
+      )
       return {
         outcome: 'ok',
         data: {
@@ -42,7 +45,12 @@ function fake(options: { granted?: boolean } = {}) {
               trackCount: 3,
               positions: payload.videoId === V1 ? [2] : [],
             },
-            { id: 'drive', name: '드라이브', trackCount: 0, positions: [] },
+            {
+              id: 'drive',
+              name: '드라이브',
+              trackCount: added ? 1 : 0,
+              positions: added ? [1] : [],
+            },
           ],
         },
       }
@@ -92,6 +100,39 @@ function fake(options: { granted?: boolean } = {}) {
     },
   }
 }
+
+describe('BUG-001 조회 오류 안내와 복구', () => {
+  it.each([
+    ['permission', '접근 권한이 없어'],
+    ['not-allowed', '아직 확장의 바로 저장을 받지 않아요'],
+    ['timeout', '연결 시간이 초과'],
+    ['bridge-failed', '오프라인'],
+  ] as const)('%s 원인, Collect와 재시도, 자동 쓰기 없음', async (reason, text) => {
+    const f = fake()
+    f.setAnswer(() => ({ outcome: 'unavailable', reason }))
+    const w = await boot(f)
+    expect(w.text()).toContain(text)
+    expect(f.writes()).toHaveLength(0)
+    expect(w.text()).toContain('39page 수집 화면으로 열기')
+    f.setAnswer(() => ({ outcome: 'ok', data: { status: 'ready', playlists: [] } }))
+    await w
+      .findAll('button')
+      .find((b) => b.text() === '다시 불러오기')
+      ?.trigger('click')
+    await flushPromises()
+    expect(w.text()).toContain('어느 플레이리스트에 담을까요?')
+    expect(w.text()).not.toContain(text)
+    expect(f.writes()).toHaveLength(0)
+  })
+
+  it('데이터 오류는 연결 오류와 구별한다', async () => {
+    const f = fake()
+    f.setAnswer(() => ({ outcome: 'error', error: { code: 'internal', retryable: true } }))
+    const w = await boot(f)
+    expect(w.text()).toContain('플레이리스트 데이터를 조회하지 못했어요')
+    expect(f.writes()).toHaveLength(0)
+  })
+})
 
 async function boot(f: ReturnType<typeof fake>) {
   const wrapper = mount(PanelApp, {
@@ -181,6 +222,19 @@ describe('패널 — 음악 담기', () => {
     expect(w.get('.feedback.ok .feedback-heading').text()).toContain('저장 완료')
     expect(w.get('.feedback.ok').text()).toContain('‘드라이브’ 에 담았어요 · 1번째.')
     expect(w.text()).toContain('이 순간도 Moment 로 저장')
+    expect(w.findAll('input[name="playlist"]:checked')).toHaveLength(0)
+    expect(w.find('.dup').exists()).toBe(false)
+    expect(w.findAll('.list-row')[1]?.text()).toContain('1곡 · 이미 1번째')
+    const save = w.findAll('.btn.primary').find((b) => b.text() === '이 플레이리스트에 담기')
+    expect(save?.attributes('disabled')).toBeDefined()
+
+    // 다시 고르면 기존 중복 경고와 명시적 재저장 동의가 필요하다.
+    await w.findAll('.list-row input')[1]?.setValue(true)
+    expect(w.find('.feedback.ok').exists()).toBe(false)
+    expect(w.get('.dup').text()).toContain('이미 있어요 (1번째)')
+    expect((w.get('.check input').element as HTMLInputElement).checked).toBe(false)
+    expect(save?.attributes('disabled')).toBeDefined()
+    expect(f.writes()).toHaveLength(1)
   })
 
   it('이미 있는 곡 — "한 번 더 담기" 를 골라야 담긴다', async () => {
@@ -194,6 +248,46 @@ describe('패널 — 음악 담기', () => {
     await save()?.trigger('click')
     await flushPromises()
     expect(f.writes()[0]?.payload).toMatchObject({ playlistId: 'mine', allowDuplicate: true })
+    expect(w.findAll('input[name="playlist"]:checked')).toHaveLength(0)
+    await w.findAll('.list-row input')[0]?.setValue(true)
+    expect((w.get('.check input').element as HTMLInputElement).checked).toBe(false)
+    expect(save()?.attributes('disabled')).toBeDefined()
+  })
+
+  it.each([
+    { outcome: 'error', error: { code: 'not-persisted', retryable: true } },
+    { outcome: 'unavailable', reason: 'permission' },
+    { outcome: 'uncertain', reason: 'timeout' },
+  ] satisfies BridgeCallResult[])('저장 성공 전에는 선택을 보존한다: $outcome', async (result) => {
+    const f = fake()
+    const w = await boot(f)
+    vi.mocked(f.bridge.call).mockImplementation(async () => result)
+    await w.findAll('.list-row input')[1]?.setValue(true)
+    await w
+      .findAll('.btn.primary')
+      .find((b) => b.text() === '이 플레이리스트에 담기')
+      ?.trigger('click')
+    await flushPromises()
+    expect(
+      (w.get('input[name="playlist"][value="drive"]').element as HTMLInputElement).checked,
+    ).toBe(true)
+    expect(w.find('.feedback.ok').exists()).toBe(false)
+  })
+
+  it('새 목록에 담기 성공 뒤 생성 선택과 이름을 비우고 완료 안내를 유지한다', async () => {
+    const w = await boot(fake())
+    await w.findAll('.list-row input').at(-1)?.setValue(true)
+    await w.get('#panel-new-name').setValue('새벽')
+    await w
+      .findAll('.btn.primary')
+      .find((b) => b.text() === '만들고 담기')
+      ?.trigger('click')
+    await flushPromises()
+    expect(w.findAll('input[name="playlist"]:checked')).toHaveLength(0)
+    expect(w.find('#panel-new-name').exists()).toBe(false)
+    expect(w.find('.feedback.ok').exists()).toBe(true)
+    await w.findAll('.list-row input').at(-1)?.setValue(true)
+    expect((w.get('#panel-new-name').element as HTMLInputElement).value).toBe('')
   })
 
   it('새 목록 — 부분 성공이면 사실대로 말하고, "다시 담기" 는 같은 요청 ID 라 목록이 또 생기지 않는다', async () => {
@@ -224,6 +318,8 @@ describe('패널 — 음악 담기', () => {
       ?.trigger('click')
     await flushPromises()
     expect(w.get('.feedback.warn').text()).toContain('‘새벽’ 는 만들었지만 곡은 아직 담지 못했어요')
+    expect(w.findAll('input[name="playlist"]:checked')).toHaveLength(1)
+    expect((w.get('#panel-new-name').element as HTMLInputElement).value).toBe('새벽')
     await w
       .findAll('button')
       .find((b) => b.text() === '이 플레이리스트에 다시 담기')
@@ -233,6 +329,8 @@ describe('패널 — 음악 담기', () => {
     expect(writes).toHaveLength(2)
     expect(writes[1]?.requestId).toBe(writes[0]?.requestId)
     expect(w.get('.feedback.ok').text()).toContain('‘새벽’ 에 담았어요')
+    expect(w.findAll('input[name="playlist"]:checked')).toHaveLength(0)
+    expect(w.find('#panel-new-name').exists()).toBe(false)
   })
 
   it('결과를 모르면 성공이라 하지 않는다 — "저장됐는지 확인" 은 같은 요청을 저장소에서 찾는다', async () => {
@@ -260,6 +358,9 @@ describe('패널 — 음악 담기', () => {
     await flushPromises()
     expect(w.find('.feedback.ok').exists()).toBe(false)
     expect(w.get('.feedback.warn').text()).toContain('저장됐는지 확인하지 못했어요')
+    expect(
+      (w.get('input[name="playlist"][value="drive"]').element as HTMLInputElement).checked,
+    ).toBe(true)
     await w
       .findAll('button')
       .find((b) => b.text() === '저장됐는지 확인')
@@ -273,6 +374,7 @@ describe('패널 — 음악 담기', () => {
       playlistId: 'drive',
     })
     expect(w.get('.feedback.ok').text()).toContain('‘드라이브’ 에 담았어요')
+    expect(w.findAll('input[name="playlist"]:checked')).toHaveLength(0)
   })
 })
 

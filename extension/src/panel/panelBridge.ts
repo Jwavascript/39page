@@ -91,7 +91,10 @@ export function createChromePanelBridge(): PanelBridge {
         payload.op === 'moment/add'
       return write
         ? { outcome: 'uncertain', reason: 'disconnected' }
-        : { outcome: 'unavailable', reason: 'bridge-failed' }
+        : {
+            outcome: 'unavailable',
+            reason: result.error.code === 'timeout' ? 'timeout' : 'bridge-failed',
+          }
     },
     newRequestId: () => crypto.randomUUID(),
   }
