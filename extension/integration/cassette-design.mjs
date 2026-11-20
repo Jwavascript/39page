@@ -33,8 +33,12 @@ try {
     const tab = await h.tab('about:blank')
     const svg = readFileSync('extension/src/ui/cassette.svg', 'utf8')
     for (const size of [16, 32, 48, 128]) {
+      // Toolbar pixels are scarce: fill the width. Keep store-icon padding at 128px.
+      const iconSvg = size < 128
+        ? svg.replace('x="16" y="16" width="96" height="96"', 'x="0" y="0" width="128" height="128"')
+        : svg
       const data = await tab.ev(`(async()=>{
-        const image=new Image();image.src='data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}';await image.decode();
+        const image=new Image();image.src='data:image/svg+xml;base64,${Buffer.from(iconSvg).toString('base64')}';await image.decode();
         const c=document.createElement('canvas');c.width=c.height=${size};c.getContext('2d').drawImage(image,0,0,${size},${size});
         return c.toDataURL('image/png').split(',')[1];})()`)
       writeFileSync(`extension/icons/icon-${size}.png`, Buffer.from(data, 'base64'))
