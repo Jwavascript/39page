@@ -64,7 +64,7 @@
 ### HTTP — 16/16
 
 1. **운영 빌드에는 브리지 확장 ID 가 들어 있다.** 운영 `/bridge` 의 CSP 는
-   `frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima` 다 — CWS 비공개 출시 절차(`CWS_PRIVATE_RELEASE.md`)대로 운영 CI
+   `frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima` 다 — CWS 비공개 출시 절차(`CWS_PRIVATE_RELEASE.md` — `fix/extension-clear-playlist-after-save` 브랜치, main 에는 아직 없음)대로 운영 CI
    빌드 환경에 `VITE_BRIDGE_EXTENSION_IDS` 가 설정돼 있다. 같은 값으로 이 커밋을 로컬 빌드하면 공개 자산 12개(index · main JS/CSS ·
    Moments · ShareLinkDialog JS/CSS · shareCardCanvas · 브리지 JS · bridge.html · favicon · privacy.html)와 `/` 가 운영과
    **SHA-256 까지 같고**, 두 브리지 경로의 헤더가 그 빌드의 `_headers` 와 같다. Cloudflare 설정 화면은 읽지 않았다 — 응답과 바이트가
@@ -101,14 +101,24 @@
 
 ## 준비된 롤백 — 실행하지 않음
 
-로컬 `rollback/playback-share` = **`3a0f8ed2f075bcfd041b1aaee7ed0aaebf653820`**. 부모가 배포 커밋 b88ab35 이고 tree 는 이전 main
-c754100 과 완전히 같다(`git diff --exit-code c754100 rollback/playback-share`). 운영이 정상이라 실행하거나 push 하지 않았다.
+롤백은 **지금 원격 main 위에, tree 가 이전 main c754100 과 같은 커밋**을 올리는 것이다 — fast-forward 라 force push 가 아니다. 이
+기록(문서 · 확인 스크립트만)도 main 에 올라갔으므로, 처음 준비한 `3a0f8ed`(부모 b88ab35)는 더 이상 fast-forward 가 아니라 쓰지 않는다.
+로컬 `rollback/playback-share` 는 이 기록이 올라간 main 위에 다시 만들어 두었다(SHA 는 작업 보고). 운영이 정상이라 실행하거나 push 하지
+않았다.
+
+b88ab35 뒤 main 에 **제품 변경이 없을 때만** 그대로 쓴다 — 있으면 그 변경까지 함께 되돌린다.
 
 ```powershell
-# 별도 장애 대응에서만. 원격 main 이 여전히 b88ab35 인지 먼저 확인한다 — 다르면 그대로 쓰지 않는다.
-git ls-remote origin refs/heads/main
+# 별도 장애 대응에서만.
+git fetch origin
+git diff --stat b88ab35 origin/main -- . ':!docs'   # 비어 있어야 한다 (b88ab35 뒤 제품 변경 없음)
+# 준비된 브랜치의 부모가 지금 origin/main 이면 그대로:
 git push origin rollback/playback-share:main
-# fast-forward 이며 force push 가 아니다. Workers Builds 가 이전 코드 tree 를 다시 배포한다.
+# 아니면 지금 main 위에 새로 만든다:
+$tree = git rev-parse 'c754100^{tree}'
+$commit = git commit-tree $tree -p origin/main -m 'revert(release): roll back main to c754100'
+git push origin "${commit}:refs/heads/main"
+# Workers Builds 가 이전 코드 tree 를 다시 배포한다.
 ```
 
 Cloudflare 에 로그인한 담당자는 이전 Version ID `6bbd6023-c7e7-4a89-bf18-745c0ea00649` 로 직접 되돌릴 수도 있다(이 세션에는 관리 인증이
@@ -129,5 +139,11 @@ Cloudflare 에 로그인한 담당자는 이전 Version ID `6bbd6023-c7e7-4a89-b
 - TODO: 개인정보 처리방침에 `#share` 링크(내용을 주소 조각에 담음 · 서버로 가지 않음 · 곡 이름 없는 링크는 열 때 oEmbed) 문구 —
   `public/privacy.html` 은 다른 작업 트리에서 고치는 중이라 이번에 건드리지 않았다.
 - 확인한 브라우저는 Windows Chrome 뿐이다. macOS · Android 의 시스템 글꼴, Safari · Firefox 의 이미지 복사, 폰은 보지 못했다.
-- 확인 스크립트 수정(ux.mjs 선택자)과 이 기록은 **로컬 `release-record/playback-share` 브랜치**에만 있다 — 추가 CI · 운영 배포를 만들지
-  않으려고 push 하지 않았다. 다음 main push 때 함께 넣는다.
+- CWS 작업 줄기(`fix/extension-clear-playlist-after-save` 브랜치와 그 작업 폴더의 미커밋 변경 — 확장 코드 · 아이콘 · CWS 문서 ·
+  `vite.config.ts` 의 시험 확장 ID 검사)는 이번 배포에 넣지 않았다. 따로 검토해 통합한다.
+
+## 이 기록의 배포
+
+이 기록과 확인 스크립트 수정(ux.mjs 선택자)은 사용자 요청("지금까지 내용을 커밋 후 배포해줘")으로 main 에 올렸다. 문서 · 확인
+스크립트만 바뀌므로 웹 자산은 b88ab35 와 같다. 그 빌드의 Version ID 는 이 커밋이 그 빌드를 만들기 때문에 여기 적을 수 없다 —
+GitHub check 에서 본다.
