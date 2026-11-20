@@ -50,6 +50,11 @@ export interface ShareLinkBuilder {
   trackCount: ComputedRef<number>
   momentCount: ComputedRef<number>
   copyState: Readonly<Ref<'idle' | 'copied' | 'manual'>>
+  /**
+   * 공유 카드 이미지에 그릴 내용 (ADR 0041) — 링크와 같은 대상 · Moments · 메모 선택이지만 곡 이름은 **늘** 넣는다(카드에는
+   * 길이 제한이 없다).
+   */
+  cardContent: ComputedRef<ShareLinkContent | null>
   copy(): Promise<void>
 }
 
@@ -109,6 +114,7 @@ export function useShareLink(target: Readonly<Ref<ShareLinkTarget | null>>): Sha
   }
 
   const content = computed(() => contentWith({ titles: titles.value, notes: notes.value }))
+  const cardContent = computed(() => contentWith({ titles: true, notes: notes.value }))
   const fullUrl = computed<string | null>(() =>
     content.value === null ? null : shareLinkUrl(baseUrl(), content.value),
   )
@@ -164,6 +170,7 @@ export function useShareLink(target: Readonly<Ref<ShareLinkTarget | null>>): Sha
     trackCount,
     momentCount,
     copyState,
+    cardContent,
     copy,
   }
 }

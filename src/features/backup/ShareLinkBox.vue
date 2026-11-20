@@ -9,6 +9,7 @@
  */
 import { computed, nextTick, ref, toRef } from 'vue'
 
+import ShareCardBox from './ShareCardBox.vue'
 import { useShareLink, type ShareLinkTarget } from './useShareLink'
 
 const props = defineProps<{ target: ShareLinkTarget | null }>()
@@ -120,6 +121,8 @@ async function copy(): Promise<void> {
         복사하지 못했어요 — 링크를 골라 두었으니 Ctrl+C(⌘C)로 복사하세요.
       </template>
     </p>
+
+    <ShareCardBox v-if="target !== null" :content="link.cardContent.value" />
 
     <p v-if="target !== null" class="note">
       링크에 그대로 들어가는 것: {{ contains }}. 링크를 가진 누구나 볼 수 있어요. 앨범아트는
