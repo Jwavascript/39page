@@ -73,7 +73,7 @@ Moment 를 넘길 수 있어야 한다. 서버 · 계정은 없다 (장기 비�
 - 계약 변경: `ShareTarget` 에 Moment(`{ momentId }`)가 더해졌다. `useShare.ts` 의 새 목록 이름 규칙을 `uniquePlaylistName` 으로
   꺼내 두 가져오기가 같이 쓴다.
 - 받는 쪽은 처음 방문에도 동작한다(기본 목록 "MY RECORDS" 와 함께 새 목록이 생긴다).
-- TODO: 개인정보 처리방침에 "공유 링크는 내용을 주소에 담고 39page 서버로 보내지 않는다 · 곡 이름 없는 링크는 열 때 YouTube 에서
-  제목을 찾는다" 를 적을지 확인 (`public/privacy.html` 은 다른 브랜치에서 고치는 중이라 이번에 건드리지 않았다).
+- ~~TODO: 개인정보 처리방침 문구~~ → 2026-11-20 `public/privacy.html` 에 "공유 링크와 이미지 카드" 항목을 더했다(시행일 2026-11-20)
+  — 주소 조각에 담음 · 서버에 저장하지 않음 · 회수할 수 없음 · 곡 이름 없는 링크는 받는 쪽이 oEmbed 로 제목을 찾음.
 - 공유 카드 이미지(이미지에 링크를 거는 용도)는 다음 단계 — 디자인 리서치는 `docs/product/SHARE_CARD_RESEARCH.md`.
   → 구현: [ADR 0041](0041-share-card-image.md).

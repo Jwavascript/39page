@@ -2,6 +2,12 @@
 
 2026-11-19 KST. **로컬 후보 검증 완료, 운영 미적용.**
 
+> **후속 (2026-11-20)** — 운영 빌드가 공식 Store ID 한 개를 허용한다: `/bridge` · `/bridge.html` 응답이
+> `Content-Security-Policy: frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima` 다
+> ([2026-11-20 배포 HTTP 확인](production-release-2026-11-20-results/http.json)). 빌드 변수는 운영자가 Cloudflare 에서 설정했고, 그
+> 화면은 읽지 않았다. Store 설치본으로 실제 조회 · 저장을 끝까지 확인하지는 않았다 —
+> 아래 "배포 후 TODO" 그대로다.
+
 ## 확인된 원인과 범위
 
 사용자가 제공한 Store 항목과 실제 Store 설치본의 ID가 모두

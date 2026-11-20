@@ -2,6 +2,12 @@
 
 조사일 2026-11-17 KST. 코드 기준 `562f8c1`. 조사 시작 작업 트리는 깨끗했다.
 
+> **후속 (2026-11-20)** — 운영 빌드가 공식 Store ID 한 개를 허용한다: `/bridge` · `/bridge.html` 응답이
+> `Content-Security-Policy: frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima` 다
+> ([2026-11-20 배포 HTTP 확인](production-release-2026-11-20-results/http.json)). 빌드 변수는 운영자가 Cloudflare 에서 설정했고, 그
+> 화면은 읽지 않았다. Store 설치본으로 실제 조회 · 저장을 끝까지 확인하지는 않았다 —
+> [STORE_BRIDGE_ACTIVATION.md](STORE_BRIDGE_ACTIVATION.md) "배포 후 TODO" 그대로다.
+
 ## 판정
 
 **운영 브리지의 허용 ID 설정이 비어 있고 CSP가 iframe 삽입을 차단한다.** 현재 운영 구성으로는 설치 ID `mfijienedkbogcldkjfjjmgbfkfidocb`의 직접 플레이리스트 조회가 성립하지 않는다.
