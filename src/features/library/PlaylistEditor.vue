@@ -29,6 +29,7 @@ import { SHARE_DIALOG } from '@/shared/types/share'
 import LibraryStatusBanner from '@/features/library/LibraryStatusBanner.vue'
 import { useTitleLookup } from '@/features/library/useTitleLookup'
 import TrackList from '@/features/library/TrackList.vue'
+import YouTubeSearch from '@/features/library/YouTubeSearch.vue'
 import {
   PLAYBACK_COORDINATOR,
   PLAY_REFUSED_HIDDEN_MESSAGE,
@@ -109,6 +110,8 @@ const linkTargetId = ref<string | null>(null)
 const draftUrl = ref('')
 const draftTitle = ref('')
 const linkError = ref('')
+/** "YouTube에서 찾기" 검색어. 링크 양식과 함께 열리고 닫힌다 — 저장하지 않는다. */
+const searchQuery = ref('')
 /** 방금 등록한 트랙 제목. 성공을 사용자가 확인할 수 있게 한다. */
 const addedNotice = ref('')
 
@@ -152,6 +155,7 @@ function closeLinkForm(): void {
   draftUrl.value = ''
   draftTitle.value = ''
   linkError.value = ''
+  searchQuery.value = ''
 }
 
 async function startAddLink(): Promise<void> {
@@ -165,6 +169,7 @@ async function startAddLink(): Promise<void> {
   draftUrl.value = ''
   draftTitle.value = ''
   linkError.value = ''
+  searchQuery.value = ''
   addedNotice.value = ''
   // 링크 입력란으로 바로 간다 — 새 목록을 만든 뒤에도 같은 길이다 (M11 U15).
   await nextTick()
@@ -229,6 +234,16 @@ async function submitLink(): Promise<void> {
   const parsed = parseYouTubeVideoId(draftUrl.value)
   if (!parsed.ok) {
     // 실패해도 입력값을 지우지 않는다. 사용자가 고쳐 쓸 수 있어야 한다.
+    // 주소가 아닌 글(곡 이름 등)을 적었으면 그 글로 "YouTube에서 찾기" 를 채운다 — 누르면 바로 검색된다.
+    // 주소처럼 생긴 글(`youtube.com/…`, `www.` …)은 고쳐 쓸 링크로 본다 — 검색어로 옮기지 않는다.
+    if (
+      parsed.reason === 'malformed-url' &&
+      !/youtu|www\.|\/\/|\.com\b|\.be\b/i.test(draftUrl.value)
+    ) {
+      searchQuery.value = draftUrl.value.trim()
+      linkError.value = '링크가 아니에요. 아래 "YouTube에서 검색" 으로 찾아보세요.'
+      return
+    }
     linkError.value = '올바른 YouTube 영상 링크를 입력해주세요.'
     return
   }
@@ -524,8 +539,12 @@ watch(
         플레이리스트를 먼저 만들거나 선택하면 링크를 추가할 수 있어요.
       </p>
 
-      <!-- YouTube 링크 등록 폼. 대상 플레이리스트를 라벨에 명시한다. 스크롤 영역의 맨 위다. -->
-      <form v-if="linkTarget !== null" class="link-form" @submit.prevent="submitLink">
+      <!--
+        YouTube 링크 등록 폼. 대상 플레이리스트를 라벨에 명시한다. 스크롤 영역의 맨 위다.
+        `novalidate` — 브라우저 기본 검사(type="url")가 제출을 막으면 우리 안내(링크 칸의 곡 이름 → 검색어로 옮기기 ·
+        인라인 오류)가 나오지 않는다. 검사는 `submitLink` 가 한다.
+      -->
+      <form v-if="linkTarget !== null" class="link-form" novalidate @submit.prevent="submitLink">
         <p class="form-target">
           <strong>{{ linkTarget.name }}</strong
           >에 추가
@@ -575,6 +594,9 @@ watch(
           <button type="button" class="pill" @click="closeLinkForm">닫기</button>
         </div>
       </form>
+
+      <!-- 링크가 없으면 YouTube 검색 결과를 새 탭으로 연다 (API 키 없음). 링크 양식과 따로 된 양식이다. -->
+      <YouTubeSearch v-if="linkTarget !== null" v-model:query="searchQuery" />
 
       <h3 class="drawer-section-title">TRACKS</h3>
 

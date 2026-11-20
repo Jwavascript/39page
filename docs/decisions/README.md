@@ -69,3 +69,4 @@
 - [0036](0036-collapsible-dashboard-header.md): 페이지 메모리의 헤더 접기·펼치기, 스크롤·포커스 유지, F11 독립 (채택).
 - [0037](0037-extension-cassette-design.md): 확장 팝업·패널의 Cassette 토큰·카세트·상태 표현 재사용, 웹앱 테마 동기화 제외 (채택).
 - [0038](0038-queue-follows-source-and-play-modes.md): 재생 큐는 출처 목록을 따르고(안내 없음), 목록 바꾸기는 바로 재생, 셔플·반복은 메모리 모드 (채택).
+- [0039](0039-youtube-search-without-api.md): 곡 찾기는 API 키 없이 YouTube 검색 결과 페이지를 새 탭으로 연다 — 검색어를 보내거나 저장하지 않음 (채택).
