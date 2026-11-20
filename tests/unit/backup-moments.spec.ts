@@ -42,6 +42,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
+import { jsonExporter } from '../support/jsonExport'
 
 const OLD_FIXTURE = readFileSync(resolve(process.cwd(), 'tests/fixtures/backup-v1.json'), 'utf8')
 const NEW_FIXTURE = readFileSync(
@@ -180,14 +181,11 @@ function stubFailingWrites(initial: readonly string[]) {
 }
 
 const panel = (s: Session) => s.wrapper.get('.backup')
+/** 복구본 내보내기 단추 — 저장된 데이터를 읽지 못했을 때만 있다 (ADR 0043). */
 const exportButton = (s: Session) =>
   panel(s)
     .findAll('.pill')
-    // M12-4: 전체 백업(ZIP) 단추를 빼고 JSON(또는 복구본) 단추를 고른다.
-    .filter(
-      (n) =>
-        n.text().includes('내보내기') && !n.text().includes('먼저') && !n.text().includes('ZIP'),
-    )[0]
+    .filter((n) => n.text() === '복구본 내보내기')[0]
 const applyButton = (s: Session) =>
   s.wrapper.findAll('.preview .pill').filter((n) => n.text().includes('교체하고'))[0]
 const cancelButton = (s: Session) =>
@@ -202,8 +200,9 @@ async function pick(s: Session, text: string): Promise<void> {
   await nextTick()
 }
 
-async function exportFile(s: Session, created: Blob[]): Promise<BackupFile> {
-  await exportButton(s)?.trigger('click')
+/** JSON 내보내기 — 화면 단추가 없어(ADR 0043) 같은 composable 을 부른다. */
+async function exportFile(_s: Session, created: Blob[]): Promise<BackupFile> {
+  jsonExporter().request()
   await flushPromises()
   const blob = created[created.length - 1]
   if (blob === undefined) throw new Error('내려받지 않았다')
@@ -295,17 +294,19 @@ describe('A. 내보내기', () => {
     expect(file.data.moments?.data[0]?.note).toBe('지금 있던 순간')
   })
 
-  it('DATA 패널이 지금 Moments 를 담아 내려받고 개수를 적는다', async () => {
+  it('JSON 내보내기가 지금 Moments 를 담아 내려받고 개수를 알린다', async () => {
     seedStorage()
-    const s = boot()
+    boot()
     const created = stubDownloads()
 
-    expect(panel(s).get('.backup-count').text()).toContain('Moment 2개')
-    const file = await exportFile(s, created)
+    const exporter = jsonExporter()
+    exporter.request()
+    await flushPromises()
+    const file = JSON.parse(await (created[created.length - 1] as Blob).text()) as BackupFile
 
     expect(file.data.moments?.data.map((m) => m.id)).toEqual(['cur-1', 'cur-2'])
     expect(file.integrity).toBeUndefined()
-    expect(panel(s).text()).toContain('Moment 2개')
+    expect(exporter.notice.value).toContain('Moment 2개')
   })
 
   it('저장 전 초안 · 쓰던 메모는 담지 않는다 — store 의 영속 필드만 (M11-7C 저장 모델 B)', async () => {

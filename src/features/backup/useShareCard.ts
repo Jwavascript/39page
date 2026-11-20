@@ -8,8 +8,8 @@
  * 공유 대화상자는 닫아도 남아 있어서 대상이 바뀌면 지난 카드가 잠깐 보인다. 그동안은 복사 · 저장을 끈다 — 다른 대상의
  * 카드를 붙여 넣지 않게. 보이는 정보(틀 · 크기 · 파일 이름)는 늘 **그려진** 카드의 것이다.
  *
- * 사용자가 올린 앨범아트를 넣는다 (ADR 0042) — 대상의 트랙들 가운데 앞에서부터 처음 만나는 사용자 그림. "앨범아트 넣기" 를
- * 끄면 39page 기본 그림이다. 그림 바이트는 이 브라우저의 IndexedDB 에서 읽어 캔버스에 그릴 뿐 어디에도 보내지 않는다.
+ * 사용자가 올린 앨범아트를 넣는다 (ADR 0042) — 대상의 트랙들 가운데 앞에서부터 처음 만나는 사용자 그림. 끄는 칸은 ADR 0043
+ * 에서 없앴다. 그림 바이트는 이 브라우저의 IndexedDB 에서 읽어 캔버스에 그릴 뿐 어디에도 보내지 않는다.
  */
 import {
   computed,
@@ -49,10 +49,6 @@ export interface RenderedShareCard {
 export interface ShareCardView {
   /** 지금 대상 · 선택 · 테마로 그릴 카드. */
   readonly model: ComputedRef<ShareCardModel | null>
-  /** 대상에 사용자 앨범아트가 있는가 — "앨범아트 넣기" 를 보일지. */
-  readonly hasArt: ComputedRef<boolean>
-  /** "앨범아트 넣기" — 처음에는 켜져 있다. */
-  readonly includeArt: Ref<boolean>
   /** 마지막으로 그려진 카드. 다시 그리는 동안(`rendering`)은 지난 카드다. */
   readonly rendered: Readonly<Ref<RenderedShareCard | null>>
   readonly previewUrl: Readonly<Ref<string | null>>
@@ -111,8 +107,6 @@ export function useShareCard(
   const theme = useThemeStore()
   const artwork = useArtworkStore()
 
-  const includeArt = ref(true)
-
   /** 넣을 수 있는 사용자 그림 — 앞에서부터 처음 만나는 것. 자산을 찾지 못하는 연결(사라진 그림)은 건너뛴다. */
   const availableArt = computed<ShareCardArt | null>(() => {
     for (const key of artKeys.value) {
@@ -122,7 +116,6 @@ export function useShareCard(
     }
     return null
   })
-  const hasArt = computed(() => availableArt.value !== null)
 
   const model = computed<ShareCardModel | null>(() =>
     content.value === null
@@ -131,7 +124,7 @@ export function useShareCard(
           content.value,
           theme.current === 'kawaii-synth-cassette' ? 'kawaii' : 'mono',
           new Date(),
-          includeArt.value ? availableArt.value : null,
+          availableArt.value,
         ),
   )
 
@@ -244,8 +237,6 @@ export function useShareCard(
 
   return {
     model,
-    hasArt,
-    includeArt,
     rendered,
     previewUrl,
     state,

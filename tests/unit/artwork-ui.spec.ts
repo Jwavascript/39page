@@ -419,7 +419,7 @@ describe('M12-6A — 편집 세션과 미리보기', () => {
     ctx.wrapper.unmount()
     expect(urls.live.size).toBe(0)
   })
-  it('곡 관리와 선택하지 않은 목록 관리에서 공유 대상은 정확하고 Moments는 항상 기본 꺼짐이다', async () => {
+  it('곡 관리와 선택하지 않은 목록 관리에서 공유 대상이 정확하다 — 공유 대화상자는 따로 뜬다 (ADR 0043)', async () => {
     const ctx = await setup()
     const other = await ctx.library.createPlaylist('OTHER')
     if (!other.ok) throw new Error('playlist')
@@ -429,26 +429,18 @@ describe('M12-6A — 편집 세션과 미리보기', () => {
     await flushPromises()
     await ctx.wrapper.get('[aria-label="One 공유"]').trigger('click')
     await flushPromises()
-    expect((ctx.wrapper.get('[aria-label="공유할 목록"]').element as HTMLSelectElement).value).toBe(
-      ctx.playlistId,
-    )
-    expect((ctx.wrapper.get('[aria-label="공유할 범위"]').element as HTMLSelectElement).value).toBe(
-      ctx.keyOne.trackId,
-    )
-    await ctx.wrapper.get('.share input[type="checkbox"]').setValue(true)
-    await ctx.wrapper.get('[aria-label="데이터 닫기"]').trigger('click')
+    const target = () => ({
+      kind: ctx.wrapper.get('.share-dialog .target-kind').text(),
+      name: ctx.wrapper.get('.share-dialog .target-name').text(),
+    })
+    expect(target()).toEqual({ kind: '곡', name: 'One' })
+    await ctx.wrapper.get('[aria-label="공유 닫기"]').trigger('click')
+    await flushPromises()
+    expect(ctx.wrapper.find('.share-dialog').exists()).toBe(false)
     await ctx.wrapper.get('[aria-label="OTHER 관리 — 이름 수정 · 삭제"]').trigger('click')
     await ctx.wrapper.get('[aria-label="OTHER 목록 공유"]').trigger('click')
     await flushPromises()
-    expect((ctx.wrapper.get('[aria-label="공유할 목록"]').element as HTMLSelectElement).value).toBe(
-      other.playlistId,
-    )
-    expect((ctx.wrapper.get('[aria-label="공유할 범위"]').element as HTMLSelectElement).value).toBe(
-      '',
-    )
-    expect(
-      (ctx.wrapper.get('.share input[type="checkbox"]').element as HTMLInputElement).checked,
-    ).toBe(false)
+    expect(target()).toEqual({ kind: '플레이리스트', name: 'OTHER' })
     expect(ctx.library.selectedPlaylistId).toBe(ctx.playlistId)
     ctx.wrapper.unmount()
   })

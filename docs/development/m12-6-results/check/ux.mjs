@@ -205,15 +205,15 @@ try {
     await t.click('.app-nav button')
     await t.click('[aria-label="다른 목록 관리 — 이름 수정 · 삭제"]')
     await t.click('[aria-label="다른 목록 목록 공유"]')
-    // "Moments off" 는 ZIP 공유의 Moments 칸이다. ADR 0040 부터 그 위에 "링크로 공유" 칸(.link-share)이 있고, 그 첫 칸
-    // "곡 이름 넣기" 는 기본으로 켜져 있다 — 링크 칸 밖의 체크박스를 본다.
+    // ADR 0043 — 공유는 따로 된 공유 대화상자다. 목록 · 범위 고르기와 Moments 칸이 없어졌다 — 대상 한 줄과 고르는 칸이
+    // 없는 것을 본다 (목록 공유에는 Moments 가 들어가지 않는다).
     record(
-      'Playlist management shares unselected target; Moments off',
+      'Playlist management shares unselected target; no options (ADR 0043)',
       await t.ev(
-        `document.querySelector('[aria-label="공유할 목록"]').value==='b' && document.querySelector('[aria-label="공유할 범위"]').value==='' && [...document.querySelectorAll('.share input[type="checkbox"]')].find((input) => !input.closest('.link-share'))?.checked === false`,
+        `document.querySelector('.share-dialog .target-kind')?.textContent==='플레이리스트' && document.querySelector('.share-dialog .target-name')?.textContent==='다른 목록' && document.querySelectorAll('.share-dialog input[type="checkbox"], .share-dialog select').length===0`,
       ),
     )
-    await t.click('[aria-label="데이터 닫기"]')
+    await t.click('[aria-label="공유 닫기"]')
     await t.ev(
       `[...document.querySelectorAll('.list-select')].find(e=>e.textContent.includes('다른 목록')).click(); true`,
     )

@@ -39,6 +39,8 @@ import type { LibraryData } from '@/shared/types'
 import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
 import { THEME_STORAGE_VERSION, useThemeStore } from '@/stores/theme'
 
+import { jsonExporter } from '../support/jsonExport'
+
 const VIDEO_A = 'aaaaaaaaaaa'
 const VIDEO_B = 'bbbbbbbbbbb'
 const VIDEO_C = 'ccccccccccc'
@@ -467,11 +469,12 @@ function mountApp() {
 
 type Context = ReturnType<typeof mountApp>
 
+/**
+ * 복구본 내보내기 단추 — 저장된 데이터를 읽지 못했을 때만 있다 (ADR 0043). 평소의 JSON 내보내기는 화면에 단추가 없어
+ * `jsonExporter()` 로 같은 composable 을 부른다.
+ */
 const backupButton = (context: Context) =>
-  // M12-4: 위에 전체 백업(ZIP) 단추가 생겼다 — JSON 백업(또는 복구본) 단추를 고른다.
-  context.wrapper
-    .findAll('.backup .pill')
-    .filter((node) => node.text().includes('JSON 백업') || node.text().includes('복구본'))[0]
+  context.wrapper.findAll('.backup .pill').filter((node) => node.text().includes('복구본'))[0]
 
 async function seed(store: ReturnType<typeof useLibraryStore>): Promise<void> {
   const created = await store.createPlaylist('NIGHT DRIVE')
@@ -494,86 +497,69 @@ function stubDownloadGlobals() {
   return created
 }
 
-describe('E. 데이터 대화상자의 백업 패널 (M11-2 에서 드로어 바닥에서 옮김)', () => {
-  it('패널이 한 플레이리스트의 편집 영역이 아니라 전역 데이터 대화상자에 있다', () => {
+describe('E. 데이터 대화상자의 백업 패널 (M11-2 → ADR 0043 옮기기 전용)', () => {
+  it('전역 데이터 대화상자에 단추 둘뿐 — 전체 백업 내보내기 · 백업 가져오기', () => {
     const context = mountApp()
 
     const panel = context.wrapper.get('.backup')
-    // 선과 다른 머리말로 끊는다 — BackupPanel 은 그대로 재사용한다.
-    expect(panel.find('.rule').exists()).toBe(true)
-    expect(panel.get('.backup-title').text()).toBe('DATA')
-    // 백업은 앱 전체 데이터 관리다 (M11 U1) — 플레이리스트 편집 표면 · 보관함 안에 없다.
-    const dialog = context.wrapper.get('#data-dialog').element
-    expect(dialog.contains(panel.element)).toBe(true)
+    const dialog = context.wrapper.get('#data-dialog')
+    expect(dialog.element.contains(panel.element)).toBe(true)
     expect(context.wrapper.get('#archive-panel').element.contains(panel.element)).toBe(false)
     expect(context.wrapper.findAll('.backup')).toHaveLength(1)
-    // 대상이 전체임을 대화상자가 말한다.
-    expect(context.wrapper.get('#data-dialog-scope').text()).toContain(
-      '플레이리스트와 곡, Moments, 테마',
-    )
+    expect(dialog.findAll('.backup .pill').map((node) => node.text())).toEqual([
+      '전체 백업 내보내기',
+      '백업 가져오기',
+    ])
   })
 
-  it('편집 버튼과 달리 강조를 쓰지 않는다', () => {
+  it('설명 글 · 공유 · 저장 공간 칸이 없다 — 옮기기 전용 (ADR 0043)', () => {
     const context = mountApp()
 
-    expect(backupButton(context)?.classes()).not.toContain('pill--strong')
-    expect(backupButton(context)?.text()).toContain('JSON 백업 내보내기')
-  })
-
-  it('평문이라는 사실을 항상 알린다', () => {
-    const context = mountApp()
-
-    const note = context.wrapper.get('.backup-note').text()
-    expect(note).toContain('평문')
-    expect(note).toContain('영상 ID')
-  })
-
-  it('담길 개수를 버튼 옆에 적는다', async () => {
-    const context = mountApp()
-    await seed(context.library)
-    await nextTick()
-
-    expect(context.wrapper.get('.backup-count').text()).toContain('1개')
-    expect(context.wrapper.get('.backup-count').text()).toContain('2곡')
+    const text = context.wrapper.get('#data-dialog').text()
+    for (const gone of ['평문', 'JSON 백업', '공유', '앨범아트 이미지', 'ARTWORK', '파일로']) {
+      expect({ gone, found: text.includes(gone) }).toEqual({ gone, found: false })
+    }
+    expect(context.wrapper.find('#data-dialog .share').exists()).toBe(false)
+    expect(context.wrapper.find('#data-dialog .artwork-storage').exists()).toBe(false)
   })
 
   it('두 테마에서 모두 보인다', async () => {
     const context = mountApp()
-    expect(backupButton(context)?.exists()).toBe(true)
+    expect(context.wrapper.find('.backup .full-backup').exists()).toBe(true)
 
     context.theme.setTheme('mono-vinyl')
     await nextTick()
 
-    expect(backupButton(context)?.exists()).toBe(true)
+    expect(context.wrapper.find('.backup .full-backup').exists()).toBe(true)
     // 테마별 색을 새로 만들지 않았다 — 드로어 토큰을 그대로 쓴다.
     const panelSource = readSource('src/features/backup/BackupPanel.vue')
     expect(panelSource).not.toMatch(/:\s*#[0-9a-fA-F]{3,8}/)
   })
 
-  it('누르면 내려받고 결과를 알린다', async () => {
+  it('JSON 내보내기 — 내려받고 결과를 알린다', async () => {
     const context = mountApp()
     await seed(context.library)
     await nextTick()
     const created = stubDownloadGlobals()
+    const exporter = jsonExporter()
 
-    await backupButton(context)?.trigger('click')
+    exporter.request()
 
     expect(created).toHaveLength(1)
-    const result = context.wrapper.get('.backup-result').text()
-    expect(result).toContain('39page-backup-')
-    expect(result).toContain('1개')
-    expect(result).toContain('2곡')
-    expect(context.wrapper.get('.backup-result').classes()).not.toContain('is-failed')
+    expect(exporter.notice.value).toContain('39page-backup-')
+    expect(exporter.notice.value).toContain('1개')
+    expect(exporter.notice.value).toContain('2곡')
+    expect(exporter.failed.value).toBe(false)
   })
 
-  it('내려받은 파일이 지금 라이브러리와 테마를 담는다', async () => {
+  it('JSON 내보내기 — 내려받은 파일이 지금 라이브러리와 테마를 담는다', async () => {
     const context = mountApp()
     await seed(context.library)
     context.theme.setTheme('mono-vinyl')
     await nextTick()
     const created = stubDownloadGlobals()
 
-    await backupButton(context)?.trigger('click')
+    jsonExporter().request()
     const file = JSON.parse(await (created[0] as Blob).text()) as BackupFile
 
     expect(file.data.library.data.playlists[0]?.name).toBe('NIGHT DRIVE')
@@ -585,15 +571,16 @@ describe('E. 데이터 대화상자의 백업 패널 (M11-2 에서 드로어 바
     expect(file.data.preferences?.theme?.data).toBe('mono-vinyl')
   })
 
-  it('내려받기가 실패하면 오류 어조로 알린다', async () => {
-    const context = mountApp()
+  it('JSON 내보내기 — 내려받기가 실패하면 실패로 알린다', async () => {
+    mountApp()
     await nextTick()
     vi.stubGlobal('URL', { ...URL, createObjectURL: undefined })
+    const exporter = jsonExporter()
 
-    await backupButton(context)?.trigger('click')
+    exporter.request()
 
-    expect(context.wrapper.get('.backup-result').classes()).toContain('is-failed')
-    expect(context.wrapper.get('.backup-result').text()).toContain('내려받을 수 없습니다')
+    expect(exporter.failed.value).toBe(true)
+    expect(exporter.notice.value).toContain('내려받을 수 없습니다')
   })
 })
 
@@ -698,7 +685,9 @@ describe('F. 보호·접근 실패 상태', () => {
     expect(context.library.lastWriteFailure).not.toBeNull()
     // 이때 파일은 저장소보다 **더** 온전하다. 복구본이 아니다.
     expect(context.wrapper.get('.backup-warning').text()).toContain('저장되지 않았습니다')
-    expect(backupButton(context)?.text()).toContain('JSON 백업 내보내기')
+    // 복구본 단추는 없다 — 전체 백업이 지금 메모리의 것을 담는다.
+    expect(backupButton(context)).toBeUndefined()
+    expect(context.wrapper.find('.backup .full-backup').exists()).toBe(true)
   })
 })
 
@@ -711,7 +700,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
     const themeBefore = globalThis.localStorage.getItem(STORAGE_KEYS.theme)
     stubDownloadGlobals()
 
-    await backupButton(context)?.trigger('click')
+    jsonExporter().request()
 
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toBe(before)
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.theme)).toBe(themeBefore)
@@ -724,7 +713,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
     stubDownloadGlobals()
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
 
-    await backupButton(context)?.trigger('click')
+    jsonExporter().request()
 
     expect(setItem).not.toHaveBeenCalled()
   })
@@ -742,7 +731,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
       theme: context.theme.current,
     }
 
-    await backupButton(context)?.trigger('click')
+    jsonExporter().request()
 
     expect(JSON.stringify(context.library.playlists)).toBe(before.playlists)
     expect(context.library.selectedPlaylistId).toBe(before.selected)
@@ -760,7 +749,7 @@ describe('G. 내보내기가 아무것도 바꾸지 않는다', () => {
     const mountHost = context.wrapper.get('.player-mount').element
     const adapterNode = context.fake.hostNode
 
-    await backupButton(context)?.trigger('click')
+    jsonExporter().request()
     await nextTick()
 
     expect(context.wrapper.get('[data-instance-id="player-main"]').element).toBe(surface)

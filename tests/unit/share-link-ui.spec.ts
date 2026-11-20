@@ -114,11 +114,8 @@ const parsedLink = (s: Session) => {
   const url = linkOf(s)
   return parseShareLink(url.slice(url.indexOf('#')))
 }
-const checkbox = (s: Session, label: string) =>
-  s.wrapper
-    .findAll('.link-share label.check')
-    .find((node) => node.text().includes(label))
-    ?.get('input')
+/** 공유 대화상자 (ADR 0043) — 데이터 · 백업과 따로 뜬다. */
+const shareDialog = (s: Session) => s.wrapper.get('.share-dialog')
 
 async function openArchive(s: Session): Promise<void> {
   await s.wrapper.get('.app-nav button').trigger('click')
@@ -177,11 +174,18 @@ afterEach(() => {
  * A. 만들기
  * ================================================================== */
 
-describe('A. 링크 만들기 — 공유 묶음', () => {
-  it('"이 곡 공유" → 그 곡의 링크가 바로 보이고, 누르면 클립보드에 복사된다', async () => {
+describe('A. 링크 만들기 — 공유 대화상자 (ADR 0043)', () => {
+  it('"이 곡 공유" → 공유 대화상자가 따로 뜨고 그 곡의 링크가 바로 보인다 · 누르면 복사', async () => {
     const writeText = stubClipboard()
     const s = boot()
     await shareTrack(s, 'Alpha')
+
+    // 데이터 · 백업이 아니라 공유만 뜬다 — 백업 단추가 먼저 보이지 않는다.
+    expect(s.wrapper.get('.data-backdrop').attributes('hidden')).toBeDefined()
+    expect(shareDialog(s).text()).toContain('곡')
+    expect(shareDialog(s).get('.target-name').text()).toBe('Alpha')
+    // 고르는 칸이 없다.
+    expect(shareDialog(s).findAll('input[type="checkbox"], select')).toHaveLength(0)
 
     const url = linkOf(s)
     expect(url.startsWith(`${location.origin}${location.pathname}#share?v=1&d=`)).toBe(true)
@@ -189,9 +193,6 @@ describe('A. 링크 만들기 — 공유 묶음', () => {
       ok: true,
       content: { kind: 'track', name: '', tracks: [{ videoId: A, title: 'Alpha' }], moments: [] },
     })
-    expect(s.wrapper.get('.link-share .meta').text()).toContain('곡 1개')
-    // Moments 가 없으니 넣기를 고를 수 없다.
-    expect(checkbox(s, 'Moments')?.attributes('disabled')).toBeDefined()
 
     await s.wrapper.get('.link-share .copy').trigger('click')
     await settle()
@@ -201,31 +202,32 @@ describe('A. 링크 만들기 — 공유 묶음', () => {
     expect(Object.keys(globalThis.localStorage).some((key) => key.includes('share'))).toBe(false)
   })
 
-  it('목록 공유 — 곡 이름을 빼면 링크가 짧아지고, Moments · 메모는 고를 때만 들어간다', async () => {
+  it('곡 공유 — 그 곡의 Moments 와 메모가 기본으로 들어간다', async () => {
+    stubClipboard()
+    const s = boot({ moments: [moment(), moment({ id: 'm2', atSeconds: 12, note: '' })] })
+    await shareTrack(s, 'Alpha')
+
+    expect(shareDialog(s).get('.target-detail').text()).toBe('Moment 2개')
+    const parsed = parsedLink(s)
+    expect(parsed.ok && parsed.content.moments).toEqual([
+      { videoId: A, atSeconds: 12, note: '' },
+      { videoId: A, atSeconds: 83, note: '후렴 최고' },
+    ])
+  })
+
+  it('목록 공유 — 고르는 칸 없이 곡 이름을 넣고, Moments 는 넣지 않는다', async () => {
     stubClipboard()
     const s = boot({ moments: [moment()] })
     await shareList(s, 0)
 
-    const full = linkOf(s)
-    expect(parsedLink(s)).toMatchObject({
+    expect(shareDialog(s).get('.target-name').text()).toBe('ONE')
+    expect(shareDialog(s).findAll('input[type="checkbox"], select')).toHaveLength(0)
+    const parsed = parsedLink(s)
+    expect(parsed).toMatchObject({
       ok: true,
       content: { kind: 'playlist', name: 'ONE', moments: [] },
     })
-
-    await checkbox(s, '곡 이름 넣기')?.setValue(false)
-    expect(linkOf(s).length).toBeLessThan(full.length)
-    const noTitles = parsedLink(s)
-    expect(noTitles.ok && noTitles.content.tracks.map((t) => t.title)).toEqual(['', ''])
-
-    await checkbox(s, 'Moments 1개 넣기')?.setValue(true)
-    let parsed = parsedLink(s)
-    expect(parsed.ok && parsed.content.moments).toEqual([{ videoId: A, atSeconds: 83, note: '' }])
-    expect(s.wrapper.get('.link-share .note').text()).toContain('Moment 시점')
-
-    await checkbox(s, '메모 넣기')?.setValue(true)
-    parsed = parsedLink(s)
-    expect(parsed.ok && parsed.content.moments[0]?.note).toBe('후렴 최고')
-    expect(s.wrapper.get('.link-share .note').text()).toContain('메모')
+    expect(parsed.ok && parsed.content.tracks.map((t) => t.title)).toEqual(['Alpha', 'Bravo'])
   })
 
   it('복사가 막히면 링크를 골라 두고 직접 복사하라고 말한다', async () => {
@@ -239,34 +241,44 @@ describe('A. 링크 만들기 — 공유 묶음', () => {
     expect(document.activeElement).toBe(linkField(s).element)
   })
 
-  it('긴 목록은 "잘릴 수 있어요" 와 곡 이름을 뺀 길이를 알린다', async () => {
-    const many: Playlist = {
-      id: 'many',
-      name: 'MANY',
-      tracks: Array.from({ length: 60 }, (_, i) => ({
-        id: `m${String(i)}`,
-        source: 'youtube' as const,
-        videoId: `v${String(i).padStart(10, '0')}`,
-        // 겹치지 않는 한글 — 압축으로 줄지 않는 실제 제목들처럼.
-        title: Array.from({ length: 24 }, (_, k) =>
-          String.fromCharCode(0xac00 + ((i * 7919 + k * 104_729) % 11_172)),
-        ).join(''),
-      })),
-    }
+  /** 겹치지 않는 한글 — 압축으로 줄지 않는 실제 제목들처럼. */
+  const longList = (count: number): Playlist => ({
+    id: 'many',
+    name: 'MANY',
+    tracks: Array.from({ length: count }, (_, i) => ({
+      id: `m${String(i)}`,
+      source: 'youtube' as const,
+      videoId: `v${String(i).padStart(10, '0')}`,
+      title: Array.from({ length: 24 }, (_, k) =>
+        String.fromCharCode(0xac00 + ((i * 7919 + k * 104_729) % 11_172)),
+      ).join(''),
+    })),
+  })
+
+  it('긴 목록은 "잘릴 수 있어요" 라고 알리고 그래도 링크는 만든다', async () => {
     stubClipboard()
-    const s = boot({ lists: [many], selected: 'many' })
+    const s = boot({ lists: [longList(60)], selected: 'many' })
     await shareList(s, 0)
 
-    const warn = s.wrapper.get('.link-share .warn').text()
-    expect(warn).toContain('잘릴 수 있어요')
-    expect(warn).toMatch(/곡 이름을 빼면 [\d,]+자/)
-    // 그래도 링크는 만든다 — 어디까지 받아 주는지는 게시판마다 다르다.
+    expect(s.wrapper.get('.link-share .warn').text()).toContain('잘릴 수 있어요')
+    // 어디까지 받아 주는지는 게시판마다 다르다.
     expect(s.wrapper.get('.link-share .copy').attributes('disabled')).toBeUndefined()
+  })
+
+  it('곡 이름까지는 담을 수 없을 만큼 길면 링크에서만 곡 이름을 뺀다 — 카드에는 남는다', async () => {
+    stubClipboard()
+    const s = boot({ lists: [longList(400)], selected: 'many' })
+    await shareList(s, 0)
+
+    expect(shareDialog(s).text()).toContain('링크에는 곡 이름을 뺐어요')
+    const parsed = parsedLink(s)
+    expect(parsed.ok && parsed.content.tracks).toHaveLength(400)
+    expect(parsed.ok && parsed.content.tracks.every((t) => t.title === '')).toBe(true)
   })
 })
 
 describe('B. 링크 만들기 — Moment 하나', () => {
-  it('Moments 관리의 "링크로 공유" → 그 순간의 링크, 파일 공유는 숨긴다', async () => {
+  it('Moments 관리의 "링크로 공유" → 그 순간과 메모의 링크', async () => {
     stubClipboard()
     const s = boot({ moments: [moment()] })
     await openArchive(s)
@@ -277,33 +289,17 @@ describe('B. 링크 만들기 — Moment 하나', () => {
     await s.wrapper.get('[data-moment-share="m1"]').trigger('click')
     await settle()
 
-    expect(s.wrapper.get('.moment-target').text()).toContain('Alpha')
-    expect(s.wrapper.get('.moment-target').text()).toContain('1:23')
-    expect(
-      s.wrapper.findAll('#data-dialog button').some((b) => b.text() === '공유 파일 만들기'),
-    ).toBe(false)
+    expect(shareDialog(s).get('.target-name').text()).toBe('Alpha')
+    expect(shareDialog(s).get('.target-detail').text()).toBe('1:23')
     expect(parsedLink(s)).toEqual({
       ok: true,
       content: {
         kind: 'moment',
         name: '',
         tracks: [{ videoId: A, title: 'Alpha' }],
-        moments: [{ videoId: A, atSeconds: 83, note: '' }],
+        moments: [{ videoId: A, atSeconds: 83, note: '후렴 최고' }],
       },
     })
-    await checkbox(s, '메모 넣기')?.setValue(true)
-    const parsed = parsedLink(s)
-    expect(parsed.ok && parsed.content.moments[0]?.note).toBe('후렴 최고')
-
-    // 목록 · 곡 공유로 돌아간다.
-    await s.wrapper
-      .findAll('.moment-target button')
-      .find((b) => b.text() === '목록 · 곡 공유로 바꾸기')
-      ?.trigger('click')
-    expect(s.wrapper.find('.moment-target').exists()).toBe(false)
-    expect(
-      s.wrapper.findAll('#data-dialog button').some((b) => b.text() === '공유 파일 만들기'),
-    ).toBe(true)
   })
 })
 

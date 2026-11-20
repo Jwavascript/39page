@@ -19,6 +19,10 @@
  *
  * M8-3 에서 가져오기가 같은 패널에 들어왔다. 내보내기와 가져오기가 `DATA`
  * 머리말 아래에 나란히 선다.
+ *
+ * ADR 0043 — 다른 기기로 옮기는 용도로만 남긴다. 보이는 것은 "전체 백업 내보내기" · "백업 가져오기" 두 단추뿐이고 설명
+ * 글(평문 고지 · 개수 · JSON 안내)을 두지 않는다. JSON 내보내기는 저장된 데이터를 읽지 못했을 때의 "복구본 내보내기" 로만
+ * 남는다. 가져오기는 ZIP · JSON 을 모두 받는다.
  */
 import { ref } from 'vue'
 
@@ -95,10 +99,7 @@ function cancelImport(): void {
 </script>
 
 <template>
-  <section class="backup" aria-labelledby="backup-title">
-    <div class="rule" />
-    <h3 id="backup-title" class="backup-title">DATA</h3>
-
+  <section class="backup" aria-label="백업">
     <p v-if="backup.warning.value !== ''" class="backup-warning" role="status">
       {{ backup.warning.value }}
     </p>
@@ -106,7 +107,7 @@ function cancelImport(): void {
       {{ backup.unsavedNotice.value }}
     </p>
 
-    <!-- ---------- 전체 백업 (ZIP, M12-4) — 권장 ---------- -->
+    <!-- 다른 기기로 옮기기 — 단추 둘뿐이다 (ADR 0043). 전체 백업은 앨범아트까지 담은 ZIP 이다 (M12-4). -->
     <div class="backup-actions">
       <button
         type="button"
@@ -115,11 +116,24 @@ function cancelImport(): void {
         :aria-busy="full.busy.value ? 'true' : 'false'"
         @click="full.exportZip()"
       >
-        {{ full.busy.value ? '전체 백업 만드는 중…' : '전체 백업 (ZIP) 내보내기' }}
+        {{ full.busy.value ? '전체 백업 만드는 중…' : '전체 백업 내보내기' }}
       </button>
-      <span class="full-count">
-        앨범아트 이미지 {{ artwork.usage.assets }}개 · {{ formatBytes(artwork.usage.bytes) }} 포함
-      </span>
+      <button
+        type="button"
+        class="pill backup-import"
+        :disabled="fullRestore.reading.value"
+        @click="pickFile"
+      >
+        {{ fullRestore.reading.value ? '파일 확인하는 중…' : '백업 가져오기' }}
+      </button>
+      <input
+        ref="fileInput"
+        class="file-input"
+        type="file"
+        accept="application/zip,.zip,application/json,.json"
+        aria-label="백업 파일 선택 (ZIP 또는 JSON)"
+        @change="onFileChange"
+      />
     </div>
     <p
       v-if="full.notice.value !== ''"
@@ -131,20 +145,13 @@ function cancelImport(): void {
       {{ full.notice.value }}
     </p>
 
-    <div class="backup-actions">
-      <button type="button" class="pill" @click="backup.request()">
-        {{ backup.isRecovery.value ? '복구본 내보내기' : 'JSON 백업 내보내기 (앨범아트 제외)' }}
-      </button>
-      <span class="backup-count">
-        플레이리스트 {{ backup.counts.value.playlists }}개 · {{ backup.counts.value.tracks }}곡 ·
-        Moment {{ backup.counts.value.moments }}개
-      </span>
-    </div>
-
     <!--
-      복구본은 **명시적 선택**을 거친다. 온전하지 않은 파일을 나중에 전체
-      백업으로 오인하면 잃은 것을 모르고 덮어쓸 수 있다.
+      저장된 데이터를 읽지 못한 상태에서만 — 읽은 만큼을 복구본(JSON)으로 꺼내는 길. **명시적 선택**을 거친다. 온전하지
+      않은 파일을 나중에 전체 백업으로 오인하면 잃은 것을 모르고 덮어쓸 수 있다.
     -->
+    <div v-if="backup.isRecovery.value" class="backup-actions">
+      <button type="button" class="pill" @click="backup.request()">복구본 내보내기</button>
+    </div>
     <div
       v-if="backup.needsConfirm.value"
       class="confirm"
@@ -171,31 +178,6 @@ function cancelImport(): void {
     >
       {{ backup.notice.value }}
     </p>
-
-    <p v-if="full.customCount.value > 0" class="backup-warning json-no-artwork">
-      JSON 백업에는 앨범아트(내 이미지 {{ full.customCount.value }}곡)가 들어가지 않습니다 — 다른
-      브라우저에서 그림까지 되살리려면 전체 백업(ZIP)을 쓰세요.
-    </p>
-
-    <p class="backup-note">
-      {{ backup.plaintextNotice }} ZIP 도 압축만 했을 뿐 암호화하지 않습니다.
-    </p>
-
-    <!-- ---------- 가져오기 (M8-3) ---------- -->
-
-    <div class="backup-actions backup-import">
-      <button type="button" class="pill" :disabled="fullRestore.reading.value" @click="pickFile">
-        {{ fullRestore.reading.value ? '파일 확인하는 중…' : '백업 가져오기 (ZIP · JSON)' }}
-      </button>
-      <input
-        ref="fileInput"
-        class="file-input"
-        type="file"
-        accept="application/zip,.zip,application/json,.json"
-        aria-label="백업 파일 선택 (ZIP 또는 JSON)"
-        @change="onFileChange"
-      />
-    </div>
 
     <p
       v-if="fullRestore.notice.value !== ''"
@@ -491,29 +473,13 @@ function cancelImport(): void {
 
 <style scoped>
 .backup {
-  margin-top: 18px;
-}
-
-/* 드로어의 `.rule` 과 같은 값이다. 편집 영역과 끊어 보이게 한다. */
-.rule {
-  height: 1px;
-  margin-bottom: 14px;
-  background: var(--rule-color);
-}
-
-/* 드로어의 `.drawer-section-title` 과 같은 조판이다. */
-.backup-title {
-  margin: 0 0 8px;
-  color: var(--drawer-section-title-text-color);
-  font: 10px var(--font-mono);
-  font-weight: 400;
-  letter-spacing: 0.12em;
+  margin-top: 14px;
 }
 
 /* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
 .pill {
   min-height: 44px;
-  padding: 7px 12px;
+  padding: 7px 14px;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
   background: var(--pill-surface-color);
@@ -533,17 +499,13 @@ function cancelImport(): void {
   color: var(--accent-strong-text-color);
 }
 
+/* 숨긴 파일 입력의 기준 — 단추 줄 안에 둔다. */
 .backup-actions {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 8px;
-}
-
-.backup-count,
-.full-count {
-  color: var(--row-meta-text-color);
-  font: 10px var(--font-mono);
 }
 
 .backup-warning {
@@ -564,13 +526,6 @@ function cancelImport(): void {
   color: var(--error-text-color);
 }
 
-.backup-note {
-  margin: 8px 0 0;
-  color: var(--drawer-muted-text-color);
-  font-size: 11px;
-  line-height: 1.6;
-}
-
 /*
  * 파일 입력을 감춘다. `display: none` 이 아니라 **크기를 0 으로** 둔다 —
  * `display: none` 이면 일부 브라우저에서 프로그래밍 방식 `click()` 이 먹지
@@ -583,11 +538,6 @@ function cancelImport(): void {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-.backup-import {
-  position: relative;
-  margin-top: 12px;
 }
 
 /* 저장되지 않은 복원 안내 (M8-4). 경고 색으로 테두리까지 쓴다. */

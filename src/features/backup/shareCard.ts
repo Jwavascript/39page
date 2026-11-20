@@ -7,7 +7,10 @@
  * | --------------- | ---------------------------- | -------------------------- |
  * | 목록 1–10곡     | 카세트 J카드 1080×1350       | LP 뒷면 1080×1080          |
  * | 목록 11곡 이상  | 영수증 (민트 종이)           | 영수증 (베이지 종이)       |
- * | 곡 하나 · Moment | 싱글 1080×1350 (도트 카세트) | 7인치 싱글 1080×1080 (LP) |
+ * | 곡 하나 · Moment | 싱글 1080×(내용만큼)        | 싱글 1080×(내용만큼)      |
+ *
+ * 싱글(곡 · Moment)은 곡 이름과 Moment 시점 · 메모 목록이다 — 39page 기본 그림을 넣지 않고 높이는 내용만큼이다 (ADR 0043).
+ * "39page 에서 듣기" 글은 넣지 않고 재생 표시(▶)만 둔다 (ADR 0043).
  *
  * 넣지 않는 것: QR · 링크 안내 문구 (사용자 결정, 2026-11-20), YouTube 썸네일 · 로고 (YouTube 정책 —
  * `docs/product/SHARE_CARD_RESEARCH.md` §4). 곡 이름의 "(Official Video)" · "MV" 같은 꼬리는 카드에서만 뗀다.
@@ -44,12 +47,19 @@ export interface ShareCardArt {
   readonly display: ArtworkDisplay
 }
 
+/** 싱글 카드의 Moment 한 줄. */
+export interface ShareCardMoment {
+  /** `1:23` */
+  readonly at: string
+  readonly note: string
+}
+
 export interface ShareCardModel {
   readonly theme: ShareCardTheme
   readonly template: ShareCardTemplate
   readonly kind: ShareLinkContent['kind']
   readonly width: number
-  /** 영수증은 그릴 때 정해진다(곡 이름 줄 수에 따라) — 여기서는 J카드 · LP · 싱글만 고정값. */
+  /** 영수증 · 싱글은 그릴 때 정해진다(줄 수에 따라) — 여기서는 J카드 · LP 만 고정값. */
   readonly height: number | null
   /** 목록 이름 또는 곡 이름. */
   readonly heading: string
@@ -59,8 +69,8 @@ export interface ShareCardModel {
   readonly rows: readonly ShareCardRow[]
   readonly totalTracks: number
   readonly momentCount: number
-  /** 싱글: Moment 시점과 메모 (메모는 링크에 넣을 때만). */
-  readonly moment: { readonly at: string; readonly note: string } | null
+  /** 싱글: 그 곡의 Moments — 시점 순, 메모 포함 (Moment 하나를 공유하면 그 하나). 목록 카드는 빈 배열. */
+  readonly moments: readonly ShareCardMoment[]
   /** `2026.11.20` */
   readonly date: string
   /** `21:42` */
@@ -230,15 +240,17 @@ export function buildShareCard(
 
   if (content.kind !== 'playlist') {
     const track = content.tracks[0]
-    const moment = content.kind === 'moment' ? (content.moments[0] ?? null) : null
+    const rows = [...content.moments]
+      .sort((a, b) => a.atSeconds - b.atSeconds)
+      .map((moment) => ({ at: formatAt(moment.atSeconds), note: moment.note }))
     return {
       ...base,
       template: 'single',
-      height: theme === 'kawaii' ? 1350 : 1080,
+      height: null,
       heading: track === undefined ? '' : titleOf(track),
       sides: [],
       rows: [],
-      moment: moment === null ? null : { at: formatAt(moment.atSeconds), note: moment.note },
+      moments: rows,
     }
   }
 
@@ -265,7 +277,7 @@ export function buildShareCard(
       heading,
       sides: b.length === 0 ? [a] : [a, b],
       rows: [],
-      moment: null,
+      moments: [],
     }
   }
 
@@ -280,7 +292,7 @@ export function buildShareCard(
       title: titleOf(track),
       moment: atOf(track.videoId),
     })),
-    moment: null,
+    moments: [],
   }
 }
 

@@ -17,7 +17,7 @@ import { useLibraryStore } from '@/stores/library'
 import { createMoment, useMomentsStore } from '@/stores/moments'
 
 import { MAX_SHARE_TITLE_LENGTH, type ShareLinkContent, type ShareLinkTrack } from './shareLink'
-import { uniquePlaylistName } from './useShare'
+import { uniquePlaylistName } from './playlistName'
 
 /** 제목을 찾는 곡 수의 상한 — 그보다 많으면 나머지는 기본 이름(`YouTube · <id>`)이다. */
 export const SHARE_TITLE_LOOKUP_LIMIT = 200

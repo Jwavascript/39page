@@ -65,13 +65,14 @@ async function settle(): Promise<void> {
   await nextTick()
 }
 
-/** 공유 대화상자가 열렸고, 그 안에서 고른 목록 · 범위. */
+/** 공유 대화상자(ADR 0043)가 열렸고, 무엇을 공유하는지 — 종류 · 이름. 데이터 · 백업은 닫혀 있다. */
 function shareTarget({ wrapper }: Ctx) {
-  const backdrop = wrapper.get('.data-backdrop')
+  const dialog = wrapper.find('.share-dialog')
   return {
-    open: backdrop.attributes('hidden') === undefined,
-    playlistId: (wrapper.get('[aria-label="공유할 목록"]').element as HTMLSelectElement).value,
-    trackId: (wrapper.get('[aria-label="공유할 범위"]').element as HTMLSelectElement).value,
+    open: dialog.exists(),
+    dataOpen: wrapper.get('.data-backdrop').attributes('hidden') === undefined,
+    kind: dialog.exists() ? dialog.get('.target-kind').text() : null,
+    name: dialog.exists() ? dialog.get('.target-name').text() : null,
   }
 }
 
@@ -85,11 +86,7 @@ describe('A. 지금 재생 카드 — YouTube 링크 자리의 공유 아이콘'
     await ctx.wrapper.get('.action-row .share').trigger('click')
     await settle()
 
-    expect(shareTarget(ctx)).toEqual({
-      open: true,
-      playlistId: ctx.ids[0],
-      trackId: ctx.trackIds[0]?.[1],
-    })
+    expect(shareTarget(ctx)).toEqual({ open: true, dataOpen: false, kind: '곡', name: 'LIST 2' })
   })
 
   it('재생 중인 목록이 보관함에서 지워지면(큐는 끝까지 재생) 누를 수 없고 이유를 말한다', async () => {
@@ -115,7 +112,12 @@ describe('B. 데크(카세트 · LP) — 목록 공유 아이콘', () => {
     await share.trigger('click')
     await settle()
 
-    expect(shareTarget(ctx)).toEqual({ open: true, playlistId: ctx.ids[0], trackId: '' })
+    expect(shareTarget(ctx)).toEqual({
+      open: true,
+      dataOpen: false,
+      kind: '플레이리스트',
+      name: 'LIST',
+    })
   })
 
   it('재생 중이면 큐의 출처 목록 — 보관함에서 다른 목록을 골라도 데크가 보이는 목록이다', async () => {
@@ -132,7 +134,7 @@ describe('B. 데크(카세트 · LP) — 목록 공유 아이콘', () => {
     expect(share.attributes('aria-label')).toBe('지금 목록 공유 — PLAYING')
     await share.trigger('click')
     await settle()
-    expect(shareTarget(ctx).playlistId).toBe(ctx.ids[0])
+    expect(shareTarget(ctx).name).toBe('PLAYING')
   })
 
   it('빈 목록 · 목록 없음이면 누를 수 없고 이유를 말한다', async () => {
@@ -149,5 +151,24 @@ describe('B. 데크(카세트 · LP) — 목록 공유 아이콘', () => {
     const none = await setup([])
     expect(none.wrapper.get('.deck-share').attributes('disabled')).toBeDefined()
     expect(none.wrapper.get('.deck-share').attributes('aria-label')).toBe('공유할 목록이 없어요')
+  })
+})
+
+describe('C. 공유 대화상자 (ADR 0043)', () => {
+  it('Esc 로 닫히고 연 단추로 포커스가 돌아온다 · 열린 동안 뒤쪽은 inert', async () => {
+    const ctx = await setup()
+    const button = ctx.wrapper.get('.deck-share')
+    ;(button.element as HTMLElement).focus()
+    await button.trigger('click')
+    await settle()
+
+    expect(ctx.wrapper.find('.share-dialog').exists()).toBe(true)
+    expect(ctx.wrapper.get('.workspace').attributes('inert')).toBeDefined()
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await settle()
+    expect(ctx.wrapper.find('.share-dialog').exists()).toBe(false)
+    expect(ctx.wrapper.get('.workspace').attributes('inert')).toBeUndefined()
+    expect(document.activeElement).toBe(button.element)
   })
 })

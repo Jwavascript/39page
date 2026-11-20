@@ -5,9 +5,9 @@
  * 선 2px 이상, 글자 아래에 도트 무늬를 깔지 않는다. 글꼴은 앱의 기본 글꼴(`--font-body` · `--font-mono`)을 쓴다 —
  * 기기마다 모양이 조금 다를 수 있다 (사용자 결정: 기본 글꼴로 시작).
  *
- * 넣지 않는 것: QR · 링크 안내 문구 · YouTube 썸네일 · YouTube 로고. 사용자가 올린 앨범아트는 넣는다 (ADR 0042).
+ * 넣지 않는 것: QR · 링크 안내 문구 · YouTube 썸네일 · YouTube 로고 · "39page 에서 듣기" 글(재생 표시 ▶ 만, ADR 0043).
+ * 사용자가 올린 앨범아트는 넣는다 (ADR 0042).
  */
-import { CASSETTE_DOTS, patternSize } from '@/features/artwork/dotPatterns'
 import type { ArtworkDisplay } from '@/shared/types/artwork'
 
 import {
@@ -16,17 +16,18 @@ import {
   RECEIPT,
   receiptHeight,
   receiptRowsThatFit,
+  SHARE_CARD_MAX_HEIGHT,
   wrapLines,
   type Measure,
   type ShareCardImage,
   type ShareCardModel,
+  type ShareCardMoment,
   type ShareCardRow,
 } from './shareCard'
 
 const KAWAII = {
   bg: '#10202c',
   mint: '#e2fff6',
-  dot: '#a8ffe7',
   pink: '#ff9bc5',
   ink: '#2a1730',
   paper: '#fff4f9',
@@ -186,22 +187,39 @@ function kawaiiStrip(ctx: Ctx, fonts: Fonts, tag: string, date: string): void {
   pill(ctx, date, 1024 - width, 58, { fill: KAWAII.pink, color: KAWAII.ink, height: 46, pad: 18 })
 }
 
-/** 아래 "▶ 39page 에서 듣기" (Kawaii 알약). */
-function kawaiiListen(
+/**
+ * 재생 표시 — 원 안의 ▶ (ADR 0043: "39page 에서 듣기" 글 대신). 원은 칠하거나(`fill`) 테두리만(`stroke`). 삼각형은 원
+ * 가운데에서 조금 오른쪽으로 — 눈으로 보기에 가운데.
+ */
+function playMark(
   ctx: Ctx,
-  fonts: Fonts,
-  x: number,
-  centerY: number,
-  align: 'left' | 'center',
+  cx: number,
+  cy: number,
+  r: number,
+  options: { fill?: string; stroke?: string; color: string },
 ): void {
-  font(ctx, 800, 34, fonts.sans)
-  pill(ctx, '▶ 39page 에서 듣기', x, centerY, {
-    fill: KAWAII.pink,
-    color: KAWAII.ink,
-    height: 68,
-    pad: 28,
-    align,
-  })
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  if (options.fill !== undefined) {
+    ctx.fillStyle = options.fill
+    ctx.fill()
+  }
+  if (options.stroke !== undefined) {
+    ctx.strokeStyle = options.stroke
+    ctx.lineWidth = Math.max(3, r * 0.1)
+    ctx.stroke()
+  }
+  const size = r * 0.42
+  const shift = r * 0.08
+  ctx.beginPath()
+  ctx.moveTo(cx - size * 0.75 + shift, cy - size)
+  ctx.lineTo(cx - size * 0.75 + shift, cy + size)
+  ctx.lineTo(cx + size * 1.05 + shift, cy)
+  ctx.closePath()
+  ctx.fillStyle = options.color
+  ctx.fill()
+  ctx.restore()
 }
 
 /** 곡 한 줄 — 번호 · 이름(한 줄 + "…") · Moment 시점. */
@@ -430,8 +448,8 @@ function drawJcard(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt |
   ctx.lineWidth = 5
   ctx.stroke()
 
-  // 아래 — 듣기 · 곡 수 · 주소
-  kawaiiListen(ctx, fonts, 56, 1248, 'left')
+  // 아래 — 재생 표시 · 곡 수 · 주소
+  playMark(ctx, 56 + 44, 1248, 44, { fill: KAWAII.pink, color: KAWAII.ink })
   font(ctx, 700, 30, fonts.mono)
   const count = `${String(model.totalTracks)}곡${model.momentCount > 0 ? ` · ◆ ${String(model.momentCount)}` : ''}`
   text(ctx, count, 1024, 1228, { color: KAWAII.mint, align: 'right' })
@@ -480,8 +498,7 @@ function monoFooter(ctx: Ctx, fonts: Fonts, height: number): void {
   spacing(ctx, 4.5)
   text(ctx, '39PAGE', 72, top + 46, { color: MONO.ink })
   spacing(ctx, 0)
-  font(ctx, 700, 30, fonts.sans)
-  text(ctx, '▶ 39page 에서 듣기', 1008, top + 46, { color: MONO.accent, align: 'right' })
+  playMark(ctx, 1008 - 26, top + 46, 26, { stroke: MONO.accent, color: MONO.accent })
 }
 
 function drawLp(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt | null): void {
@@ -550,143 +567,249 @@ function drawLp(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt | nu
 }
 
 /* ------------------------------------------------------------------ *
- * 싱글 — 곡 하나 · Moment
+ * 싱글 — 곡 하나 · Moment (ADR 0043)
+ *
+ * 곡 이름과 그 곡의 Moment 시점 · 메모 목록만 — 39page 기본 그림을 넣지 않는다. 사용자가 올린 앨범아트가 있으면 그것만
+ * 넣는다(ADR 0042). 높이는 내용만큼이다(최소 640, 최대 3,240 — 넘치면 "+N개 더").
  * ------------------------------------------------------------------ */
+
+/** 싱글의 최소 높이 — 곡 이름만 있어도 납작한 띠가 되지 않게. */
+const SINGLE_MIN_HEIGHT = 640
+
+interface MomentRow {
+  readonly at: string
+  readonly lines: readonly string[]
+  readonly height: number
+}
+
+interface MomentList {
+  readonly rows: readonly MomentRow[]
+  /** 넣지 못한 Moment 수 ("+N개 더"). */
+  readonly more: number
+  /** 시점 칸의 폭 — 메모가 같은 자리에서 시작하게. */
+  readonly timeWidth: number
+  /** 줄들의 높이 합 ("+N개 더" 포함). */
+  readonly height: number
+}
+
+interface MomentListStyle {
+  readonly timeFont: readonly [number, number, string]
+  readonly noteFont: readonly [number, number, string]
+  readonly label: (at: string) => string
+  /** 시점 글자 폭에 더할 여백 (알약이면 좌우 안쪽 여백). */
+  readonly timePad: number
+  /** 목록 전체 폭. */
+  readonly width: number
+  /** 메모 한 줄의 높이 · 첫 줄(시점과 같은 줄)의 높이 · 줄 사이. */
+  readonly lineHeight: number
+  readonly firstRow: number
+  readonly gap: number
+  readonly more: number
+}
+
+/** Moment 줄을 잰다 — 앞에서 `limit` 개, 메모는 네 줄까지. */
+function measureMoments(
+  ctx: Ctx,
+  moments: readonly ShareCardMoment[],
+  style: MomentListStyle,
+  limit: number,
+): MomentList {
+  const shown = moments.slice(0, limit)
+  font(ctx, ...style.timeFont)
+  const timeWidth =
+    shown.reduce(
+      (widest, moment) => Math.max(widest, ctx.measureText(style.label(moment.at)).width),
+      0,
+    ) + style.timePad
+  font(ctx, ...style.noteFont)
+  const noteWidth = style.width - timeWidth - 24
+  const rows = shown.map((moment) => {
+    const note = moment.note.replace(/\s+/g, ' ').trim()
+    const lines = note === '' ? [] : wrapLines(note, noteWidth, 4, measureOf(ctx))
+    return {
+      at: moment.at,
+      lines,
+      height: style.firstRow + Math.max(0, lines.length - 1) * style.lineHeight,
+    }
+  })
+  const more = moments.length - shown.length
+  const height =
+    rows.reduce((sum, row) => sum + row.height, 0) +
+    Math.max(0, rows.length - 1) * style.gap +
+    (more > 0 ? style.more : 0)
+  return { rows, more, timeWidth, height }
+}
+
+/** 높이 상한 안에 드는 만큼만 — `fixed` 는 목록 밖의 높이. */
+function fitMoments(
+  ctx: Ctx,
+  moments: readonly ShareCardMoment[],
+  style: MomentListStyle,
+  fixed: number,
+): MomentList {
+  let list = measureMoments(ctx, moments, style, moments.length)
+  while (list.rows.length > 1 && fixed + list.height > SHARE_CARD_MAX_HEIGHT) {
+    list = measureMoments(ctx, moments, style, list.rows.length - 1)
+  }
+  return list
+}
 
 function drawKawaiiSingle(
   ctx: Ctx,
+  measureCtx: Ctx,
   fonts: Fonts,
   model: ShareCardModel,
   cover: CardArt | null,
-): void {
-  ctx.fillStyle = KAWAII.bg
-  ctx.fillRect(0, 0, 1080, 1350)
-  kawaiiStrip(ctx, fonts, model.moment === null ? 'TRACK' : 'MOMENT', model.date)
-
-  // 줄을 먼저 재고 그림 · 제목 · 시점 · 메모 · 듣기를 한 덩어리로 세로 가운데에 둔다 — 시점 · 메모가 없는 곡 카드도
-  // 제목과 단추 사이가 비어 보이지 않게.
-  const art = 560
-  font(ctx, 800, 64, fonts.sans)
-  const titleLines = wrapLines(model.heading, 940, 2, measureOf(ctx))
-  const note = model.moment?.note.replace(/\s+/g, ' ').trim() ?? ''
-  font(ctx, 600, 36, fonts.sans)
-  const noteLines = note === '' ? [] : wrapLines(`“${note}”`, 900, 2, measureOf(ctx))
-  const momentHeight =
-    model.moment === null ? 0 : 24 + 62 + (noteLines.length === 0 ? 0 : 24 + noteLines.length * 50)
-  const groupHeight = art + 40 + titleLines.length * 77 + momentHeight + 56 + 68
-  const areaTop = 116
-  const areaBottom = 1350 - 56
-  let y = areaTop + Math.max(0, (areaBottom - areaTop - groupHeight) / 2)
-
-  // 앨범아트 자리 — 사용자 그림, 없으면 39page 기본 그림(도트 카세트). YouTube 썸네일을 쓰지 않는다.
-  if (cover !== null) {
-    drawArt(ctx, cover, 260, y, art, 26, KAWAII.artBox)
-    frame(ctx, 260, y, art, 26, KAWAII.pink, 5)
-  } else {
-    roundRect(ctx, 260, y, art, art, 26)
-    ctx.fillStyle = KAWAII.artBox
-    ctx.fill()
-    ctx.strokeStyle = KAWAII.pink
-    ctx.lineWidth = 5
-    ctx.stroke()
-    const { columns, rows } = patternSize(CASSETTE_DOTS)
-    const cell = 30
-    const left = 540 - (columns * cell) / 2
-    const top = y + art / 2 - (rows * cell) / 2
-    CASSETTE_DOTS.forEach((pattern, row) => {
-      for (let column = 0; column < columns; column += 1) {
-        const on = pattern[column] === '1'
-        ctx.beginPath()
-        ctx.arc(left + column * cell + cell / 2, top + row * cell + cell / 2, 11, 0, Math.PI * 2)
-        ctx.fillStyle = on ? KAWAII.dot : 'rgba(168, 255, 231, 0.16)'
-        ctx.fill()
-      }
-    })
+): number {
+  const artSize = 400
+  const top = 116
+  font(measureCtx, 800, 64, fonts.sans)
+  const titleLines = wrapLines(model.heading, 940, 3, measureOf(measureCtx))
+  const style: MomentListStyle = {
+    timeFont: [800, 34, fonts.mono],
+    noteFont: [600, 36, fonts.sans],
+    label: (at) => `▶ ${at}`,
+    timePad: 52,
+    width: 888,
+    lineHeight: 48,
+    firstRow: 62,
+    gap: 22,
+    more: 52,
   }
+  // 그림 · 제목 · (목록) · 재생 표시 · 아래 여백
+  const fixed =
+    top + 24 + (cover === null ? 0 : artSize + 44) + titleLines.length * 77 + 56 + 88 + 56
+  const list = fitMoments(measureCtx, model.moments, style, fixed + 40)
+  const content = fixed - top + (list.rows.length === 0 ? 0 : 40 + list.height)
+  const height = Math.max(SINGLE_MIN_HEIGHT, top + content)
+  ctx.canvas.height = height
 
-  y += art + 40
+  ctx.fillStyle = KAWAII.bg
+  ctx.fillRect(0, 0, 1080, height)
+  kawaiiStrip(ctx, fonts, model.kind === 'moment' ? 'MOMENT' : 'TRACK', model.date)
+
+  // 내용이 짧으면 남는 자리를 위아래로 나눈다.
+  let y = top + 24 + Math.max(0, (height - top - content) / 2)
+  if (cover !== null) {
+    drawArt(ctx, cover, 540 - artSize / 2, y, artSize, 26, KAWAII.artBox)
+    frame(ctx, 540 - artSize / 2, y, artSize, 26, KAWAII.pink, 5)
+    y += artSize + 44
+  }
   font(ctx, 800, 64, fonts.sans)
   for (const value of titleLines) {
     text(ctx, value, 540, y, { color: KAWAII.mint, align: 'center', baseline: 'top' })
     y += 77
   }
-  if (model.moment !== null) {
-    y += 24
-    font(ctx, 800, 36, fonts.mono)
-    pill(ctx, `▶ ${model.moment.at} 부터`, 540, y + 31, {
-      fill: null,
-      stroke: KAWAII.pink,
-      color: KAWAII.pink,
-      height: 62,
-      pad: 26,
-      align: 'center',
+  if (list.rows.length > 0) {
+    y += 40
+    const noteLeft = 96 + list.timeWidth + 24
+    list.rows.forEach((row, index) => {
+      if (index > 0) y += style.gap
+      font(ctx, ...style.timeFont)
+      pill(ctx, style.label(row.at), 96, y + 31, {
+        fill: null,
+        stroke: KAWAII.pink,
+        color: KAWAII.pink,
+        height: 62,
+        pad: 26,
+      })
+      font(ctx, ...style.noteFont)
+      row.lines.forEach((value, line) => {
+        text(ctx, value, noteLeft, y + 31 + line * style.lineHeight, { color: KAWAII.mint })
+      })
+      y += row.height
     })
-    y += 62
-    if (noteLines.length > 0) {
-      y += 24
-      font(ctx, 600, 36, fonts.sans)
-      for (const value of noteLines) {
-        text(ctx, value, 540, y, { color: KAWAII.mint, align: 'center', baseline: 'top' })
-        y += 50
-      }
+    if (list.more > 0) {
+      font(ctx, 700, 30, fonts.mono)
+      text(ctx, `+${String(list.more)}개 더`, 96, y + 30, { color: KAWAII.pink })
+      y += style.more
     }
   }
-  kawaiiListen(ctx, fonts, 540, y + 56 + 34, 'center')
+  playMark(ctx, 540, y + 56 + 44, 44, { fill: KAWAII.pink, color: KAWAII.ink })
+  return height
 }
 
-function drawMonoSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt | null): void {
-  monoBackground(ctx, 1080)
+function drawMonoSingle(
+  ctx: Ctx,
+  measureCtx: Ctx,
+  fonts: Fonts,
+  model: ShareCardModel,
+  art: CardArt | null,
+): number {
+  const artSize = 360
+  font(measureCtx, 800, 68, fonts.sans)
+  const titleLines = wrapLines(model.heading, 936, 3, measureOf(measureCtx))
+  const style: MomentListStyle = {
+    timeFont: [700, 34, fonts.mono],
+    noteFont: [600, 34, fonts.sans],
+    label: (at) => `◆ ${at}`,
+    timePad: 0,
+    width: 936,
+    lineHeight: 46,
+    firstRow: 46,
+    gap: 18,
+    more: 50,
+  }
+  // 위 글줄 · 제목 · (그림) · (목록) · 아래 여백 · 바닥 줄
+  const fixed = 112 + titleLines.length * 78 + (art === null ? 0 : 30 + artSize) + 48 + 112
+  const list = fitMoments(measureCtx, model.moments, style, fixed + 36)
+  const height = Math.max(
+    SINGLE_MIN_HEIGHT,
+    fixed + (list.rows.length === 0 ? 0 : 36 + list.height),
+  )
+  ctx.canvas.height = height
+
+  monoBackground(ctx, height)
   font(ctx, 600, 28, fonts.mono)
   spacing(ctx, 3.9)
-  text(ctx, `39PAGE SINGLE · ${model.catalog}`, 72, 64, { color: MONO.dim, baseline: 'top' })
+  text(ctx, `39PAGE ${model.kind === 'moment' ? 'MOMENT' : 'SINGLE'} · ${model.catalog}`, 72, 64, {
+    color: MONO.dim,
+    baseline: 'top',
+  })
   spacing(ctx, 0)
 
   let y = 112
   font(ctx, 800, 68, fonts.sans)
-  for (const value of wrapLines(model.heading, 936, 2, measureOf(ctx))) {
+  for (const value of titleLines) {
     text(ctx, value, 72, y, { color: MONO.ink, baseline: 'top' })
     y += 78
   }
-  if (model.moment !== null) {
-    y += 10
-    font(ctx, 700, 34, fonts.mono)
-    text(ctx, `◆ ${model.moment.at} 부터`, 72, y, { color: MONO.accent, baseline: 'top' })
-    y += 48
-    const note = model.moment.note.replace(/\s+/g, ' ').trim()
-    if (note !== '') {
-      font(ctx, 600, 34, fonts.sans)
-      for (const value of wrapLines(`“${note}”`, 936, 2, measureOf(ctx))) {
-        text(ctx, value, 72, y, { color: MONO.ink, baseline: 'top' })
-        y += 46
-      }
-    }
-  }
-
-  // 레코드 — 남은 자리 가운데 (39page 의 Mono 기본 그림과 같은 LP). 앨범아트가 있으면 그 재킷에서 레코드가 오른쪽으로
-  // 비죽 나온 모양 — 묶음 전체(재킷 + 나온 레코드, 재킷의 1.32배 폭)를 가운데에 둔다.
-  const areaTop = y + 30
-  const areaBottom = 1080 - 112 - 30
-  const middle = (areaTop + areaBottom) / 2
-  if (art === null) {
-    const radius = Math.max(120, Math.min(260, (areaBottom - areaTop) / 2))
-    disc(ctx, 540, middle, radius, 0.33)
-  } else {
-    const size = Math.max(240, Math.min(520, areaBottom - areaTop))
-    const left = 540 - size * 0.66
-    const top = middle - size / 2
-    disc(ctx, left + size * 0.86, middle, size * 0.46, 0.33)
+  // 사용자 그림 — 재킷에서 레코드가 오른쪽으로 비죽 나온 모양.
+  if (art !== null) {
+    y += 30
+    disc(ctx, 72 + artSize * 0.86, y + artSize / 2, artSize * 0.46, 0.33)
     ctx.save()
     ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
     ctx.shadowBlur = 28
     ctx.shadowOffsetX = 10
     ctx.fillStyle = MONO.ring
-    ctx.fillRect(left, top, size, size)
+    ctx.fillRect(72, y, artSize, artSize)
     ctx.restore()
-    drawArt(ctx, art, left, top, size, 4, MONO.ring)
-    frame(ctx, left, top, size, 4, MONO.line, 3)
+    drawArt(ctx, art, 72, y, artSize, 4, MONO.ring)
+    frame(ctx, 72, y, artSize, 4, MONO.line, 3)
+    y += artSize
+  }
+  if (list.rows.length > 0) {
+    y += 36
+    const noteLeft = 72 + list.timeWidth + 24
+    list.rows.forEach((row, index) => {
+      if (index > 0) y += style.gap
+      font(ctx, ...style.timeFont)
+      text(ctx, style.label(row.at), 72, y + 23, { color: MONO.accent })
+      font(ctx, ...style.noteFont)
+      row.lines.forEach((value, line) => {
+        text(ctx, value, noteLeft, y + 23 + line * style.lineHeight, { color: MONO.ink })
+      })
+      y += row.height
+    })
+    if (list.more > 0) {
+      font(ctx, 700, 28, fonts.mono)
+      text(ctx, `+${String(list.more)}개 더`, 72, y + 28, { color: MONO.dim })
+    }
   }
 
-  monoFooter(ctx, fonts, 1080)
+  monoFooter(ctx, fonts, height)
+  return height
 }
 
 /* ------------------------------------------------------------------ *
@@ -835,8 +958,7 @@ function drawReceipt(
   }
   dash()
 
-  font(ctx, 800, 36, fonts.sans)
-  text(ctx, '▶ 39page 에서 듣기', 540, y + 26, { color: ink, align: 'center' })
+  playMark(ctx, 540, y + 26, 24, { fill: ink, color: paper })
   y += 52
   font(ctx, 600, 28, fonts.mono)
   text(ctx, 'THANK YOU FOR LISTENING ♪', 540, y + 35, { color: ink, align: 'center', alpha: 0.7 })
@@ -873,15 +995,23 @@ export async function renderShareCard(
 
   let height = canvas.height
   try {
+    // 영수증 · 싱글은 줄을 먼저 재고 높이를 정한다 — 캔버스 높이를 바꾸면 그리기 상태가 지워지므로 따로 잰다.
+    const measureCtx =
+      model.template === 'receipt' || model.template === 'single'
+        ? document.createElement('canvas').getContext('2d')
+        : null
     if (model.template === 'receipt') {
-      const measureCanvas = document.createElement('canvas')
-      const measureCtx = measureCanvas.getContext('2d')
       if (measureCtx === null) return null
       height = drawReceipt(ctx, fonts, model, measureCtx, art)
     } else if (model.template === 'jcard') drawJcard(ctx, fonts, model, art)
     else if (model.template === 'lp') drawLp(ctx, fonts, model, art)
-    else if (model.theme === 'kawaii') drawKawaiiSingle(ctx, fonts, model, art)
-    else drawMonoSingle(ctx, fonts, model, art)
+    else {
+      if (measureCtx === null) return null
+      height =
+        model.theme === 'kawaii'
+          ? drawKawaiiSingle(ctx, measureCtx, fonts, model, art)
+          : drawMonoSingle(ctx, measureCtx, fonts, model, art)
+    }
   } finally {
     image?.release()
   }

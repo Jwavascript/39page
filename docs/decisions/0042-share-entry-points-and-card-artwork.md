@@ -1,6 +1,7 @@
 # 0042. 공유 입구(지금 재생 카드 · 데크 아이콘)와 공유 카드의 내 앨범아트
 
-- 상태: 채택 — 사용자 요청 (2026-11-20), 브랜치 `feat/share-entry-points`
+- 상태: 채택 — 사용자 요청 (2026-11-20), 브랜치 `feat/share-entry-points`. 공유 화면 · 카드의 "내 앨범아트 넣기" 칸은
+  [ADR 0043](0043-share-dialog-and-backup-only-data-dialog.md) 에서 바뀌었다(따로 된 공유 대화상자, 끄는 칸 없음, 싱글은 기본 그림 없음).
 - 관련: ADR 0040 (공유 링크), ADR 0041 (공유 카드 — §3 의 앨범아트 TODO 를 정한다), ADR 0012 §6 (대체),
   ADR 0033 (곡별 앨범아트), `docs/product/MVP_SPEC.md` F3
 

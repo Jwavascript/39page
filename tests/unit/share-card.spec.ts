@@ -107,22 +107,24 @@ describe('B. 틀 고르기', () => {
     expect(buildShareCard(playlist(50), 'kawaii', NOW).template).toBe('receipt')
   })
 
-  it('곡 하나 · Moment 는 싱글 — Moment 시점과 (넣었을 때만) 메모', () => {
+  it('곡 하나 · Moment 는 싱글 — 높이는 그릴 때, Moments 는 시점 순 · 메모 포함 (ADR 0043)', () => {
     const track = buildShareCard(
       {
         kind: 'track',
         name: '',
         tracks: [{ videoId: 'aaaaaaaaaaa', title: '곡 (Official Video)' }],
-        moments: [],
+        moments: [
+          { videoId: 'aaaaaaaaaaa', atSeconds: 200, note: '둘째' },
+          { videoId: 'aaaaaaaaaaa', atSeconds: 5, note: '' },
+        ],
       },
       'kawaii',
       NOW,
     )
-    expect([track.template, track.height, track.heading, track.moment]).toEqual([
-      'single',
-      1350,
-      '곡',
-      null,
+    expect([track.template, track.height, track.heading]).toEqual(['single', null, '곡'])
+    expect(track.moments).toEqual([
+      { at: '0:05', note: '' },
+      { at: '3:20', note: '둘째' },
     ])
 
     const moment = buildShareCard(
@@ -135,10 +137,10 @@ describe('B. 틀 고르기', () => {
       'mono',
       NOW,
     )
-    expect([moment.template, moment.height]).toEqual(['single', 1080])
+    expect([moment.template, moment.height]).toEqual(['single', null])
     // 곡 이름을 모르면 기본 이름.
     expect(moment.heading).toBe('YouTube · aaaaaaaaaaa')
-    expect(moment.moment).toEqual({ at: '1:23', note: '여기' })
+    expect(moment.moments).toEqual([{ at: '1:23', note: '여기' }])
   })
 
   it('곡 줄의 Moment 는 그 곡의 첫 시점 · 날짜 · 시각 · 카탈로그 번호', () => {

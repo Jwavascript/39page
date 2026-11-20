@@ -4,7 +4,8 @@
  *
  * 링크와 같은 대상 · 같은 선택(Moments · 메모)으로 그린 카드를 미리 보이고, 복사하거나 PNG 로 저장한다. 게시판 글에 이
  * 이미지를 올리고 위의 링크를 이미지에 건다. 카드 안에는 QR · 링크 안내 문구를 넣지 않는다 (사용자 결정).
- * 대상에 사용자가 올린 앨범아트가 있으면 넣는다 — "앨범아트 넣기" 로 끌 수 있다 (ADR 0042).
+ * 대상에 사용자가 올린 앨범아트가 있으면 넣는다 (ADR 0042). ADR 0043 — 고르는 칸 · 안내 글 · 크기 표기를 두지 않는다.
+ * 무엇을 그렸는지(틀 · 크기 · 앨범아트)는 미리보기의 `data-*` 에 남긴다 (시험 · 실제 브라우저 확인이 읽는다).
  *
  * 판단은 `useShareCard` 가, 표현은 이 컴포넌트가 한다 (규칙 3).
  */
@@ -26,20 +27,15 @@ const props = withDefaults(
 
 const card = useShareCard(toRef(props, 'content'), toRef(props, 'artKeys'))
 
-const TEMPLATE_LABEL = {
-  jcard: '카세트 J카드',
-  lp: 'LP 뒷면',
-  single: '싱글',
-  receipt: '영수증',
-} as const
-
-/** 보이는 정보는 그려진 카드의 것 — 다시 그리는 동안 새 틀 이름에 지난 크기가 붙지 않게. */
-const meta = computed<string>(() => {
+/** 그려진 카드의 정보 — 다시 그리는 동안 새 틀 이름에 지난 크기가 붙지 않게 늘 그려진 카드의 것. */
+const drawn = computed(() => {
   const current = card.rendered.value
-  if (current === null) return ''
-  const { model, image } = current
-  const art = image.art === true ? ' · 앨범아트' : ''
-  return `${TEMPLATE_LABEL[model.template]}${art} · ${String(image.width)}×${String(image.height)} PNG`
+  if (current === null) return null
+  return {
+    template: current.model.template,
+    size: `${String(current.image.width)}x${String(current.image.height)}`,
+    art: current.image.art === true,
+  }
 })
 
 const alt = computed<string>(() => {
@@ -54,7 +50,7 @@ const placeholder = computed<string>(() => {
     case 'unsupported':
       return '이 브라우저에서는 이미지를 만들 수 없어요.'
     case 'failed':
-      return '이미지를 만들지 못했어요. 대상을 다시 골라 보세요.'
+      return '이미지를 만들지 못했어요.'
     default:
       return ''
   }
@@ -64,16 +60,14 @@ const ready = computed(() => card.rendered.value !== null && card.state.value ==
 </script>
 
 <template>
-  <section class="card-share" aria-labelledby="card-share-title">
-    <h5 id="card-share-title" class="sub-title">이미지 카드</h5>
-    <p class="lead">게시판 글에 이 이미지를 올리고, 위의 링크를 이미지에 걸어 주세요.</p>
-
-    <label v-if="card.hasArt.value" class="check">
-      <input v-model="card.includeArt.value" type="checkbox" />
-      내 앨범아트 넣기
-    </label>
-
-    <div class="card-preview" :data-state="card.state.value">
+  <section class="card-share" aria-label="이미지 카드">
+    <div
+      class="card-preview"
+      :data-state="card.state.value"
+      :data-template="drawn?.template"
+      :data-size="drawn?.size"
+      :data-art="drawn === null ? undefined : String(drawn.art)"
+    >
       <img
         v-if="card.previewUrl.value !== null"
         class="card-preview-image"
@@ -82,7 +76,6 @@ const ready = computed(() => card.rendered.value !== null && card.state.value ==
       />
       <p v-if="placeholder !== ''" class="placeholder">{{ placeholder }}</p>
     </div>
-    <p v-if="meta !== ''" class="meta">{{ meta }}</p>
 
     <div class="actions">
       <button type="button" class="pill pill--strong" :disabled="!ready" @click="card.copyImage()">
@@ -100,41 +93,16 @@ const ready = computed(() => card.rendered.value !== null && card.state.value ==
 
 <style scoped>
 .card-share {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--drawer-head-border-color);
+  margin-top: 12px;
 }
 
-.sub-title {
-  margin: 0 0 6px;
-  color: var(--drawer-title-text-color);
-  font: 12px var(--font-mono);
-  font-weight: 400;
-  letter-spacing: 0.08em;
-}
-
-.lead,
-.meta,
 .status {
   margin: 4px 0;
   font: 11px/1.6 var(--font-mono);
 }
 
-.lead,
-.meta {
-  color: var(--drawer-sub-text-color);
-}
-
 .status:empty {
   display: none;
-}
-
-.check {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  font-size: 13px;
-  gap: 8px;
 }
 
 .status.is-failed {

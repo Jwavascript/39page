@@ -1,11 +1,9 @@
 <script setup lang="ts">
 /**
- * 링크로 공유 (ADR 0040) — 공유 묶음(`SharePanel`) 안.
+ * 공유 대화상자의 본문 (ADR 0040 · 0041 → ADR 0043) — 이미지 카드, 그 아래 링크.
  *
- * 첨부 파일을 올릴 수 없는 곳(커뮤니티 게시판 · 메신저)에 붙여 넣는 링크. 받는 사람이 열면 39page 가 미리보기를 보이고,
- * 누를 때만 그 사람의 보관함에 넣는다. 링크에는 내용이 그대로 들어간다 — 무엇이 들어가는지를 여기서 말한다.
- *
- * 판단은 `useShareLink` 가, 표현은 이 컴포넌트가 한다 (규칙 3).
+ * 고르는 칸이 없다 — 무엇이 들어가는지는 대상이 정한다 (`useShareLink`). 링크는 내용을 그대로 담으므로 링크를 가진 누구나
+ * 볼 수 있다는 것만 짧게 말한다. 판단은 `useShareLink` · `useShareCard` 가, 표현은 이 컴포넌트가 한다 (규칙 3).
  */
 import { computed, nextTick, ref, toRef } from 'vue'
 
@@ -15,30 +13,14 @@ import ShareCardBox from './ShareCardBox.vue'
 import { shareCardArtKeys } from './useShareCard'
 import { useShareLink, type ShareLinkTarget } from './useShareLink'
 
-const props = defineProps<{ target: ShareLinkTarget | null }>()
+const props = defineProps<{ target: ShareLinkTarget }>()
 
 const link = useShareLink(toRef(props, 'target'))
+const field = ref<HTMLInputElement | null>(null)
 const library = useLibraryStore()
 /** 카드의 앨범아트를 찾아볼 트랙들 — Moment 는 같은 영상의 트랙(고른 목록 먼저). */
 const artKeys = computed(() =>
   shareCardArtKeys(props.target, [library.selectedPlaylist, ...library.playlists]),
-)
-const field = ref<HTMLInputElement | null>(null)
-
-const kind = computed(() => props.target?.kind ?? null)
-
-/** 링크에 들어가는 것 — 고른 선택 그대로. */
-const contains = computed<string>(() => {
-  const parts = ['영상 주소']
-  if (link.titles.value) parts.push('곡 이름')
-  if (kind.value === 'playlist') parts.push('목록 이름')
-  if (link.momentCount.value > 0) parts.push('Moment 시점')
-  if (link.momentCount.value > 0 && link.notes.value) parts.push('메모')
-  return parts.join(' · ')
-})
-
-const showNotes = computed(
-  () => kind.value === 'moment' || (link.includeMoments.value && link.availableMoments.value > 0),
 )
 
 function selectField(): void {
@@ -57,107 +39,54 @@ async function copy(): Promise<void> {
 </script>
 
 <template>
-  <section class="link-share" aria-labelledby="link-share-title">
-    <h4 id="link-share-title" class="sub-title">링크로 공유</h4>
-    <p class="lead">
-      게시판 · 메신저에 붙여 넣는 링크예요. 받는 사람이 열면 39page 에서 미리 보고 자기 보관함에
-      추가할 수 있어요. 파일을 올릴 수 없는 곳에서 쓰세요.
-    </p>
+  <div class="share-body">
+    <ShareCardBox :content="link.cardContent.value" :art-keys="artKeys" />
 
-    <div v-if="target !== null" class="options">
-      <label class="check">
-        <input v-model="link.titles.value" type="checkbox" />
-        곡 이름 넣기
-      </label>
-      <label v-if="kind !== 'moment'" class="check">
+    <section class="link-share" aria-label="링크">
+      <div class="link-row">
         <input
-          v-model="link.includeMoments.value"
-          type="checkbox"
-          :disabled="link.availableMoments.value === 0"
+          ref="field"
+          class="link-field"
+          type="text"
+          readonly
+          :value="link.url.value ?? ''"
+          aria-label="공유 링크"
+          @focus="selectField"
         />
-        이 곡들의 Moments {{ link.availableMoments.value }}개 넣기
-      </label>
-      <label v-if="showNotes" class="check">
-        <input v-model="link.notes.value" type="checkbox" />
-        Moment 메모 넣기
-      </label>
-    </div>
-
-    <div class="link-row">
-      <input
-        ref="field"
-        class="link-field"
-        type="text"
-        readonly
-        :value="link.url.value ?? ''"
-        :placeholder="target === null ? '공유할 목록이나 곡을 고르세요' : ''"
-        aria-label="공유 링크"
-        @focus="selectField"
-      />
-      <button
-        type="button"
-        class="pill pill--strong copy"
-        :disabled="link.url.value === null"
-        @click="copy"
-      >
-        링크 복사
-      </button>
-    </div>
-
-    <p v-if="target !== null" class="meta">
-      {{ link.length.value.toLocaleString('ko-KR') }}자 · 곡 {{ link.trackCount.value }}개
-      <template v-if="link.momentCount.value > 0">
-        · Moment {{ link.momentCount.value }}개
-      </template>
-    </p>
-    <p v-if="link.level.value === 'long'" class="warn">
-      링크가 길어서 일부 게시판에서 잘릴 수 있어요.
-      <template v-if="link.lengthWithoutTitles.value !== null">
-        곡 이름을 빼면 {{ link.lengthWithoutTitles.value.toLocaleString('ko-KR') }}자예요 (받는
-        사람이 열 때 YouTube 에서 제목을 찾아요).
-      </template>
-    </p>
-    <p v-else-if="link.level.value === 'too-long'" class="warn">
-      링크로 담기엔 너무 많아요.
-      <template v-if="link.lengthWithoutTitles.value !== null">곡 이름을 빼 보거나, </template>
-      아래 “파일로 공유” 를 써 주세요.
-    </p>
-
-    <p class="copy-status" role="status" aria-live="polite">
-      <template v-if="link.copyState.value === 'copied'">링크를 복사했어요.</template>
-      <template v-else-if="link.copyState.value === 'manual'">
-        복사하지 못했어요 — 링크를 골라 두었으니 Ctrl+C(⌘C)로 복사하세요.
-      </template>
-    </p>
-
-    <ShareCardBox v-if="target !== null" :content="link.cardContent.value" :art-keys="artKeys" />
-
-    <p v-if="target !== null" class="note">
-      링크에 그대로 들어가는 것: {{ contains }}. 링크를 가진 누구나 볼 수 있어요. 링크에는
-      앨범아트가 들어가지 않아요 (받는 사람에게는 썸네일로 보여요) — 내 앨범아트는 이미지 카드에만
-      그려져요.
-    </p>
-  </section>
+        <button
+          type="button"
+          class="pill pill--strong copy"
+          :disabled="link.url.value === null"
+          @click="copy"
+        >
+          링크 복사
+        </button>
+      </div>
+      <p class="copy-status" role="status" aria-live="polite">
+        <template v-if="link.copyState.value === 'copied'">링크를 복사했어요.</template>
+        <template v-else-if="link.copyState.value === 'manual'">
+          복사하지 못했어요 — 링크를 골라 두었으니 Ctrl+C(⌘C)로 복사하세요.
+        </template>
+      </p>
+      <p v-if="link.level.value === 'too-long'" class="warn">
+        곡이 너무 많아 링크로 담을 수 없어요.
+      </p>
+      <p v-else-if="link.level.value === 'long'" class="warn">
+        링크가 길어 일부 게시판에서 잘릴 수 있어요.
+      </p>
+      <p v-if="link.titlesDropped.value" class="note">
+        링크에는 곡 이름을 뺐어요 — 받는 사람이 열 때 YouTube 에서 찾아요.
+      </p>
+      <p class="note">링크를 가진 누구나 내용을 볼 수 있어요.</p>
+    </section>
+  </div>
 </template>
 
 <style scoped>
 .link-share {
-  margin: 10px 0 14px;
-  padding: 12px;
-  border: 1px solid var(--row-selected-border-color);
-  background: var(--row-surface-color);
+  margin-top: 12px;
 }
 
-.sub-title {
-  margin: 0 0 6px;
-  color: var(--drawer-title-text-color);
-  font: 12px var(--font-mono);
-  font-weight: 400;
-  letter-spacing: 0.08em;
-}
-
-.lead,
-.meta,
 .warn,
 .note,
 .copy-status {
@@ -165,7 +94,6 @@ async function copy(): Promise<void> {
   font: 11px/1.6 var(--font-mono);
 }
 
-.lead,
 .note {
   color: var(--drawer-sub-text-color);
 }
@@ -176,20 +104,6 @@ async function copy(): Promise<void> {
 
 .copy-status:empty {
   display: none;
-}
-
-.options {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 14px;
-}
-
-.check {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  font-size: 13px;
-  gap: 8px;
 }
 
 .link-row {

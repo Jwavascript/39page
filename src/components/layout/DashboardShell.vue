@@ -69,6 +69,7 @@ import {
   type ArchiveTab,
 } from '@/features/archive/archiveController'
 import DataDialog from '@/features/backup/DataDialog.vue'
+import ShareDialog from '@/features/backup/ShareDialog.vue'
 import { isShareHash, parseShareLink, type ShareLinkParse } from '@/features/backup/shareLink'
 
 /**
@@ -409,19 +410,40 @@ provide(ARCHIVE, archive)
 
 const DATA_DIALOG_ID = 'data-dialog'
 const isDataOpen = ref(false)
-const shareRequest = ref<ShareRequest | null>(null)
 let dataTrigger: HTMLElement | null = null
 
-function openData(target?: ShareTarget): void {
-  shareRequest.value = target === undefined ? null : { ...target, seq: ++requestSeq }
+/** 데이터 · 백업 — 다른 기기로 옮기기 전용 (ADR 0043). */
+function openData(): void {
   const active = document.activeElement
   dataTrigger = active instanceof HTMLElement ? active : null
   isDataOpen.value = true
 }
 
+/* ------------------------------------------------------------------ *
+ * 공유 대화상자 (ADR 0043 — 데이터 대화상자에서 떼어 냈다)
+ * ------------------------------------------------------------------ */
+
+/** 열린 공유의 대상. `null` 이면 닫혀 있다. 연 곳(공유 단추)이 정한다. */
+const shareRequest = ref<ShareRequest | null>(null)
+let shareTrigger: HTMLElement | null = null
+
+function openShare(target: ShareTarget): void {
+  const active = document.activeElement
+  shareTrigger = active instanceof HTMLElement ? active : null
+  shareRequest.value = { ...target, seq: ++requestSeq }
+}
+
+async function closeShare(): Promise<void> {
+  if (shareRequest.value === null) return
+  shareRequest.value = null
+  await nextTick()
+  if (shareTrigger !== null && document.contains(shareTrigger)) shareTrigger.focus()
+  shareTrigger = null
+}
+
 provide(SHARE_DIALOG, {
   open(target) {
-    openData(target)
+    openShare(target)
   },
 })
 
@@ -465,7 +487,7 @@ async function closeData(): Promise<void> {
 }
 
 /**
- * Escape 는 **가장 바깥 것부터** 닫는다 — 데이터 대화상자 → 보관함. 한 번에 둘을 닫으면 사용자가
+ * Escape 는 **가장 바깥 것부터** 닫는다 — 받은 공유 → 공유 → 데이터 대화상자 → 보관함. 한 번에 둘을 닫으면 사용자가
  * 무엇을 닫았는지 알 수 없다. (M7 의 플레이리스트 선반은 M11-3 에서 없어졌다 — 데크가 보관함을 연다.)
  */
 function onKeydown(event: KeyboardEvent): void {
@@ -474,6 +496,10 @@ function onKeydown(event: KeyboardEvent): void {
 
   if (incomingShare.value !== null) {
     void closeShareLink()
+    return
+  }
+  if (shareRequest.value !== null) {
+    void closeShare()
     return
   }
   if (isDataOpen.value) {
@@ -531,7 +557,9 @@ const workspaceStyle = computed(() => {
 
 /** 대화상자가 열려 있는 동안 뒤쪽을 조작할 수 없게 한다 (보조기기 포함). */
 const behindDialog = computed(() =>
-  isDataOpen.value || incomingShare.value !== null ? true : undefined,
+  isDataOpen.value || shareRequest.value !== null || incomingShare.value !== null
+    ? true
+    : undefined,
 )
 </script>
 
@@ -611,11 +639,14 @@ const behindDialog = computed(() =>
     -->
     <AppFooter :inert="behindDialog" />
 
-    <DataDialog
-      :open="isDataOpen"
-      :dialog-id="DATA_DIALOG_ID"
-      :share-request="shareRequest"
-      @close="closeData"
+    <DataDialog :open="isDataOpen" :dialog-id="DATA_DIALOG_ID" @close="closeData" />
+
+    <!-- 공유 (ADR 0043) — 공유 단추가 연다. 연 동안만 있다. -->
+    <ShareDialog
+      v-if="shareRequest !== null"
+      :key="shareRequest.seq"
+      :request="shareRequest"
+      @close="closeShare"
     />
 
     <!-- 링크로 받은 공유 (ADR 0040). 데이터 대화상자보다 위 — 그 위에서 링크를 열 수도 있다. -->

@@ -365,7 +365,7 @@ watch(
 
     <p class="archive-foot">
       Esc 또는 × 로 닫아요. 보관함을 열어도 음악은 계속 재생돼요.<br />
-      JSON 백업은 맨 위의 <strong>⇩ 데이터 · 백업</strong> 에서 할 수 있어요.
+      다른 기기로 옮길 때는 맨 위의 <strong>⇩ 데이터 · 백업</strong> 을 쓰세요.
     </p>
   </aside>
 </template>

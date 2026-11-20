@@ -374,14 +374,14 @@ describe('D. 닫기 · Escape · 포커스', () => {
 })
 
 describe('E. 데이터 대화상자', () => {
-  it('메인 화면에서 2번 — 데이터 → JSON 백업 내보내기', async () => {
+  it('메인 화면에서 2번 — 데이터 → 전체 백업 내보내기', async () => {
     const { wrapper } = mountApp()
     await nav(wrapper, '데이터').trigger('click') // 1
     await settle()
 
     const exportButton = wrapper
       .findAll('#data-dialog .backup-actions button')
-      .find((b) => b.text().includes('JSON 백업 내보내기'))
+      .find((b) => b.text() === '전체 백업 내보내기')
     expect(exportButton).toBeDefined() // 2 번째 조작의 대상이 바로 보인다
     expect(exportButton?.element.closest('[hidden]')).toBeNull()
   })
@@ -448,17 +448,23 @@ describe('E. 데이터 대화상자', () => {
     expect(document.activeElement).toBe(trigger)
   })
 
-  it('저장 상태를 두 줄로 알린다 — 정상 · 보호 중', async () => {
+  it('저장된 데이터를 읽지 못했을 때만 경고와 복구본 내보내기가 보인다 (ADR 0043)', async () => {
+    const normal = mountApp()
+    await nav(normal.wrapper, '데이터').trigger('click')
+    await settle()
+    expect(normal.wrapper.find('#data-dialog .backup-warning').exists()).toBe(false)
+    normal.wrapper.unmount()
+
     globalThis.localStorage.setItem(STORAGE_KEYS.moments, '{"version":1,"data":[{"broken":')
     useMomentsStore().restore()
     const { wrapper } = mountApp()
     await nav(wrapper, '데이터').trigger('click')
     await settle()
 
-    const rows = wrapper.findAll('#data-dialog .status-list dd')
-    expect(rows[0]?.text()).toContain('정상')
-    expect(rows[1]?.text()).toContain('보호 중')
-    expect(rows[1]?.classes()).toContain('is-warning')
+    expect(wrapper.get('#data-dialog .backup-warning').text()).toContain('Moments')
+    expect(wrapper.findAll('#data-dialog .backup .pill').map((node) => node.text())).toContain(
+      '복구본 내보내기',
+    )
   })
 })
 

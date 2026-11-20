@@ -118,6 +118,15 @@ async function openShare(s: Session, which: 'track' | 'list'): Promise<void> {
   await settle()
 }
 
+/** 보관함에서 곡 하나를 공유한다. */
+async function openTrack(s: Session, title: string): Promise<void> {
+  await s.wrapper.get('.app-nav button').trigger('click')
+  await settle()
+  await openTrackManage(s.wrapper, title)
+  await s.wrapper.get(`[aria-label="${title} 공유"]`).trigger('click')
+  await settle()
+}
+
 const card = (s: Session) => s.wrapper.get('.card-share')
 async function waitCard(s: Session): Promise<void> {
   await vi.waitFor(
@@ -162,49 +171,31 @@ describe('A. 미리보기', () => {
 
     expect(card(s).get('.card-preview-image').attributes('src')).toBe('blob:card')
     expect(card(s).get('.card-preview-image').attributes('alt')).toBe('공유 카드 미리보기 — Alpha')
-    expect(card(s).get('.meta').text()).toBe('싱글 · 1080×1350 PNG')
+    // 크기 표기 같은 글은 두지 않는다 (ADR 0043) — 무엇을 그렸는지는 data-* 에.
+    expect(card(s).find('.meta').exists()).toBe(false)
+    expect(card(s).get('.card-preview').attributes('data-template')).toBe('single')
     const model = lastModel(s)
     expect([model.template, model.theme, model.heading]).toEqual(['single', 'kawaii', 'Alpha'])
+    // 그 곡의 Moments — 시점과 메모가 기본으로 들어간다.
+    expect(model.moments).toEqual([{ at: '1:23', note: '후렴' }])
   })
 
-  it('목록 공유 (Mono) — LP 뒷면, Moments · 메모를 넣으면 카드도 따라 그린다', async () => {
+  it('목록 공유 (Mono) — LP 뒷면, 곡 이름만 · Moments 는 넣지 않는다 · 고르는 칸이 없다', async () => {
     const s = boot({ theme: 'mono-vinyl' })
     await openShare(s, 'list')
     await waitCard(s)
     expect(lastModel(s).template).toBe('lp')
+    expect(card(s).get('.card-preview').attributes('data-size')).toBe('1080x1080')
     expect(lastModel(s).momentCount).toBe(0)
-    expect(card(s).get('.meta').text()).toBe('LP 뒷면 · 1080×1080 PNG')
-
-    await s.wrapper
-      .findAll('.link-share label.check')
-      .find((node) => node.text().includes('Moments 1개 넣기'))
-      ?.get('input')
-      .setValue(true)
-    await vi.waitFor(() => {
-      if (lastModel(s).momentCount !== 1) throw new Error('not re-rendered')
-    })
     expect(
       lastModel(s)
         .sides.flat()
-        .map((row) => row.moment),
-    ).toEqual(['1:23', null])
-  })
-
-  it('곡 이름을 뺀 링크여도 카드에는 곡 이름이 있다', async () => {
-    const s = boot()
-    await openShare(s, 'list')
-    await waitCard(s)
-    await s.wrapper
-      .findAll('.link-share label.check')
-      .find((node) => node.text().includes('곡 이름 넣기'))
-      ?.get('input')
-      .setValue(false)
-    await settle()
-    expect(
-      lastModel(s)
-        .sides.flat()
-        .map((row) => row.title),
-    ).toEqual(['Alpha', 'Bravo'])
+        .map((row) => [row.title, row.moment]),
+    ).toEqual([
+      ['Alpha', null],
+      ['Bravo', null],
+    ])
+    expect(s.wrapper.get('.share-dialog').findAll('input[type="checkbox"]')).toHaveLength(0)
   })
 
   it('테마를 바꾸면 그 테마의 틀로 다시 그린다', async () => {
@@ -267,10 +258,10 @@ describe('B. 복사 · 저장', () => {
     expect(card(s).get('.status').text()).toContain('"이미지 저장" 으로 받아 주세요')
   })
 
-  it('선택이 바뀌면 새 카드가 나올 때까지 복사 · 저장을 끈다 — 지난 카드를 붙여 넣지 않게', async () => {
+  it('내용이 바뀌면 새 카드가 나올 때까지 복사 · 저장을 끈다 — 지난 카드를 붙여 넣지 않게', async () => {
     const gate: { release: (() => void) | null } = { release: null }
     const renderer = vi.fn<ShareCardRenderer>(async (model) => {
-      if (model.momentCount > 0) {
+      if (model.theme === 'kawaii') {
         await new Promise<void>((resolve) => {
           gate.release = resolve
         })
@@ -286,18 +277,15 @@ describe('B. 복사 · 저장', () => {
     await waitCard(s)
     expect(button(s, '이미지 복사')?.attributes('disabled')).toBeUndefined()
 
-    await s.wrapper
-      .findAll('.link-share label.check')
-      .find((node) => node.text().includes('Moments 1개 넣기'))
-      ?.get('input')
-      .setValue(true)
+    // 대화상자를 연 채 테마가 바뀐다 — 다른 틀로 다시 그린다.
+    s.theme.setTheme('kawaii-synth-cassette')
     await nextTick()
 
     // 바로 — 미루는 동안에도. 보이는 정보는 아직 지난 카드의 것이다.
     expect(card(s).get('.card-preview').attributes('data-state')).toBe('rendering')
     expect(button(s, '이미지 복사')?.attributes('disabled')).toBeDefined()
     expect(button(s, '이미지 저장')?.attributes('disabled')).toBeDefined()
-    expect(card(s).get('.meta').text()).toBe('LP 뒷면 · 1080×1080 PNG')
+    expect(card(s).get('.card-preview').attributes('data-template')).toBe('lp')
 
     await vi.waitFor(() => {
       if (gate.release === null) throw new Error('not rendering yet')
@@ -310,7 +298,7 @@ describe('B. 복사 · 저장', () => {
       }
     })
     expect(button(s, '이미지 복사')?.attributes('disabled')).toBeUndefined()
-    expect(lastModel(s).momentCount).toBe(1)
+    expect(card(s).get('.card-preview').attributes('data-template')).toBe('jcard')
   })
 
   it('"이미지 저장" — <이름>.39page.png 로 내려받는다', async () => {
@@ -364,18 +352,12 @@ describe('C. 내 앨범아트 (ADR 0042)', () => {
     return result.artwork.id
   }
 
-  const artBox = (s: Session) =>
-    card(s)
-      .findAll('label.check')
-      .find((node) => node.text().includes('내 앨범아트 넣기'))
-
   it('목록에 사용자 그림이 있으면 처음 만나는 그림을 앱의 맞춤 그대로 넣는다', async () => {
     const s = boot({ renderer: artRenderer() })
     const assetId = await withArt()
     await openShare(s, 'list')
     await waitCard(s)
 
-    expect(artBox(s)?.get('input').element).toHaveProperty('checked', true)
     const calls = (s.renderer as ReturnType<typeof artRenderer>).mock.calls
     const [model, blob] = calls[calls.length - 1] ?? []
     expect(model?.art).toEqual({
@@ -385,33 +367,27 @@ describe('C. 내 앨범아트 (ADR 0042)', () => {
     // 그림 바이트를 넘긴다 (jsdom 의 IndexedDB 사본은 Blob 모양을 잃는다 — 있는지만 본다).
     expect(blob).not.toBeNull()
     expect(blob).toBeDefined()
-    expect(card(s).get('.meta').text()).toBe('카세트 J카드 · 앨범아트 · 1080×1350 PNG')
+    expect(card(s).get('.card-preview').attributes('data-art')).toBe('true')
+    expect(card(s).get('.card-preview').attributes('data-template')).toBe('jcard')
   })
 
-  it('"내 앨범아트 넣기" 를 끄면 39page 기본 그림으로 다시 그린다', async () => {
+  it('곡 공유는 그 곡의 그림 — 끄는 칸은 없다 (ADR 0043)', async () => {
     const s = boot({ renderer: artRenderer() })
-    await withArt()
-    await openShare(s, 'list')
+    const assetId = await withArt()
+    await openTrack(s, 'Bravo')
     await waitCard(s)
 
-    await artBox(s)?.get('input').setValue(false)
-    await vi.waitFor(async () => {
-      await settle()
-      if (lastModel(s).art !== null) throw new Error('not re-rendered')
-      if (card(s).get('.card-preview').attributes('data-state') !== 'ready') throw new Error('busy')
-    })
-    const calls = (s.renderer as ReturnType<typeof artRenderer>).mock.calls
-    expect(calls[calls.length - 1]?.[1]).toBeNull()
-    expect(card(s).get('.meta').text()).toBe('카세트 J카드 · 1080×1350 PNG')
+    expect(lastModel(s).art?.assetId).toBe(assetId)
+    expect(s.wrapper.get('.share-dialog').findAll('input[type="checkbox"]')).toHaveLength(0)
   })
 
-  it('그림이 없는 곡이면 고르는 칸도 없고 기본 그림이다', async () => {
+  it('그림이 없는 곡이면 그림 없이 곡 이름 · Moments 만 그린다', async () => {
     const s = boot({ renderer: artRenderer() })
     await withArt()
     await openShare(s, 'track')
     await waitCard(s)
 
-    expect(artBox(s)).toBeUndefined()
     expect(lastModel(s).art).toBeNull()
+    expect(card(s).get('.card-preview').attributes('data-art')).toBe('false')
   })
 })

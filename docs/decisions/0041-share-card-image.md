@@ -1,6 +1,7 @@
 # 0041. 공유 카드 이미지 — 링크와 같은 내용을 테마의 틀로 그린 PNG, QR · 안내 문구 없음
 
-- 상태: 채택 — 사용자 결정 (2026-11-20), 브랜치 `feat/playback-queue-ux`
+- 상태: 채택 — 사용자 결정 (2026-11-20), 브랜치 `feat/playback-queue-ux`. 싱글 카드 · "39page 에서 듣기" 는
+  [ADR 0043](0043-share-dialog-and-backup-only-data-dialog.md) 에서 바뀌었다.
 - 관련: ADR 0040 (공유 링크), 리서치 [`SHARE_CARD_RESEARCH.md`](../product/SHARE_CARD_RESEARCH.md), 시안
   [`design/mockups/share-card/`](../../design/mockups/share-card/), ADR 0001 (테마)
 
