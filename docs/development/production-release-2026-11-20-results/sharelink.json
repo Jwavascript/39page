@@ -1,0 +1,155 @@
+{
+  "when": "2026-11-20T09:03:45.784Z",
+  "passed": 10,
+  "total": 10,
+  "lengths": {
+    "playlistWithTitles": 226,
+    "playlistWithoutTitles": 162,
+    "big50WithTitles": 3804,
+    "big50WithoutTitles": 788,
+    "momentWithNote": 163
+  },
+  "results": [
+    {
+      "name": "A: 목록 공유 링크를 만들고 \"링크 복사\" 로 클립보드에 넣는다",
+      "pass": true,
+      "details": {
+        "length": 226,
+        "copyStatus": "링크를 복사했어요.",
+        "clipboardMatches": true
+      }
+    },
+    {
+      "name": "A: 50곡(겹치지 않는 한글 제목)은 \"잘릴 수 있어요\" 와 곡 이름을 뺀 길이를 알린다",
+      "pass": true,
+      "details": {
+        "link": 3804,
+        "warn": "링크가 길어서 일부 게시판에서 잘릴 수 있어요. 곡 이름을 빼면 788자예요 (받는 사람이 열 때 YouTube 에서 제목을 찾아요).",
+        "withoutTitles": 788
+      }
+    },
+    {
+      "name": "B(다른 사람): 링크를 열면 미리보기 — 목록 이름 · 곡 이름 · 아직 저장 안 함",
+      "pass": true,
+      "details": {
+        "dialog": {
+          "kicker": "공유받은 목록",
+          "headline": "여름 밤 플레이리스트",
+          "meta": "곡 3개",
+          "rows": ["버니 — 테스트 곡", "Sintel 2010", "API 데모"],
+          "moments": [],
+          "error": null,
+          "lookup": null
+        },
+        "libraryBefore": ["MY RECORDS"]
+      }
+    },
+    {
+      "name": "B: \"보관함에 추가하고 듣기\" → B 의 보관함에 저장 · 첫 곡 재생(실제 YouTube) · 조각 지움",
+      "pass": true,
+      "details": {
+        "hash": "",
+        "lists": [
+          {
+            "name": "MY RECORDS",
+            "titles": []
+          },
+          {
+            "name": "여름 밤 플레이리스트",
+            "titles": ["버니 — 테스트 곡", "Sintel 2010", "API 데모"]
+          }
+        ],
+        "nowList": "여름 밤 플레이리스트",
+        "dialog": false
+      }
+    },
+    {
+      "name": "A 의 보관함은 그대로다 (컨텍스트가 다르다)",
+      "pass": true,
+      "details": {
+        "aLists": ["여름 밤 플레이리스트", "50곡 목록"]
+      }
+    },
+    {
+      "name": "C: 곡 이름을 뺀 링크 — YouTube(oEmbed)에서 실제 제목을 찾아 보인다",
+      "pass": true,
+      "details": {
+        "rows": [
+          "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film",
+          "Sintel - Open Movie by Blender Foundation",
+          "YouTube Developers Live: Embedded Web Player Customization"
+        ],
+        "shorterBy": 64
+      }
+    },
+    {
+      "name": "D: Moment 링크 — 미리보기(시점 · 메모) · \"그 순간부터 듣기\" 는 저장 없이 120초부터 재생",
+      "pass": true,
+      "details": {
+        "dialog": {
+          "kicker": "공유받은 순간",
+          "headline": "Sintel 2010",
+          "meta": "2:00 부터",
+          "rows": [],
+          "moments": ["▶ 2:00여기부터 최고 두 번째 줄"],
+          "error": null,
+          "lookup": null
+        },
+        "time": 120.02456289700318,
+        "savedMoments": null
+      }
+    },
+    {
+      "name": "B: 열린 탭에 링크를 붙여 넣어도 미리보기 · \"Moment 저장\" 은 그 Moment 만 저장",
+      "pass": true,
+      "details": {
+        "bMoments": [["eRsGyueVLvQ", 120, "여기부터 최고\n두 번째 줄"]]
+      }
+    },
+    {
+      "name": "E: 게시판이 끝을 자른 링크 — 이유와 할 일을 말하고 아무것도 저장하지 않는다",
+      "pass": true,
+      "details": {
+        "dialog": {
+          "kicker": null,
+          "headline": "공유 링크를 열 수 없어요",
+          "meta": null,
+          "rows": [],
+          "moments": [],
+          "error": "공유 링크가 잘렸거나 손상됐어요. 보낸 사람에게 링크를 다시 받아 주세요.",
+          "lookup": null
+        }
+      }
+    },
+    {
+      "name": "받는 쪽 대화상자 배치 — 1440 · 390 · 320 화면 안 · 가로 넘침 없음 · 단추 44px · 보내는 쪽 390 넘침 없음",
+      "pass": true,
+      "details": {
+        "layout": [
+          {
+            "width": 1440,
+            "inside": true,
+            "overflowX": false,
+            "pageOverflow": false,
+            "minButton": 44
+          },
+          {
+            "width": 390,
+            "inside": true,
+            "overflowX": false,
+            "pageOverflow": false,
+            "minButton": 44
+          },
+          {
+            "width": 320,
+            "inside": true,
+            "overflowX": false,
+            "pageOverflow": false,
+            "minButton": 44
+          }
+        ],
+        "senderOverflow": false
+      }
+    }
+  ]
+}
