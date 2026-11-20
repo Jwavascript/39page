@@ -69,13 +69,13 @@ export interface TransportModel {
   canNext: ComputedRef<boolean>
 
   /**
-   * `YOUTUBE에서 열기 ↗` 주소 (M3-5). 현재 트랙이 없으면 `null` 이다.
+   * 재생 오류일 때 띄우는 `YouTube에서 열기 ↗` 주소 (M3-5 → ADR 0042). 플레이어가 알린 오류 안내가 떠 있는 동안만 값이
+   * 있고, 안내가 지워지면(다음 곡 · 다시 재생 · 큐 편집) 함께 `null` 이 된다. 곡이 없어도 `null`.
    *
-   * 승인된 디자인처럼 **오류일 때만 띄우지 않는다.** 곡을 고른 뒤에는 항상
-   * 보인다 — 재생이 되는 영상도 YouTube 에서 열어볼 이유가 있고, 재생이
-   * 깨진 순간에 링크가 "새로 나타나는" 것보다 이미 있는 편이 낫다.
+   * M3-5 에서는 곡을 고르면 늘 보였다. 그 자리를 공유 아이콘이 이어받았으므로(ADR 0042) 이제는 오류 안내("YouTube 에서
+   * 열어보세요")가 가리킬 곳으로만 남는다 — 재생할 수 없는 영상에서 사용자가 갈 곳 (`MVP_SPEC.md` F3).
    */
-  youtubeUrl: ComputedRef<string | null>
+  youtubeFallbackUrl: ComputedRef<string | null>
 
   /** 영상이 아직 없어 안내를 띄울지. 어댑터 소유 영역 **밖**에 그린다. */
   showsPlaceholder: ComputedRef<boolean>
@@ -135,9 +135,10 @@ export function useTransport(): TransportModel {
 
   const toggleLabel = computed<string>(() => (showsPause.value ? '일시정지' : '재생'))
 
-  const youtubeUrl = computed<string | null>(() => {
+  const youtubeFallbackUrl = computed<string | null>(() => {
     const videoId = playback.currentTrack?.videoId
-    return videoId === undefined ? null : youtubeWatchUrl(videoId)
+    if (videoId === undefined || playback.statusCause !== 'player-error') return null
+    return youtubeWatchUrl(videoId)
   })
 
   /*
@@ -202,7 +203,7 @@ export function useTransport(): TransportModel {
     canToggle,
     canPrevious,
     canNext,
-    youtubeUrl,
+    youtubeFallbackUrl,
     showsPlaceholder,
     shuffle,
     repeat,

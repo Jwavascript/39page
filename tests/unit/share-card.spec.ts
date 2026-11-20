@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  artworkPlacement,
   buildShareCard,
   fitLine,
   formatAt,
@@ -17,6 +18,9 @@ import {
   type Measure,
 } from '@/features/backup/shareCard'
 import type { ShareLinkContent } from '@/features/backup/shareLink'
+import { shareCardArtKeys } from '@/features/backup/useShareCard'
+import type { Playlist } from '@/shared/types'
+import { DEFAULT_ARTWORK_DISPLAY } from '@/shared/types/artwork'
 
 /** 글자 하나 = 10px (한글 · 영문 같게). */
 const measure: Measure = (text) => graphemes(text).length * 10
@@ -176,6 +180,100 @@ describe('C. 영수증 높이 — 최대 3,240, 넘치면 "+N곡 더"', () => {
     const a = receiptHeight({ rows: 11, more: false, moments: false, nameLines: 1 })
     const b = receiptHeight({ rows: 12, more: false, moments: false, nameLines: 1 })
     expect(b - a).toBe(56)
+  })
+})
+
+describe('E. 앨범아트 (ADR 0042)', () => {
+  const ART = { assetId: 'a'.repeat(64), display: DEFAULT_ARTWORK_DISPLAY }
+
+  it('모델은 넘긴 그림을 그대로 담는다 — 없으면 null (39page 기본 그림)', () => {
+    expect(buildShareCard(playlist(3), 'kawaii', NOW).art).toBeNull()
+    expect(buildShareCard(playlist(3), 'kawaii', NOW, ART).art).toEqual(ART)
+    expect(buildShareCard(playlist(30), 'mono', NOW, ART).art).toEqual(ART)
+  })
+
+  it('맞춤은 앱(CSS)과 같다 — cover 는 짧은 변을 칸에 맞춰 가운데, contain 은 긴 변을 맞춘다', () => {
+    const cover = { ...DEFAULT_ARTWORK_DISPLAY, fit: 'cover' as const }
+    expect(artworkPlacement(100, 200, 100, cover)).toEqual({
+      x: -50,
+      y: 0,
+      width: 200,
+      height: 100,
+    })
+    const contain = { ...DEFAULT_ARTWORK_DISPLAY, fit: 'contain' as const }
+    expect(artworkPlacement(100, 200, 100, contain)).toEqual({
+      x: 0,
+      y: 25,
+      width: 100,
+      height: 50,
+    })
+  })
+
+  it('위치는 넘친 쪽의 몇 % 를 보일지, 확대는 그 점을 중심으로', () => {
+    const left = { ...DEFAULT_ARTWORK_DISPLAY, positionX: 0 }
+    expect(artworkPlacement(100, 200, 100, left)).toEqual({ x: 0, y: 0, width: 200, height: 100 })
+    const right = { ...DEFAULT_ARTWORK_DISPLAY, positionX: 100 }
+    expect(artworkPlacement(100, 200, 100, right).x).toBe(-100)
+    const zoom = { ...DEFAULT_ARTWORK_DISPLAY, zoom: 2 }
+    // 가운데(50, 50)를 중심으로 두 배 — 정사각형 그림이면 (-50, -50) 에서 200 × 200.
+    expect(artworkPlacement(100, 100, 100, zoom)).toEqual({
+      x: -50,
+      y: -50,
+      width: 200,
+      height: 200,
+    })
+  })
+
+  it('영수증은 그림 자리(240 + 30)만큼 길어지고, 상한 안에 드는 곡 수가 그만큼 준다', () => {
+    const without = receiptHeight({ rows: 12, more: false, moments: false, nameLines: 1 })
+    const withArt = receiptHeight({
+      rows: 12,
+      more: false,
+      moments: false,
+      nameLines: 1,
+      art: true,
+    })
+    expect(withArt - without).toBe(270)
+    expect(receiptRowsThatFit(100, false, 1, true)).toBeLessThan(receiptRowsThatFit(100, false, 1))
+  })
+
+  it('그림을 찾아볼 트랙 — 목록은 곡 순서, 곡은 그 곡, Moment 는 같은 영상의 트랙(앞 목록 먼저)', () => {
+    const list = (id: string, videoIds: string[]): Playlist => ({
+      id,
+      name: id,
+      tracks: videoIds.map((videoId, index) => ({
+        id: `${id}${String(index)}`,
+        source: 'youtube' as const,
+        videoId,
+        title: '',
+      })),
+    })
+    const a = list('a', ['v1', 'v2'])
+    const b = list('b', ['v2'])
+    expect(shareCardArtKeys({ kind: 'playlist', playlist: a }, [])).toEqual([
+      { playlistId: 'a', trackId: 'a0' },
+      { playlistId: 'a', trackId: 'a1' },
+    ])
+    const track = a.tracks[1]
+    if (track === undefined) throw new Error('track')
+    expect(shareCardArtKeys({ kind: 'track', playlist: a, track }, [])).toEqual([
+      { playlistId: 'a', trackId: 'a1' },
+    ])
+    const moment = {
+      id: 'm',
+      source: 'youtube' as const,
+      videoId: 'v2',
+      atSeconds: 3,
+      note: '',
+      title: '',
+      createdAt: '',
+      updatedAt: '',
+    }
+    expect(shareCardArtKeys({ kind: 'moment', moment, title: '' }, [b, null, a])).toEqual([
+      { playlistId: 'b', trackId: 'b0' },
+      { playlistId: 'a', trackId: 'a1' },
+    ])
+    expect(shareCardArtKeys(null, [a])).toEqual([])
   })
 })
 

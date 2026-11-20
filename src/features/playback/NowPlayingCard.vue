@@ -13,6 +13,9 @@
  * **플레이어 위젯(`PlayerSurface`) 안**, 영상 상자의 형제로 선다 — 따로 된 그리드 칸이면 세 열이 행 높이를 나눠 써서
  * 영상과 카드 사이가 벌어진다 (ADR 0032 결과 절). 보관함이 열리면 같은 인스턴스가 재생 띠에 작게 선다 (조상의
  * `data-archive-layout`, 맨 아래 비스코프 스타일).
+ *
+ * 조작 줄 끝의 공유 아이콘(ADR 0042)은 지금 곡을 공유 대화상자로 연다 — `YOUTUBE에서 열기` 의 자리다. YouTube 링크는
+ * 재생 오류 때만 상태 줄 아래에 남는다.
  */
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
@@ -20,6 +23,7 @@ import { ARCHIVE } from '@/features/archive/archiveController'
 import ArtworkImage from '@/features/artwork/ArtworkImage.vue'
 import { useTrackArtwork } from '@/features/artwork/useTrackArtwork'
 import type { TrackKey } from '@/shared/types/artwork'
+import { SHARE_DIALOG } from '@/shared/types/share'
 import { formatTimestamp } from '@/shared/utils/time'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
@@ -64,14 +68,37 @@ const artworkDisplay = computed(() =>
   trackKey.value === null ? undefined : artworkStore.displayFor(trackKey.value),
 )
 
-/** 그림을 눌러 설정을 열 수 있는가 — 그 트랙이 지금 라이브러리에 있을 때만. */
-const canEditArtwork = computed(() => {
+/** 지금 곡이 라이브러리의 목록에 그대로 있는가 — 그림 설정 · 공유가 그 트랙을 가리킬 수 있을 때. */
+const inLibrary = computed(() => {
   const key = trackKey.value
-  if (key === null || archive === null) return false
+  if (key === null) return false
   return (
     library.getPlaylist(key.playlistId)?.tracks.some((track) => track.id === key.trackId) ?? false
   )
 })
+
+/** 그림을 눌러 설정을 열 수 있는가 — 그 트랙이 지금 라이브러리에 있을 때만. */
+const canEditArtwork = computed(() => archive !== null && inLibrary.value)
+
+/* ---------- 공유 (ADR 0042) ---------- */
+
+const shareDialog = inject(SHARE_DIALOG, null)
+
+/** 공유 아이콘 — 곡이 없으면 그리지 않고(`null`), 보관함에 없는 곡(목록 밖 Moment 재생 등)이면 누를 수 없다. */
+const shareable = computed<boolean | null>(() => {
+  if (shareDialog === null || videoId.value === null) return null
+  return inLibrary.value
+})
+
+const shareLabel = computed<string>(() =>
+  shareable.value === true ? '이 곡 공유' : '보관함 목록에 있는 곡만 공유할 수 있어요',
+)
+
+function shareTrack(): void {
+  const key = trackKey.value
+  if (key === null || shareDialog === null || !inLibrary.value) return
+  shareDialog.open({ playlistId: key.playlistId, trackId: key.trackId })
+}
 
 function editArtwork(): void {
   const key = trackKey.value
@@ -215,7 +242,8 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
           :can-previous="transport.canPrevious.value"
           :can-next="transport.canNext.value"
           :toggle-label="transport.toggleLabel.value"
-          :youtube-url="transport.youtubeUrl.value"
+          :shareable="shareable"
+          :share-label="shareLabel"
           :shuffle="transport.shuffle.value"
           :repeat="transport.repeat.value"
           :repeat-label="transport.repeatLabel.value"
@@ -224,6 +252,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
           @next="transport.next"
           @shuffle="transport.toggleShuffle"
           @repeat="transport.cycleRepeat"
+          @share="shareTrack"
         />
 
         <p
@@ -234,6 +263,21 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
         >
           {{ statusText }}
         </p>
+
+        <!--
+          재생 오류 안내("YouTube 에서 열어보세요")가 가리킬 곳 (`MVP_SPEC.md` F3). 늘 있던 `YOUTUBE에서 열기` 단추는
+          공유 아이콘에 자리를 넘겼다 (ADR 0042). 새 창이므로 `noopener noreferrer` — 열린 쪽이 `window.opener` 로 이
+          페이지를 건드리지 못하게.
+        -->
+        <a
+          v-if="transport.youtubeFallbackUrl.value !== null"
+          class="youtube-fallback"
+          :href="transport.youtubeFallbackUrl.value"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          YouTube에서 열기 ↗
+        </a>
 
         <!-- 승인된 디자인의 `.mute-note` (영상 아래에서 카드로 옮겼다). -->
         <p class="mute-note">YouTube 공식 영상·컨트롤은 그대로 표시됩니다.</p>
@@ -401,6 +445,17 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   display: none;
 }
 
+/* 오류 때만 — 상태 줄 바로 아래의 글 링크. 누를 자리는 44px. */
+.youtube-fallback {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  align-self: flex-start;
+  color: var(--status-warning-text-color);
+  font: 12px var(--font-mono);
+  text-underline-offset: 3px;
+}
+
 /* 승인된 디자인의 `.mute-note` 값. */
 .mute-note {
   margin: 0;
@@ -456,7 +511,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   비스코프다 — 조상(`DashboardShell` 워크스페이스)의 `data-archive-layout` 을 봐야 한다. 이 카드의 클래스만 겨냥한다.
 -->
 <style>
-/* 띠 (넓은 화면): 작은 그림 · 제목 · 조작. "YOUTUBE에서 열기" 는 닫으면 그대로 있다. */
+/* 띠 (넓은 화면): 작은 그림 · 제목 · 조작. 공유 아이콘은 조작 줄 끝에 그대로 있다. */
 [data-archive-layout='strip'] .now-playing-card .np-body {
   --np-art-size: 72px;
 
@@ -493,8 +548,8 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
 [data-archive-layout='side'] .now-playing-card .eyebrow,
 [data-archive-layout='stack'] .now-playing-card .now-sub,
 [data-archive-layout='side'] .now-playing-card .now-sub,
-[data-archive-layout='stack'] .now-playing-card .external,
-[data-archive-layout='side'] .now-playing-card .external,
+[data-archive-layout='stack'] .now-playing-card .share,
+[data-archive-layout='side'] .now-playing-card .share,
 [data-archive-layout='stack'] .now-playing-card .mode,
 [data-archive-layout='side'] .now-playing-card .mode,
 [data-archive-layout='stack'] .now-playing-card .mute-note,
@@ -540,5 +595,11 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
 [data-archive-layout='side'] .now-playing-card .status {
   grid-area: status;
   padding-top: 4px;
+}
+
+/* 오류 링크는 상태 줄 아래 한 줄을 다 쓴다. */
+[data-archive-layout='stack'] .now-playing-card .youtube-fallback,
+[data-archive-layout='side'] .now-playing-card .youtube-fallback {
+  grid-column: 1 / -1;
 }
 </style>

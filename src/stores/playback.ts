@@ -27,6 +27,12 @@ import type { PlayerState, RepeatMode, Track } from '@/shared/types'
 /** 상태 메시지의 어조. 승인된 디자인의 `.status` / `.status.warning`에 대응한다. */
 export type StatusTone = 'info' | 'warning'
 
+/**
+ * 안내가 어디서 왔는지 — 화면이 안내에 딸린 길을 고를 때 쓴다. 지금은 하나뿐이다: 플레이어가 알린 재생 오류
+ * (`YouTube에서 열기` 링크를 함께 띄운다, ADR 0042). 그 밖의 안내는 `null`.
+ */
+export type StatusCause = 'player-error' | null
+
 /** 큐가 비었을 때의 인덱스. */
 export const NO_QUEUE_INDEX = -1
 
@@ -84,6 +90,11 @@ export const usePlaybackStore = defineStore('playback', () => {
   /** 사용자에게 보여줄 상태·오류 메시지. */
   const statusMessage = ref<string>('')
   const statusTone = ref<StatusTone>('info')
+  /**
+   * 지금 안내의 출처. 안내와 **함께만** 바뀐다 — 안내를 지우거나 다른 안내로 바꾸면 따라 지워진다. 플레이어 상태로 판단하지
+   * 않는 이유: 실제 YouTube 플레이어는 오류를 알린 뒤 상태(시작 전 · 대기)를 또 보내 `error` 가 곧 덮인다.
+   */
+  const statusCause = ref<StatusCause>(null)
 
   /**
    * 지금 트랙이 **마지막 재생 명령 이후** 실제로 재생을 시작했는지 (M3-2 · M9-4).
@@ -217,9 +228,10 @@ export const usePlaybackStore = defineStore('playback', () => {
     playerState.value = next
   }
 
-  function setStatus(message: string, tone: StatusTone = 'info'): void {
+  function setStatus(message: string, tone: StatusTone = 'info', cause: StatusCause = null): void {
     statusMessage.value = message
     statusTone.value = tone
+    statusCause.value = message === '' ? null : cause
   }
 
   /** 코디네이터만 부른다. 명령하면 `false`, 플레이어가 `playing` 을 알리면 `true`. */
@@ -241,6 +253,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     playerState.value = 'idle'
     statusMessage.value = ''
     statusTone.value = 'info'
+    statusCause.value = null
     hasStartedPlaying.value = false
   }
 
@@ -255,6 +268,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     playerState,
     statusMessage,
     statusTone,
+    statusCause,
     hasStartedPlaying,
     isEmpty,
     isPlaying,

@@ -6,10 +6,12 @@
 import { nextTick } from 'vue'
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { IDBFactory } from 'fake-indexeddb'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/app/App.vue'
+import { validateArtwork } from '@/features/artwork/imageValidation'
 import {
   SHARE_CARD_RENDERER,
   type ShareCardModel,
@@ -19,10 +21,12 @@ import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import { PLAYER_ADAPTER_FACTORY } from '@/features/playback/PlayerAdapter'
 import { STORAGE_KEYS } from '@/shared/storage'
 import type { Moment } from '@/shared/types'
+import { useArtworkStore } from '@/stores/artwork'
 import { LIBRARY_STORAGE_VERSION, useLibraryStore } from '@/stores/library'
 import { MOMENTS_STORAGE_VERSION, useMomentsStore } from '@/stores/moments'
 import { useThemeStore } from '@/stores/theme'
 
+import { fakeImageTools, fileOf, pngBytes } from '../support/artworkFixtures'
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
 import { openTrackManage } from '../support/trackManage'
 
@@ -323,5 +327,91 @@ describe('B. 복사 · 저장', () => {
     expect(anchor.download).toBe('ONE.39page.png')
     expect(card(s).get('.status').text()).toBe('“ONE.39page.png” 을 저장했어요.')
     click.mockRestore()
+  })
+})
+
+describe('C. 내 앨범아트 (ADR 0042)', () => {
+  /** 렌더러가 받은 그림 바이트를 기록하고, 그림이 있으면 "그렸다" 고 답한다. */
+  function artRenderer() {
+    return vi.fn<ShareCardRenderer>(async (model: ShareCardModel, art: Blob | null) => ({
+      blob: new Blob(['png'], { type: 'image/png' }),
+      width: model.width,
+      height: model.height ?? 2000,
+      art: art !== null,
+    }))
+  }
+
+  /** 두 번째 곡(Bravo)에 사용자 그림을 단다. */
+  async function withArt(): Promise<string> {
+    const store = useArtworkStore()
+    await store.init({ factory: new IDBFactory(), channel: null })
+    const result = await validateArtwork(fileOf(pngBytes(3), 'cover.png'), fakeImageTools())
+    if (!result.ok) throw new Error(result.reason)
+    const saved = await store.setCustom(
+      { playlistId: 'one', trackId: 't2' },
+      B,
+      result.artwork,
+      0,
+      {
+        fit: 'contain',
+        positionX: 20,
+        positionY: 80,
+        zoom: 1.5,
+      },
+    )
+    if (!saved.ok) throw new Error(saved.reason)
+    await settle()
+    return result.artwork.id
+  }
+
+  const artBox = (s: Session) =>
+    card(s)
+      .findAll('label.check')
+      .find((node) => node.text().includes('내 앨범아트 넣기'))
+
+  it('목록에 사용자 그림이 있으면 처음 만나는 그림을 앱의 맞춤 그대로 넣는다', async () => {
+    const s = boot({ renderer: artRenderer() })
+    const assetId = await withArt()
+    await openShare(s, 'list')
+    await waitCard(s)
+
+    expect(artBox(s)?.get('input').element).toHaveProperty('checked', true)
+    const calls = (s.renderer as ReturnType<typeof artRenderer>).mock.calls
+    const [model, blob] = calls[calls.length - 1] ?? []
+    expect(model?.art).toEqual({
+      assetId,
+      display: { fit: 'contain', positionX: 20, positionY: 80, zoom: 1.5 },
+    })
+    // 그림 바이트를 넘긴다 (jsdom 의 IndexedDB 사본은 Blob 모양을 잃는다 — 있는지만 본다).
+    expect(blob).not.toBeNull()
+    expect(blob).toBeDefined()
+    expect(card(s).get('.meta').text()).toBe('카세트 J카드 · 앨범아트 · 1080×1350 PNG')
+  })
+
+  it('"내 앨범아트 넣기" 를 끄면 39page 기본 그림으로 다시 그린다', async () => {
+    const s = boot({ renderer: artRenderer() })
+    await withArt()
+    await openShare(s, 'list')
+    await waitCard(s)
+
+    await artBox(s)?.get('input').setValue(false)
+    await vi.waitFor(async () => {
+      await settle()
+      if (lastModel(s).art !== null) throw new Error('not re-rendered')
+      if (card(s).get('.card-preview').attributes('data-state') !== 'ready') throw new Error('busy')
+    })
+    const calls = (s.renderer as ReturnType<typeof artRenderer>).mock.calls
+    expect(calls[calls.length - 1]?.[1]).toBeNull()
+    expect(card(s).get('.meta').text()).toBe('카세트 J카드 · 1080×1350 PNG')
+  })
+
+  it('그림이 없는 곡이면 고르는 칸도 없고 기본 그림이다', async () => {
+    const s = boot({ renderer: artRenderer() })
+    await withArt()
+    await openShare(s, 'track')
+    await waitCard(s)
+
+    expect(artBox(s)).toBeUndefined()
+    expect(lastModel(s).art).toBeNull()
   })
 })

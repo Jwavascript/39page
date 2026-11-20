@@ -4,17 +4,27 @@
  *
  * 링크와 같은 대상 · 같은 선택(Moments · 메모)으로 그린 카드를 미리 보이고, 복사하거나 PNG 로 저장한다. 게시판 글에 이
  * 이미지를 올리고 위의 링크를 이미지에 건다. 카드 안에는 QR · 링크 안내 문구를 넣지 않는다 (사용자 결정).
+ * 대상에 사용자가 올린 앨범아트가 있으면 넣는다 — "앨범아트 넣기" 로 끌 수 있다 (ADR 0042).
  *
  * 판단은 `useShareCard` 가, 표현은 이 컴포넌트가 한다 (규칙 3).
  */
 import { computed, toRef } from 'vue'
 
+import type { TrackKey } from '@/shared/types/artwork'
+
 import type { ShareLinkContent } from './shareLink'
 import { useShareCard } from './useShareCard'
 
-const props = defineProps<{ content: ShareLinkContent | null }>()
+const props = withDefaults(
+  defineProps<{
+    content: ShareLinkContent | null
+    /** 앨범아트를 찾아볼 트랙들 — 앞에서부터 처음 만나는 사용자 그림 (`shareCardArtKeys`). */
+    artKeys?: readonly TrackKey[]
+  }>(),
+  { artKeys: () => [] },
+)
 
-const card = useShareCard(toRef(props, 'content'))
+const card = useShareCard(toRef(props, 'content'), toRef(props, 'artKeys'))
 
 const TEMPLATE_LABEL = {
   jcard: '카세트 J카드',
@@ -28,7 +38,8 @@ const meta = computed<string>(() => {
   const current = card.rendered.value
   if (current === null) return ''
   const { model, image } = current
-  return `${TEMPLATE_LABEL[model.template]} · ${String(image.width)}×${String(image.height)} PNG`
+  const art = image.art === true ? ' · 앨범아트' : ''
+  return `${TEMPLATE_LABEL[model.template]}${art} · ${String(image.width)}×${String(image.height)} PNG`
 })
 
 const alt = computed<string>(() => {
@@ -56,6 +67,11 @@ const ready = computed(() => card.rendered.value !== null && card.state.value ==
   <section class="card-share" aria-labelledby="card-share-title">
     <h5 id="card-share-title" class="sub-title">이미지 카드</h5>
     <p class="lead">게시판 글에 이 이미지를 올리고, 위의 링크를 이미지에 걸어 주세요.</p>
+
+    <label v-if="card.hasArt.value" class="check">
+      <input v-model="card.includeArt.value" type="checkbox" />
+      내 앨범아트 넣기
+    </label>
 
     <div class="card-preview" :data-state="card.state.value">
       <img
@@ -111,6 +127,14 @@ const ready = computed(() => card.rendered.value !== null && card.state.value ==
 
 .status:empty {
   display: none;
+}
+
+.check {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  font-size: 13px;
+  gap: 8px;
 }
 
 .status.is-failed {

@@ -39,6 +39,9 @@
  * 12px 남짓이라 누를 수 없으므로 띠에서는 끈다 — 재생 조작은 바로 아래 영상 밑에 있다. 띠 전체가
  * "음악 보관함 열기" 다.
  *
+ * ADR 0042 — 데크 아래 안내 줄 끝에 **공유 아이콘**을 둔다. 데크가 보이는 목록(카세트 라벨 · 재생 중인 목록)을 공유
+ * 대화상자로 연다. 아트(SVG) 위에 겹치지 않는다 — 두 테마의 그림을 가리지 않고, 작은 띠에서도 같은 자리다.
+ *
  * 단일 루트를 유지한다. `WidgetHost` 가 `grid-area` 를 루트에 적용한다.
  */
 import { computed, inject } from 'vue'
@@ -46,6 +49,7 @@ import { computed, inject } from 'vue'
 import { ARCHIVE } from '@/features/archive/archiveController'
 import { useDeckTransport } from '@/features/deck/useDeckTransport'
 import { useDeckLabel } from '@/features/deck/useDeckLabel'
+import { useDeckShare } from '@/features/deck/useDeckShare'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
 import { THEMES } from '@/themes'
@@ -82,6 +86,8 @@ const isPaused = computed<boolean>(() => playback.playerState === 'paused')
  */
 const transport = useDeckTransport()
 const cassetteLabel = useDeckLabel()
+/** 데크가 보이는 목록의 공유 (ADR 0042). 판단은 composable 이 한다. */
+const deckShare = useDeckShare()
 
 /** 플레이리스트 위젯을 펼치거나 접는다 (M7). */
 /**
@@ -166,10 +172,29 @@ function openLibrary(): void {
       ></button>
     </div>
 
-    <!-- 데크 아래 안내. 트리거가 실제로 동작하므로 표시한다. -->
-    <p v-if="archive !== null" class="deck-hint">
-      {{ copy.hintMark }} <strong>{{ copy.hintStrong }}</strong> {{ copy.hintRest }}
-    </p>
+    <!-- 데크 아래 안내(트리거가 실제로 동작하므로 표시한다)와 공유 아이콘 (ADR 0042). -->
+    <div v-if="archive !== null || deckShare.available" class="deck-foot">
+      <p v-if="archive !== null" class="deck-hint">
+        {{ copy.hintMark }} <strong>{{ copy.hintStrong }}</strong> {{ copy.hintRest }}
+      </p>
+      <button
+        v-if="deckShare.available"
+        type="button"
+        class="deck-share"
+        :aria-label="deckShare.label.value"
+        :title="deckShare.label.value"
+        :disabled="!deckShare.canShare.value"
+        @click="deckShare.share()"
+      >
+        <svg class="deck-share-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="18" cy="5" r="2.6" />
+          <circle cx="6" cy="12" r="2.6" />
+          <circle cx="18" cy="19" r="2.6" />
+          <path d="M8.3 10.8l7.4-4.4" />
+          <path d="M8.3 13.2l7.4 4.4" />
+        </svg>
+      </button>
+    </div>
 
     <!--
       재생 요청이 거절된 이유 (M6-6).
@@ -379,9 +404,18 @@ function openLibrary(): void {
   height: 10.53%;
 }
 
+/* 안내 · 공유 한 줄 — 안내는 가운데, 공유 아이콘은 그 옆. */
+.deck-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 5px;
+  gap: 10px;
+}
+
 /* 승인된 디자인의 `.deck-hint` 값을 따른다. */
 .deck-hint {
-  margin: 5px 0 0;
+  margin: 0;
   color: var(--deck-hint-text-color);
   font: 12px var(--font-mono);
   letter-spacing: 0.01em;
@@ -391,6 +425,47 @@ function openLibrary(): void {
 .deck-hint strong {
   color: var(--deck-hint-strong-text-color);
   font-weight: 500;
+}
+
+/* 공유 — 다른 둥근 단추와 같은 44px 원 (M11 U16 터치 목표). 색은 데크 안내 토큰을 따른다. */
+.deck-share {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-circle);
+  background: var(--pill-surface-color);
+  color: var(--deck-hint-strong-text-color);
+  place-items: center;
+}
+
+.deck-share:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* 터치 뒤 hover 색이 남지 않게 (M11 U18). */
+@media (hover: hover) {
+  .deck-share:hover:not(:disabled) {
+    background: var(--pill-surface-hover-color);
+  }
+}
+
+.deck-share:focus-visible {
+  outline: var(--deck-open-focus-ring-width) solid var(--deck-open-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.deck-share-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 /* 재생 요청이 거절된 이유 (M6-6). 사용자가 뭔가 해야 하므로 경고 색이다. */
@@ -447,6 +522,12 @@ function openLibrary(): void {
   .deck-notice {
     margin: 0;
     text-align: left;
+  }
+
+  /* 띠에서는 안내 옆 오른쪽 끝 — 안내 글이 길어지면 줄을 바꾸고 아이콘은 제자리다. */
+  .deck-foot {
+    justify-content: space-between;
+    margin-top: 0;
   }
 
   .deck-hint {

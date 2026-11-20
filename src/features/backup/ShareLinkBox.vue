@@ -9,12 +9,20 @@
  */
 import { computed, nextTick, ref, toRef } from 'vue'
 
+import { useLibraryStore } from '@/stores/library'
+
 import ShareCardBox from './ShareCardBox.vue'
+import { shareCardArtKeys } from './useShareCard'
 import { useShareLink, type ShareLinkTarget } from './useShareLink'
 
 const props = defineProps<{ target: ShareLinkTarget | null }>()
 
 const link = useShareLink(toRef(props, 'target'))
+const library = useLibraryStore()
+/** 카드의 앨범아트를 찾아볼 트랙들 — Moment 는 같은 영상의 트랙(고른 목록 먼저). */
+const artKeys = computed(() =>
+  shareCardArtKeys(props.target, [library.selectedPlaylist, ...library.playlists]),
+)
 const field = ref<HTMLInputElement | null>(null)
 
 const kind = computed(() => props.target?.kind ?? null)
@@ -122,11 +130,12 @@ async function copy(): Promise<void> {
       </template>
     </p>
 
-    <ShareCardBox v-if="target !== null" :content="link.cardContent.value" />
+    <ShareCardBox v-if="target !== null" :content="link.cardContent.value" :art-keys="artKeys" />
 
     <p v-if="target !== null" class="note">
-      링크에 그대로 들어가는 것: {{ contains }}. 링크를 가진 누구나 볼 수 있어요. 앨범아트는
-      들어가지 않아요 (받는 사람에게는 썸네일로 보여요).
+      링크에 그대로 들어가는 것: {{ contains }}. 링크를 가진 누구나 볼 수 있어요. 링크에는
+      앨범아트가 들어가지 않아요 (받는 사람에게는 썸네일로 보여요) — 내 앨범아트는 이미지 카드에만
+      그려져요.
     </p>
   </section>
 </template>

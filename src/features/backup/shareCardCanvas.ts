@@ -5,12 +5,15 @@
  * 선 2px 이상, 글자 아래에 도트 무늬를 깔지 않는다. 글꼴은 앱의 기본 글꼴(`--font-body` · `--font-mono`)을 쓴다 —
  * 기기마다 모양이 조금 다를 수 있다 (사용자 결정: 기본 글꼴로 시작).
  *
- * 넣지 않는 것: QR · 링크 안내 문구 · YouTube 썸네일 · YouTube 로고.
+ * 넣지 않는 것: QR · 링크 안내 문구 · YouTube 썸네일 · YouTube 로고. 사용자가 올린 앨범아트는 넣는다 (ADR 0042).
  */
 import { CASSETTE_DOTS, patternSize } from '@/features/artwork/dotPatterns'
+import type { ArtworkDisplay } from '@/shared/types/artwork'
 
 import {
+  artworkPlacement,
   fitLine,
+  RECEIPT,
   receiptHeight,
   receiptRowsThatFit,
   wrapLines,
@@ -234,10 +237,103 @@ function trackRow(
 }
 
 /* ------------------------------------------------------------------ *
+ * 사용자 앨범아트
+ * ------------------------------------------------------------------ */
+
+/** 그릴 수 있게 읽은 사용자 그림. 다 그린 뒤 `release()` 로 놓는다. */
+interface ArtImage {
+  readonly source: CanvasImageSource
+  readonly width: number
+  readonly height: number
+  release(): void
+}
+
+interface CardArt {
+  readonly image: ArtImage
+  readonly display: ArtworkDisplay
+}
+
+/**
+ * 그림 바이트를 읽는다. 못 읽으면 `null` — 카드는 기본 그림으로 그린다. 움직이는 GIF 는 첫 장면이다.
+ * `blob:` 주소는 같은 출처라 캔버스가 더럽혀지지 않는다(그린 뒤에도 PNG 로 꺼낼 수 있다).
+ */
+async function decodeArt(blob: Blob | null): Promise<ArtImage | null> {
+  if (blob === null) return null
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(blob)
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        release: () => bitmap.close(),
+      }
+    } catch {
+      // 아래 <img> 로 한 번 더 읽어 본다.
+    }
+  }
+  if (typeof URL.createObjectURL !== 'function') return null
+  const url = URL.createObjectURL(blob)
+  try {
+    const image = new Image()
+    image.src = url
+    await image.decode()
+    if (image.naturalWidth === 0 || image.naturalHeight === 0) throw new Error('empty image')
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      release: () => URL.revokeObjectURL(url),
+    }
+  } catch {
+    URL.revokeObjectURL(url)
+    return null
+  }
+}
+
+/** 정사각형 칸에 사용자 그림 — 둥근 모서리로 자르고, 맞춤(contain)이 남긴 자리는 `background`. */
+function drawArt(
+  ctx: Ctx,
+  art: CardArt,
+  x: number,
+  y: number,
+  size: number,
+  radius: number,
+  background: string,
+): void {
+  ctx.save()
+  roundRect(ctx, x, y, size, size, radius)
+  ctx.clip()
+  ctx.fillStyle = background
+  ctx.fillRect(x, y, size, size)
+  const place = artworkPlacement(size, art.image.width, art.image.height, art.display)
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(art.image.source, x + place.x, y + place.y, place.width, place.height)
+  ctx.restore()
+}
+
+/** 그림 테두리. */
+function frame(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  size: number,
+  radius: number,
+  color: string,
+  width: number,
+): void {
+  roundRect(ctx, x, y, size, size, radius)
+  ctx.strokeStyle = color
+  ctx.lineWidth = width
+  ctx.stroke()
+}
+
+/* ------------------------------------------------------------------ *
  * A. 카세트 J카드 — Kawaii, 1080 × 1350
  * ------------------------------------------------------------------ */
 
-function drawJcard(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
+function drawJcard(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt | null): void {
   ctx.fillStyle = KAWAII.bg
   ctx.fillRect(0, 0, 1080, 1350)
   kawaiiStrip(ctx, fonts, 'MIXTAPE', model.date)
@@ -249,11 +345,13 @@ function drawJcard(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
   ctx.save()
   ctx.clip()
 
-  // 앞면 — 제목 두 줄 · 곡 수 · 테이프 릴. 두 줄 제목이 테두리에 붙지 않게 위아래로 30px 넘게 띄운다.
+  // 앞면 — 제목 두 줄 · 곡 수 · 테이프 릴(앨범아트가 있으면 그 그림). 두 줄 제목이 테두리에 붙지 않게 위아래로 30px
+  // 넘게 띄운다.
   const frontTop = 116
   const frontHeight = 292
+  const artSize = 232
   font(ctx, 800, 80, fonts.sans)
-  const titleLines = wrapLines(model.heading, 658, 2, measureOf(ctx))
+  const titleLines = wrapLines(model.heading, art === null ? 658 : 616, 2, measureOf(ctx))
   const block = titleLines.length * 90 + 10 + 38
   let y = frontTop + (frontHeight - block) / 2
   for (const value of titleLines) {
@@ -264,19 +362,26 @@ function drawJcard(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
   const meta = `${String(model.totalTracks)} TRACKS${model.momentCount > 0 ? ` · MOMENT ${String(model.momentCount)}` : ''}`
   text(ctx, meta, 96, y + 10, { color: KAWAII.meta, baseline: 'top' })
 
-  const reelY = frontTop + frontHeight / 2
-  roundRect(ctx, 784, reelY - 68, 200, 136, 68)
-  ctx.strokeStyle = KAWAII.ink
-  ctx.lineWidth = 6
-  ctx.stroke()
-  for (const cx of [844, 924]) {
-    ctx.beginPath()
-    ctx.arc(cx, reelY, 38, 0, Math.PI * 2)
+  if (art === null) {
+    const reelY = frontTop + frontHeight / 2
+    roundRect(ctx, 784, reelY - 68, 200, 136, 68)
+    ctx.strokeStyle = KAWAII.ink
+    ctx.lineWidth = 6
     ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(cx, reelY, 16, 0, Math.PI * 2)
-    ctx.fillStyle = KAWAII.pink
-    ctx.fill()
+    for (const cx of [844, 924]) {
+      ctx.beginPath()
+      ctx.arc(cx, reelY, 38, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(cx, reelY, 16, 0, Math.PI * 2)
+      ctx.fillStyle = KAWAII.pink
+      ctx.fill()
+    }
+  } else {
+    const artX = 984 - artSize
+    const artY = frontTop + (frontHeight - artSize) / 2
+    drawArt(ctx, art, artX, artY, artSize, 16, KAWAII.artBox)
+    frame(ctx, artX, artY, artSize, 16, KAWAII.ink, 5)
   }
 
   // 등 — 목록 이름 한 줄 · 곡 수
@@ -379,9 +484,15 @@ function monoFooter(ctx: Ctx, fonts: Fonts, height: number): void {
   text(ctx, '▶ 39page 에서 듣기', 1008, top + 46, { color: MONO.accent, align: 'right' })
 }
 
-function drawLp(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
+function drawLp(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt | null): void {
   monoBackground(ctx, 1080)
   disc(ctx, 1015, 65, 235)
+  // 앨범아트가 있으면 모서리의 레코드를 덮는 재킷 — 레코드가 재킷 뒤로 비죽 나온 모양. 제목은 그만큼 좁게.
+  if (art !== null) {
+    drawArt(ctx, art, 784, 64, 224, 6, MONO.ring)
+    frame(ctx, 784, 64, 224, 6, MONO.line, 3)
+  }
+  const titleWidth = art === null ? 700 : 640
 
   font(ctx, 600, 28, fonts.mono)
   spacing(ctx, 3.9)
@@ -393,9 +504,9 @@ function drawLp(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
   font(ctx, 800, 72, fonts.sans)
   let lines = [model.heading]
   let lineHeight = 82
-  if (ctx.measureText(model.heading).width > 700) {
+  if (ctx.measureText(model.heading).width > titleWidth) {
     font(ctx, 800, 60, fonts.sans)
-    lines = wrapLines(model.heading, 700, 2, measureOf(ctx))
+    lines = wrapLines(model.heading, titleWidth, 2, measureOf(ctx))
     lineHeight = 68
   }
   for (const value of lines) {
@@ -442,7 +553,12 @@ function drawLp(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
  * 싱글 — 곡 하나 · Moment
  * ------------------------------------------------------------------ */
 
-function drawKawaiiSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
+function drawKawaiiSingle(
+  ctx: Ctx,
+  fonts: Fonts,
+  model: ShareCardModel,
+  cover: CardArt | null,
+): void {
   ctx.fillStyle = KAWAII.bg
   ctx.fillRect(0, 0, 1080, 1350)
   kawaiiStrip(ctx, fonts, model.moment === null ? 'TRACK' : 'MOMENT', model.date)
@@ -462,26 +578,31 @@ function drawKawaiiSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
   const areaBottom = 1350 - 56
   let y = areaTop + Math.max(0, (areaBottom - areaTop - groupHeight) / 2)
 
-  // 앨범아트 자리 — 39page 기본 그림(도트 카세트). 썸네일을 쓰지 않는다.
-  roundRect(ctx, 260, y, art, art, 26)
-  ctx.fillStyle = KAWAII.artBox
-  ctx.fill()
-  ctx.strokeStyle = KAWAII.pink
-  ctx.lineWidth = 5
-  ctx.stroke()
-  const { columns, rows } = patternSize(CASSETTE_DOTS)
-  const cell = 30
-  const left = 540 - (columns * cell) / 2
-  const top = y + art / 2 - (rows * cell) / 2
-  CASSETTE_DOTS.forEach((pattern, row) => {
-    for (let column = 0; column < columns; column += 1) {
-      const on = pattern[column] === '1'
-      ctx.beginPath()
-      ctx.arc(left + column * cell + cell / 2, top + row * cell + cell / 2, 11, 0, Math.PI * 2)
-      ctx.fillStyle = on ? KAWAII.dot : 'rgba(168, 255, 231, 0.16)'
-      ctx.fill()
-    }
-  })
+  // 앨범아트 자리 — 사용자 그림, 없으면 39page 기본 그림(도트 카세트). YouTube 썸네일을 쓰지 않는다.
+  if (cover !== null) {
+    drawArt(ctx, cover, 260, y, art, 26, KAWAII.artBox)
+    frame(ctx, 260, y, art, 26, KAWAII.pink, 5)
+  } else {
+    roundRect(ctx, 260, y, art, art, 26)
+    ctx.fillStyle = KAWAII.artBox
+    ctx.fill()
+    ctx.strokeStyle = KAWAII.pink
+    ctx.lineWidth = 5
+    ctx.stroke()
+    const { columns, rows } = patternSize(CASSETTE_DOTS)
+    const cell = 30
+    const left = 540 - (columns * cell) / 2
+    const top = y + art / 2 - (rows * cell) / 2
+    CASSETTE_DOTS.forEach((pattern, row) => {
+      for (let column = 0; column < columns; column += 1) {
+        const on = pattern[column] === '1'
+        ctx.beginPath()
+        ctx.arc(left + column * cell + cell / 2, top + row * cell + cell / 2, 11, 0, Math.PI * 2)
+        ctx.fillStyle = on ? KAWAII.dot : 'rgba(168, 255, 231, 0.16)'
+        ctx.fill()
+      }
+    })
+  }
 
   y += art + 40
   font(ctx, 800, 64, fonts.sans)
@@ -513,7 +634,7 @@ function drawKawaiiSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
   kawaiiListen(ctx, fonts, 540, y + 56 + 34, 'center')
 }
 
-function drawMonoSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
+function drawMonoSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel, art: CardArt | null): void {
   monoBackground(ctx, 1080)
   font(ctx, 600, 28, fonts.mono)
   spacing(ctx, 3.9)
@@ -541,11 +662,29 @@ function drawMonoSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
     }
   }
 
-  // 레코드 — 남은 자리 가운데 (39page 의 Mono 기본 그림과 같은 LP)
+  // 레코드 — 남은 자리 가운데 (39page 의 Mono 기본 그림과 같은 LP). 앨범아트가 있으면 그 재킷에서 레코드가 오른쪽으로
+  // 비죽 나온 모양 — 묶음 전체(재킷 + 나온 레코드, 재킷의 1.32배 폭)를 가운데에 둔다.
   const areaTop = y + 30
   const areaBottom = 1080 - 112 - 30
-  const radius = Math.max(120, Math.min(260, (areaBottom - areaTop) / 2))
-  disc(ctx, 540, (areaTop + areaBottom) / 2, radius, 0.33)
+  const middle = (areaTop + areaBottom) / 2
+  if (art === null) {
+    const radius = Math.max(120, Math.min(260, (areaBottom - areaTop) / 2))
+    disc(ctx, 540, middle, radius, 0.33)
+  } else {
+    const size = Math.max(240, Math.min(520, areaBottom - areaTop))
+    const left = 540 - size * 0.66
+    const top = middle - size / 2
+    disc(ctx, left + size * 0.86, middle, size * 0.46, 0.33)
+    ctx.save()
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
+    ctx.shadowBlur = 28
+    ctx.shadowOffsetX = 10
+    ctx.fillStyle = MONO.ring
+    ctx.fillRect(left, top, size, size)
+    ctx.restore()
+    drawArt(ctx, art, left, top, size, 4, MONO.ring)
+    frame(ctx, left, top, size, 4, MONO.line, 3)
+  }
 
   monoFooter(ctx, fonts, 1080)
 }
@@ -554,7 +693,13 @@ function drawMonoSingle(ctx: Ctx, fonts: Fonts, model: ShareCardModel): void {
  * C. 영수증 — 두 테마, 높이는 곡 수만큼 (최대 3240)
  * ------------------------------------------------------------------ */
 
-function drawReceipt(ctx: Ctx, fonts: Fonts, model: ShareCardModel, measureCtx: Ctx): number {
+function drawReceipt(
+  ctx: Ctx,
+  fonts: Fonts,
+  model: ShareCardModel,
+  measureCtx: Ctx,
+  art: CardArt | null,
+): number {
   const kawaii = model.theme === 'kawaii'
   const outer = kawaii ? KAWAII.bg : MONO.bg
   const paper = kawaii ? KAWAII.receipt : MONO.paper
@@ -563,13 +708,14 @@ function drawReceipt(ctx: Ctx, fonts: Fonts, model: ShareCardModel, measureCtx: 
 
   font(measureCtx, 800, 60, fonts.sans)
   const nameLines = wrapLines(model.heading, 768, 2, measureOf(measureCtx))
-  const shown = receiptRowsThatFit(model.rows.length, moments, nameLines.length)
+  const shown = receiptRowsThatFit(model.rows.length, moments, nameLines.length, art !== null)
   const more = model.rows.length - shown
   const height = receiptHeight({
     rows: shown,
     more: more > 0,
     moments,
     nameLines: nameLines.length,
+    art: art !== null,
   })
   ctx.canvas.height = height
 
@@ -606,7 +752,13 @@ function drawReceipt(ctx: Ctx, fonts: Fonts, model: ShareCardModel, measureCtx: 
     ctx.restore()
   }
 
-  let y = 56 + 50
+  let y = 56 + RECEIPT.paperPadTop
+  // 앨범아트 — 영수증 맨 위에 찍힌 사진처럼 가운데 정사각형.
+  if (art !== null) {
+    drawArt(ctx, art, 540 - RECEIPT.art / 2, y, RECEIPT.art, 8, outer)
+    frame(ctx, 540 - RECEIPT.art / 2, y, RECEIPT.art, 8, ink, 3)
+    y += RECEIPT.art + RECEIPT.artGap
+  }
   font(ctx, 700, 34, fonts.mono)
   spacing(ctx, 5.4)
   text(ctx, '39PAGE', 540, y, { color: ink, align: 'center', baseline: 'top' })
@@ -695,8 +847,14 @@ function drawReceipt(ctx: Ctx, fonts: Fonts, model: ShareCardModel, measureCtx: 
  * 입구
  * ------------------------------------------------------------------ */
 
-/** 모델을 PNG 로 그린다. 캔버스를 쓸 수 없으면 `null`. */
-export async function renderShareCard(model: ShareCardModel): Promise<ShareCardImage | null> {
+/**
+ * 모델을 PNG 로 그린다. 캔버스를 쓸 수 없으면 `null`. `artBlob` 은 `model.art` 의 바이트 — 없거나 읽지 못하면 기본 그림으로
+ * 그리고 결과의 `art` 가 `false` 다.
+ */
+export async function renderShareCard(
+  model: ShareCardModel,
+  artBlob: Blob | null = null,
+): Promise<ShareCardImage | null> {
   const canvas = document.createElement('canvas')
   canvas.width = model.width
   canvas.height = model.height ?? 1350
@@ -710,20 +868,26 @@ export async function renderShareCard(model: ShareCardModel): Promise<ShareCardI
     // 글꼴 상태를 알 수 없어도 그린다 — 기본 글꼴은 기기에 있다.
   }
   const fonts = appFonts()
+  const image = model.art === null ? null : await decodeArt(artBlob)
+  const art = image === null || model.art === null ? null : { image, display: model.art.display }
 
   let height = canvas.height
-  if (model.template === 'receipt') {
-    const measureCanvas = document.createElement('canvas')
-    const measureCtx = measureCanvas.getContext('2d')
-    if (measureCtx === null) return null
-    height = drawReceipt(ctx, fonts, model, measureCtx)
-  } else if (model.template === 'jcard') drawJcard(ctx, fonts, model)
-  else if (model.template === 'lp') drawLp(ctx, fonts, model)
-  else if (model.theme === 'kawaii') drawKawaiiSingle(ctx, fonts, model)
-  else drawMonoSingle(ctx, fonts, model)
+  try {
+    if (model.template === 'receipt') {
+      const measureCanvas = document.createElement('canvas')
+      const measureCtx = measureCanvas.getContext('2d')
+      if (measureCtx === null) return null
+      height = drawReceipt(ctx, fonts, model, measureCtx, art)
+    } else if (model.template === 'jcard') drawJcard(ctx, fonts, model, art)
+    else if (model.template === 'lp') drawLp(ctx, fonts, model, art)
+    else if (model.theme === 'kawaii') drawKawaiiSingle(ctx, fonts, model, art)
+    else drawMonoSingle(ctx, fonts, model, art)
+  } finally {
+    image?.release()
+  }
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((value) => resolve(value), 'image/png')
   })
-  return blob === null ? null : { blob, width: canvas.width, height }
+  return blob === null ? null : { blob, width: canvas.width, height, art: art !== null }
 }
