@@ -479,51 +479,65 @@ async function seeded(trackCount = 2) {
 }
 
 describe('E. 외부 링크와 로딩 전 안내', () => {
-  it('트랙이 없으면 외부 링크를 띄우지 않는다', async () => {
+  it('트랙이 없으면 YouTube 링크 · 공유 아이콘을 띄우지 않는다', async () => {
     const context = await seeded()
+
+    expect(context.wrapper.find('.youtube-fallback').exists()).toBe(false)
+    expect(context.wrapper.find('.action-row .share').exists()).toBe(false)
+  })
+
+  it('트랙을 고르면 YouTube 링크 자리에 공유 아이콘이 선다 (ADR 0042)', async () => {
+    const context = await seeded()
+
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     expect(context.wrapper.find('.action-row a').exists()).toBe(false)
+    expect(context.wrapper.find('.youtube-fallback').exists()).toBe(false)
+    const share = context.wrapper.get('.action-row .share')
+    expect(share.attributes('aria-label')).toBe('이 곡 공유')
+    expect(share.attributes('disabled')).toBeUndefined()
   })
 
-  it('트랙을 고르면 그 영상의 YouTube 주소를 띄운다', async () => {
-    const context = await seeded()
-
-    await context.wrapper.get('.now-playlist .play-all').trigger('click')
-
-    const link = context.wrapper.get('.action-row a')
-    expect(link.attributes('href')).toBe(`https://www.youtube.com/watch?v=${VIDEOS[0]}`)
-    expect(link.text()).toContain('YOUTUBE에서 열기')
-  })
-
-  it('새 창으로 열고 opener 를 넘기지 않는다', async () => {
-    const context = await seeded()
-
-    await context.wrapper.get('.now-playlist .play-all').trigger('click')
-
-    const link = context.wrapper.get('.action-row a')
-    expect(link.attributes('target')).toBe('_blank')
-    expect(link.attributes('rel')).toBe('noopener noreferrer')
-  })
-
-  it('오류가 나도 링크는 그대로 있다', async () => {
+  it('재생 오류면 그 영상의 YouTube 링크를 새 창 · opener 없이 띄운다', async () => {
     const context = await seeded()
     await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
     context.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
     await nextTick()
 
-    expect(context.wrapper.get('.action-row a').attributes('href')).toContain(VIDEOS[0])
+    const link = context.wrapper.get('.youtube-fallback')
+    expect(link.attributes('href')).toBe(`https://www.youtube.com/watch?v=${VIDEOS[0]}`)
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.attributes('rel')).toBe('noopener noreferrer')
+    expect(link.text()).toContain('YouTube에서 열기')
     expect(context.wrapper.get('.status').text()).toContain('오류 150')
     expect(context.wrapper.get('.status').classes()).toContain('is-warning')
+    // 공유 아이콘은 오류에도 그대로다.
+    expect(context.wrapper.find('.action-row .share').exists()).toBe(true)
   })
 
-  it('다음 곡으로 넘기면 링크도 그 곡을 가리킨다', async () => {
+  it('오류 뒤에 플레이어가 상태를 또 알려도(실제 YouTube 의 시작 전 · 대기) 안내와 링크가 남는다', async () => {
     const context = await seeded()
     await context.wrapper.get('.now-playlist .play-all').trigger('click')
 
+    context.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
+    context.fake.emitStateChange('idle')
+    await nextTick()
+
+    expect(context.wrapper.get('.status').text()).toContain('오류 150')
+    expect(context.wrapper.get('.youtube-fallback').attributes('href')).toContain(VIDEOS[0])
+  })
+
+  it('다음 곡으로 넘기면 지난 곡의 오류 링크는 사라진다', async () => {
+    const context = await seeded()
+    await context.wrapper.get('.now-playlist .play-all').trigger('click')
+    context.fake.emitError({ kind: 'embed-not-allowed', code: 150 })
+    await nextTick()
+    expect(context.wrapper.find('.youtube-fallback').exists()).toBe(true)
+
     await context.wrapper.get('[aria-label="다음 곡"]').trigger('click')
 
-    expect(context.wrapper.get('.action-row a').attributes('href')).toContain(VIDEOS[1])
+    expect(context.wrapper.find('.youtube-fallback').exists()).toBe(false)
   })
 
   it('영상 전 안내는 어댑터 소유 영역 밖의 형제다', async () => {

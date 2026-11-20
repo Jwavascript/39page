@@ -144,7 +144,9 @@ describe('B. 내용', () => {
     expect(card.get('.np-art img').attributes('src')).toBe(
       `https://i.ytimg.com/vi/${VIDEOS[0]}/hqdefault.jpg`,
     )
-    expect(card.get('.external').attributes('href')).toContain(VIDEOS[0])
+    // YouTube 링크 자리는 공유 아이콘이다 (ADR 0042). 링크는 재생 오류 때만.
+    expect(card.find('.youtube-fallback').exists()).toBe(false)
+    expect(card.get('.action-row .share').attributes('aria-label')).toBe('이 곡 공유')
   })
 
   it('재생 위치를 알면 지금 초를 적는다 — 길이는 추정하지 않는다', async () => {

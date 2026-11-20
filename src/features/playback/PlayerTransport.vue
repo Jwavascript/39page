@@ -10,6 +10,9 @@
  *
  * 셔플 · 반복 단추(ADR 0038)는 `repeat` 을 넘길 때만 그린다 — 재생 단추 양옆, 같은 줄이다. 볼륨 · 탐색 바는
  * 만들지 않는다 (M3-0).
+ *
+ * 줄 끝의 공유 아이콘(ADR 0042)은 `YOUTUBE에서 열기 ↗` 의 자리를 이어받았다. 무엇을 공유할지는 모른다 — 누르면
+ * `share` 를 올리고 부모가 공유 대화상자를 연다. YouTube 로 가는 링크는 재생 오류 때만 부모가 상태 줄 옆에 띄운다.
  */
 import type { RepeatMode } from '@/shared/types'
 
@@ -22,12 +25,12 @@ defineProps<{
   /** 토글 버튼의 접근성 이름. 보이는 기호와 뜻이 같다. */
   toggleLabel: string
   /**
-   * `YOUTUBE에서 열기 ↗` 가 가리킬 주소 (M3-5). 없으면 링크를 띄우지 않는다.
-   *
-   * 주소를 **여기서 만들지 않는다.** 받은 값을 그대로 쓴다. 영상 ID 검증과
-   * 인코딩은 `shared/utils/youtube.ts` 가 한다.
+   * 공유 아이콘 (ADR 0042). `null` · 생략이면 그리지 않는다(곡이 없을 때), `false` 면 누를 수 없게 그린다(보관함에
+   * 없는 곡).
    */
-  youtubeUrl: string | null
+  shareable?: boolean | null
+  /** 공유 아이콘의 접근성 이름 · 툴팁 — 누를 수 없을 때는 그 이유. */
+  shareLabel?: string
   /** 셔플이 켜져 있는가. */
   shuffle?: boolean
   /** 반복 모드. 넘기지 않으면 셔플 · 반복 단추를 그리지 않는다. */
@@ -42,6 +45,7 @@ const emit = defineEmits<{
   next: []
   shuffle: []
   repeat: []
+  share: []
 }>()
 </script>
 
@@ -134,20 +138,26 @@ const emit = defineEmits<{
     </div>
 
     <!--
-      승인된 디자인의 `#openYouTube` 다. 재생할 수 없는 영상에서 사용자가
-      갈 곳을 남긴다 (`MVP_SPEC.md` F3). 새 창이므로 `noopener noreferrer`
-      를 함께 붙인다 — 열린 쪽이 `window.opener` 로 이 페이지를 건드리지
-      못하게 한다.
+      공유 (ADR 0042) — 승인된 디자인의 `#openYouTube` 자리. 아이콘만 보이므로 이름은 `aria-label` · `title` 이 말한다.
+      누를 수 없을 때도 `disabled` 로 남겨 이유를 툴팁으로 알린다.
     -->
-    <a
-      v-if="youtubeUrl !== null"
-      class="pill external"
-      :href="youtubeUrl"
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      v-if="shareable != null"
+      type="button"
+      class="round share"
+      :aria-label="shareLabel ?? '공유'"
+      :title="shareLabel ?? '공유'"
+      :disabled="!shareable"
+      @click="emit('share')"
     >
-      YOUTUBE에서 열기 ↗
-    </a>
+      <svg class="share-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="18" cy="5" r="2.6" />
+        <circle cx="6" cy="12" r="2.6" />
+        <circle cx="18" cy="19" r="2.6" />
+        <path d="M8.3 10.8l7.4-4.4" />
+        <path d="M8.3 13.2l7.4 4.4" />
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -206,10 +216,6 @@ const emit = defineEmits<{
 @media (hover: hover) {
   .round:hover:not(:disabled) {
     background: var(--transport-surface-hover-color);
-  }
-
-  .pill:hover {
-    background: var(--pill-surface-hover-color);
   }
 }
 
@@ -275,22 +281,19 @@ const emit = defineEmits<{
   color: var(--transport-main-text-color);
 }
 
-/* 승인된 디자인의 `.pill` 값을 따른다. 터치 목표 44px (M11 U16). */
-.pill {
-  min-height: 44px;
-  padding: 7px 12px;
+/* 공유 — 다른 둥근 단추와 같은 44px 원, 테두리로 "누르는 것" 임을 보인다. */
+.share {
+  flex: none;
   border: 1px solid var(--pill-border-color);
-  border-radius: var(--radius-control);
-  background: var(--pill-surface-color);
-  color: var(--pill-text-color);
-  font: 11px var(--font-mono);
 }
 
-/* 링크이므로 기본 밑줄을 걷어낸다. 레퍼런스의 `.pill` 과 같은 모양이 된다. */
-.external {
-  display: grid;
-  flex: none;
-  text-decoration: none;
-  place-items: center;
+.share-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 </style>

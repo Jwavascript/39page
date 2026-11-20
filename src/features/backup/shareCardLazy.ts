@@ -6,7 +6,7 @@
  */
 import type { ShareCardRenderer } from './shareCard'
 
-export const lazyShareCardRenderer: ShareCardRenderer = async (model) => {
+export const lazyShareCardRenderer: ShareCardRenderer = async (model, art) => {
   const { renderShareCard } = await import('./shareCardCanvas')
-  return renderShareCard(model)
+  return renderShareCard(model, art)
 }

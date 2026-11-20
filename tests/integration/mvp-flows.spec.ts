@@ -620,7 +620,8 @@ describe('12. 임베드 불허 · API 오류 · 자동재생 차단', () => {
     expect(session.wrapper.get('.status').text()).toContain('오류 150')
     expect(session.wrapper.get('.status').classes()).toContain('is-warning')
     expect(session.playback.queueIndex).toBe(0)
-    expect(session.wrapper.get('.action-row a').attributes('href')).toContain(VIDEO_ID)
+    // 늘 있던 "YOUTUBE에서 열기" 는 공유 아이콘에 자리를 넘겼고, 오류 때만 상태 줄 아래에 선다 (ADR 0042).
+    expect(session.wrapper.get('.youtube-fallback').attributes('href')).toContain(VIDEO_ID)
   })
 
   it('API 를 못 받으면 네트워크를 확인하라고 알린다', async () => {

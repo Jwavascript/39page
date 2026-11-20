@@ -11,8 +11,13 @@
  *
  * 넣지 않는 것: QR · 링크 안내 문구 (사용자 결정, 2026-11-20), YouTube 썸네일 · 로고 (YouTube 정책 —
  * `docs/product/SHARE_CARD_RESEARCH.md` §4). 곡 이름의 "(Official Video)" · "MV" 같은 꼬리는 카드에서만 뗀다.
+ *
+ * 사용자가 **직접 올린** 앨범아트는 넣는다 (ADR 0042, 사용자 결정 2026-11-20) — 곡 카드는 그 곡의 그림, 목록 카드는
+ * 목록 순서로 처음 만나는 그림. 그림이 없거나 끄면 39page 기본 그림 그대로다. 앱에서 고른 맞춤(채우기 · 위치 · 확대)을 따른다.
  */
 import type { InjectionKey } from 'vue'
+
+import type { ArtworkDisplay } from '@/shared/types/artwork'
 
 import type { ShareLinkContent } from './shareLink'
 
@@ -31,6 +36,12 @@ export interface ShareCardRow {
   readonly title: string
   /** 그 곡의 첫 Moment 시점 (`1:23`). 없으면 `null`. */
   readonly moment: string | null
+}
+
+/** 카드에 넣을 사용자 앨범아트 — 어느 자산을 어떻게 맞출지. 바이트는 그릴 때 받는다 (모델은 데이터만). */
+export interface ShareCardArt {
+  readonly assetId: string
+  readonly display: ArtworkDisplay
 }
 
 export interface ShareCardModel {
@@ -56,6 +67,8 @@ export interface ShareCardModel {
   readonly time: string
   /** LP 카탈로그 번호 흉내 — `39P-1120` (월일). */
   readonly catalog: string
+  /** 사용자 앨범아트. `null` 이면 39page 기본 그림. */
+  readonly art: ShareCardArt | null
 }
 
 /* ------------------------------------------------------------------ *
@@ -188,6 +201,7 @@ export function buildShareCard(
   content: ShareLinkContent,
   theme: ShareCardTheme,
   now: Date,
+  art: ShareCardArt | null = null,
 ): ShareCardModel {
   const date = `${String(now.getFullYear())}.${two(now.getMonth() + 1)}.${two(now.getDate())}`
   const time = `${two(now.getHours())}:${two(now.getMinutes())}`
@@ -211,6 +225,7 @@ export function buildShareCard(
     date,
     time,
     catalog,
+    art,
   }
 
   if (content.kind !== 'playlist') {
@@ -287,6 +302,9 @@ export const RECEIPT = {
   totals: 44,
   cta: 52,
   thanks: 70,
+  /** 사용자 앨범아트 — 종이 맨 위 가운데의 정사각형 · 아래 간격. */
+  art: 240,
+  artGap: 30,
 } as const
 
 /** 영수증 이미지의 높이 — 보이는 곡 줄 수 · "+N곡 더" · Moment 유무 · 목록 이름 줄 수로. */
@@ -295,9 +313,11 @@ export function receiptHeight(options: {
   more: boolean
   moments: boolean
   nameLines: number
+  art?: boolean
 }): number {
   const paper =
     RECEIPT.paperPadTop +
+    (options.art === true ? RECEIPT.art + RECEIPT.artGap : 0) +
     RECEIPT.headerFixed +
     RECEIPT.nameLine * options.nameLines +
     RECEIPT.dash +
@@ -314,14 +334,21 @@ export function receiptHeight(options: {
 }
 
 /** 높이 상한 안에 들어가는 곡 줄 수. 다 들어가면 전부, 아니면 "+N곡 더" 한 줄을 남기고 줄인다. */
-export function receiptRowsThatFit(total: number, moments: boolean, nameLines: number): number {
-  if (receiptHeight({ rows: total, more: false, moments, nameLines }) <= SHARE_CARD_MAX_HEIGHT) {
+export function receiptRowsThatFit(
+  total: number,
+  moments: boolean,
+  nameLines: number,
+  art = false,
+): number {
+  if (
+    receiptHeight({ rows: total, more: false, moments, nameLines, art }) <= SHARE_CARD_MAX_HEIGHT
+  ) {
     return total
   }
   let rows = total - 1
   while (
     rows > 0 &&
-    receiptHeight({ rows, more: true, moments, nameLines }) > SHARE_CARD_MAX_HEIGHT
+    receiptHeight({ rows, more: true, moments, nameLines, art }) > SHARE_CARD_MAX_HEIGHT
   ) {
     rows -= 1
   }
@@ -336,10 +363,55 @@ export interface ShareCardImage {
   readonly blob: Blob
   readonly width: number
   readonly height: number
+  /** 사용자 앨범아트를 실제로 그렸는가 (그림을 읽지 못하면 기본 그림으로 그리고 `false`). 생략은 `false`. */
+  readonly art?: boolean
 }
 
-/** 모델을 PNG 로 그린다. 그릴 수 없으면(캔버스 없음) `null`. */
-export type ShareCardRenderer = (model: ShareCardModel) => Promise<ShareCardImage | null>
+/**
+ * 모델을 PNG 로 그린다. 그릴 수 없으면(캔버스 없음) `null`. `art` 는 `model.art` 의 이미지 바이트(움직이는 GIF 는 첫
+ * 장면) — 없으면 기본 그림.
+ */
+export type ShareCardRenderer = (
+  model: ShareCardModel,
+  art: Blob | null,
+) => Promise<ShareCardImage | null>
+
+/* ------------------------------------------------------------------ *
+ * 앨범아트 맞추기 — 앱의 `ArtworkImage` 와 같은 규칙
+ * ------------------------------------------------------------------ */
+
+export interface ArtworkPlacement {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+/**
+ * 정사각형 칸(한 변 `size`) 안에 그림을 놓을 자리 — 칸 왼쪽 위 기준. 앱이 CSS 로 하는 것과 같다: `object-fit`(cover ·
+ * contain) → `object-position`(X% Y%) → 같은 점을 중심으로 `scale(zoom)`. 칸 밖으로 나간 부분은 그리는 쪽이 자른다.
+ */
+export function artworkPlacement(
+  size: number,
+  imageWidth: number,
+  imageHeight: number,
+  display: ArtworkDisplay,
+): ArtworkPlacement {
+  const fit = display.fit === 'cover' ? Math.max : Math.min
+  const scale = fit(size / imageWidth, size / imageHeight)
+  const width = imageWidth * scale
+  const height = imageHeight * scale
+  const originX = (size * display.positionX) / 100
+  const originY = (size * display.positionY) / 100
+  const x = ((size - width) * display.positionX) / 100
+  const y = ((size - height) * display.positionY) / 100
+  return {
+    x: originX + (x - originX) * display.zoom,
+    y: originY + (y - originY) * display.zoom,
+    width: width * display.zoom,
+    height: height * display.zoom,
+  }
+}
 
 /**
  * 카드를 그리는 함수 — `main.ts` 가 캔버스 구현을 넣는다(처음 쓸 때 내려받는다). 플레이어 어댑터 팩토리와 같은 방식이다:

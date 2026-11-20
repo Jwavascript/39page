@@ -242,17 +242,34 @@ describe('C. 컨트롤 이름과 크기', () => {
     }
   })
 
-  it('외부 링크가 새 창을 안전하게 연다', async () => {
+  it('외부 링크(재생 오류 때의 YouTube 링크)가 새 창을 안전하게 연다', async () => {
+    const { wrapper, fake } = mountApp()
+    await seedLibrary()
+    await nextTick()
+    await wrapper.get('.now-playlist .play-all').trigger('click')
+    fake.emitError({ kind: 'not-playable', code: 5 })
+    await nextTick()
+
+    const link = wrapper.get('.youtube-fallback')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.attributes('rel')).toBe('noopener noreferrer')
+    expect(link.text()).toContain('YouTube에서 열기')
+  })
+
+  it('아이콘뿐인 공유 단추에 이름이 있다 (ADR 0042)', async () => {
     const { wrapper } = mountApp()
     await seedLibrary()
     await nextTick()
     await wrapper.get('.now-playlist .play-all').trigger('click')
     await nextTick()
 
-    const link = wrapper.get('.action-row a')
-    expect(link.attributes('target')).toBe('_blank')
-    expect(link.attributes('rel')).toBe('noopener noreferrer')
-    expect(link.text()).toContain('YOUTUBE에서 열기')
+    for (const selector of ['.action-row .share', '.deck-share']) {
+      const button = wrapper.get(selector)
+      expect(button.element.tagName).toBe('BUTTON')
+      expect(button.attributes('aria-label')).not.toBe('')
+      expect(button.attributes('title')).toBe(button.attributes('aria-label'))
+      expect(button.get('svg').attributes('aria-hidden')).toBe('true')
+    }
   })
 })
 

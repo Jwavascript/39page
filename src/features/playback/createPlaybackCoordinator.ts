@@ -848,7 +848,7 @@ export function createPlaybackCoordinator(
       awaitingUserAction = true
       // 가시성 안내가 아니다. 영상이 다시 보여도 이 안내는 남아야 한다.
       visibilityNotice = false
-      playback.setStatus(errorMessage(info), 'warning')
+      playback.setStatus(errorMessage(info), 'warning', 'player-error')
     },
 
     autoplayBlocked: () => {
