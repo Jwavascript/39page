@@ -1,0 +1,45 @@
+{
+  "recordedAt": "2026-11-20T12:20:00+00:00",
+  "releaseSHA": "799fb18d541a23ad3578a5fa3ace4a090962ad3f",
+  "previousSHA": "95b0d7bd93d53b4b980be48c1a1a455823ac0e39",
+  "integrationBranch": "release/share-entry-cws",
+  "mergedBranches": {
+    "fix/extension-clear-playlist-after-save": "42653a0",
+    "fix/store-bridge-aaihan": "afd4ad2",
+    "feat/share-entry-points": "e3c54ae"
+  },
+  "followUpCommits": {
+    "privacy and status docs": "cc9988c",
+    "extension format": "799fb18"
+  },
+  "pushedAt": "2026-11-20T12:08:55Z",
+  "forcePush": false,
+  "workerBuildIdFromCI": "a99a3180-720e-4973-a370-79d8a882629e",
+  "workerVersionFromCI": "7dbb7d49-1219-4cd8-a6a9-e12a1e7db7d8",
+  "ciCompletedAt": "2026-11-20T12:10:26Z",
+  "previousSuccessfulWorkerVersionFromCI": "20f7d311-e92b-48dd-9718-f11bec0bc960",
+  "gitRollbackRef": "rollback/share-entry-cws",
+  "rollbackExecuted": false,
+  "productionBuildBridgeExtensionIds": "aaihanclknbboaehbjpmlcefkbgdeima",
+  "httpChecks": 16,
+  "httpPassed": 16,
+  "liveChecks": 123,
+  "livePassed": 123,
+  "liveFirstRun": "112/113 — queue suite stopped at 'repeat all wrap' (real YouTube end-of-video timing); re-run 15/15",
+  "localChecks": {
+    "webTests": 2235,
+    "webTestFiles": 73,
+    "extensionTests": 430,
+    "extensionTestFiles": 26,
+    "typeCheck": true,
+    "lint": true,
+    "format": true,
+    "webBuild": true,
+    "extensionBuildAndManifest": true,
+    "extensionPackageLocal": true
+  },
+  "storageFormatChanged": false,
+  "userProfileTouched": false,
+  "extensionStoreUpload": false,
+  "dependenciesAdded": false
+}

@@ -1,0 +1,167 @@
+{
+  "observedAt": "2026-11-20T12:16:19.375Z",
+  "base": "https://39page.com",
+  "results": [
+    {
+      "name": "재생 전: 데크 공유 아이콘 = 고른 목록, 카드에는 공유 · YouTube 링크 없음",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "재생 중: 공유 아이콘 44×44, YOUTUBE에서 열기 없음",
+      "pass": true,
+      "details": {
+        "share": [44, 44],
+        "external": false,
+        "label": "이 곡 공유"
+      }
+    },
+    {
+      "name": "kawaii-synth-cassette 1440px: 두 아이콘이 화면 안, 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "deck": [409, 453, 44],
+        "share": [710, 754],
+        "viewport": 1440,
+        "scroll": 1425
+      }
+    },
+    {
+      "name": "kawaii-synth-cassette 390px: 두 아이콘이 화면 안, 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "deck": [320, 364, 44],
+        "share": [307, 351],
+        "viewport": 390,
+        "scroll": 390
+      }
+    },
+    {
+      "name": "mono-vinyl 1440px: 두 아이콘이 화면 안, 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "deck": [380, 424, 44],
+        "share": [710, 754],
+        "viewport": 1440,
+        "scroll": 1425
+      }
+    },
+    {
+      "name": "mono-vinyl 390px: 두 아이콘이 화면 안, 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "deck": [320, 364, 44],
+        "share": [307, 351],
+        "viewport": 390,
+        "scroll": 390
+      }
+    },
+    {
+      "name": "지금 재생 공유 → 대화상자: 지금 목록 · 지금 곡",
+      "pass": true,
+      "details": {
+        "open": true,
+        "list": "a",
+        "range": "a0"
+      }
+    },
+    {
+      "name": "데크 공유 → 대화상자: 지금 목록 전체",
+      "pass": true,
+      "details": {
+        "open": true,
+        "list": "a",
+        "range": ""
+      }
+    },
+    {
+      "name": "그림 없는 목록: 체크 칸 없음, 기본 그림",
+      "pass": true,
+      "details": {
+        "meta": "카세트 J카드 · 1080×1350 PNG"
+      }
+    },
+    {
+      "name": "평소(재생 중)에는 YouTube 링크가 없다",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "합성 앨범아트 두 장을 설정 화면으로 저장",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "목록(Kawaii): J카드에 내 앨범아트, 기본 켜짐",
+      "pass": true,
+      "details": {
+        "meta": "카세트 J카드 · 앨범아트 · 1080×1350 PNG",
+        "checkbox": true
+      }
+    },
+    {
+      "name": "목록(Mono): LP 뒷면에 내 앨범아트",
+      "pass": true,
+      "details": {
+        "meta": "LP 뒷면 · 앨범아트 · 1080×1080 PNG"
+      }
+    },
+    {
+      "name": "끄면 기본 그림으로 다시 그린다",
+      "pass": true,
+      "details": {
+        "meta": "LP 뒷면 · 1080×1080 PNG"
+      }
+    },
+    {
+      "name": "곡(Mono): 지금 곡(두 번째) · 싱글에 그 곡의 그림",
+      "pass": true,
+      "details": {
+        "second": {
+          "open": true,
+          "list": "a",
+          "range": "a1"
+        },
+        "meta": "싱글 · 앨범아트 · 1080×1080 PNG"
+      }
+    },
+    {
+      "name": "곡(Kawaii): 싱글에 그 곡의 그림",
+      "pass": true,
+      "details": {
+        "meta": "싱글 · 앨범아트 · 1080×1350 PNG"
+      }
+    },
+    {
+      "name": "목록 바꾸기 뒤 데크 아이콘은 그 목록",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "실제 YouTube 재생 오류 → 안내 아래 YouTube 링크 (새 창 · opener 없음)",
+      "pass": true,
+      "details": {
+        "status": "이 영상은 다른 사이트에서 재생할 수 없도록 설정돼 있어요. YouTube 에서 열어보세요. (오류 150)",
+        "href": "https://www.youtube.com/watch?v=bx000000000",
+        "target": "_blank",
+        "rel": "noopener noreferrer",
+        "playerState": "1 / 12 · YOUTUBE · 대기 중"
+      }
+    },
+    {
+      "name": "12곡 목록: 영수증 맨 위에 그 목록의 그림",
+      "pass": true,
+      "details": {
+        "meta": "영수증 · 앨범아트 · 1080×1698 PNG",
+        "height": 1698
+      }
+    },
+    {
+      "name": "12곡 목록(Mono): 영수증 · 앨범아트",
+      "pass": true,
+      "details": {
+        "meta": "영수증 · 앨범아트 · 1080×1698 PNG"
+      }
+    }
+  ]
+}

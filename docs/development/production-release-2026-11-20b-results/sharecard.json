@@ -1,0 +1,264 @@
+{
+  "when": "2026-11-20T12:15:32.822Z",
+  "passed": 17,
+  "total": 17,
+  "images": [
+    {
+      "name": "kawaii-playlist-10",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 194193,
+      "meta": "카세트 J카드 · 1080×1350 PNG"
+    },
+    {
+      "name": "kawaii-playlist-10-moments",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 200801,
+      "meta": "카세트 J카드 · 1080×1350 PNG"
+    },
+    {
+      "name": "kawaii-receipt-30",
+      "width": 1080,
+      "height": 2436,
+      "bytes": 401763,
+      "meta": "영수증 · 1080×2436 PNG"
+    },
+    {
+      "name": "kawaii-receipt-60",
+      "width": 1080,
+      "height": 3216,
+      "bytes": 544716,
+      "meta": "영수증 · 1080×3216 PNG"
+    },
+    {
+      "name": "kawaii-track",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 120206,
+      "meta": "싱글 · 1080×1350 PNG"
+    },
+    {
+      "name": "kawaii-moment-plain",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 125900,
+      "meta": "싱글 · 1080×1350 PNG"
+    },
+    {
+      "name": "kawaii-moment",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 133394,
+      "meta": "싱글 · 1080×1350 PNG"
+    },
+    {
+      "name": "mono-playlist-10",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 671937,
+      "meta": "LP 뒷면 · 1080×1080 PNG"
+    },
+    {
+      "name": "mono-playlist-10-moments",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 678695,
+      "meta": "LP 뒷면 · 1080×1080 PNG"
+    },
+    {
+      "name": "mono-receipt-30",
+      "width": 1080,
+      "height": 2436,
+      "bytes": 392958,
+      "meta": "영수증 · 1080×2436 PNG"
+    },
+    {
+      "name": "mono-receipt-60",
+      "width": 1080,
+      "height": 3216,
+      "bytes": 536160,
+      "meta": "영수증 · 1080×3216 PNG"
+    },
+    {
+      "name": "mono-track",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 597748,
+      "meta": "싱글 · 1080×1080 PNG"
+    },
+    {
+      "name": "mono-moment-plain",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 603816,
+      "meta": "싱글 · 1080×1080 PNG"
+    },
+    {
+      "name": "mono-moment",
+      "width": 1080,
+      "height": 1080,
+      "bytes": 613076,
+      "meta": "싱글 · 1080×1080 PNG"
+    }
+  ],
+  "results": [
+    {
+      "name": "kawaii: 목록 10곡 — J카드 1080×1350",
+      "pass": true,
+      "details": {
+        "themeNow": "kawaii-synth-cassette",
+        "meta": "카세트 J카드 · 1080×1350 PNG",
+        "size": "1080x1350",
+        "bytes": 194193,
+        "top": "10202c"
+      }
+    },
+    {
+      "name": "kawaii: Moments 를 넣으면 다시 그린다",
+      "pass": true,
+      "details": {
+        "meta": "카세트 J카드 · 1080×1350 PNG"
+      }
+    },
+    {
+      "name": "kawaii: \"이미지 복사\" — 클립보드에 PNG",
+      "pass": true,
+      "details": {
+        "types": ["image/png"],
+        "size": 181128,
+        "status": "이미지를 복사했어요. 게시판 글쓰기 칸에 붙여 넣으세요."
+      }
+    },
+    {
+      "name": "kawaii: \"이미지 저장\" — <목록 이름>.39page.png",
+      "pass": true,
+      "details": {
+        "name": "여름 밤 플레이리스트.39page.png",
+        "size": 200801,
+        "png": true
+      }
+    },
+    {
+      "name": "kawaii: 목록 30곡 — 영수증 (높이 곡 수만큼)",
+      "pass": true,
+      "details": {
+        "size": "1080x2436",
+        "meta": "영수증 · 1080×2436 PNG",
+        "corner": "10202c",
+        "bg": "10202c"
+      }
+    },
+    {
+      "name": "kawaii: 목록 60곡 — 영수증 (높이 상한 3240 + \"+N곡 더\")",
+      "pass": true,
+      "details": {
+        "size": "1080x3216",
+        "meta": "영수증 · 1080×3216 PNG",
+        "corner": "10202c",
+        "bg": "10202c"
+      }
+    },
+    {
+      "name": "kawaii: 곡 하나 — 싱글 1080×1350",
+      "pass": true,
+      "details": {
+        "size": "1080x1350",
+        "top": "10202c",
+        "cornerRight": "10202c",
+        "meta": "싱글 · 1080×1350 PNG"
+      }
+    },
+    {
+      "name": "kawaii: Moment — 싱글 + 시점 · 메모",
+      "pass": true,
+      "details": {
+        "size": "1080x1350",
+        "meta": "싱글 · 1080×1350 PNG"
+      }
+    },
+    {
+      "name": "mono: 목록 10곡 — LP 1080×1080",
+      "pass": true,
+      "details": {
+        "themeNow": "mono-vinyl",
+        "meta": "LP 뒷면 · 1080×1080 PNG",
+        "size": "1080x1080",
+        "bytes": 671937,
+        "top": "1f1d1a"
+      }
+    },
+    {
+      "name": "mono: Moments 를 넣으면 다시 그린다",
+      "pass": true,
+      "details": {
+        "meta": "LP 뒷면 · 1080×1080 PNG"
+      }
+    },
+    {
+      "name": "mono: \"이미지 복사\" — 클립보드에 PNG",
+      "pass": true,
+      "details": {
+        "types": ["image/png"],
+        "size": 579517,
+        "status": "이미지를 복사했어요. 게시판 글쓰기 칸에 붙여 넣으세요."
+      }
+    },
+    {
+      "name": "mono: \"이미지 저장\" — <목록 이름>.39page.png",
+      "pass": true,
+      "details": {
+        "name": "여름 밤 플레이리스트.39page.png",
+        "size": 678695,
+        "png": true
+      }
+    },
+    {
+      "name": "mono: 목록 30곡 — 영수증 (높이 곡 수만큼)",
+      "pass": true,
+      "details": {
+        "size": "1080x2436",
+        "meta": "영수증 · 1080×2436 PNG",
+        "corner": "171614",
+        "bg": "171614"
+      }
+    },
+    {
+      "name": "mono: 목록 60곡 — 영수증 (높이 상한 3240 + \"+N곡 더\")",
+      "pass": true,
+      "details": {
+        "size": "1080x3216",
+        "meta": "영수증 · 1080×3216 PNG",
+        "corner": "171614",
+        "bg": "171614"
+      }
+    },
+    {
+      "name": "mono: 곡 하나 — 싱글 1080×1080",
+      "pass": true,
+      "details": {
+        "size": "1080x1080",
+        "top": "1f1d1a",
+        "cornerRight": "171614",
+        "meta": "싱글 · 1080×1080 PNG"
+      }
+    },
+    {
+      "name": "mono: Moment — 싱글 + 시점 · 메모",
+      "pass": true,
+      "details": {
+        "size": "1080x1080",
+        "meta": "싱글 · 1080×1080 PNG"
+      }
+    },
+    {
+      "name": "390px — 카드 미리보기가 대화상자 안에 들어가고 가로로 넘치지 않는다",
+      "pass": true,
+      "details": {
+        "overflowX": false,
+        "inside": true,
+        "imgWidth": 272
+      }
+    }
+  ]
+}

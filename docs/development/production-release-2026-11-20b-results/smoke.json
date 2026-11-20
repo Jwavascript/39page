@@ -1,0 +1,55 @@
+{
+  "candidate": "799fb18d541a23ad3578a5fa3ace4a090962ad3f",
+  "results": [
+    {
+      "name": "Production YouTube playback and NOW PLAYLIST",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Queue next/previous preserves one iframe",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Moment UI saves note and captured position",
+      "pass": true,
+      "details": {
+        "id": "ext-web-ab43a35d1ffb45e38a25c3c2ce813845",
+        "source": "youtube",
+        "videoId": "aqz-KE-bpKQ",
+        "atSeconds": 0,
+        "note": "Release gate Moment",
+        "title": "Bunny",
+        "createdAt": "2026-11-20T12:11:19.520Z",
+        "updatedAt": "2026-11-20T12:11:19.520Z"
+      }
+    },
+    {
+      "name": "Full ZIP download contains newly saved Moment",
+      "pass": true,
+      "details": {
+        "name": "39page-backup-20261120-2111.zip",
+        "bytes": 1083
+      }
+    },
+    {
+      "name": "Live bridge is disabled without touching storage",
+      "pass": true,
+      "details": {
+        "bridge": "refused",
+        "headers": "/bridge.html\n  Content-Security-Policy: frame-ancestors 'none'\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n/bridge\n  Content-Security-Policy: frame-ancestors 'none'\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n"
+      }
+    },
+    {
+      "name": "Collect fallback opens without saving",
+      "pass": true,
+      "details": {}
+    },
+    {
+      "name": "Collect fallback saves only after explicit confirmation",
+      "pass": true,
+      "details": {}
+    }
+  ]
+}

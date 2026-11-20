@@ -1,0 +1,101 @@
+{
+  "when": "2026-11-20T12:14:31.703Z",
+  "passed": 9,
+  "total": 10,
+  "results": [
+    {
+      "name": "재생 시작 — 목록 A 첫 곡",
+      "pass": true,
+      "details": {
+        "video": "aqz-KE-bpKQ",
+        "rows": ["A1 Bunny", "A2 Sintel", "A3 Demo"]
+      }
+    },
+    {
+      "name": "곡 추가 — 큐 끝에 바로 붙고 안내 없이 같은 영상이 이어진다",
+      "pass": true,
+      "details": {
+        "rows": ["A1 Bunny", "A2 Sintel", "A3 Demo", "A4 Added"],
+        "sub": "1 / 4곡",
+        "timeBefore": 3.4690550972747802,
+        "timeAfter": 5.398321040054321
+      }
+    },
+    {
+      "name": "순서 변경 — 지금 곡 표시만 옮기고 재생 위치는 그대로",
+      "pass": true,
+      "details": {
+        "rows": ["A2 Sintel", "A3 Demo", "A4 Added", "A1 Bunny"],
+        "sub": "4 / 4곡",
+        "time": 6.923724003814697
+      }
+    },
+    {
+      "name": "지금 곡(마지막 자리) 삭제, 반복 끔 — 앞 곡에 서서 멈추고 안내가 없다",
+      "pass": true,
+      "details": {
+        "title": "A4 Added",
+        "ytState": 5,
+        "rows": ["A2 Sintel", "A3 Demo", "A4 Added"],
+        "status": ""
+      }
+    },
+    {
+      "name": "재생 중 지금 곡 삭제 — 안내 없이 다음 곡을 재생",
+      "pass": true,
+      "details": {
+        "rows": ["A3 Demo", "A4 Added"],
+        "video": "M7lc1UVf-VE"
+      }
+    },
+    {
+      "name": "목록 바꾸기 — 고른 목록을 처음부터 바로 재생, 안내 상자 없음",
+      "pass": true,
+      "details": {
+        "hint": "고른 목록을 처음부터 바로 재생해요.",
+        "listName": "LIST B",
+        "rows": ["B1 Sintel", "B2 Bunny"]
+      }
+    },
+    {
+      "name": "빈 목록 고르기 — 재생은 그대로, 부제에 지금 재생",
+      "pass": true,
+      "details": {
+        "view": "standby",
+        "sub": "비어 있음 · 지금 재생: LIST B"
+      }
+    },
+    {
+      "name": "재생 중인 목록을 다시 고르면 큐 보기 — 처음부터 다시 틀지 않는다",
+      "pass": true,
+      "details": {
+        "time": 3.359627866485596
+      }
+    },
+    {
+      "name": "셔플 · 전체 반복 켜기 — aria-pressed · 부제 표시 · 지금 곡이 01",
+      "pass": true,
+      "details": {
+        "modes": [
+          {
+            "label": "셔플",
+            "pressed": "true"
+          },
+          {
+            "label": "반복: 전체 반복 (누르면 한 곡 반복)",
+            "pressed": "true"
+          }
+        ],
+        "sub": "1 / 2곡 · 셔플 · 전체 반복",
+        "currentRow": "01"
+      }
+    },
+    {
+      "name": "실행 오류",
+      "pass": false,
+      "details": {
+        "error": "timeout waiting for repeat all wrap"
+      }
+    }
+  ]
+}

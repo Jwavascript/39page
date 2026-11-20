@@ -1,0 +1,69 @@
+{
+  "observedAt": "2026-11-20T12:18:28.073Z",
+  "commit": "799fb18d541a23ad3578a5fa3ace4a090962ad3f",
+  "runs": [
+    {
+      "name": "smoke",
+      "source": "docs/development/release-gate-results/check/smoke.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:11:15.781Z",
+      "exitCode": 0,
+      "checks": 7,
+      "passed": 7
+    },
+    {
+      "name": "ux",
+      "source": "docs/development/m12-6-results/check/ux.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:12:05.228Z",
+      "exitCode": 0,
+      "checks": 49,
+      "passed": 49
+    },
+    {
+      "name": "search",
+      "source": "docs/development/playback-ux-results/check/search.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:14:31.725Z",
+      "exitCode": 0,
+      "checks": 5,
+      "passed": 5
+    },
+    {
+      "name": "sharelink",
+      "source": "docs/development/share-link-results/check/sharelink.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:14:40.740Z",
+      "exitCode": 0,
+      "checks": 10,
+      "passed": 10
+    },
+    {
+      "name": "sharecard",
+      "source": "docs/development/share-card-results/check/sharecard.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:15:01.513Z",
+      "exitCode": 0,
+      "checks": 17,
+      "passed": 17
+    },
+    {
+      "name": "share-entry",
+      "source": "docs/development/share-entry-results/check/share-entry.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:15:32.842Z",
+      "exitCode": 0,
+      "checks": 20,
+      "passed": 20
+    },
+    {
+      "name": "queue",
+      "source": "docs/development/playback-ux-results/check/queue.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-20T12:16:29.433Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    }
+  ]
+}
