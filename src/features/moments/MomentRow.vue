@@ -39,12 +39,16 @@ const props = defineProps<{
   saveNote: (momentId: string, note: string) => Promise<boolean>
   /** 방금 저장한 순간 — 테두리 · "방금 저장" 표 (M11-7C). */
   highlighted?: boolean
+  /** 링크로 공유할 수 있는가 — 공유 대화상자가 있을 때만 단추를 보인다 (ADR 0040). */
+  canShare?: boolean
 }>()
 
 const emit = defineEmits<{
   play: [momentId: string]
   'toggle-manage': [momentId: string]
   edit: [momentId: string]
+  /** 링크로 공유 (ADR 0040). */
+  share: [momentId: string]
   'request-remove': [momentId: string]
   'cancel-remove': [momentId: string]
   'confirm-remove': [momentId: string]
@@ -146,7 +150,7 @@ async function submit(): Promise<void> {
       </button>
     </div>
 
-    <!-- 관리 — 메모 수정, 그리고 떨어진 자리의 삭제. 클래스 이름 `moment-controls` 는 M9 의 것을 잇는다. -->
+    <!-- 관리 — 메모 수정 · 링크로 공유, 그리고 떨어진 자리의 삭제. 클래스 이름 `moment-controls` 는 M9 의 것을 잇는다. -->
     <div
       v-if="mode === 'manage'"
       :id="id('actions')"
@@ -162,6 +166,16 @@ async function submit(): Promise<void> {
         @click="emit('edit', moment.id)"
       >
         ✎ 메모 수정
+      </button>
+      <button
+        v-if="canShare === true"
+        type="button"
+        class="pill"
+        :data-moment-share="moment.id"
+        :aria-label="`${songTitle} ${time} 링크로 공유`"
+        @click="emit('share', moment.id)"
+      >
+        링크로 공유
       </button>
       <button
         type="button"

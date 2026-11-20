@@ -44,7 +44,17 @@
  * 띠가 플레이어보다 얇았다). 쌓기 배치는 sticky 를 쓰지 않는다: 영상을 화면 위로 스크롤한 뒤 재생 띠의
  * **실제 아래 끝**(`getBoundingClientRect`)에 시트를 맞추고, 열려 있는 동안 페이지 스크롤을 잠근다.
  */
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, readonly, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  inject,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  readonly,
+  ref,
+} from 'vue'
 
 import AppFooter from '@/components/layout/AppFooter.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
@@ -59,6 +69,13 @@ import {
   type ArchiveTab,
 } from '@/features/archive/archiveController'
 import DataDialog from '@/features/backup/DataDialog.vue'
+import { isShareHash, parseShareLink, type ShareLinkParse } from '@/features/backup/shareLink'
+
+/**
+ * 링크로 받은 공유의 미리보기 (ADR 0040) — 공유 링크로 들어왔을 때만 쓰므로 따로 내려받는다. 보통 방문에서는 첫
+ * 화면 묶음을 키우지 않는다.
+ */
+const ShareLinkDialog = defineAsyncComponent(() => import('@/features/backup/ShareLinkDialog.vue'))
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
 import { SHARE_DIALOG, type ShareRequest, type ShareTarget } from '@/shared/types/share'
@@ -408,6 +425,37 @@ provide(SHARE_DIALOG, {
   },
 })
 
+/* ------------------------------------------------------------------ *
+ * 링크로 받은 공유 (ADR 0040)
+ * ------------------------------------------------------------------ */
+
+/**
+ * 주소 조각이 공유 링크(`#share?…`)면 읽어서 미리보기를 띄운다. 처음 열 때와, 이미 열린 39page 탭에 링크를 붙여 넣었을
+ * 때(`hashchange`) 모두. 읽기는 검증만 한다 — 저장 · 재생은 받는 사람이 미리보기에서 누를 때만.
+ */
+const incomingShare = ref<ShareLinkParse | null>(null)
+
+function readShareLink(): void {
+  const hash = globalThis.location.hash
+  if (!isShareHash(hash)) return
+  incomingShare.value = parseShareLink(hash)
+}
+
+/**
+ * 미리보기를 닫는다. 주소의 조각도 지운다 — 새로고침해서 같은 미리보기가 다시 뜨지 않게. 할 일(`after`, 재생 등)은
+ * 대화상자가 **내려간 뒤**에 한다 — 덮인 플레이어로 소리를 내지 않는다 (ADR 0011).
+ */
+async function closeShareLink(after?: () => void): Promise<void> {
+  if (incomingShare.value === null) return
+  incomingShare.value = null
+  if (isShareHash(globalThis.location.hash)) {
+    const { pathname, search } = globalThis.location
+    globalThis.history.replaceState(globalThis.history.state, '', `${pathname}${search}`)
+  }
+  await nextTick()
+  after?.()
+}
+
 async function closeData(): Promise<void> {
   if (!isDataOpen.value) return
   isDataOpen.value = false
@@ -424,6 +472,10 @@ function onKeydown(event: KeyboardEvent): void {
   // 안쪽이 Esc 를 이미 썼으면(검색어 지우기 등) 닫지 않는다.
   if (event.key !== 'Escape' || event.defaultPrevented) return
 
+  if (incomingShare.value !== null) {
+    void closeShareLink()
+    return
+  }
   if (isDataOpen.value) {
     void closeData()
     return
@@ -440,11 +492,15 @@ function onResize(): void {
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
   window.addEventListener('resize', onResize, { passive: true })
+  // 링크로 받은 공유 (ADR 0040) — 처음 열 때, 그리고 열린 탭에 공유 링크를 붙여 넣었을 때.
+  readShareLink()
+  window.addEventListener('hashchange', readShareLink)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('hashchange', readShareLink)
   unwatchStrip()
   lockPageScroll(false)
   // 셸이 사라지면 가리는 것도 없다. 멈춘 이유를 남겨두지 않는다.
@@ -474,7 +530,9 @@ const workspaceStyle = computed(() => {
 })
 
 /** 대화상자가 열려 있는 동안 뒤쪽을 조작할 수 없게 한다 (보조기기 포함). */
-const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
+const behindDialog = computed(() =>
+  isDataOpen.value || incomingShare.value !== null ? true : undefined,
+)
 </script>
 
 <template>
@@ -558,6 +616,13 @@ const behindDialog = computed(() => (isDataOpen.value ? true : undefined))
       :dialog-id="DATA_DIALOG_ID"
       :share-request="shareRequest"
       @close="closeData"
+    />
+
+    <!-- 링크로 받은 공유 (ADR 0040). 데이터 대화상자보다 위 — 그 위에서 링크를 열 수도 있다. -->
+    <ShareLinkDialog
+      v-if="incomingShare !== null"
+      :link="incomingShare"
+      @close="(after) => void closeShareLink(after)"
     />
   </div>
 </template>

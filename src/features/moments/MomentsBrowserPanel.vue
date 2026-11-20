@@ -15,7 +15,9 @@
  * 그 아래 시점 순 한 목록(재생 · 메모 수정 · 삭제). 곡 제목 · 목록 이름을 되풀이하지 않는다. 전체 · 최근은
  * 여러 곡을 다루므로 곡 제목 · 목록을 그대로 보인다.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+import { SHARE_DIALOG } from '@/shared/types/share'
 
 import { useMomentDraftStore } from '@/stores/momentDraft'
 import { MAX_MOMENT_NOTE_LENGTH } from '@/stores/moments'
@@ -25,6 +27,9 @@ import MomentList from './MomentList.vue'
 import MomentsStatusBanner from './MomentsStatusBanner.vue'
 import { GROUP_PAGE_SIZE, RECENT_PAGE_SIZE, SEARCH_ROW_LIMIT } from './momentsSearch'
 import { useMomentsArchive } from './useMomentsArchive'
+
+/** 공유 대화상자 (ADR 0040) — 셸이 내려 준다. 없으면(단독 마운트) "링크로 공유" 를 보이지 않는다. */
+const shareDialog = inject(SHARE_DIALOG, null)
 
 const props = defineProps<{
   /** 바뀔 때마다 그 영상의 Moments 만 보인다 (음악 탭 곡 행의 ◆ 배지 · 대시보드 "이 곡 모두 보기"). */
@@ -316,6 +321,8 @@ defineExpose({ archive })
       :max-note-length="MAX_MOMENT_NOTE_LENGTH"
       :save-note="browser.saveNote"
       :highlight-id="highlightId"
+      :can-share="shareDialog !== null"
+      @share="(id) => shareDialog?.open({ momentId: id })"
       @play="(id) => void browser.play(id)"
       @remove="(id) => void browser.remove(id)"
       @toggle="archive.toggleGroup"
