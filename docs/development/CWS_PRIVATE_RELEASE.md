@@ -17,7 +17,7 @@
 2. Add new item → Choose file → `extension/release/39page-extension-1.0.0.zip` → Upload. ZIP의 manifest.json은 루트에 있다.
 3. 생성된 항목의 **Item ID** 32자를 Dashboard에서 복사해 전달한다. 압축해제 설치 화면의 ID가 아니다. 이 업로드는 심사 제출·게시와 다르다.
 4. Distribution은 Private → Only trusted testers로 설정하고 테스트 계정을 등록한다. 아직 Submit for review는 누르지 않는다.
-5. [Store Listing](../product/EXTENSION_STORE_LISTING.md)과 이미지 자료를 입력한다. 지원 연락처·개인정보 URL은 TODO를 실제 값으로 채운다. 개인정보 페이지가 실제 공개된 후 응답과 내용을 확인한다.
+5. [Store Listing](../product/EXTENSION_STORE_LISTING.md)과 이미지 자료를 입력한다. 지원 연락처는 `jwavascript@gmail.com`으로 확정했다(2026-11-18). 개인정보 URL은 게시 후 실제 값으로 채운다. 개인정보 페이지가 실제 공개된 후 응답과 내용을 확인한다.
 
 공식 [업로드 안내](https://developer.chrome.com/docs/webstore/publish), [배포 범위 안내](https://developer.chrome.com/docs/webstore/cws-dashboard-distribution)를 2026-11-17 확인했다. 실제 Dashboard 문구가 바뀌면 해당 화면을 우선한다.
 

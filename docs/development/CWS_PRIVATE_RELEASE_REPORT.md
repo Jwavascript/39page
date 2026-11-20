@@ -65,7 +65,7 @@ ZIP 검사기는 소스맵·개발 주소·예상 밖 파일·eval/new Function�
 TODO:
 
 - 사용자의 최초 ZIP 업로드, Dashboard의 정식 Item ID 전달, Private/Trusted testers 설정.
-- 지원 연락처·시행일·Cloudflare 로그 설정 확인, 개인정보 HTML의 검토·게시 승인·공개 URL HTTP 확인.
+- 시행일·Cloudflare 로그 설정 확인, 개인정보 HTML의 검토·게시 승인·공개 URL HTTP 확인. 지원 연락처는 2026-11-18 사용자가 `jwavascript@gmail.com`으로 확정해 Listing·개인정보 Markdown/HTML·출시 안내에 반영했다.
 - 정식 ID로 후보 빌드·보안/통합 검사, 구체적 변경 diff·원복 버전 확인 후 운영 배포 승인.
 - 운영 반영 뒤 최종 두 bridge 경로의 단일 ID CSP·JS 일치 확인. 다른 경로 및 다른 origin 거부 확인.
 - Private 심사 제출과 승인 후 실제 Store 설치본으로 직접 조회·곡/Moment/새 목록 저장, 권한 승인/거부/철회, storage partitioning·lifecycle·기존 데이터/재생 보존 UAT.

@@ -12,8 +12,8 @@
 | 분류             | 생산성 (Dashboard에서 최종 확인)                                                          |
 | 홈페이지         | https://39page.com                                                                        |
 | 배포             | Private → Only trusted testers                                                            |
-| 개인정보처리방침 | TODO: 검토·연락처 확정·승인 후 https://39page.com/privacy 게시 및 실제 응답 확인          |
-| 지원             | TODO: 사용자가 관리할 공개 지원 URL 또는 이메일 확정                                      |
+| 개인정보처리방침 | https://39page.com/privacy (2026-11-18 게시·응답 확인)                                    |
+| 지원             | jwavascript@gmail.com (2026-11-18 사용자 확정)                                            |
 
 ## 상세 설명 — 붙여넣기
 
