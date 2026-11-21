@@ -92,12 +92,15 @@ export function useMomentCapture(): MomentCaptureModel {
     () => coordinator !== null && playback.isPositionReliable && !store.saving,
   )
 
+  /**
+   * 단추 옆 한 줄 — **막힌 이유만** 적는다 (ADR 0044). 곡이 없거나 재생 전이면 단추가 꺼진 것으로 충분하고,
+   * 누르면 무엇이 되는지는 단추 이름과 다음 화면(메모 칸)이 말한다.
+   */
   const hint = computed<string>(() => {
     if (coordinator === null) return '플레이어가 연결되지 않았어요.'
-    if (playback.currentTrack === null) return '곡을 재생하면 지금 이 순간을 저장할 수 있어요.'
-    if (playback.playerState === 'error') return '재생할 수 없는 영상이라 지금은 저장할 수 없어요.'
-    if (!playback.isPositionReliable) return '재생이 시작되면 저장할 수 있어요.'
-    return '누르면 지금 시점을 잡아요(음악은 계속 흘러요). 메모를 쓰고 Moment 저장을 누르면 저장돼요.'
+    if (playback.currentTrack !== null && playback.playerState === 'error')
+      return '재생할 수 없는 영상이라 지금은 저장할 수 없어요.'
+    return ''
   })
 
   const draft = computed<MomentDraft | null>(() => store.draft)

@@ -14,7 +14,7 @@ import type { Track } from '@/shared/types'
 import { useLibraryStore } from '@/stores/library'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
-import { openTrackManage } from '../support/trackManage'
+import { openTrackManage, setReorderMode } from '../support/trackManage'
 
 const VIDEO_A = 'dQw4w9WgXcQ'
 const URL_A = `https://www.youtube.com/watch?v=${VIDEO_A}`
@@ -399,14 +399,13 @@ describe('B. 트랙 목록 UI', () => {
   it('23. 순서를 올리고 내린다', async () => {
     const { wrapper } = await withThreeTracks()
 
-    // 두 번째 행의 ↑
-    await openTrackManage(wrapper, 'Two')
+    // 두 번째 행의 ↑ — 한 칸 옮기기는 순서 모드(⇅)에 있다 (ADR 0044).
+    await setReorderMode(wrapper, true)
     await wrapper.get('[aria-label="Two 위로"]').trigger('click')
     await nextTick()
     expect(titles(wrapper)).toEqual(['Two', 'One', 'Three'])
 
     // 맨 위가 된 Two 의 ↓
-    await openTrackManage(wrapper, 'Two')
     await wrapper.get('[aria-label="Two 아래로"]').trigger('click')
     await nextTick()
     expect(titles(wrapper)).toEqual(['One', 'Two', 'Three'])
@@ -415,68 +414,66 @@ describe('B. 트랙 목록 UI', () => {
   it('24. 맨 위 ↑ 와 맨 아래 ↓ 가 비활성화된다', async () => {
     const { wrapper } = await withThreeTracks()
 
-    // M11-3: 이름 바꾸기 · 위 · 아래 · 삭제는 "관리" 를 펼치면 행 아래에 글자와 함께 보인다.
-    await openTrackManage(wrapper, 'One')
-    expect(wrapper.get('[aria-label="One 위로"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[aria-label="One 아래로"]').attributes('disabled')).toBeUndefined()
-    // 이름 변경과 삭제는 어느 자리에서도 막지 않는다.
+    // 이름 변경과 삭제는 행 아이콘이고 어느 자리에서도 막지 않는다 (ADR 0044).
     expect(wrapper.get('[aria-label="One 이름 변경"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.get('[aria-label="One 삭제"]').attributes('disabled')).toBeUndefined()
 
-    await openTrackManage(wrapper, 'Three')
+    // 위 · 아래는 순서 모드에.
+    await setReorderMode(wrapper, true)
+    expect(wrapper.get('[aria-label="One 위로"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[aria-label="One 아래로"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.get('[aria-label="Three 위로"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.get('[aria-label="Three 아래로"]').attributes('disabled')).toBeDefined()
   })
 
-  it('25. 트랙 버튼에 접근성 이름과 보이는 글자가 있다 — 관리는 펼쳐야 보인다 (M11-3)', async () => {
+  it('25. 행 오른쪽의 아이콘 — 이름 · 앨범아트 · 공유 · 삭제, 글자 없이 접근성 이름과 툴팁 (ADR 0044)', async () => {
     const { wrapper } = await withThreeTracks()
 
-    // 접힌 상태: 행마다 ▶ 재생과 "관리" 뿐이다.
+    // "관리" 메뉴는 없다.
+    expect(wrapper.find('.track-manage').exists()).toBe(false)
     expect(wrapper.find('.track-controls').exists()).toBe(false)
-    const manage = wrapper.get('[aria-label="One 관리"]')
-    expect(manage.text()).toBe('관리')
-    expect(manage.attributes('aria-expanded')).toBe('false')
 
-    await openTrackManage(wrapper, 'One')
-    expect(manage.attributes('aria-expanded')).toBe('true')
-    const group = wrapper.get(`#${manage.attributes('aria-controls') ?? ''}`)
-    expect(group.attributes('role')).toBe('group')
-    expect(group.attributes('aria-label')).toBe('One 관리 메뉴')
-    const buttons = group.findAll('button')
+    const group = wrapper.findAll('.track')[0]?.get('.track-icons')
+    expect(group?.attributes('role')).toBe('group')
+    expect(group?.attributes('aria-label')).toBe('One 동작')
+    const buttons = group?.findAll('button') ?? []
     expect(buttons.map((node) => node.attributes('aria-label'))).toEqual([
       'One 이름 변경',
       // M12-3: 곡별 앨범아트 설정
       'One 앨범아트 설정',
       'One 공유',
-      'One 맨 위로',
-      'One 위로',
-      'One 아래로',
-      'One 맨 아래로',
       'One 삭제',
     ])
-    expect(buttons.map((node) => node.text())).toEqual([
-      '✎ 이름 바꾸기',
-      '🖼 앨범아트',
-      '이 곡 공유',
-      '⤒ 맨 위로',
-      '↑ 위로',
-      '↓ 아래로',
-      '⤓ 맨 아래로',
+    expect(buttons.map((node) => node.attributes('title'))).toEqual([
+      '이름 바꾸기',
+      '앨범아트',
+      '공유',
       '삭제',
     ])
+    // 보이는 것은 아이콘뿐이다.
+    for (const node of buttons) {
+      expect(node.text()).toBe('')
+      expect(node.find('.ui-icon').attributes('aria-hidden')).toBe('true')
+    }
   })
 
-  it('관리는 한 번에 한 행만 펼친다 · 다시 누르면 접힌다 (M11-3)', async () => {
+  it('연필은 이름 폼을 열고 닫는 토글이다 — 한 번에 한 행만 고친다 (ADR 0044)', async () => {
     const { wrapper } = await withThreeTracks()
 
-    await openTrackManage(wrapper, 'One')
-    await openTrackManage(wrapper, 'Two')
-    expect(wrapper.findAll('.track-controls')).toHaveLength(1)
-    expect(wrapper.get('[aria-label="One 관리"]').attributes('aria-expanded')).toBe('false')
-
-    await wrapper.get('[aria-label="Two 관리"]').trigger('click')
+    await wrapper.get('[aria-label="One 이름 변경"]').trigger('click')
     await nextTick()
-    expect(wrapper.find('.track-controls').exists()).toBe(false)
+    expect(wrapper.findAll('.rename-form')).toHaveLength(1)
+    expect(wrapper.get('[aria-label="One 이름 변경"]').attributes('aria-expanded')).toBe('true')
+
+    await wrapper.get('[aria-label="Two 이름 변경"]').trigger('click')
+    await nextTick()
+    expect(wrapper.findAll('.rename-form')).toHaveLength(1)
+    expect(wrapper.get('[aria-label="One 이름 변경"]').attributes('aria-expanded')).toBe('false')
+
+    await wrapper.get('[aria-label="Two 이름 변경"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('.rename-form').exists()).toBe(false)
+    expect(document.activeElement).toBe(wrapper.get('[aria-label="Two 이름 변경"]').element)
   })
 
   it('삭제 확인은 지울 행 바로 아래에 뜬다 (M11-3)', async () => {
@@ -515,8 +512,8 @@ describe('B. 트랙 목록 UI', () => {
 
   it('26. 빈 플레이리스트를 안내한다', async () => {
     const { wrapper } = await setup()
-    expect(wrapper.get('.track-list').text()).toContain('아직 등록된 영상이 없어요')
-    expect(wrapper.get('.track-list').text()).toContain('YouTube 링크 추가')
+    // 설명 없이 한 줄 (ADR 0044) — 링크 추가는 바로 위 머리의 단추다.
+    expect(wrapper.get('.track-list > .muted').text()).toBe('아직 곡이 없어요.')
   })
 
   it('목록 key 가 배열 인덱스가 아니라 트랙 ID 다', async () => {
@@ -684,45 +681,42 @@ describe('B2. 순서 편집 — 끌기 · 키보드 · 맨 위/아래 · 편집 
     expect(move).not.toHaveBeenCalled()
   })
 
-  it('관리 메뉴의 맨 위로 · 맨 아래로 — 같은 단추에 포커스가 남고, 꺼지면 손잡이로', async () => {
+  it('순서 모드의 ↑ · ↓ — 같은 단추에 포커스가 남고, 꺼지면 손잡이로', async () => {
     const { wrapper } = await withTracks()
+    await setReorderMode(wrapper, true)
 
-    await openTrackManage(wrapper, 'Two')
-    await wrapper.get('[aria-label="Two 맨 아래로"]').trigger('click')
+    await wrapper.get('[aria-label="Three 아래로"]').trigger('click')
     await flushPromises()
-    expect(titles(wrapper)).toEqual(['One', 'Three', 'Four', 'Two'])
+    await wrapper.get('[aria-label="Three 아래로"]').trigger('click')
+    await flushPromises()
+    expect(titles(wrapper)).toEqual(['One', 'Two', 'Four', 'Three'])
     // 맨 아래가 되어 단추가 꺼졌다 — 그 곡의 손잡이로.
-    expect(document.activeElement).toBe(handle(wrapper, 'Two').element)
+    expect(document.activeElement).toBe(handle(wrapper, 'Three').element)
 
-    await wrapper.get('[aria-label="Two 위로"]').trigger('click')
+    await wrapper.get('[aria-label="Three 위로"]').trigger('click')
     await flushPromises()
-    expect(titles(wrapper)).toEqual(['One', 'Three', 'Two', 'Four'])
-    expect(document.activeElement).toBe(wrapper.get('[aria-label="Two 위로"]').element)
-
-    await wrapper.get('[aria-label="Two 맨 위로"]').trigger('click')
-    await flushPromises()
-    expect(titles(wrapper)).toEqual(['Two', 'One', 'Three', 'Four'])
+    expect(titles(wrapper)).toEqual(['One', 'Two', 'Three', 'Four'])
+    expect(document.activeElement).toBe(wrapper.get('[aria-label="Three 위로"]').element)
   })
 
-  it('편집 모드 — 손잡이 · ↑ · ↓ · 이름 · 삭제가 행마다 드러나고 ▶ · 관리는 숨는다. 완료로 돌아온다', async () => {
+  it('순서 모드(⇅) — 손잡이 · ↑ · ↓ 가 행마다 드러나고 ▶ · 행 아이콘은 숨는다. 다시 누르면 돌아온다', async () => {
     const { wrapper } = await withTracks(['One', 'Two', 'Three'])
     const toggle = wrapper.get('.edit-toggle')
-    expect(toggle.text()).toBe('✎ 편집')
+    // 아이콘만 — 이름은 aria-label · title (ADR 0044).
+    expect(toggle.text()).toBe('')
+    expect(toggle.attributes('aria-label')).toBe('순서 바꾸기')
     expect(toggle.attributes('aria-pressed')).toBe('false')
 
     await toggle.trigger('click')
-    expect(toggle.text()).toBe('완료')
     expect(toggle.attributes('aria-pressed')).toBe('true')
     expect(wrapper.get('.track-list').classes()).toContain('is-editing')
     expect(wrapper.find('.track .track-play').exists()).toBe(false)
-    expect(wrapper.find('.track .track-manage').exists()).toBe(false)
+    expect(wrapper.find('.track .track-icons').exists()).toBe(false)
     const actions = row(wrapper, 'Two')?.get('.edit-actions')
     expect(actions?.attributes('role')).toBe('group')
     expect(actions?.findAll('button').map((b) => b.attributes('aria-label'))).toEqual([
       'Two 위로',
       'Two 아래로',
-      'Two 이름 변경',
-      'Two 삭제',
     ])
     expect(row(wrapper, 'One')?.get('.edit-up').attributes('disabled')).toBeDefined()
 
@@ -972,7 +966,7 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     const before = snapshot(playback)
 
     // M11-3 전에는 이 줄이 없는 단추를 찾아 아무것도 누르지 않고 지나갔다 — 실제로 옮긴다.
-    await openTrackManage(wrapper, 'Two')
+    await setReorderMode(wrapper, true)
     await wrapper.get('[aria-label="Two 위로"]').trigger('click')
     await flushPromises()
     expect(
@@ -995,9 +989,10 @@ describe('D. Playback 독립성과 플레이어 DOM', () => {
     await submitLink(wrapper, URL_A, 'One')
     library.addTrack(id, { videoId: VIDEO_A, title: 'Two' })
     await nextTick()
-    await openTrackManage(wrapper, 'Two')
+    await setReorderMode(wrapper, true)
     await wrapper.get('[aria-label="Two 위로"]').trigger('click')
     await flushPromises()
+    await setReorderMode(wrapper, false)
     await wrapper.get('[aria-label="Two 삭제"]').trigger('click')
     await nextTick()
     await wrapper.get('[aria-label="트랙 삭제 확인"] .pill--strong').trigger('click')

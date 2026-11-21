@@ -2,6 +2,10 @@
  * M11-4 — Moments 보관함: 묶음 접기 · 검색 · 보기(전체 · 최근 · 이 곡 · 한 곡) · 점진 표시 · 라이브러리 연결.
  *
  * 순수 계층(`momentsSearch.ts`)은 고정값으로, 화면은 앱 전체를 띄워(`main.ts` 와 같은 순서) 확인한다.
+ *
+ * ADR 0044 — 탭이 음악 탭처럼 두 칸이 됐다. 보기(이 곡 · 전체 · 최근)와 곡 목록은 왼쪽 칸의 항목
+ * (`.view-item` · `.song-item`, 고른 것은 `aria-current`)이고, 순간은 오른쪽 칸(`.moments-detail`)이다.
+ * 한 곡 보기도 이 곡처럼 한 목록이고, 줄의 메모 수정 · 공유 · 삭제는 아이콘이다.
  * 데이터 · 저장 키는 바뀌지 않는다 — 검색 · 접기 · 보기는 화면 상태이고 저장소에 쓰지 않는다.
  */
 import { readFileSync } from 'node:fs'
@@ -159,6 +163,19 @@ const heads = (s: Session) => panel(s).findAll('.group-toggle')
 const rows = (s: Session) => panel(s).findAll('.moment-item')
 const searchBox = (s: Session) => panel(s).get<HTMLInputElement>('#archive-moments-search')
 const summary = (s: Session) => panel(s).get('#archive-moments-summary')
+/** 왼쪽 칸의 보기 항목 (ADR 0044). */
+const viewItem = (s: Session, key: 'current' | 'all' | 'recent') =>
+  panel(s).get(`.view-item[data-view="${key}"]`)
+const viewKeys = (s: Session) =>
+  panel(s)
+    .findAll('.view-item')
+    .map((item) => item.attributes('data-view'))
+const currentView = (s: Session) =>
+  panel(s)
+    .findAll('.view-item')
+    .find((item) => item.attributes('aria-current') === 'true')
+    ?.attributes('data-view')
+const detailTitle = (s: Session) => panel(s).get('.detail-title').text()
 
 async function search(s: Session, text: string): Promise<void> {
   await searchBox(s).setValue(text)
@@ -380,6 +397,7 @@ describe('B. 묶음 접기 · 점진 표시', () => {
   })
 
   it('1,000개 · 5,000개 — 그리는 줄이 데이터 크기를 따라 자라지 않는다', async () => {
+    const sizes: number[] = []
     for (const [songs, per] of [
       [200, 5],
       [1000, 5],
@@ -390,11 +408,17 @@ describe('B. 묶음 접기 · 점진 표시', () => {
       expect(heads(s)).toHaveLength(30)
       // 최근 3묶음만 펼침 → 3 × 5 줄.
       expect(rows(s)).toHaveLength(15)
-      expect(panel(s).element.querySelectorAll('*').length).toBeLessThan(900)
+      // 왼쪽 칸의 곡 목록도 100곡씩 (ADR 0044).
+      expect(panel(s).findAll('.song-item')).toHaveLength(100)
+      const nodes = panel(s).element.querySelectorAll('*').length
+      expect(nodes).toBeLessThan(1700)
+      sizes.push(nodes)
       s.wrapper.unmount()
       document.body.innerHTML = ''
       globalThis.localStorage.clear()
     }
+    // 1,000개와 5,000개가 같은 수의 노드를 그린다.
+    expect(sizes[1]).toBe(sizes[0])
   })
 })
 
@@ -511,9 +535,7 @@ describe('C. 검색 — 제목 · 메모, 150ms 뒤', () => {
     await openMoments(s)
     await search(s, '공통')
     expect(rows(s)).toHaveLength(200)
-    expect(summary(s).text()).toBe(
-      '순간 300개 · 곡 60개 — 앞의 200개만 보여요. 검색어를 좁혀 주세요.',
-    )
+    expect(summary(s).text()).toBe('순간 300개 · 곡 60개 — 앞의 200개만 보여요.')
     expect(panel(s).find('.more').exists()).toBe(false)
   })
 
@@ -545,10 +567,11 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     seedMoments(bulk(30, 3))
     const s = boot()
     await openMoments(s)
-    await panel(s).findAll('.chip')[2]?.trigger('click')
+    await viewItem(s, 'recent').trigger('click')
     await nextTick()
 
-    expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
+    expect(currentView(s)).toBe('recent')
+    expect(detailTitle(s)).toBe('최근')
     expect(heads(s)).toHaveLength(0)
     expect(rows(s)).toHaveLength(50)
     expect(rows(s)[0]?.get('[data-moment-play]').attributes('data-moment-play')).toBe('m89')
@@ -560,22 +583,22 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     seedMoments([...bulk(3, 1), moment({ id: 'cur', videoId: A, atSeconds: 3 })])
     const s = boot()
     await openMoments(s)
-    const chips = () => panel(s).findAll('.chip')
-    expect(chips().map((c) => c.text())).toEqual(['이 곡 0', '전체 4', '최근'])
-    // 곡이 없으면 이 곡은 고를 수 없고 처음 보기는 전체다.
-    expect(chips()[0]?.attributes('disabled')).toBeDefined()
-    expect(chips()[1]?.attributes('aria-pressed')).toBe('true')
+    // 곡이 없으면 이 곡은 없고 처음 보기는 전체다.
+    expect(viewKeys(s)).toEqual(['all', 'recent'])
+    expect(viewItem(s, 'all').get('.nav-meta').text()).toBe('4')
+    expect(currentView(s)).toBe('all')
 
     // 보는 중에 재생이 시작돼도 보기를 바꾸지 않는다 — 누르던 목록이 사라지지 않게.
     await playFromStart(s)
-    expect(chips()[1]?.attributes('aria-pressed')).toBe('true')
+    expect(viewKeys(s)).toEqual(['current', 'all', 'recent'])
+    expect(currentView(s)).toBe('all')
 
     // 다시 들어오면(닫고 열기) 지금 곡이 있으니 이 곡이다.
     await archiveCloseButton(s.wrapper).trigger('click')
     await settle()
     await openMoments(s)
-    expect(chips()[0]?.attributes('aria-pressed')).toBe('true')
-    expect(chips()[0]?.text()).toBe('이 곡 1')
+    expect(currentView(s)).toBe('current')
+    expect(viewItem(s, 'current').get('.nav-meta').text()).toBe('1')
   })
 
   it('사용자가 고른 보기는 이 세션 동안 탭을 오가도 남는다', async () => {
@@ -583,22 +606,22 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     const s = boot()
     await playFromStart(s)
     await openMoments(s)
-    await panel(s).findAll('.chip')[2]?.trigger('click')
+    await viewItem(s, 'recent').trigger('click')
     await nextTick()
 
     await s.wrapper.get('#archive-tab-music').trigger('click')
     await settle()
     await s.wrapper.get('#archive-tab-moments').trigger('click')
     await settle()
-    expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
+    expect(currentView(s)).toBe('recent')
 
     await archiveCloseButton(s.wrapper).trigger('click')
     await settle()
     await openMoments(s)
-    expect(panel(s).findAll('.chip')[2]?.attributes('aria-pressed')).toBe('true')
+    expect(currentView(s)).toBe('recent')
   })
 
-  it('이 곡 — 한 목록: 묶음 머리 · 곡 제목 · 목록 이름 없이 시점 순, 머리에 개수와 저장', async () => {
+  it('이 곡 — 한 목록: 묶음 머리 · 줄의 곡 제목 없이 시점 순, 오른쪽 칸 머리에 곡 이름 · 개수와 저장', async () => {
     seedMoments([
       ...bulk(10, 2),
       moment({ id: 'cur-60', videoId: A, atSeconds: 60, note: '브릿지' }),
@@ -608,17 +631,28 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     await playFromStart(s)
     await openMoments(s)
 
-    expect(panel(s).findAll('.chip')[0]?.attributes('aria-pressed')).toBe('true')
+    expect(currentView(s)).toBe('current')
+    // 왼쪽 칸에서는 그 곡도 고른 곡이다.
+    expect(panel(s).get(`.song-item[data-song="${A}"]`).attributes('aria-current')).toBe('true')
     expect(heads(s)).toHaveLength(0)
     expect(panel(s).find('.group-lists').exists()).toBe(false)
     expect(panel(s).find('.moment-song').exists()).toBe(false)
     expect(rows(s).map((r) => r.attributes('data-moment-id'))).toEqual(['cur-3', 'cur-60'])
-    // 재생 · 메모 수정 · 삭제는 그대로다.
+    // 재생 · 메모 수정 · 공유 · 삭제가 줄에 그대로 보인다 (ADR 0044 — 관리 메뉴 없음).
     expect(rows(s)[0]?.find('[data-moment-play]').exists()).toBe(true)
-    expect(rows(s)[0]?.find('[data-moment-manage]').exists()).toBe(true)
+    expect(rows(s)[0]?.find('[data-moment-edit]').exists()).toBe(true)
+    expect(rows(s)[0]?.find('[data-moment-remove]').exists()).toBe(true)
+    expect(rows(s)[0]?.find('[data-moment-manage]').exists()).toBe(false)
 
+    // 오른쪽 칸의 머리 — 곡 이름 · 개수 · 그 곡이 든 목록, 그 아래 저장.
+    expect(detailTitle(s)).toBe('Alpha')
+    expect(panel(s).get('.detail-meta').text()).toBe('2개 · ♪ 재생 중')
+    expect(
+      panel(s)
+        .findAll('.detail-lists .list-link')
+        .map((l) => l.text()),
+    ).toEqual(['LIST', '드라이브'])
     const head = panel(s).get('.current-head')
-    expect(head.get('.current-count').text().replace(/\s+/g, ' ')).toBe('이 곡 · Moments 2개')
     expect(head.get('.capture-button').text()).toContain('＋ 이 순간 저장')
     expect(head.get('.capture-button').attributes('disabled')).toBeUndefined()
   })
@@ -626,19 +660,20 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
   it('이 곡 — 이 곡에 순간이 없어도 저장 자리를 연다 · 곡이 없으면 이유를 말한다', async () => {
     const s = boot()
     await openMoments(s)
-    await panel(s).findAll('.chip')[0]?.trigger('click')
-    await nextTick()
+    // 곡이 없으면 이 곡 보기가 없다 — 저장 자리도 없다.
+    expect(panel(s).find('.view-item[data-view="current"]').exists()).toBe(false)
     expect(panel(s).find('.current-head').exists()).toBe(false)
+    expect(panel(s).get('.moments-detail .empty').text()).toBe('아직 저장한 순간이 없어요.')
 
     await playFromStart(s)
     await archiveCloseButton(s.wrapper).trigger('click')
     await settle()
     await openMoments(s)
     expect(panel(s).get('.current-head .capture-button').attributes('disabled')).toBeUndefined()
-    expect(panel(s).text()).toContain('이 곡에 저장한 순간이 아직 없어요')
+    expect(panel(s).get('.moments-detail .empty').text()).toBe('저장한 순간이 없어요.')
   })
 
-  it('음악 탭 곡 줄의 ◆ 배지 → Moments 탭이 그 곡으로 걸러져 열린다 · "전체 보기" 로 돌아간다', async () => {
+  it('음악 탭 곡 줄의 ◆ 배지 → Moments 탭이 그 곡으로 걸러져 열린다 · 왼쪽 "전체" 로 돌아간다', async () => {
     seedMoments([
       moment({ id: 'a1', videoId: A }),
       moment({ id: 'a2', videoId: A, atSeconds: 50 }),
@@ -657,14 +692,17 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     await badge.trigger('click')
     await settle()
     expect(s.wrapper.get('#archive-tab-moments').attributes('aria-selected')).toBe('true')
-    expect(panel(s).get('.focus-line').text()).toContain('‘Alpha’ 의 순간만 보는 중')
-    expect(heads(s)).toHaveLength(1)
+    // 한 곡 보기 — 오른쪽 칸 머리에 곡 이름, 줄은 한 목록 (ADR 0044).
+    expect(detailTitle(s)).toBe('Alpha')
+    expect(panel(s).get(`.song-item[data-song="${A}"]`).attributes('aria-current')).toBe('true')
+    expect(currentView(s)).toBeUndefined()
+    expect(heads(s)).toHaveLength(0)
     expect(rows(s)).toHaveLength(2)
 
-    await panel(s).get('.focus-line .link').trigger('click')
+    await viewItem(s, 'all').trigger('click')
     await nextTick()
     expect(heads(s)).toHaveLength(2)
-    expect(panel(s).find('.focus-line').exists()).toBe(false)
+    expect(detailTitle(s)).toBe('전체')
   })
 
   it('대시보드 "모두 보기" 는 재생 중에도 전체 보기로 열린다 (M12-6)', async () => {
@@ -676,7 +714,7 @@ describe('D. 보기 — 이 곡 · 전체 · 최근 · 한 곡', () => {
     await playFromStart(s)
     await s.wrapper.get('.moments-widget .widget-head .pill').trigger('click')
     await settle()
-    expect(panel(s).findAll('.chip')[1]?.attributes('aria-pressed')).toBe('true')
+    expect(currentView(s)).toBe('all')
     expect(heads(s)).toHaveLength(2)
   })
 })
@@ -728,9 +766,8 @@ describe('E. 라이브러리 연결', () => {
  * ================================================================== */
 
 describe('F. 편집 · 삭제', () => {
+  /** 줄의 연필 (ADR 0044 — 관리 메뉴 없이 바로). */
   async function openEdit(s: Session, id: string) {
-    await panel(s).get(`[data-moment-manage="${id}"]`).trigger('click')
-    await nextTick()
     await panel(s).get(`[data-moment-edit="${id}"]`).trigger('click')
     await nextTick()
     await nextTick()
@@ -757,7 +794,8 @@ describe('F. 편집 · 삭제', () => {
         .findAll('.moment-note')
         .map((n) => n.text()),
     ).toEqual(['고친 메모', '다른 줄'])
-    expect(document.activeElement).toBe(panel(s).get('[data-moment-manage="x"]').element)
+    // 폼이 사라진 자리 대신 그 줄의 연필로.
+    expect(document.activeElement).toBe(panel(s).get('[data-moment-edit="x"]').element)
   })
 
   it('다른 탭과 겹쳐 거절되면 폼과 쓴 메모가 남고, 줄 안과 위에 이유를 말한다', async () => {
@@ -788,8 +826,6 @@ describe('F. 편집 · 삭제', () => {
     await openMoments(s)
 
     async function remove(id: string): Promise<void> {
-      await panel(s).get(`[data-moment-manage="${id}"]`).trigger('click')
-      await nextTick()
       await panel(s).get(`[data-moment-remove="${id}"]`).trigger('click')
       await nextTick()
       const confirm = panel(s).get('[role="alertdialog"]')
@@ -824,8 +860,9 @@ describe('G. 플레이어 iframe · 접근성', () => {
     await search(s, 'song 3')
     await heads(s)[0]?.trigger('click')
     await searchBox(s).trigger('keydown', { key: 'Escape' })
-    await panel(s).findAll('.chip')[2]?.trigger('click')
-    await panel(s).findAll('.chip')[1]?.trigger('click')
+    await viewItem(s, 'recent').trigger('click')
+    await panel(s).findAll('.song-item')[0]?.trigger('click')
+    await viewItem(s, 'all').trigger('click')
     await panel(s).get('.more button').trigger('click')
     await settle()
     expect(s.wrapper.get('.player-mount').element).toBe(mountNode)
@@ -833,21 +870,44 @@ describe('G. 플레이어 iframe · 접근성', () => {
     expect(s.fake.calls.mount).toBe(1)
   })
 
-  it('도구 줄은 넉넉한 데스크톱에서만 위에 붙고, 붙으면 스크롤 여백으로 포커스가 그 아래 숨지 않는다', () => {
-    // 실측: 도구 줄 150px = 1440×900 보관함의 20%, 390×844 의 30%, 360×740 의 38%.
+  it('두 칸이 각자 스크롤하고, 좁은 보관함(640px 이하)은 한 번에 한 칸이다 (ADR 0044)', () => {
     const code = readFileSync(
       resolve(process.cwd(), 'src/features/moments/MomentsBrowserPanel.vue'),
       'utf8',
     )
     const style = code.slice(code.indexOf('<style'))
-    const roomy =
-      /@media \(min-width: 901px\) and \(min-height: 760px\) \{\s*\.tools \{\s*position: sticky;/
-    expect(style).toMatch(roomy)
-    // 미디어 밖의 `.tools` 는 붙지 않는다 (결과 줄 `.feedback` 의 sticky 는 M11-6 — 아래 H).
-    expect(style.replace(/@media \(min-width: 901px\)[\s\S]*?\n\}/, '')).not.toMatch(
-      /\.tools \{[^}]*sticky/,
+    expect(style).toMatch(/\.moments-nav,\s*\.moments-detail \{[^}]*overflow-y: auto;/)
+    expect(style).toMatch(/@container archive-moments \(max-width: 640px\)/)
+    expect(style).toContain(".moments-browser[data-step='detail'] > .moments-nav")
+    // 보관함 본문은 스크롤하지 않는다 — 음악 탭과 같다.
+    const panelCode = readFileSync(
+      resolve(process.cwd(), 'src/features/archive/ArchivePanel.vue'),
+      'utf8',
     )
-    expect(code).toContain('scroller.style.scrollPaddingTop')
+    expect(panelCode).toMatch(
+      /\.archive-body--moments \{[^}]*overflow: hidden;[^}]*container: archive-moments \/ inline-size;/,
+    )
+  })
+
+  it('좁은 보관함 — 곡을 고르면 오른쪽 칸, ‹ 로 왼쪽 칸에 돌아온다', async () => {
+    seedMoments([
+      moment({ id: 'a1', videoId: A }),
+      moment({ id: 'b1', videoId: B, title: 'Bravo' }),
+    ])
+    const s = boot()
+    await openMoments(s)
+    const browser = panel(s).get('.moments-browser')
+    expect(browser.attributes('data-step')).toBe('detail')
+
+    await panel(s).get('.back-to-nav').trigger('click')
+    await nextTick()
+    expect(browser.attributes('data-step')).toBe('nav')
+
+    await panel(s).get(`.song-item[data-song="${B}"]`).trigger('click')
+    await nextTick()
+    expect(browser.attributes('data-step')).toBe('detail')
+    expect(detailTitle(s)).toBe('Bravo')
+    expect(panel(s).get('.back-to-nav').attributes('aria-label')).toBe('곡 목록으로')
   })
 
   it('검색란 · 보기 단추 · 머리 · 목록 이름에 이름이 있고, 결과 수는 화면 낭독기에 알린다', async () => {
@@ -857,12 +917,10 @@ describe('G. 플레이어 iframe · 접근성', () => {
     expect(searchBox(s).attributes('aria-label')).toBe('Moments 검색 — 제목 · 메모')
     expect(searchBox(s).attributes('type')).toBe('search')
     expect(summary(s).attributes('role')).toBe('status')
-    expect(panel(s).get('.filter').attributes('role')).toBe('group')
-    expect(
-      panel(s)
-        .findAll('.chip')
-        .every((c) => c.attributes('aria-pressed') !== undefined),
-    ).toBe(true)
+    // 보기 · 곡은 이름이 있는 목록의 항목이고, 고른 것은 aria-current 다.
+    expect(panel(s).get('.nav-list').attributes('aria-label')).toBe('보기')
+    expect(panel(s).get('.song-list').attributes('aria-label')).toBe('순간이 있는 곡')
+    expect(currentView(s)).toBe('all')
     // 묶음 머리는 제목(h4) 안의 단추다.
     expect(panel(s).findAll('h4 .group-toggle')).toHaveLength(8)
   })
@@ -875,12 +933,15 @@ describe('H. 결과 안내 자리 (M11-6)', () => {
       'utf8',
     )
     const template = code.slice(code.indexOf('<template>'), code.indexOf('<style'))
-    // 도구 줄(.tools) 안이 아니라 목록 뒤에 있다.
-    const tools = template.slice(template.indexOf('class="tools"'), template.indexOf('<MomentList'))
-    expect(tools).not.toContain('class="feedback"')
+    // 왼쪽 칸이 아니라 오른쪽 칸의 목록 뒤에 있다.
+    const nav = template.slice(
+      template.indexOf('class="moments-nav"'),
+      template.indexOf('class="moments-detail"'),
+    )
+    expect(nav).not.toContain('class="feedback"')
     expect(template.indexOf('class="feedback"')).toBeGreaterThan(template.indexOf('<MomentList'))
     expect(code.slice(code.indexOf('<style'))).toMatch(
-      /\.feedback \{\s*position: sticky;[\s\S]*?bottom: -16px;/,
+      /\.feedback \{\s*position: sticky;[\s\S]*?bottom: -14px;/,
     )
   })
 })

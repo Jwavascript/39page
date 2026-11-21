@@ -263,23 +263,20 @@ try {
   record('Moments 없는 곡: 곡 이름만 (1080×640)', card.size === '1080x640', card)
   await closeShare()
 
-  // 5. Moment 하나 — Moments 관리의 "링크로 공유".
+  // 5. Moment 하나 — 줄의 공유 아이콘 (ADR 0044).
   await click('.app-nav button')
   await sleep(300)
   await click('#archive-tab-moments')
   await waitFor(
     () =>
       ev(`(() => {
-        const manage = document.querySelector('[data-moment-manage="m3"]')
-        if (manage) return true
-        // 지금 곡(Moments 없음)의 보기로 열린다 — "전체" 로 바꾼다.
-        ;[...document.querySelectorAll('.filter .chip')].find((b) => b.textContent.trim().startsWith('전체'))?.click()
+        if (document.querySelector('[data-moment-share="m3"]')) return true
+        // 지금 곡(Moments 없음)의 보기로 열린다 — 왼쪽 칸의 "전체" 로 바꾼다.
+        document.querySelector('.view-item[data-view="all"]')?.click()
         return false
       })()`),
     { label: 'moment row', timeout: 10_000 },
   )
-  await ev(`document.querySelector('[data-moment-manage="m3"]').click(); true`)
-  await sleep(200)
   await ev(`document.querySelector('[data-moment-share="m3"]').click(); true`)
   await waitFor(async () => (await dialogState()).share, { label: 'share dialog' })
   state = await dialogState()
@@ -306,10 +303,6 @@ try {
       `[...document.querySelectorAll('.archive-lists .list-select')].find((b) => b.textContent.includes(${JSON.stringify(listName)}))?.click(); true`,
     )
     await sleep(300)
-    await ev(
-      `(() => { const t = document.querySelector('button.track-manage[aria-label=' + JSON.stringify(${JSON.stringify(title)} + ' 관리') + ']'); if (t.getAttribute('aria-expanded') !== 'true') t.click(); return true })()`,
-    )
-    await sleep(250)
     await ev(
       `document.querySelector('button[aria-label=' + JSON.stringify(${JSON.stringify(title)} + ' 앨범아트 설정') + ']').click(); true`,
     )

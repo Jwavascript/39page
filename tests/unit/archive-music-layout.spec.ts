@@ -140,15 +140,17 @@ describe('A. 목록 칸 | 상세 칸 — 좁으면 두 단계', () => {
     expect(globalThis.localStorage.getItem(STORAGE_KEYS.library)).toBe(before)
   })
 
-  it('상세 단계에는 "목록으로" 와 위치 표시가 있고, 누르면 목록 단계로 돌아온다', async () => {
+  it('상세 단계에는 ‹ "목록으로" 가 있고, 누르면 목록 단계로 돌아온다', async () => {
     const s = boot()
     await openArchive(s)
     await s.wrapper.findAll('.archive-lists .list-select')[1]?.trigger('click')
     await settle()
 
+    // 아이콘만 (ADR 0044) — 이름은 aria-label. 위치 표시 글은 없앴다.
     const back = s.wrapper.get('.playlist-editor .back-to-lists')
-    expect(back.text()).toContain('목록으로')
-    expect(s.wrapper.get('.playlist-editor .crumb').text()).toContain('보관함 › 음악')
+    expect(back.text()).toBe('')
+    expect(back.attributes('aria-label')).toBe('목록으로')
+    expect(s.wrapper.find('.playlist-editor .crumb').exists()).toBe(false)
 
     await back.trigger('click')
     await settle()
@@ -170,10 +172,10 @@ describe('A. 목록 칸 | 상세 칸 — 좁으면 두 단계', () => {
     expect(document.activeElement).toBe(s.wrapper.get('#track-url').element)
   })
 
-  it('NOW PLAYLIST 의 "보관함에서 편집" 은 목록 단계를 건너뛰고 상세로 연다', async () => {
+  it('데크(카세트 · LP)는 목록 단계를 건너뛰고 상세로 연다 — "보관함에서 편집" 을 대신한다 (ADR 0044)', async () => {
     const s = boot()
 
-    await s.wrapper.get('.now-playlist .open-archive').trigger('click')
+    await s.wrapper.get('.deck-open').trigger('click')
     await settle()
 
     expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
@@ -241,32 +243,27 @@ describe('A. 목록 칸 | 상세 칸 — 좁으면 두 단계', () => {
 })
 
 describe('B. 목록 관리는 목록 칸에 — 재생은 상세 칸에', () => {
-  it('"관리" 를 펴면 이름 수정 · 목록 삭제가 그 행 아래에 있다', async () => {
+  it('목록 행 오른쪽의 아이콘 — 이름 수정 · 공유 · 삭제 (ADR 0044, "관리" 메뉴 없음)', async () => {
     const s = boot()
     await openArchive(s)
 
-    const toggle = s.wrapper.findAll('.archive-lists .list-manage')[1]
-    expect(toggle?.attributes('aria-label')).toBe('TWO 관리 — 이름 수정 · 삭제')
-    expect(toggle?.attributes('aria-expanded')).toBe('false')
-    await toggle?.trigger('click')
-
-    const panel = s.wrapper.findAll('.archive-lists .list-row')[1]?.get('.manage-panel')
-    expect(panel?.findAll('button').map((b) => b.text())).toEqual([
-      '이름 수정',
-      '이 목록 공유',
-      '목록 삭제',
+    expect(s.wrapper.find('.archive-lists .list-manage').exists()).toBe(false)
+    const icons = s.wrapper.findAll('.archive-lists .list-row')[1]?.get('.list-icons')
+    expect(icons?.attributes('aria-label')).toBe('TWO 동작')
+    const buttons = icons?.findAll('button') ?? []
+    expect(buttons.map((b) => b.attributes('aria-label'))).toEqual([
+      'TWO 이름 수정',
+      'TWO 목록 공유',
+      'TWO 삭제',
     ])
-    expect(toggle?.attributes('aria-expanded')).toBe('true')
+    for (const b of buttons) expect(b.text()).toBe('')
+    expect(s.wrapper.find('.archive-lists .manage-panel').exists()).toBe(false)
   })
 
   it('이름 수정은 고른 목록이 아니어도 그 행의 목록을 고친다 — 선택은 그대로', async () => {
     const s = boot()
     await openArchive(s)
-    await s.wrapper.findAll('.archive-lists .list-manage')[1]?.trigger('click')
-    await s.wrapper
-      .findAll('.archive-lists .manage-panel button')
-      .find((b) => b.text() === '이름 수정')
-      ?.trigger('click')
+    await s.wrapper.get('[aria-label="TWO 이름 수정"]').trigger('click')
     await settle()
 
     const input = s.wrapper.get('#playlist-name')
@@ -278,16 +275,28 @@ describe('B. 목록 관리는 목록 칸에 — 재생은 상세 칸에', () => 
     expect(s.library.getPlaylist('two')?.name).toBe('TWO 새 이름')
     expect(s.library.selectedPlaylistId).toBe('one')
     expect(s.wrapper.find('.archive-lists .manage-panel').exists()).toBe(false)
+    // 폼이 사라진 자리 대신 그 행의 연필로 돌아온다.
+    expect(document.activeElement).toBe(s.wrapper.get('[data-list-rename="two"]').element)
+  })
+
+  it('연필을 다시 누르면 이름 폼이 닫힌다', async () => {
+    const s = boot()
+    await openArchive(s)
+    const pencil = s.wrapper.get('[aria-label="TWO 이름 수정"]')
+    await pencil.trigger('click')
+    await settle()
+    expect(pencil.attributes('aria-expanded')).toBe('true')
+    await pencil.trigger('click')
+    await settle()
+    expect(s.wrapper.find('#playlist-name').exists()).toBe(false)
+    expect(pencil.attributes('aria-expanded')).toBe('false')
   })
 
   it('삭제는 그 행 아래에서 확인을 받고, 곡 수와 "Moments 는 남아요" 를 말한다', async () => {
     const s = boot()
     await openArchive(s)
-    await s.wrapper.findAll('.archive-lists .list-manage')[0]?.trigger('click')
-    await s.wrapper
-      .findAll('.archive-lists .manage-panel button')
-      .find((b) => b.text() === '목록 삭제')
-      ?.trigger('click')
+    await s.wrapper.get('[aria-label="ONE 삭제"]').trigger('click')
+    await settle()
 
     const confirm = s.wrapper.get('.archive-lists [role="alertdialog"]')
     expect(confirm.text()).toContain('“ONE” 과 곡 2개')
@@ -310,7 +319,7 @@ describe('B. 목록 관리는 목록 칸에 — 재생은 상세 칸에', () => 
     expect(labels).not.toContain('목록 삭제')
   })
 
-  it('"♪ 재생 중인 목록" 은 큐의 출처 하나에만 붙는다 — 같은 영상이 든 다른 목록에는 붙지 않는다', async () => {
+  it('"♪ 재생 중" 은 큐의 출처 하나에만 붙는다 — 같은 영상이 든 다른 목록에는 붙지 않는다', async () => {
     const s = boot()
     await s.wrapper.findAll('.now-playlist .track-row')[0]?.trigger('click')
     await settle()
@@ -318,7 +327,7 @@ describe('B. 목록 관리는 목록 칸에 — 재생은 상세 칸에', () => 
 
     const rows = s.wrapper.findAll('.archive-lists .list-row')
     expect(rows[0]?.classes()).toContain('is-playing')
-    expect(rows[0]?.text()).toContain('♪ 재생 중인 목록')
+    expect(rows[0]?.text()).toContain('♪ 재생 중')
     // TWO 에도 같은 영상(A)이 있다. 짐작했다면 여기에 붙었을 것이다.
     expect(rows[1]?.classes()).not.toContain('is-playing')
     expect(rows[1]?.text()).not.toContain('재생 중')
@@ -362,7 +371,9 @@ describe('C. 작은 영상 띠 (배치 C)', () => {
 
     await openArchive(s)
     expect(button.attributes('hidden')).toBeUndefined()
-    expect(button.text().replace(/\s+/g, ' ')).toBe('보관함 닫기 ×')
+    // 아이콘(×)만 (ADR 0044) — 이름은 aria-label · title.
+    expect(button.text()).toBe('')
+    expect(button.find('.ui-icon').exists()).toBe(true)
     expect(button.attributes('aria-label')).toBe('보관함 닫기')
     expect(button.attributes('aria-controls')).toBe('archive-panel')
     expect(s.wrapper.find('#archive-panel .archive-head .close').exists()).toBe(false)
@@ -437,8 +448,8 @@ describe('C. 작은 영상 띠 (배치 C)', () => {
   it('띠의 닫기는 44px 터치 목표 · 글자 단추 토큰 · 자기 줄(오른쪽 끝)', () => {
     const shell = styleOf('src/components/layout/DashboardShell.vue')
     const block = /\.strip-close \{[^}]*\}/.exec(shell)?.[0] ?? ''
-    expect(block).toContain('min-height: 44px')
-    expect(block).toContain('min-width: 44px')
+    expect(block).toContain('height: 44px')
+    expect(block).toContain('width: 44px')
     expect(block).toContain('justify-self: end')
     expect(block).toContain('var(--pill-border-color)')
     expect(block).not.toMatch(/position:\s*(absolute|fixed)/)

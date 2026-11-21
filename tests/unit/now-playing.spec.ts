@@ -118,7 +118,7 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
   it('보관함의 트랙 행 — 테두리와 함께 "재생 중" 글 · aria-current', async () => {
     const s = boot()
     await playOne(s)
-    await s.wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
+    await s.wrapper.findAll('.deck-open')[0]?.trigger('click')
     await flushPromises()
 
     const rows = s.wrapper.findAll('.track')
@@ -133,7 +133,7 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
     await playOne(s)
     s.fake.emitStateChange('paused')
     await nextTick()
-    await s.wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
+    await s.wrapper.findAll('.deck-open')[0]?.trigger('click')
     await flushPromises()
 
     expect(s.wrapper.get('.track.is-current .track-badge').text()).toBe('지금 곡')
@@ -142,7 +142,7 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
   it('다음 곡으로 넘어가면 표시가 따라간다', async () => {
     const s = boot()
     await playOne(s)
-    await s.wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
+    await s.wrapper.findAll('.deck-open')[0]?.trigger('click')
     await flushPromises()
     await s.wrapper.get('button[aria-label="다음 곡"]').trigger('click')
     await nextTick()
@@ -175,19 +175,18 @@ describe('B. 지금 곡이 목록에서 보인다 (U14)', () => {
 })
 
 describe('C. 데크 — 안내 문구가 실제 동작과 같다 (U2 · U3)', () => {
-  it('두 테마의 안내가 "보관함이 열린다" 를 말하고, 누르면 실제로 열린다', async () => {
+  it('두 테마의 열기 단추 이름이 "보관함이 열린다" 를 말하고, 누르면 실제로 열린다', async () => {
     for (const key of ['mono-vinyl', 'kawaii-synth-cassette'] as const) {
       const deck = THEMES[key].deck
-      expect(`${deck.hintRest} ${deck.openLabel}`).toContain('보관함')
-      expect(`${deck.hintRest} ${deck.openLabel}`).not.toContain('펼쳐')
+      expect(deck.openLabel).toContain('보관함')
+      expect(deck.openLabel).not.toContain('펼쳐')
     }
 
     const s = boot()
-    // 기본 테마(Kawaii Synth Cassette)의 안내를 먼저 보고, Mono Vinyl 로 바꿔 그 트리거를 누른다.
-    expect(s.wrapper.get('.deck-hint').text()).toContain('믹스테이프 보관함이 열려요')
+    // 데크 아래 안내 글은 없다 (ADR 0044) — 열기 단추의 이름과 데크 위 OPEN 표시가 말한다.
+    expect(s.wrapper.find('.deck-hint').exists()).toBe(false)
     useThemeStore().setTheme('mono-vinyl')
     await nextTick()
-    expect(s.wrapper.get('.deck-hint').text()).toContain('음악 보관함이 열려요')
     await s.wrapper.get('.deck-open--mono-vinyl').trigger('click')
     await flushPromises()
     expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
@@ -205,10 +204,10 @@ describe('C. 데크 — 안내 문구가 실제 동작과 같다 (U2 · U3)', ()
     )
   })
 
-  it('빈 플레이어 안내가 두 테마와 실제 입구에 맞다', async () => {
+  it('빈 플레이어에는 제목만 — 입구 설명 글은 없다 (ADR 0044)', async () => {
     const s = boot()
-    expect(s.wrapper.get('.now-sub').text()).toBe(
-      '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.',
-    )
+    expect(s.wrapper.get('.now-title').text()).toBe('재생할 음악을 선택하세요')
+    expect(s.wrapper.get('.now-sub').text()).toBe('')
+    expect(s.wrapper.text()).not.toContain('곡을 고르거나 링크를 추가할 수 있어요')
   })
 })

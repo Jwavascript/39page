@@ -969,7 +969,7 @@ function deckTrigger(wrapper: Wrapper) {
  * 데크는 이제 플레이리스트 위젯을 펼친다. 드로어는 **타일 본문**으로 연다.
  */
 function editorTrigger(wrapper: Wrapper) {
-  return wrapper.get('.now-playlist .open-archive')
+  return wrapper.get('.deck-open')
 }
 
 async function seedPlaying(trackCount = 3) {
@@ -1022,7 +1022,7 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
+    await context.wrapper.get('.deck-open').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
@@ -1052,7 +1052,7 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
+    await context.wrapper.get('.deck-open').trigger('click')
     await flushPromises()
     await nextTick()
     await nextTick()
@@ -1082,7 +1082,7 @@ describe('D. 드로어 연동', () => {
     context.fake.emitStateChange('playing')
     await nextTick()
 
-    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
+    await context.wrapper.get('.deck-open').trigger('click')
     await nextTick()
     await nextTick()
 
@@ -1234,7 +1234,7 @@ describe('D. 드로어 연동', () => {
     installMatchMedia(true)
     const context = await seedPlaying()
 
-    await context.wrapper.get('.now-playlist .open-archive').trigger('click')
+    await context.wrapper.get('.deck-open').trigger('click')
     await flushPromises()
     await nextTick()
     expect(document.documentElement.style.overflow).toBe('hidden')

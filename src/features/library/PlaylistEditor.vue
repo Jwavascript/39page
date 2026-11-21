@@ -486,10 +486,16 @@ watch(
     <div class="editor-head">
       <!-- 좁은 화면(두 단계)에서만 보인다. 넓은 화면에서는 목록 칸이 옆에 있다. -->
       <div class="step-nav">
-        <button ref="backButton" type="button" class="pill back-to-lists" @click="emit('back')">
-          ‹ 목록으로
+        <button
+          ref="backButton"
+          type="button"
+          class="icon-button back-to-lists"
+          aria-label="목록으로"
+          title="목록으로"
+          @click="emit('back')"
+        >
+          <span class="ui-icon ui-icon--back" aria-hidden="true"></span>
         </button>
-        <p class="crumb" aria-hidden="true">보관함 › 음악 › 이 목록</p>
       </div>
       <div class="head-main">
         <div class="head-text">
@@ -497,11 +503,10 @@ watch(
             {{ library.selectedPlaylist?.name ?? '플레이리스트' }}
           </h3>
           <p class="drawer-sub">
-            {{ library.selectedPlaylist === null ? '선택한 목록 없음' : `${trackCount} TRACKS` }} /
-            YOUTUBE ONLY
+            {{ library.selectedPlaylist === null ? '선택한 목록 없음' : `${trackCount}곡` }}
           </p>
         </div>
-        <!-- 이 목록을 **듣고 채우는** 동작. 이름 수정 · 삭제는 목록 칸의 "관리" 에 있다 (UAT U4). -->
+        <!-- 이 목록을 **듣고 채우는** 동작. 이름 수정 · 공유 · 삭제는 목록 칸 행의 아이콘이다 (ADR 0044). -->
         <div class="drawer-actions head-actions">
           <button
             type="button"
@@ -598,11 +603,10 @@ watch(
       <!-- 링크가 없으면 YouTube 검색 결과를 새 탭으로 연다 (API 키 없음). 링크 양식과 따로 된 양식이다. -->
       <YouTubeSearch v-if="linkTarget !== null" v-model:query="searchQuery" />
 
-      <h3 class="drawer-section-title">TRACKS</h3>
-
       <TrackList
-        @share="shareTrack"
         ref="trackList"
+        :can-share="shareDialog !== null"
+        @share="shareTrack"
         :moment-counts="momentCounts"
         :now-playing-track-id="nowPlayingTrackId"
         :now-playing-active="nowPlayingActive"
@@ -658,19 +662,12 @@ watch(
   border-bottom: 1px solid var(--drawer-head-border-color);
 }
 
-/* 좁은 화면의 "목록으로" · 위치 표시. 넓은 화면에서는 `ArchivePanel` 이 숨긴다 — 목록 칸이 옆에 있다. */
+/* 좁은 화면의 "목록으로". 넓은 화면에서는 `ArchivePanel` 이 숨긴다 — 목록 칸이 옆에 있다. */
 .step-nav {
   display: none;
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-}
-
-.crumb {
-  min-width: 0;
-  margin: 0;
-  color: var(--drawer-sub-text-color);
-  font: 11px var(--font-mono);
 }
 
 /* 이름이 길면 단추가 이름 **아래로** 내려간다 — 단추가 잘리거나 이름을 한 글자 폭으로 누르지 않게. */
@@ -767,14 +764,6 @@ watch(
   flex-wrap: wrap;
   margin-bottom: 13px;
   gap: 6px;
-}
-
-.drawer-section-title {
-  margin: 4px 0 8px;
-  color: var(--drawer-section-title-text-color);
-  font: 10px var(--font-mono);
-  font-weight: 400;
-  letter-spacing: 0.12em;
 }
 
 .label {

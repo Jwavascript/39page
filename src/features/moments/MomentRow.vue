@@ -2,8 +2,10 @@
 /**
  * Moment 한 줄 (M11-4 — `MomentList` 에서 떼어 냈다).
  *
- * **표현 컴포넌트다.** store 도 코디네이터도 모른다. 재생 · 관리 · 삭제는 이벤트로 올리고, 어느 줄이
- * 무엇을 펼쳤는지(한 번에 하나)는 부모가 `mode` 로 정한다.
+ * **표현 컴포넌트다.** store 도 코디네이터도 모른다. 재생 · 메모 수정 · 공유 · 삭제는 이벤트로 올리고, 어느
+ * 줄이 무엇을 펼쳤는지(한 번에 하나)는 부모가 `mode` 로 정한다.
+ *
+ * ADR 0044 — "관리" 메뉴를 없앴다. 메모 수정(연필) · 공유 · 삭제(휴지통)가 줄 오른쪽의 아이콘이다.
  *
  * 떼어 낸 이유 — 성능 (M9-6: 행 배치가 병목). 메모를 쓰는 동안의 입력(`draft`)이 **이 줄 안에만**
  * 있으므로 글자를 칠 때 다른 줄이 다시 그려지지 않는다. 다른 줄의 props(Moment 객체 · 제목 문자열 ·
@@ -21,7 +23,7 @@ import type { Moment } from '@/shared/types'
 import { highlight, noteLine } from './momentsSearch'
 import { formatMomentTime } from './momentsView'
 
-export type MomentRowMode = 'idle' | 'manage' | 'edit' | 'confirm'
+export type MomentRowMode = 'idle' | 'edit' | 'confirm'
 
 const props = defineProps<{
   moment: Readonly<Moment>
@@ -45,7 +47,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   play: [momentId: string]
-  'toggle-manage': [momentId: string]
+  /** 연필 — 메모 수정을 열거나(열려 있으면) 닫는다. */
   edit: [momentId: string]
   /** 링크로 공유 (ADR 0040). */
   share: [momentId: string]
@@ -137,55 +139,45 @@ async function submit(): Promise<void> {
         >
         <span v-if="highlighted === true" class="new-badge">방금 저장</span>
       </span>
-      <button
-        type="button"
-        class="moment-manage"
-        :data-moment-manage="moment.id"
-        :aria-expanded="mode === 'manage'"
-        :aria-controls="id('actions')"
-        :aria-label="`${songTitle} ${time} 관리`"
-        @click="emit('toggle-manage', moment.id)"
-      >
-        관리
-      </button>
-    </div>
-
-    <!-- 관리 — 메모 수정 · 링크로 공유, 그리고 떨어진 자리의 삭제. 클래스 이름 `moment-controls` 는 M9 의 것을 잇는다. -->
-    <div
-      v-if="mode === 'manage'"
-      :id="id('actions')"
-      class="moment-controls"
-      role="group"
-      :aria-label="`${time} 관리 메뉴`"
-    >
-      <button
-        type="button"
-        class="pill"
-        :data-moment-edit="moment.id"
-        :aria-label="`${songTitle} ${time} 메모 수정`"
-        @click="emit('edit', moment.id)"
-      >
-        ✎ 메모 수정
-      </button>
-      <button
-        v-if="canShare === true"
-        type="button"
-        class="pill"
-        :data-moment-share="moment.id"
-        :aria-label="`${songTitle} ${time} 링크로 공유`"
-        @click="emit('share', moment.id)"
-      >
-        링크로 공유
-      </button>
-      <button
-        type="button"
-        class="pill pill--danger"
-        :data-moment-remove="moment.id"
-        :aria-label="`${songTitle} ${time} 순간 삭제`"
-        @click="emit('request-remove', moment.id)"
-      >
-        삭제
-      </button>
+      <span class="row-icons moment-icons" role="group" :aria-label="`${time} 동작`">
+        <button
+          type="button"
+          class="icon-button"
+          :data-moment-edit="moment.id"
+          :aria-label="`${songTitle} ${time} 메모 수정`"
+          title="메모 수정"
+          :aria-expanded="mode === 'edit'"
+          @click="mode === 'edit' ? emit('close-edit', moment.id) : emit('edit', moment.id)"
+        >
+          <span class="ui-icon ui-icon--edit" aria-hidden="true"></span>
+        </button>
+        <button
+          v-if="canShare === true"
+          type="button"
+          class="icon-button"
+          :data-moment-share="moment.id"
+          :aria-label="`${songTitle} ${time} 링크로 공유`"
+          title="공유"
+          @click="emit('share', moment.id)"
+        >
+          <span class="ui-icon ui-icon--share" aria-hidden="true"></span>
+        </button>
+        <button
+          type="button"
+          class="icon-button icon-button--danger"
+          :data-moment-remove="moment.id"
+          :aria-label="`${songTitle} ${time} 순간 삭제`"
+          title="삭제"
+          :aria-expanded="mode === 'confirm'"
+          @click="
+            mode === 'confirm'
+              ? emit('cancel-remove', moment.id)
+              : emit('request-remove', moment.id)
+          "
+        >
+          <span class="ui-icon ui-icon--trash" aria-hidden="true"></span>
+        </button>
+      </span>
     </div>
 
     <!-- 고치는 줄 **바로 아래** — 무엇의 메모인지 자리가 말해준다. 입력란은 내용만큼 자란다(내부 스크롤 없음). -->
@@ -291,8 +283,7 @@ async function submit(): Promise<void> {
 }
 
 @media (hover: hover) {
-  .moment-play:hover,
-  .moment-manage:hover {
+  .moment-play:hover {
     color: var(--row-action-hover-text-color);
   }
 
@@ -342,39 +333,6 @@ mark {
   text-decoration-color: var(--accent-color);
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
-}
-
-.moment-manage {
-  min-width: 56px;
-  min-height: 44px;
-  flex: none;
-  padding: 0 10px;
-  border: 1px solid var(--pill-border-color);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--row-action-text-color);
-  font: 11px var(--font-mono);
-}
-
-.moment-manage[aria-expanded='true'] {
-  border-color: var(--row-selected-border-color);
-  background: var(--row-selected-surface-color);
-  color: var(--row-text-color);
-}
-
-/* 관리 줄 — 글자 이름이 있는 단추. 삭제는 맨 끝으로 떨어진다. */
-.moment-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 6px;
-  border: 1px solid var(--row-selected-border-color);
-  background: var(--row-selected-surface-color);
-}
-
-.moment-controls .pill--danger {
-  margin-left: auto;
 }
 
 .pill--danger {

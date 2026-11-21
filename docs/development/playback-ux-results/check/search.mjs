@@ -90,7 +90,10 @@ async function main() {
     const pages = async () => (await h.cdp.targets()).filter((t) => t.type === 'page')
 
     // 보관함의 링크 추가 양식을 연다.
-    await click('.now-playlist .open-archive')
+    // ADR 0044 — "보관함에서 편집" 이 없어졌다. 데크(보이는 테마의 열기 단추)로 연다.
+    await ev(
+      `[...document.querySelectorAll('.deck-open')].find((e) => e.offsetParent !== null)?.click(); true`,
+    )
     await waitFor(() => ev(`!!document.querySelector('.playlist-editor')`), { label: 'archive' })
     await click('.playlist-editor .head-actions .pill', '＋ YouTube 링크 추가')
     await waitFor(() => ev(`!!document.querySelector('#yt-search-query')`), {

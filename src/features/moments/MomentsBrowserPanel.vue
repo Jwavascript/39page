@@ -3,17 +3,17 @@
  * 보관함 "Moments" 탭 — Moments 보관함 (M11-2 골격 → M11-4 완성, `M11_UX_DESIGN.md` §5-2).
  *
  * 무엇을 보일지는 `useMomentsArchive` 가 정한다 (검색 · 보기 · 접기 · 점진 표시 · 목록으로 가기).
- * 이 컴포넌트는 도구 줄(검색 · 보기 · 결과 수 · 안내)과 목록, 그리고 "더 보기" 를 배치한다.
+ * 이 컴포넌트는 두 칸과 그 안의 배치만 맡는다.
  *
- * - 도구 줄은 보관함 스크롤 안에서 **위에 붙어 있다**(sticky) — 긴 목록 아래에서 메모를 고쳐도 성공 ·
- *   실패 안내가 화면에 보인다. 스크롤은 여전히 보관함 하나뿐이다.
- * - 끝에 닿으면 다음 묶음 30개를 그린다(`IntersectionObserver`). 같은 일을 하는 단추도 늘 있다 —
- *   키보드 · 화면 낭독기 사용자를 위해서, 그리고 관찰자가 없는 환경을 위해서.
- *
- * M11-7C (ADR 0030 · UAT) — 보기는 **이 곡 → 전체 → 최근** 순이고, 고르기 전에는 지금 곡이 있으면 "이 곡"
- * 이다. "이 곡" 은 이 곡의 순간을 **관리하는 화면**이다: 머리에 "이 곡 · Moments N개" 와 **＋ 이 순간 저장**,
- * 그 아래 시점 순 한 목록(재생 · 메모 수정 · 삭제). 곡 제목 · 목록 이름을 되풀이하지 않는다. 전체 · 최근은
- * 여러 곡을 다루므로 곡 제목 · 목록을 그대로 보인다.
+ * ADR 0044 — **음악 탭처럼 두 칸**이다. 전에는 검색 · 보기 칩 · 머리가 목록 위에 붙어 있어 순간이 보이는 칸이
+ * 낮았다.
+ * - 왼쪽 칸: 검색, 보기(이 곡 · 전체 · 최근), 그리고 순간이 있는 **곡 목록**(곡 이름 · 개수). 곡을 누르면
+ *   오른쪽에 그 곡의 순간만 보인다.
+ * - 오른쪽 칸: 고른 것의 머리(곡 이름 · 개수 · 그 곡이 든 목록) 아래로 순간 목록이 칸 높이를 다 쓴다. 이 곡
+ *   보기에서는 머리 아래에 ＋ 이 순간 저장이 있다.
+ * - 두 칸은 각자 스크롤한다. 보관함이 좁으면(640px 이하) 한 번에 한 칸 — 오른쪽 칸의 ‹ 로 왼쪽 칸에 간다.
+ * - 끝에 닿으면 다음 묶음을 그린다(`IntersectionObserver`). 같은 일을 하는 단추도 늘 있다 — 키보드 · 화면
+ *   낭독기 사용자를 위해서, 그리고 관찰자가 없는 환경을 위해서.
  */
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -25,10 +25,10 @@ import { MAX_MOMENT_NOTE_LENGTH } from '@/stores/moments'
 import MomentCapture from './MomentCapture.vue'
 import MomentList from './MomentList.vue'
 import MomentsStatusBanner from './MomentsStatusBanner.vue'
-import { GROUP_PAGE_SIZE, RECENT_PAGE_SIZE, SEARCH_ROW_LIMIT } from './momentsSearch'
+import { GROUP_PAGE_SIZE, highlight, RECENT_PAGE_SIZE, SEARCH_ROW_LIMIT } from './momentsSearch'
 import { useMomentsArchive } from './useMomentsArchive'
 
-/** 공유 대화상자 (ADR 0040) — 셸이 내려 준다. 없으면(단독 마운트) "링크로 공유" 를 보이지 않는다. */
+/** 공유 대화상자 (ADR 0040) — 셸이 내려 준다. 없으면(단독 마운트) 공유 아이콘을 보이지 않는다. */
 const shareDialog = inject(SHARE_DIALOG, null)
 
 const props = defineProps<{
@@ -43,6 +43,9 @@ const draftStore = useMomentDraftStore()
 const hasDraft = computed<boolean>(() => draftStore.draft !== null)
 const archiveCapture = ref<InstanceType<typeof MomentCapture> | null>(null)
 
+/** 좁은 보관함의 단계 — 왼쪽 칸(`nav`) 또는 오른쪽 칸(`detail`). 넓으면 둘 다 보인다. */
+const step = ref<'nav' | 'detail'>('detail')
+
 watch(
   () => props.focusRequest?.seq,
   () => {
@@ -50,23 +53,89 @@ watch(
     if (request?.view === 'all') {
       archive.clearQuery()
       archive.setView('all')
-    } else if (request?.videoId !== undefined) archive.focusVideo(request.videoId)
+      step.value = 'detail'
+    } else if (request?.videoId !== undefined) {
+      archive.focusVideo(request.videoId)
+      step.value = 'detail'
+    }
   },
   { immediate: true },
 )
 
-/** 보기 순서 — 이 곡 → 전체 → 최근 (M11-7C). */
+/** 왼쪽 칸의 보기 — 이 곡 → 전체 → 최근 (M11-7C). 이 곡은 곡이 재생 중이거나 초안이 있을 때만. */
 const VIEWS = [
   { key: 'current', label: '이 곡' },
   { key: 'all', label: '전체' },
   { key: 'recent', label: '최근' },
 ] as const
 
-function chipLabel(key: (typeof VIEWS)[number]['key']): string {
-  if (key === 'all') return `전체 ${String(browser.total.value)}`
-  if (key === 'current') return `이 곡 ${String(browser.currentCount.value)}`
-  return '최근'
+const canCurrent = computed<boolean>(() => browser.currentVideoId.value !== null || hasDraft.value)
+
+function viewCount(key: (typeof VIEWS)[number]['key']): string {
+  if (key === 'all') return String(browser.total.value)
+  if (key === 'current') return String(browser.currentCount.value)
+  return ''
 }
+
+/* ── 왼쪽 칸: 곡 목록 (점진 표시) ─────────────────────────────────── */
+const SONG_PAGE_SIZE = 100
+const songLimit = ref(SONG_PAGE_SIZE)
+watch(
+  () => archive.terms.value.join(' '),
+  () => {
+    songLimit.value = SONG_PAGE_SIZE
+  },
+)
+const shownSongs = computed(() => archive.songs.value.slice(0, songLimit.value))
+const hiddenSongs = computed<number>(() =>
+  Math.max(0, archive.songs.value.length - songLimit.value),
+)
+
+/** 이 곡을 오른쪽 칸에서 보고 있는가 — 지금 곡이면 이 곡 보기도 그 곡이다. */
+function isSongSelected(videoId: string): boolean {
+  const view = archive.view.value
+  if (view === 'video') return archive.focusVideoId.value === videoId
+  return view === 'current' && browser.currentVideoId.value === videoId
+}
+
+const navRoot = ref<HTMLElement | null>(null)
+const backButton = ref<HTMLButtonElement | null>(null)
+
+/** 좁은 보관함(한 번에 한 칸)인가 — ‹ 단추가 보일 때다. */
+function isStacked(): boolean {
+  const el = backButton.value
+  return el !== null && getComputedStyle(el).display !== 'none'
+}
+
+/** 오른쪽 칸으로 — 좁으면 단계를 바꾸고 ‹ 로 포커스를 옮긴다. 넓으면 누른 자리에 포커스를 둔다. */
+function showDetail(): void {
+  step.value = 'detail'
+  void nextTick(() => {
+    if (isStacked()) backButton.value?.focus()
+  })
+}
+
+function selectView(key: (typeof VIEWS)[number]['key']): void {
+  archive.setView(key)
+  showDetail()
+}
+
+function selectSong(videoId: string): void {
+  archive.focusVideo(videoId, { keepQuery: true })
+  showDetail()
+}
+
+function showNav(): void {
+  step.value = 'nav'
+  void nextTick(() =>
+    (
+      navRoot.value?.querySelector<HTMLElement>('[aria-current="true"]') ??
+      navRoot.value?.querySelector<HTMLElement>('.nav-item')
+    )?.focus(),
+  )
+}
+
+/* ── 오른쪽 칸 ────────────────────────────────────────────────────── */
 
 /** 이 곡 보기에서 방금 저장한 순간 — 그 줄을 강조하고 보이게 한다. 보기 · 곡이 바뀌면 거둔다. */
 const highlightId = ref<string | null>(null)
@@ -74,47 +143,66 @@ watch([() => archive.view.value, () => browser.currentVideoId.value], () => {
   highlightId.value = null
 })
 
+const detail = ref<HTMLElement | null>(null)
+
 function onSaved(momentId: string): void {
   browser.clearFeedback()
   highlightId.value = momentId
   void nextTick(() => {
-    const row = listRoot.value?.querySelector<HTMLElement>(`[data-moment-id="${momentId}"]`)
-    // 보관함 스크롤 안에서만 — 줄이 칸 밖일 때만 옮긴다.
+    const row = detail.value?.querySelector<HTMLElement>(`[data-moment-id="${momentId}"]`)
+    // 칸 안에서만 — 줄이 칸 밖일 때만 옮긴다.
     if (typeof row?.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' })
   })
 }
-
-/** 결과 한 줄 — 검색 · 한 곡 보기일 때만. 화면 낭독기에 알린다(polite). */
-const summary = computed<string>(() => {
-  if (browser.total.value === 0) return ''
-  const moments = archive.matchedMoments.value
-  const songs = archive.matchedSongs.value
-  if (archive.searching.value) {
-    if (moments === 0) return '맞는 순간이 없어요. 제목이나 메모의 다른 낱말로 찾아보세요.'
-    const base = `순간 ${String(moments)}개 · 곡 ${String(songs)}개`
-    return archive.truncated.value
-      ? `${base} — 앞의 ${String(SEARCH_ROW_LIMIT)}개만 보여요. 검색어를 좁혀 주세요.`
-      : base
-  }
-  return ''
-})
-
-const emptyMessage = computed<string>(() => {
-  if (archive.searching.value) return ''
-  if (archive.view.value === 'current' && browser.currentVideoId.value === null)
-    return '지금 재생 중인 곡이 없어요. 곡을 재생하면 이 곡의 순간을 여기서 저장하고 고칠 수 있어요.'
-  if (archive.view.value === 'current')
-    return '이 곡에 저장한 순간이 아직 없어요. 위의 ＋ 이 순간 저장으로 시작하세요.'
-  if (browser.total.value === 0) return ''
-  if (archive.view.value === 'video') return '이 곡에 저장한 순간이 없어요.'
-  return ''
-})
 
 /** 이 곡 보기 — 곡이 재생 중이어야 저장 · 관리할 수 있다. 저장 전 초안이 있으면 그것을 이어 쓴다. */
 const showCurrentHead = computed<boolean>(
   () =>
     archive.view.value === 'current' && (browser.currentVideoId.value !== null || hasDraft.value),
 )
+
+/** 오른쪽 칸의 제목 — 곡이면 곡 이름, 아니면 보기 이름. */
+const detailTitle = computed<string>(() => {
+  const head = archive.songHead.value
+  if (head !== null) return head.title
+  if (archive.view.value === 'current') return draftStore.draft?.title ?? '이 곡'
+  return archive.view.value === 'recent' ? '최근' : '전체'
+})
+
+/** 오른쪽 칸의 개수 줄 — 검색 중이면 맞는 수 / 전체 수. */
+const detailMeta = computed<string>(() => {
+  const head = archive.songHead.value
+  if (head !== null) {
+    const count =
+      archive.searching.value && head.matched !== head.total
+        ? `${String(head.matched)} / ${String(head.total)}개`
+        : `${String(head.total)}개`
+    return head.isCurrent ? `${count} · ♪ 재생 중` : count
+  }
+  if (archive.view.value === 'current') return ''
+  const moments = archive.matchedMoments.value
+  return archive.searching.value
+    ? `${String(moments)}개 · 곡 ${String(archive.matchedSongs.value)}개`
+    : `${String(moments)}개`
+})
+
+/** 결과 한 줄 — 검색할 때만. 화면 낭독기에 알린다(polite). */
+const summary = computed<string>(() => {
+  if (browser.total.value === 0 || !archive.searching.value) return ''
+  if (archive.songs.value.length === 0) return '맞는 순간이 없어요.'
+  const moments = archive.songs.value.reduce((sum, song) => sum + song.matched, 0)
+  const base = `순간 ${String(moments)}개 · 곡 ${String(archive.songs.value.length)}개`
+  return archive.truncated.value ? `${base} — 앞의 ${String(SEARCH_ROW_LIMIT)}개만 보여요.` : base
+})
+
+const emptyMessage = computed<string>(() => {
+  if (browser.total.value === 0 && !showCurrentHead.value) return '아직 저장한 순간이 없어요.'
+  if (archive.searching.value) return '맞는 순간이 없어요.'
+  if (archive.view.value === 'current' && !showCurrentHead.value) return '재생 중인 곡이 없어요.'
+  if (archive.view.value === 'current' || archive.view.value === 'video')
+    return '저장한 순간이 없어요.'
+  return ''
+})
 
 /*
  * 영상 띠의 "이 곡에서 이어 쓰기" (M11-7C) — 이 곡 보기로 와서 초안의 메모 입력란으로 간다. 보관함이
@@ -125,6 +213,7 @@ watch(
   (seq, before) => {
     if (seq === 0 || seq === before || !hasDraft.value) return
     archive.setView('current')
+    step.value = 'detail'
     void nextTick(() => archiveCapture.value?.focusNote())
   },
   { immediate: true },
@@ -132,9 +221,9 @@ watch(
 
 const moreLabel = computed<string>(() => {
   const left = archive.remaining.value
-  if (archive.view.value === 'recent')
-    return `순간 ${String(Math.min(RECENT_PAGE_SIZE, left))}개 더 보기 · 남은 ${String(left)}개`
-  return `곡 ${String(Math.min(GROUP_PAGE_SIZE, left))}개 더 보기 · 남은 ${String(left)}곡`
+  if (archive.view.value === 'all')
+    return `곡 ${String(Math.min(GROUP_PAGE_SIZE, left))}개 더 보기 · 남은 ${String(left)}곡`
+  return `순간 ${String(Math.min(RECENT_PAGE_SIZE, left))}개 더 보기 · 남은 ${String(left)}개`
 })
 
 /* ── 검색란 ──────────────────────────────────────────────────────── */
@@ -151,22 +240,32 @@ function onSearchKeydown(event: KeyboardEvent): void {
   }
 }
 
-function focusSearch(): void {
-  searchInput.value?.focus()
+/** 지운 뒤 갈 곳이 없으면 — 좁으면 ‹, 넓으면 검색란(없으면 첫 보기). */
+function focusOut(): void {
+  if (isStacked()) {
+    backButton.value?.focus()
+    return
+  }
+  ;(searchInput.value ?? navRoot.value?.querySelector<HTMLElement>('.nav-item'))?.focus()
 }
 
 /* ── 더 보기 ─────────────────────────────────────────────────────── */
-const listRoot = ref<HTMLElement | null>(null)
 
 /** 단추로 더 그렸으면 새로 나타난 첫 항목으로 포커스를 옮긴다 — 키보드로 이어서 읽게. */
 function showMoreByButton(): void {
-  const selector = archive.view.value === 'recent' ? '.moment-play' : '.group-toggle'
-  const before = listRoot.value?.querySelectorAll(selector).length ?? 0
+  const selector = archive.view.value === 'all' ? '.group-toggle' : '.moment-play'
+  const before = detail.value?.querySelectorAll(selector).length ?? 0
   if (archive.showMore() === 0) return
-  void nextTick(() => listRoot.value?.querySelectorAll<HTMLElement>(selector)[before]?.focus())
+  void nextTick(() => detail.value?.querySelectorAll<HTMLElement>(selector)[before]?.focus())
 }
 
-/* 끝에 닿으면 자동으로 — 스크롤 안의 표지(sentinel)를 본다. */
+function showMoreSongs(): void {
+  const before = navRoot.value?.querySelectorAll('.song-item').length ?? 0
+  songLimit.value += SONG_PAGE_SIZE
+  void nextTick(() => navRoot.value?.querySelectorAll<HTMLElement>('.song-item')[before]?.focus())
+}
+
+/* 끝에 닿으면 자동으로 — 오른쪽 칸 스크롤 안의 표지(sentinel)를 본다. */
 const sentinel = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
@@ -177,41 +276,15 @@ function observe(): void {
   observer.observe(sentinel.value)
 }
 
-/*
- * 도구 줄이 붙어 있으면(넓고 높은 화면) 보관함 스크롤의 위 여백을 그 높이로 — 키보드 포커스와
- * `scrollIntoView` 가 도구 줄 아래로 숨지 않게 한다. 붙지 않으면 여백을 두지 않는다.
- */
-const tools = ref<HTMLElement | null>(null)
-let toolsObserver: ResizeObserver | null = null
-
-function syncScrollPadding(): void {
-  const scroller = listRoot.value?.closest<HTMLElement>('.archive-body') ?? null
-  const el = tools.value
-  if (scroller === null || el === null) return
-  const stuck = getComputedStyle(el).position === 'sticky'
-  scroller.style.scrollPaddingTop = stuck
-    ? `${String(Math.ceil(el.getBoundingClientRect().height))}px`
-    : ''
-}
-
-onMounted(() => {
-  if (typeof ResizeObserver === 'function' && tools.value !== null) {
-    toolsObserver = new ResizeObserver(syncScrollPadding)
-    toolsObserver.observe(tools.value)
-  }
-  window.addEventListener('resize', syncScrollPadding)
-})
-
 onMounted(() => {
   if (typeof IntersectionObserver !== 'function') return
-  const scroller = listRoot.value?.closest<HTMLElement>('.archive-body') ?? null
   observer = new IntersectionObserver(
     (entries) => {
       if (entries.some((entry) => entry.isIntersecting) && archive.showMore() > 0) {
         void nextTick(observe)
       }
     },
-    { root: scroller, rootMargin: '0px 0px 600px 0px' },
+    { root: detail.value, rootMargin: '0px 0px 600px 0px' },
   )
   void nextTick(observe)
 })
@@ -224,75 +297,38 @@ watch(sentinel, (_now, before) => {
 onBeforeUnmount(() => {
   observer?.disconnect()
   observer = null
-  toolsObserver?.disconnect()
-  toolsObserver = null
-  window.removeEventListener('resize', syncScrollPadding)
-  const scroller = listRoot.value?.closest<HTMLElement>('.archive-body') ?? null
-  if (scroller !== null) scroller.style.scrollPaddingTop = ''
 })
 
-defineExpose({ archive })
+function openList(listId: string): void {
+  const head = archive.songHead.value
+  if (head !== null) void archive.openInLibrary(listId, head.videoId)
+}
+
+defineExpose({ archive, step })
 </script>
 
 <template>
-  <section ref="listRoot" class="moments-browser" aria-labelledby="archive-moments-title">
-    <div ref="tools" class="tools">
+  <section class="moments-browser" :data-step="step" aria-labelledby="archive-moments-title">
+    <!-- ── 왼쪽 칸: 검색 · 보기 · 곡 ─────────────────────────────────── -->
+    <div ref="navRoot" class="moments-nav">
       <h3 id="archive-moments-title" class="section-title">
-        MOMENTS <span class="count">{{ browser.total.value }}개</span>
+        MOMENTS <span class="count">{{ browser.total.value }}</span>
       </h3>
 
-      <MomentsStatusBanner />
-
-      <template v-if="browser.total.value > 0 || browser.currentVideoId.value !== null || hasDraft">
-        <input
-          v-if="browser.total.value > 0"
-          id="archive-moments-search"
-          ref="searchInput"
-          v-model="archive.query.value"
-          class="search"
-          type="search"
-          enterkeyhint="search"
-          autocomplete="off"
-          placeholder="제목 · 메모 검색"
-          aria-label="Moments 검색 — 제목 · 메모"
-          aria-describedby="archive-moments-summary"
-          @keydown="onSearchKeydown"
-        />
-
-        <div class="filter" role="group" aria-label="보여줄 순간">
-          <button
-            v-for="item in VIEWS"
-            :key="item.key"
-            type="button"
-            class="pill chip"
-            :class="{ 'pill--strong': archive.view.value === item.key }"
-            :aria-pressed="archive.view.value === item.key"
-            :disabled="item.key === 'current' && browser.currentVideoId.value === null && !hasDraft"
-            @click="archive.setView(item.key)"
-          >
-            {{ chipLabel(item.key) }}
-          </button>
-        </div>
-
-        <p v-if="archive.view.value === 'video'" class="focus-line">
-          <span
-            >‘{{ archive.focusTitle.value ?? archive.focusVideoId.value }}’ 의 순간만 보는 중</span
-          >
-          <button type="button" class="link" @click="archive.setView('all')">전체 보기</button>
-        </p>
-        <!--
-          이 곡 — 관리 화면의 머리. 곡 제목 · 목록 이름을 되풀이하지 않는다 (그 곡을 듣고 있다). 저장은 여기서
-          한다 — 보관함이 열린 영상 띠에는 저장이 없다 (M11-7C).
-        -->
-        <div v-if="showCurrentHead" class="current-head">
-          <p class="current-count">
-            이 곡 · Moments <strong>{{ browser.currentCount.value }}</strong
-            >개
-          </p>
-          <MomentCapture ref="archiveCapture" id-prefix="archive-moment" @saved="onSaved" />
-        </div>
-      </template>
-
+      <input
+        v-if="browser.total.value > 0"
+        id="archive-moments-search"
+        ref="searchInput"
+        v-model="archive.query.value"
+        class="search"
+        type="search"
+        enterkeyhint="search"
+        autocomplete="off"
+        placeholder="제목 · 메모 검색"
+        aria-label="Moments 검색 — 제목 · 메모"
+        aria-describedby="archive-moments-summary"
+        @keydown="onSearchKeydown"
+      />
       <p
         id="archive-moments-summary"
         class="summary"
@@ -302,115 +338,178 @@ defineExpose({ archive })
       >
         {{ summary }}
       </p>
+
+      <ul class="nav-list" aria-label="보기">
+        <template v-for="item in VIEWS" :key="item.key">
+          <li v-if="item.key !== 'current' || canCurrent">
+            <button
+              type="button"
+              class="nav-item view-item"
+              :data-view="item.key"
+              :aria-current="archive.view.value === item.key ? 'true' : undefined"
+              @click="selectView(item.key)"
+            >
+              <span class="nav-name">{{ item.label }}</span>
+              <span class="nav-meta">{{ viewCount(item.key) }}</span>
+            </button>
+          </li>
+        </template>
+      </ul>
+
+      <template v-if="archive.songs.value.length > 0">
+        <h4 class="nav-sub">
+          곡 <span class="count">{{ archive.songs.value.length }}</span>
+        </h4>
+        <ul class="nav-list song-list" aria-label="순간이 있는 곡">
+          <li v-for="song in shownSongs" :key="song.videoId">
+            <button
+              type="button"
+              class="nav-item song-item"
+              :data-song="song.videoId"
+              :aria-current="isSongSelected(song.videoId) ? 'true' : undefined"
+              @click="selectSong(song.videoId)"
+            >
+              <span class="nav-name"
+                ><template v-for="(part, i) in highlight(song.title, archive.terms.value)" :key="i"
+                  ><mark v-if="part.match">{{ part.text }}</mark
+                  ><template v-else>{{ part.text }}</template></template
+                ></span
+              >
+              <span class="nav-meta"
+                >{{ song.matched === song.total ? song.total : `${song.matched}/${song.total}`
+                }}<template v-if="song.isCurrent"> ♪</template></span
+              >
+            </button>
+          </li>
+        </ul>
+        <button v-if="hiddenSongs > 0" type="button" class="pill more-songs" @click="showMoreSongs">
+          곡 {{ Math.min(SONG_PAGE_SIZE, hiddenSongs) }}개 더 보기
+        </button>
+      </template>
     </div>
 
-    <p
-      v-if="browser.total.value === 0 && browser.currentVideoId.value === null && !hasDraft"
-      class="empty"
-    >
-      아직 저장한 순간이 없어요.<br />곡을 듣다가 ＋ 이 순간 저장을 눌러보세요.
-    </p>
-    <p v-else-if="archive.sections.value.length === 0 && emptyMessage !== ''" class="empty">
-      {{ emptyMessage }}
-    </p>
-    <MomentList
-      v-else-if="archive.sections.value.length > 0"
-      id-prefix="archive-moment"
-      :sections="archive.sections.value"
-      :terms="archive.terms.value"
-      :max-note-length="MAX_MOMENT_NOTE_LENGTH"
-      :save-note="browser.saveNote"
-      :highlight-id="highlightId"
-      :can-share="shareDialog !== null"
-      @share="(id) => shareDialog?.open({ momentId: id })"
-      @play="(id) => void browser.play(id)"
-      @remove="(id) => void browser.remove(id)"
-      @toggle="archive.toggleGroup"
-      @more-rows="archive.showMoreRows"
-      @open-list="(listId, videoId) => void archive.openInLibrary(listId, videoId)"
-      @focus-out="focusSearch"
-    />
+    <!-- ── 오른쪽 칸: 고른 것의 순간 ─────────────────────────────────── -->
+    <div ref="detail" class="moments-detail">
+      <div class="detail-head">
+        <button
+          ref="backButton"
+          type="button"
+          class="icon-button back-to-nav"
+          aria-label="곡 목록으로"
+          title="곡 목록으로"
+          @click="showNav"
+        >
+          <span class="ui-icon ui-icon--back" aria-hidden="true"></span>
+        </button>
+        <div class="detail-text">
+          <h4 class="detail-title">{{ detailTitle }}</h4>
+          <p v-if="detailMeta !== ''" class="detail-meta">{{ detailMeta }}</p>
+          <p
+            v-if="archive.songHead.value !== null && archive.songHead.value.playlists.length > 0"
+            class="detail-lists"
+          >
+            <span class="lists-label">목록</span>
+            <button
+              v-for="list in archive.songHead.value.playlists.slice(0, 3)"
+              :key="list.id"
+              type="button"
+              class="list-link"
+              :data-open-list="list.id"
+              :aria-label="`음악 보관함의 ${list.name} 목록에서 ${archive.songHead.value.title} 보기`"
+              @click="openList(list.id)"
+            >
+              {{ list.name }}
+            </button>
+            <span v-if="archive.songHead.value.playlists.length > 3" class="lists-more">
+              외 {{ archive.songHead.value.playlists.length - 3 }}
+            </span>
+          </p>
+        </div>
+      </div>
 
-    <div v-if="archive.remaining.value > 0" ref="sentinel" class="more">
-      <button type="button" class="pill" @click="showMoreByButton">{{ moreLabel }}</button>
+      <MomentsStatusBanner />
+
+      <!-- 이 곡 — 저장은 여기서 한다. 보관함이 열린 영상 띠에는 저장이 없다 (M11-7C). -->
+      <div v-if="showCurrentHead" class="current-head">
+        <MomentCapture ref="archiveCapture" id-prefix="archive-moment" @saved="onSaved" />
+      </div>
+
+      <MomentList
+        v-if="archive.sections.value.length > 0"
+        id-prefix="archive-moment"
+        :sections="archive.sections.value"
+        :terms="archive.terms.value"
+        :max-note-length="MAX_MOMENT_NOTE_LENGTH"
+        :save-note="browser.saveNote"
+        :highlight-id="highlightId"
+        :can-share="shareDialog !== null"
+        @share="(id) => shareDialog?.open({ momentId: id })"
+        @play="(id) => void browser.play(id)"
+        @remove="(id) => void browser.remove(id)"
+        @toggle="archive.toggleGroup"
+        @more-rows="archive.showMoreRows"
+        @open-list="(listId, videoId) => void archive.openInLibrary(listId, videoId)"
+        @focus-out="focusOut"
+      />
+      <p v-else-if="emptyMessage !== ''" class="empty">{{ emptyMessage }}</p>
+
+      <div v-if="archive.remaining.value > 0" ref="sentinel" class="more">
+        <button type="button" class="pill" @click="showMoreByButton">{{ moreLabel }}</button>
+      </div>
+
+      <!-- 수정 · 삭제 결과 — 오른쪽 칸 스크롤의 **아래 끝에 붙는다** (M11-6). 어느 크기에서도 보이는 자리다. -->
+      <p
+        class="feedback"
+        :class="{ 'is-warning': browser.feedback.value?.tone === 'warning' }"
+        role="status"
+        aria-live="polite"
+      >
+        {{ browser.feedback.value?.text ?? '' }}
+      </p>
     </div>
-
-    <!--
-      수정 · 삭제 결과 — 보관함 스크롤의 **아래 끝에 붙는다** (M11-6). 모바일에서는 도구 줄이 붙지 않아, 목록
-      아래쪽에서 지우면 위쪽의 안내가 화면 밖에 있었다(M11-4 남은 위험). 어느 크기에서도 보이는 자리다.
-    -->
-    <p
-      class="feedback"
-      :class="{ 'is-warning': browser.feedback.value?.tone === 'warning' }"
-      role="status"
-      aria-live="polite"
-    >
-      {{ browser.feedback.value?.text ?? '' }}
-    </p>
   </section>
 </template>
 
 <style scoped>
+/* 음악 탭의 두 칸(`ArchivePanel` 의 `.music-layout`)과 같은 비율 · 여백이다. */
 .moments-browser {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.6fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.moments-nav,
+.moments-detail {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   gap: 10px;
+  padding: 14px 12px 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 스크롤바 자리를 늘 비워 둔다 — 줄이 바뀔 때 목록 전체를 다시 배치하지 않게 (M9-6 성능). */
+  scrollbar-gutter: stable;
 }
 
-.tools {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.moments-nav {
+  border-right: 1px solid var(--drawer-head-border-color);
 }
 
-/*
- * 도구 줄을 위에 붙이는 것은 **넉넉한 데스크톱에서만**이다. 실측(2026-11-12)에서 도구 줄은 150px —
- * 1440×900 에서 보관함 높이의 20% 지만 390×844 에서 30%, 360×740 에서 38% 였다. 작은 화면에서
- * 붙이면 목록이 볼 자리를 빼앗고 그 아래로 줄이 숨는다. 붙일 때는 스크롤 여백(scroll-padding)을
- * 도구 줄 높이만큼 주어 포커스 · 찾아가기가 도구 줄 아래에 숨지 않게 한다 (스크립트, WCAG 2.4.11).
- * 보관함 본문의 안쪽 여백(16px)만큼 끌어올려 붙이고, 배경은 보관함 표면색이다.
- */
-@media (min-width: 901px) and (min-height: 760px) {
-  .tools {
-    position: sticky;
-    z-index: 1;
-    top: -16px;
-    margin: -16px -16px 0;
-    padding: 16px 16px 8px;
-    border-bottom: 1px solid var(--drawer-head-border-color);
-    background: var(--drawer-surface-color);
-  }
-}
-
-/* 이 곡 — 관리 화면의 머리 (M11-7C). */
-.current-head {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 0 2px;
-  border-top: 1px solid var(--drawer-head-border-color);
-}
-
-.current-count {
-  margin: 0;
-  color: var(--drawer-sub-text-color);
-  font: 11px var(--font-mono);
-  letter-spacing: 0.06em;
-}
-
-.current-count strong {
-  color: var(--drawer-title-text-color);
-  font-weight: 400;
-}
-
-.section-title {
+.section-title,
+.nav-sub {
   margin: 0;
   color: var(--drawer-section-title-text-color);
   font: 11px var(--font-mono);
   font-weight: 400;
   letter-spacing: 0.12em;
+}
+
+.nav-sub {
+  margin-top: 4px;
 }
 
 .count {
@@ -423,6 +522,7 @@ defineExpose({ archive })
   display: block;
   width: 100%;
   min-height: 44px;
+  flex: none;
   padding: 10px;
   border: 1px solid var(--field-border-color);
   border-radius: var(--radius-field);
@@ -431,10 +531,127 @@ defineExpose({ archive })
   font-size: 13px;
 }
 
-.filter {
+.nav-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+  list-style: none;
+}
+
+/* 음악 탭 목록 칸의 행(`.list-select`)과 같은 모양이다. */
+.nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--row-surface-color);
+  color: var(--row-text-color);
+  text-align: left;
+}
+
+.nav-item[aria-current='true'] {
+  border-color: var(--row-selected-border-color);
+  background: var(--row-selected-surface-color);
+}
+
+/* 긴 곡 이름은 두 줄까지. */
+.nav-name {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.view-item .nav-name {
+  font: 12px var(--font-mono);
+}
+
+.nav-meta {
+  flex: none;
+  color: var(--row-meta-text-color);
+  font: 11px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 오른쪽 칸 ── */
+.detail-head {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  align-items: flex-start;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--drawer-head-border-color);
+}
+
+/* 넓으면 왼쪽 칸이 옆에 있다 — ‹ 는 좁을 때만. */
+.back-to-nav {
+  display: none;
+}
+
+.detail-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-title {
+  margin: 0;
+  color: var(--drawer-title-text-color);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.detail-meta {
+  margin: 2px 0 0;
+  color: var(--drawer-sub-text-color);
+  font: 11px var(--font-mono);
+}
+
+.detail-lists {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--row-meta-text-color);
+  font: 10px var(--font-mono);
+  gap: 0 4px;
+}
+
+.lists-label {
+  margin-right: 2px;
+}
+
+.list-link {
+  min-width: 44px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--drawer-action-text-color);
+  font: 11px var(--font-mono);
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.current-head {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  flex-direction: column;
 }
 
 .pill {
@@ -447,37 +664,8 @@ defineExpose({ archive })
   font: 12px var(--font-mono);
 }
 
-.pill:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.pill--strong {
-  border-color: var(--accent-strong-color);
-  background: var(--accent-strong-color);
-  color: var(--accent-strong-text-color);
-}
-
-.focus-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  margin: 0;
-  color: var(--drawer-body-text-color);
-  font: 11px/1.5 var(--font-mono);
-  gap: 0 8px;
-  overflow-wrap: anywhere;
-}
-
-.link {
-  min-height: 44px;
-  padding: 0 6px;
-  border: 0;
-  background: transparent;
-  color: var(--drawer-action-text-color);
-  font: 11px var(--font-mono);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.more-songs {
+  flex: none;
 }
 
 .summary,
@@ -496,12 +684,12 @@ defineExpose({ archive })
   color: var(--status-warning-text-color);
 }
 
-/* 아래 끝에 붙는 결과 줄 — 보관함 본문의 안쪽 여백만큼 내려 붙인다. 배경은 보관함 표면색. */
+/* 아래 끝에 붙는 결과 줄 — 칸의 안쪽 여백만큼 내려 붙인다. 배경은 보관함 표면색. */
 .feedback {
   position: sticky;
   z-index: 1;
-  bottom: -16px;
-  margin: 0 -16px -16px;
+  bottom: -14px;
+  margin: auto -12px -14px -16px;
   padding: 10px 16px;
   border-top: 1px solid var(--drawer-head-border-color);
   background: var(--drawer-surface-color);
@@ -516,7 +704,39 @@ defineExpose({ archive })
 
 .more {
   display: flex;
+  flex: none;
   justify-content: center;
   padding: 4px 0 8px;
+}
+
+/* 검색 강조 — `MomentRow` 와 같다. */
+mark {
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-color);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+/* 좁은 보관함 — **두 단계** (음악 탭과 같다). 화면 폭이 아니라 보관함의 폭으로 판단한다. */
+@container archive-moments (max-width: 640px) {
+  .moments-browser {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .moments-nav {
+    border-right: 0;
+  }
+
+  .moments-browser[data-step='nav'] > .moments-detail,
+  .moments-browser[data-step='detail'] > .moments-nav {
+    display: none;
+  }
+
+  .back-to-nav {
+    display: inline-grid;
+  }
 }
 </style>

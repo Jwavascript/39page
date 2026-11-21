@@ -89,12 +89,14 @@ defineExpose({ capture, focusNote })
         type="button"
         class="pill pill--strong capture-button"
         :disabled="!capture.canCapture.value"
-        :aria-describedby="`${idPrefix}-capture-hint`"
+        :aria-describedby="capture.hint.value === '' ? undefined : `${idPrefix}-capture-hint`"
         @click="onCapture"
       >
         ＋ 이 순간 저장
       </button>
-      <p :id="`${idPrefix}-capture-hint`" class="capture-hint">{{ capture.hint.value }}</p>
+      <p v-if="capture.hint.value !== ''" :id="`${idPrefix}-capture-hint`" class="capture-hint">
+        {{ capture.hint.value }}
+      </p>
     </div>
 
     <!-- ── 저장 전 초안 — 메모(선택) → Moment 저장 ─────────────────────────── -->

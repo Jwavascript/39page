@@ -6,6 +6,8 @@
 - 관련: **ADR 0027** (M11 정보 구조 — 이 결정이 입구 · 위젯 역할을 고친다), **ADR 0002** (플레이어 노드 영속), **ADR 0009** (라이브러리와
   재생은 코디네이터로만), **ADR 0011** (가시성 가드), **ADR 0025** (탭 간 잠금), **ADR 0028** 결정 15 (확장의 Moment 는 잡고 저장),
   `docs/product/M11_7_UX_REDESIGN.md`, `design/mockups/m11-7a/`
+- 행의 "관리" 메뉴 · 편집 모드 이름 · Moments 탭 배치(칩 · "이 곡" 머리)와 NOW PLAYLIST 의 "보관함에서 편집" 은
+  [ADR 0044](0044-quiet-ui-row-icons-and-two-pane-moments.md) 에서 행 아이콘 · 순서 모드(⇅) · 두 칸으로 바뀌었다.
 
 ## 배경
 

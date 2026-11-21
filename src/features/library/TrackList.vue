@@ -7,8 +7,8 @@
  *
  * M11-3 에서 바뀐 것 (U4 · U12 · U14 · U16 · U17)
  * - **▶ 재생은 그대로 드러나 있다** — 자주 쓰는 일이다. 44×44.
- * - 이름 바꾸기 · 옮기기 · 삭제는 **"관리"** 단추를 누르면 행 아래에 글자 이름과 함께 펼쳐진다.
- * - 삭제는 그 줄의 맨 끝, 다른 단추와 떨어져 있고, 확인은 **그 행 바로 아래**에서 받는다.
+ * - (ADR 0044) "관리" 메뉴를 없앴다. 이름 바꾸기(연필) · 앨범아트 · 공유 · 삭제(휴지통)가 **행 오른쪽의 아이콘**
+ *   이다. 삭제 확인은 그대로 **그 행 바로 아래**에서 받는다. 맨 위로 · 맨 아래로는 손잡이의 Home · End 다.
  * - 긴 제목이 말줄임으로 잘리지 않고 줄을 바꾼다.
  * - 지금 곡은 글("재생 중")과 `aria-current` 로도 알린다 — 색만이 아니다.
  *
@@ -19,9 +19,8 @@
  *   마우스가 있는 넓은 화면에서는 늘 보인다. 터치 화면은 **편집** 모드에서만 보인다(스크롤과 헷갈리지 않게).
  * - **키보드** — 손잡이에서 ↑ · ↓ 한 칸, Home · End 맨 위 · 맨 아래. 옮긴 뒤에도 그 곡의 손잡이에 포커스가
  *   남는다. 결과는 부모가 주는 `status` 로 알린다(aria-live).
- * - **편집 모드** — "✎ 편집" 을 누르면 행마다 손잡이 · ↑ · ↓ · 이름 · 삭제가 글자와 함께 드러나고(44px),
- *   ▶ · 관리는 잠시 숨는다. "완료" 로 돌아온다. 작은 화면의 주 경로다.
- * - **관리** 메뉴에 맨 위로 · 맨 아래로를 더했다.
+ * - **순서 모드** — ⇅ 아이콘을 누르면 행마다 손잡이 · ↑ · ↓ 가 드러나고 ▶ · 행 아이콘은 잠시 숨는다. 한 번 더
+ *   누르면 돌아온다. 작은 화면의 주 경로다.
  * - 옮기기는 재생을 건드리지 않는다 — 큐는 스냅샷이다 (ADR 0030).
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
@@ -56,6 +55,8 @@ const props = defineProps<{
   momentCounts?: ReadonlyMap<string, number>
   /** 순서 바꾸기 결과 — 화면에도 보이고 낭독기에도 알린다 (M11-7C). */
   status?: { readonly text: string; readonly tone: 'info' | 'warning' } | null
+  /** 공유 아이콘을 보일지 — 공유 대화상자가 없으면(단독 마운트) `false`. */
+  canShare?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -107,8 +108,6 @@ function momentCount(videoId: string): number {
   return props.momentCounts?.get(videoId) ?? 0
 }
 
-/** "관리" 가 펼쳐진 행. 한 번에 하나다. */
-const managingId = ref<string | null>(null)
 /** 삭제 확인을 받는 행. */
 const pendingTrackId = ref<string | null>(null)
 
@@ -117,7 +116,7 @@ const draftTitle = ref('')
 
 const root = ref<HTMLElement | null>(null)
 
-/** 편집 모드 — 손잡이 · 한 칸 옮기기 · 이름 · 삭제가 행마다 드러난다 (M11-7C). */
+/** 순서 모드 — 손잡이 · 한 칸 옮기기가 행마다 드러난다 (M11-7C, ADR 0044). */
 const editing = ref(false)
 const editToggle = ref<HTMLButtonElement | null>(null)
 
@@ -140,21 +139,14 @@ function closeForms(): void {
   cancelRename()
 }
 
-function toggleManage(trackId: string): void {
-  closeForms()
-  managingId.value = managingId.value === trackId ? null : trackId
-}
-
 function toggleEditing(): void {
   closeForms()
-  managingId.value = null
   editing.value = !editing.value
-  // 단추 이름이 바뀔 뿐 같은 단추다 — 포커스는 그대로 둔다.
+  // 눌림 상태만 바뀐다 — 포커스는 그대로 둔다.
 }
 
 async function startRename(track: DeepReadonly<Track>): Promise<void> {
   pendingTrackId.value = null
-  managingId.value = null
   renamingId.value = track.id
   draftTitle.value = track.title
   await nextTick()
@@ -166,12 +158,22 @@ function cancelRename(): void {
   draftTitle.value = ''
 }
 
+/** 폼을 닫은 뒤 그 행의 연필로 돌아간다 — 폼이 사라진 자리에 포커스가 떨어지지 않게. */
+function closeRename(): void {
+  const trackId = renamingId.value
+  cancelRename()
+  if (trackId !== null)
+    void nextTick(() =>
+      root.value?.querySelector<HTMLElement>(`[data-track-rename="${trackId}"]`)?.focus(),
+    )
+}
+
 function submitRename(): void {
   const trackId = renamingId.value
   if (trackId === null) return
 
   emit('rename', trackId, draftTitle.value)
-  cancelRename()
+  closeRename()
 }
 
 /* ---------- 옮기기 (M11-7C) ---------- */
@@ -361,7 +363,6 @@ function confirmRemove(): void {
   const neighbour = list[index + 1] ?? list[index - 1]
   emit('remove', trackId)
   pendingTrackId.value = null
-  managingId.value = null
   void nextTick(() => {
     const row = neighbour === undefined ? null : rowOf(neighbour.id)
     const target =
@@ -379,10 +380,8 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="track-list" :class="{ 'is-editing': editing }">
-    <p v-if="tracks === null" class="muted">플레이리스트를 선택하면 트랙이 보입니다.</p>
-    <p v-else-if="tracks.length === 0" class="muted">
-      아직 등록된 영상이 없어요.<br />＋ YouTube 링크 추가를 눌러 시작하세요.
-    </p>
+    <p v-if="tracks === null" class="muted">선택한 목록이 없어요.</p>
+    <p v-else-if="tracks.length === 0" class="muted">아직 곡이 없어요.</p>
 
     <!-- 순서 편집 · 결과 알림 (M11-7C). 알림 영역은 늘 있다 — 비면 자리를 차지하지 않는다. -->
     <div v-if="tracks !== null && tracks.length > 0" class="list-tools">
@@ -398,17 +397,15 @@ onBeforeUnmount(() => {
         v-if="tracks.length > 1 || editing"
         ref="editToggle"
         type="button"
-        class="pill edit-toggle"
-        :class="{ 'pill--strong': editing }"
+        class="icon-button edit-toggle"
         :aria-pressed="editing"
+        aria-label="순서 바꾸기"
+        title="순서 바꾸기"
         @click="toggleEditing"
       >
-        {{ editing ? '완료' : '✎ 편집' }}
+        <span class="ui-icon ui-icon--reorder" aria-hidden="true"></span>
       </button>
     </div>
-    <p v-if="editing" class="edit-help">
-      ⠿ 를 끌거나 ↑ · ↓ 로 순서를 바꿔요. 바꾼 순서는 바로 저장돼요 — 듣고 있는 재생은 그대로예요.
-    </p>
     <p id="track-handle-help" class="sr-only">
       위 · 아래 화살표로 한 칸, Home · End 로 맨 위 · 맨 아래로 옮겨요.
     </p>
@@ -474,137 +471,79 @@ onBeforeUnmount(() => {
           >
             <span aria-hidden="true">◆</span> {{ momentCount(track.videoId) }}
           </button>
-          <button
-            type="button"
-            class="track-manage"
-            :aria-expanded="managingId === track.id"
-            :aria-controls="`track-actions-${track.id}`"
-            :aria-label="`${track.title} 관리`"
-            @click="toggleManage(track.id)"
-          >
-            관리
-          </button>
+          <!-- 행 아이콘 (ADR 0044) — 자주 쓰는 순서대로, 되돌리기 어려운 삭제는 맨 끝. -->
+          <span class="row-icons track-icons" role="group" :aria-label="`${track.title} 동작`">
+            <button
+              type="button"
+              class="icon-button track-rename"
+              :data-track-rename="track.id"
+              :aria-label="`${track.title} 이름 변경`"
+              title="이름 바꾸기"
+              :aria-expanded="renamingId === track.id"
+              @click="renamingId === track.id ? closeRename() : startRename(track)"
+            >
+              <span class="ui-icon ui-icon--edit" aria-hidden="true"></span>
+            </button>
+            <button
+              type="button"
+              class="icon-button track-artwork"
+              :aria-label="`${track.title} 앨범아트 설정`"
+              title="앨범아트"
+              @click="emit('artwork', track.id)"
+            >
+              <span class="ui-icon ui-icon--image" aria-hidden="true"></span>
+            </button>
+            <button
+              v-if="canShare !== false"
+              type="button"
+              class="icon-button track-share"
+              :aria-label="`${track.title} 공유`"
+              title="공유"
+              @click="emit('share', track.id)"
+            >
+              <span class="ui-icon ui-icon--share" aria-hidden="true"></span>
+            </button>
+            <button
+              type="button"
+              class="icon-button icon-button--danger track-remove"
+              :data-track-remove="track.id"
+              :aria-label="`${track.title} 삭제`"
+              title="삭제"
+              :aria-expanded="pendingTrackId === track.id"
+              @click="requestRemove(track.id)"
+            >
+              <span class="ui-icon ui-icon--trash" aria-hidden="true"></span>
+            </button>
+          </span>
         </template>
-        <!-- 편집 모드 — 글자가 있는 44px 단추. 두 번째 줄로 내려간다. -->
-        <div v-else class="edit-actions" role="group" :aria-label="`${track.title} 편집`">
+        <!-- 순서 모드 — 한 칸 위 · 아래. -->
+        <span
+          v-else
+          class="row-icons edit-actions"
+          role="group"
+          :aria-label="`${track.title} 순서`"
+        >
           <button
             type="button"
-            class="pill edit-up"
+            class="icon-button edit-up"
             :aria-label="`${track.title} 위로`"
+            title="위로"
             :disabled="index === 0"
             @click="requestReorder(track.id, index - 1, `${rowSelector(track.id)} .edit-up`)"
           >
-            ↑ 위로
+            <span class="ui-icon ui-icon--up" aria-hidden="true"></span>
           </button>
           <button
             type="button"
-            class="pill edit-down"
+            class="icon-button edit-down"
             :aria-label="`${track.title} 아래로`"
+            title="아래로"
             :disabled="index === lastIndex"
             @click="requestReorder(track.id, index + 1, `${rowSelector(track.id)} .edit-down`)"
           >
-            ↓ 아래로
+            <span class="ui-icon ui-icon--down" aria-hidden="true"></span>
           </button>
-          <button
-            type="button"
-            class="pill"
-            :aria-label="`${track.title} 이름 변경`"
-            @click="startRename(track)"
-          >
-            ✎ 이름
-          </button>
-          <button
-            type="button"
-            class="pill pill--danger"
-            :data-track-remove="track.id"
-            :aria-label="`${track.title} 삭제`"
-            @click="requestRemove(track.id)"
-          >
-            삭제
-          </button>
-        </div>
-      </div>
-
-      <!--
-        관리 — 이름 바꾸기 · 옮기기, 그리고 떨어진 자리의 삭제. 순서는 자주 쓰는 일부터이고 되돌리기
-        어려운 삭제를 맨 끝에 둔다. 클래스 이름 `track-controls` 는 M2 의 것을 잇는다.
-      -->
-      <div
-        v-if="!editing && managingId === track.id"
-        :id="`track-actions-${track.id}`"
-        class="track-controls"
-        role="group"
-        :aria-label="`${track.title} 관리 메뉴`"
-      >
-        <button
-          type="button"
-          class="pill"
-          :aria-label="`${track.title} 이름 변경`"
-          @click="startRename(track)"
-        >
-          ✎ 이름 바꾸기
-        </button>
-        <button
-          type="button"
-          class="pill track-artwork"
-          :aria-label="`${track.title} 앨범아트 설정`"
-          @click="emit('artwork', track.id)"
-        >
-          🖼 앨범아트
-        </button>
-        <button
-          type="button"
-          class="pill track-share"
-          :aria-label="`${track.title} 공유`"
-          @click="emit('share', track.id)"
-        >
-          이 곡 공유
-        </button>
-        <button
-          type="button"
-          class="pill move-top"
-          :aria-label="`${track.title} 맨 위로`"
-          :disabled="index === 0"
-          @click="requestReorder(track.id, 0, `#track-actions-${track.id} .move-top`)"
-        >
-          ⤒ 맨 위로
-        </button>
-        <button
-          type="button"
-          class="pill move-up"
-          :aria-label="`${track.title} 위로`"
-          :disabled="index === 0"
-          @click="requestReorder(track.id, index - 1, `#track-actions-${track.id} .move-up`)"
-        >
-          ↑ 위로
-        </button>
-        <button
-          type="button"
-          class="pill move-down"
-          :aria-label="`${track.title} 아래로`"
-          :disabled="index === lastIndex"
-          @click="requestReorder(track.id, index + 1, `#track-actions-${track.id} .move-down`)"
-        >
-          ↓ 아래로
-        </button>
-        <button
-          type="button"
-          class="pill move-bottom"
-          :aria-label="`${track.title} 맨 아래로`"
-          :disabled="index === lastIndex"
-          @click="requestReorder(track.id, lastIndex, `#track-actions-${track.id} .move-bottom`)"
-        >
-          ⤓ 맨 아래로
-        </button>
-        <button
-          type="button"
-          class="pill pill--danger"
-          :data-track-remove="track.id"
-          :aria-label="`${track.title} 삭제`"
-          @click="requestRemove(track.id)"
-        >
-          삭제
-        </button>
+        </span>
       </div>
 
       <!-- 삭제 확인 — 지울 행 **바로 아래**. -->
@@ -639,7 +578,7 @@ onBeforeUnmount(() => {
         <p class="muted">비우면 YouTube 영상 ID로 표시됩니다.</p>
         <div class="row-actions">
           <button type="submit" class="pill pill--strong">저장</button>
-          <button type="button" class="pill" @click="cancelRename">취소</button>
+          <button type="button" class="pill" @click="closeRename">취소</button>
         </div>
       </form>
     </template>
@@ -742,41 +681,19 @@ onBeforeUnmount(() => {
   font-size: 17px;
 }
 
-.track-manage {
-  min-width: 56px;
-  min-height: 44px;
-  flex: none;
-  padding: 0 10px;
-  border: 1px solid var(--pill-border-color);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--row-action-text-color);
-  font: 11px var(--font-mono);
-}
+/*
+ * 좁은 목록(휴대폰)에서는 아이콘 묶음이 제목 아래 줄 오른쪽으로 내려간다 — 제목이 아이콘에 밀려
+ * 한두 글자 폭으로 줄지 않게 (ADR 0044).
+ */
+@container (max-width: 520px) {
+  .track-list:not(.is-editing) .track {
+    flex-wrap: wrap;
+  }
 
-.track-manage[aria-expanded='true'] {
-  border-color: var(--row-selected-border-color);
-  background: var(--row-selected-surface-color);
-  color: var(--row-text-color);
-}
-
-/* 관리 줄 — 글자 이름이 있는 단추들. 삭제는 맨 끝으로 떨어진다. */
-.track-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid var(--row-selected-border-color);
-  background: var(--row-selected-surface-color);
-}
-
-.track-controls .pill--danger {
-  margin-left: auto;
-}
-
-.track-controls button:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
+  .track-list:not(.is-editing) .track-icons {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
 }
 
 .track-id {
@@ -817,8 +734,7 @@ onBeforeUnmount(() => {
     background: var(--pill-surface-hover-color);
   }
 
-  .track-moments:hover,
-  .track-manage:hover {
+  .track-moments:hover {
     color: var(--row-action-hover-text-color);
   }
 }
@@ -916,12 +832,6 @@ onBeforeUnmount(() => {
   margin-left: auto;
 }
 
-.edit-help {
-  margin: 0;
-  color: var(--drawer-sub-text-color);
-  font: 11px/1.5 var(--font-mono);
-}
-
 /*
  * 끌기 손잡이 — ▶ · 제목과 떨어진 행 맨 앞. 손잡이에서만 브라우저의 터치 스크롤을 끈다 — 목록의 나머지는
  * 그대로 스크롤된다.
@@ -954,25 +864,6 @@ onBeforeUnmount(() => {
 .track-list.is-editing .track-handle {
   width: 44px;
   font-size: 18px;
-}
-
-/* 편집 모드의 행 — 단추 줄이 제목 아래로 내려간다. */
-.track-list.is-editing .track {
-  flex-wrap: wrap;
-}
-
-.edit-actions {
-  display: flex;
-  flex-basis: 100%;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-  padding: 0 0 4px;
-}
-
-.edit-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
 }
 
 /* 끄는 중 — 끄는 곡은 흐리게, 놓일 자리에는 굵은 선. */

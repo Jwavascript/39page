@@ -139,8 +139,7 @@ onUnmounted(() => {
       -->
       <div class="video-placeholder" :class="{ 'is-hidden': !transport.showsPlaceholder.value }">
         <div>
-          <strong>YOUTUBE / VIDEO</strong>영상은 이 위치에 16:9로 표시됩니다.<br />플레이리스트에서
-          곡을 선택하세요.
+          <strong>YOUTUBE / VIDEO</strong>
         </div>
       </div>
 

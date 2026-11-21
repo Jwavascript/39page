@@ -240,22 +240,23 @@ async function openArchiveMoments(s: Session) {
 
 const archiveMoments = (s: Session) => s.wrapper.get('#archive-panel-moments')
 
-/** 보관함 Moments 의 보기를 고른다 — 이 곡 · 전체 · 최근 (M11-7C 순서). */
+const VIEW_KEY = { '이 곡': 'current', 전체: 'all', 최근: 'recent' } as const
+
+/** 보관함 Moments 의 보기를 고른다 — 왼쪽 칸의 이 곡 · 전체 · 최근 (M11-7C 순서, ADR 0044 두 칸). */
 async function chooseView(s: Session, label: '이 곡' | '전체' | '최근'): Promise<void> {
-  const chip = archiveMoments(s)
-    .findAll('.chip')
-    .find((c) => c.text().startsWith(label))
-  if (chip === undefined) throw new Error(`no chip ${label}`)
-  await chip.trigger('click')
+  const item = archiveMoments(s).find(`.view-item[data-view="${VIEW_KEY[label]}"]`)
+  if (!item.exists()) throw new Error(`no view ${label}`)
+  await item.trigger('click')
   await nextTick()
 }
 const archiveFeedback = (s: Session) => archiveMoments(s).get('.feedback')
 
-/** 보관함 Moment 줄의 "관리" 를 펼친다 (M11-3). 이미 펼쳐져 있으면 누르지 않는다. */
+/**
+ * 보관함 Moment 줄의 동작을 쓸 준비 (ADR 0044). M11-3 에서는 "관리" 를 펼쳐야 했지만, 이제 메모 수정 · 공유 ·
+ * 삭제가 줄 오른쪽의 아이콘으로 늘 보인다 — 그 줄이 있는지만 확인한다.
+ */
 async function openMomentManage(s: Session, id: string): Promise<void> {
-  const toggle = archiveMoments(s).get(`[data-moment-manage="${id}"]`)
-  if (toggle.attributes('aria-expanded') === 'true') return
-  await toggle.trigger('click')
+  archiveMoments(s).get(`[data-moment-edit="${id}"]`)
   await nextTick()
 }
 
@@ -286,7 +287,9 @@ describe('A. 잡기 → Moment 저장 — 누르면 시점만 잡고, 저장은 
     const s = boot()
 
     expect(captureButton(s).attributes('disabled')).toBeDefined()
-    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('곡을 재생하면')
+    // 꺼진 단추로 충분하다 — 설명 글은 두지 않는다 (ADR 0044). 막힌 이유(오류)만 적는다.
+    expect(s.wrapper.find('#dashboard-moment-capture-hint').exists()).toBe(false)
+    expect(captureButton(s).attributes('aria-describedby')).toBeUndefined()
   })
 
   it('재생을 요청해도 실제로 재생되기 전에는 꺼져 있다', async () => {
@@ -300,7 +303,7 @@ describe('A. 잡기 → Moment 저장 — 누르면 시점만 잡고, 저장은 
     // 불러오는 중이다. 플레이어가 0 을 보고해도 아직 믿지 않는다.
     expect(s.playback.playerState).toBe('loading')
     expect(captureButton(s).attributes('disabled')).toBeDefined()
-    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('재생이 시작되면')
+    expect(s.wrapper.find('#dashboard-moment-capture-hint').exists()).toBe(false)
   })
 
   it('누르면 시점을 잡을 뿐 저장하지 않고 음악은 계속된다 — Moment 저장 뒤에만 "저장했어요"', async () => {
@@ -309,7 +312,8 @@ describe('A. 잡기 → Moment 저장 — 누르면 시점만 잡고, 저장은 
     const pausesBefore = s.fake.calls.pause
     const add = vi.spyOn(s.moments, 'add')
 
-    expect(s.wrapper.get('#dashboard-moment-capture-hint').text()).toContain('시점을 잡아요')
+    // 누르면 무엇이 되는지는 단추 이름과 다음 화면(메모 칸)이 말한다 — 설명 글은 없다 (ADR 0044).
+    expect(s.wrapper.find('#dashboard-moment-capture-hint').exists()).toBe(false)
     await captureNow(s)
 
     // 아직 아무것도 만들지 않았다.
@@ -656,7 +660,9 @@ describe('B. 초안의 메모 — 저장 전에 쓰고, 초안은 하나다', ()
 
     // 이 곡 보기로 와서 같은 초안의 메모 칸에 포커스가 있다.
     const archiveNote = archiveMoments(s).get('#archive-moment-capture-note')
-    expect(archiveMoments(s).get('.chip[aria-pressed="true"]').text()).toContain('이 곡')
+    expect(archiveMoments(s).get('.view-item[aria-current="true"]').attributes('data-view')).toBe(
+      'current',
+    )
     expect(document.activeElement).toBe(archiveNote.element)
     expect((archiveNote.element as HTMLTextAreaElement).value).toBe('대시보드에서')
     await archiveNote.setValue('보관함에서 고침')
@@ -680,7 +686,7 @@ describe('B. 초안의 메모 — 저장 전에 쓰고, 초안은 하나다', ()
     )
     expect(widget(s).find(`[data-moment-row="${saved.id}"]`).exists()).toBe(true)
     expect(widget(s).find('.draft-notice').exists()).toBe(false)
-    expect(archiveMoments(s).get('.current-count').text()).toContain('1')
+    expect(archiveMoments(s).get('.view-item[data-view="current"] .nav-meta').text()).toBe('1')
   })
 })
 
@@ -874,7 +880,8 @@ describe('D. 대시보드 — 이 곡의 Moments (M11-7C: 모두 · 시점 순 �
 
   it('빈 상태 · 이 곡에 없을 때를 각각 안내한다', async () => {
     const s = boot()
-    expect(widget(s).get('.empty').text()).toContain('곡을 재생하면')
+    // 곡이 없으면 꺼진 저장 단추뿐 — 설명 글은 없다 (ADR 0044).
+    expect(widget(s).find('.empty').exists()).toBe(false)
 
     seedMoments([moment({ videoId: B, title: 'Bravo' })])
     s.moments.restore()
@@ -1007,12 +1014,13 @@ describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
     seedMoments([moment({ id: '1' }), moment({ id: '2', videoId: B, title: 'Bravo' })])
     const s = boot()
     const panel = await openArchiveMoments(s)
-    // 재생 중인 곡이 없으면 "이 곡" 은 고를 수 없고, 처음 보기는 전체다.
-    expect(panel.findAll('.chip')[0]?.attributes('disabled')).toBeDefined()
-    expect(panel.get('.chip[aria-pressed="true"]').text()).toBe('전체 2')
+    const views = () => panel.findAll('.view-item')
+    // 재생 중인 곡이 없으면 "이 곡" 은 없고, 처음 보기는 전체다.
+    expect(views().map((v) => v.attributes('data-view'))).toEqual(['all', 'recent'])
+    expect(panel.get('.view-item[aria-current="true"]').text()).toBe('전체2')
 
     await playFromStart(s, 5)
-    expect(panel.findAll('.chip').map((chip) => chip.text())).toEqual(['이 곡 1', '전체 2', '최근'])
+    expect(views().map((v) => v.text())).toEqual(['이 곡1', '전체2', '최근'])
     await chooseView(s, '이 곡')
     const rowIds = () => panel.findAll('.moment-item').map((r) => r.attributes('data-moment-id'))
     expect(rowIds()).toEqual(['1'])
@@ -1087,23 +1095,24 @@ describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
     expect(s.moments.getMoment('lib')?.title).toBe('Old Alpha')
   })
 
-  it('행에는 ▶ 와 "관리" 만 — 관리를 펼치면 글자 이름이 있는 메모 수정 · 삭제 (M11-3)', async () => {
+  it('행에는 ▶ 와 오른쪽 아이콘 — 메모 수정 · 공유 · 삭제, 글자 없이 이름과 툴팁 (ADR 0044)', async () => {
     seedMoments([moment({ id: 'x', note: '처음' })])
     const s = boot()
     const panel = await openArchiveMoments(s)
 
-    expect(panel.find('[data-moment-edit="x"]').exists()).toBe(false)
-    const manage = panel.get('[data-moment-manage="x"]')
-    expect(manage.text()).toBe('관리')
-    expect(manage.attributes('aria-expanded')).toBe('false')
-
-    await openMomentManage(s, 'x')
-    expect(manage.attributes('aria-expanded')).toBe('true')
-    expect(panel.get('[data-moment-edit="x"]').text()).toBe('✎ 메모 수정')
-    expect(panel.get('[data-moment-remove="x"]').text()).toBe('삭제')
+    expect(panel.find('[data-moment-manage="x"]').exists()).toBe(false)
+    const edit = panel.get('[data-moment-edit="x"]')
+    const share = panel.get('[data-moment-share="x"]')
+    const remove = panel.get('[data-moment-remove="x"]')
+    for (const icon of [edit, share, remove]) expect(icon.text()).toBe('')
+    expect(edit.attributes('aria-label')).toBe('Alpha 0:10 메모 수정')
+    expect(edit.attributes('title')).toBe('메모 수정')
+    expect(share.attributes('aria-label')).toBe('Alpha 0:10 링크로 공유')
+    expect(remove.attributes('aria-label')).toBe('Alpha 0:10 순간 삭제')
+    expect(edit.attributes('aria-expanded')).toBe('false')
   })
 
-  it('메모를 고친다 — 저장하면 바뀌고 "관리" 로 포커스가 돌아온다', async () => {
+  it('메모를 고친다 — 저장하면 바뀌고 연필로 포커스가 돌아온다', async () => {
     seedMoments([moment({ id: 'x', note: '처음' })])
     const s = boot()
     const panel = await openArchiveMoments(s)
@@ -1122,7 +1131,7 @@ describe('E. 보관함 Moments 탭 (F14 · F16)', () => {
 
     expect(s.moments.getMoment('x')?.note).toBe('고친 메모')
     expect(archiveFeedback(s).text()).toContain('메모를 고쳤어요')
-    expect(document.activeElement).toBe(panel.get('[data-moment-manage="x"]').element)
+    expect(document.activeElement).toBe(panel.get('[data-moment-edit="x"]').element)
   })
 
   it('다른 탭이 먼저 바꿨으면 저장하지 않고 폼과 쓴 메모를 지킨다 (M10-3 안정화)', async () => {

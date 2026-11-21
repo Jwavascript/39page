@@ -23,7 +23,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
-import { openTrackManage } from '../support/trackManage'
+import { openTrackManage, setReorderMode } from '../support/trackManage'
 import { archiveCloseButton } from '../support/archiveClose'
 
 /** `main.ts` 가 하는 기본 플레이리스트 이름. */
@@ -84,7 +84,7 @@ async function openDrawer(session: Session) {
   if (session.library.playlists.length === 0) session.library.createPlaylist('MY RECORDS')
   await nextTick()
 
-  await session.wrapper.get('.now-playlist .open-archive').trigger('click')
+  await session.wrapper.get('.deck-open').trigger('click')
   await nextTick()
 }
 
@@ -161,9 +161,10 @@ describe('1. 최초 실행 → 기본 라이브러리 생성', () => {
      * 보관함의 `▶ 목록 전체 재생` 은 그대로 비활성이다.
      */
     expect(session.wrapper.find('.now-playlist .play-all').exists()).toBe(false)
-    expect(session.wrapper.get('.now-playlist').text()).toContain('이 목록은 비어 있어요')
+    // 빈 목록은 부제("비어 있음")가 말한다 (ADR 0044).
+    expect(session.wrapper.get('.now-playlist .widget-sub').text()).toContain('비어 있음')
 
-    await session.wrapper.get('.now-playlist .open-archive').trigger('click')
+    await session.wrapper.get('.deck-open').trigger('click')
     await nextTick()
 
     expect(session.playback.queue).toEqual([])
@@ -431,7 +432,7 @@ describe('8. 재생 중 드로어 열기·닫기', () => {
   it('닫으면 포커스가 트리거로 돌아온다', async () => {
     const session = boot()
     // M7: 드로어를 여는 트리거는 플레이리스트 타일 본문이다.
-    const trigger = session.wrapper.get('.now-playlist .open-archive')
+    const trigger = session.wrapper.get('.deck-open')
     ;(trigger.element as HTMLElement).focus()
 
     await trigger.trigger('click')
@@ -478,15 +479,12 @@ describe('9. 플레이리스트 편집 후 큐 — 목록을 따르고 지금 �
 
     // 트랙 추가
     await addTrack(session, 'https://www.youtube.com/embed/aqz-KE-bpKQ', 'THREE')
-    // 순서 변경
-    await openTrackManage(session.wrapper, 'TWO')
+    // 순서 변경 — 한 칸 옮기기는 순서 모드(⇅)에 있다 (ADR 0044).
+    await setReorderMode(session.wrapper, true)
     await session.wrapper.get('[aria-label="TWO 위로"]').trigger('click')
-    // 이름 변경 — 목록 칸의 "관리" 안에 있다 (M11-7B).
-    await session.wrapper.get('.archive-lists .list-row.is-selected .list-manage').trigger('click')
-    const rename = session.wrapper
-      .findAll('.archive-lists .manage-panel button')
-      .find((button) => button.text().includes('이름 수정'))
-    await rename?.trigger('click')
+    await setReorderMode(session.wrapper, false)
+    // 이름 변경 — 목록 칸 행의 연필 (ADR 0044).
+    await session.wrapper.get('.archive-lists .list-row.is-selected .list-rename').trigger('click')
     await flushPromises()
     await session.wrapper.get('#playlist-name').setValue('RENAMED')
     await session.wrapper.get('form.name-form').trigger('submit')

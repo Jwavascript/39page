@@ -351,7 +351,7 @@ watch(
 
     <div
       id="archive-panel-moments"
-      class="archive-body"
+      class="archive-body archive-body--moments"
       role="tabpanel"
       aria-labelledby="archive-tab-moments"
       :hidden="tab !== 'moments'"
@@ -362,11 +362,6 @@ watch(
       -->
       <MomentsBrowserPanel v-if="momentsVisited" :focus-request="momentsFocusRequest ?? null" />
     </div>
-
-    <p class="archive-foot">
-      Esc 또는 × 로 닫아요. 보관함을 열어도 음악은 계속 재생돼요.<br />
-      다른 기기로 옮길 때는 맨 위의 <strong>⇩ 데이터 · 백업</strong> 을 쓰세요.
-    </p>
   </aside>
 </template>
 
@@ -512,6 +507,16 @@ watch(
 }
 
 /*
+ * Moments 탭 (ADR 0044) — 음악 탭처럼 본문은 스크롤하지 않고 두 칸(`MomentsBrowserPanel`)이 각자 스크롤한다.
+ */
+.archive-body--moments {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+  container: archive-moments / inline-size;
+}
+
+/*
  * 좁은 보관함 — **두 단계.** 두 칸을 나란히 두면 곡 제목이 몇 글자 폭으로 눌린다. 한 번에 한 단계만
  * 보이고, 상세 단계의 "목록으로" 로 돌아온다. 화면 폭이 아니라 보관함의 폭으로 판단한다.
  */
@@ -536,30 +541,6 @@ watch(
 
   .music-detail :deep(.step-nav) {
     display: flex;
-  }
-}
-
-.archive-foot {
-  flex: none;
-  margin: 0;
-  padding: 10px 16px;
-  border-top: 1px solid var(--drawer-foot-border-color);
-  color: var(--drawer-foot-text-color);
-  font: 10px/1.6 var(--font-mono);
-}
-
-.archive-foot strong {
-  color: var(--drawer-title-text-color);
-  font-weight: 400;
-}
-
-/*
- * 작은 화면에서는 바닥 안내를 접는다 (M11-7B) — 재생 띠가 위를 쓰므로 보관함의 높이가 귀하다. 닫기(×)와
- * 탭은 머리말에 그대로 있고, 백업 입구는 헤더에 이름으로 있다.
- */
-@media (max-height: 720px), (max-width: 700px) {
-  .archive-foot {
-    display: none;
   }
 }
 

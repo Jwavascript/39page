@@ -149,10 +149,11 @@ try {
     )
     await t.click('.strip-close')
     await t.click('.deck-open--kawaii-synth-cassette')
+    // ADR 0044 — 데크가 "보관함에서 편집" 을 대신해 고른 목록의 곡(상세 단계)으로 연다. 중첩 편집(앨범아트)은 닫힌다.
     record(
-      'Deck entry resets nested editor to list',
+      'Deck entry closes nested editor and opens selected list detail',
       await t.ev(
-        `!document.querySelector('.artwork-settings') && document.querySelector('.music-layout').dataset.step==='lists'`,
+        `!document.querySelector('.artwork-settings') && document.querySelector('.music-layout').dataset.step==='detail'`,
       ),
     )
     await t.click('.strip-close')
@@ -203,7 +204,7 @@ try {
     )
     // A second track gets the same original file with a different frame.
     await t.click('.app-nav button')
-    await t.click('[aria-label="다른 목록 관리 — 이름 수정 · 삭제"]')
+    // ADR 0044 — 목록 행의 공유 아이콘을 바로 누른다 ("관리" 메뉴 없음).
     await t.click('[aria-label="다른 목록 목록 공유"]')
     // ADR 0043 — 공유는 따로 된 공유 대화상자다. 목록 · 범위 고르기와 Moments 칸이 없어졌다 — 대상 한 줄과 고르는 칸이
     // 없는 것을 본다 (목록 공유에는 Moments 가 들어가지 않는다).
@@ -218,8 +219,12 @@ try {
       `[...document.querySelectorAll('.list-select')].find(e=>e.textContent.includes('다른 목록')).click(); true`,
     )
     await sleep(250)
-    await t.click('[aria-label="Bunny B 관리"]')
     await t.click('[aria-label="Bunny B 앨범아트 설정"]')
+    // ADR 0044 — 행 아이콘을 바로 누른다. 설정 칸이 설 때까지 기다린다 (전에는 "관리" 를 누르는 사이에 섰다).
+    await waitFor(() => t.ev(`!!document.querySelector('.artwork-settings input[type="file"]')`), {
+      label: 'artwork settings',
+      timeout: 8000,
+    })
     await t.file('.artwork-settings input[type="file"]', path.join(IMG, 'wide.gif'))
     await t.value('[aria-label="확대율"]', '2')
     await t.click('.settings-actions .pill--primary')
@@ -247,7 +252,7 @@ try {
     record(
       'See all explicitly opens all filter',
       await t.ev(
-        `document.querySelectorAll('#archive-panel-moments .chip')[1].getAttribute('aria-pressed')==='true'`,
+        `document.querySelector('#archive-panel-moments .view-item[data-view="all"]')?.getAttribute('aria-current')==='true'`,
       ),
     )
     await t.click('.strip-close')
@@ -291,7 +296,6 @@ try {
       ),
     )
     await t.text('.link-form button', '닫기')
-    await t.click('[aria-label="Bunny B 관리"]')
     await t.click('[aria-label="Bunny B 공유"]')
     // ADR 0043 — 공유 대화상자가 그 곡을 대상으로 연다. 파일(ZIP) 공유는 없어졌다 — 전체 백업만 내려받는다.
     record(
@@ -361,7 +365,6 @@ try {
       await t.click('.app-nav button')
       await t.click('#archive-tab-music')
       await t.click('.list-select[aria-current="true"]')
-      await t.click('[aria-label="Bunny B 관리"]')
       await t.click('[aria-label="Bunny B 앨범아트 설정"]')
       await t.ev(
         `document.querySelector('.settings-actions').scrollIntoView({block:'nearest'}); true`,

@@ -8,12 +8,12 @@
  * 좁은 화면에서는 두 단계 중 첫 단계다. 배치는 `ArchivePanel` 이 정한다.
  *
  * 역할 (UAT U4 — 재생과 목록 관리는 다른 일이다)
- * - 이 칸: 목록 **선택 · 만들기 · 이름 수정 · 삭제**. 이름 수정과 삭제는 행의 "관리" 를 누르면 그 행
- *   아래에 글자 이름과 함께 펼쳐진다 (곡 줄의 "관리" 와 같은 방식). 삭제는 그 자리에서 확인을 받는다.
+ * - 이 칸: 목록 **선택 · 만들기 · 이름 수정 · 공유 · 삭제**. 이름 수정(연필) · 공유 · 삭제(휴지통)는 행 오른쪽의
+ *   아이콘이다 (ADR 0044 — "관리" 메뉴를 없앴다). 이름 양식과 삭제 확인은 그 행 아래에서 받는다.
  * - 상세 칸: 전체 재생 · 링크 추가 · 곡. 이 칸에는 재생 단추가 없다.
  *
  * - 행 본문 = 그 목록을 고른다. 선택은 저장된다 (`selectPlaylist`).
- * - "♪ 재생 중인 목록" 은 **재생 큐의 출처**로 정한다 (코디네이터의 읽기 전용 보기) — 지금 곡이 든
+ * - "♪ 재생 중" 은 **재생 큐의 출처**로 정한다 (코디네이터의 읽기 전용 보기) — 지금 곡이 든
  *   목록을 짐작하지 않는다. 고른 목록(테두리)과 재생 중인 목록(글)은 다른 표시다.
  * - 조작 영역은 44px 이상 (M11 U16). 목록은 이 칸 안에서 스크롤한다 — 상세 칸을 밀지 않는다.
  */
@@ -94,7 +94,7 @@ async function startCreate(): Promise<void> {
 
 /* ---------- 관리: 이름 수정 · 삭제 (M11-7B 에서 상세 칸의 머리말에서 옮겨 왔다) ---------- */
 
-/** "관리" 가 펼쳐진 목록. 한 번에 하나다. */
+/** 이름 양식이나 삭제 확인이 열린 목록. 한 번에 하나다. */
 const managingId = ref<string | null>(null)
 /** 이름 수정 양식이 열린 목록. 열릴 때 정한 id 를 끝까지 쓴다. */
 const renamingId = ref<string | null>(null)
@@ -126,15 +126,28 @@ function resetManage(): void {
   formError.value = ''
 }
 
-function toggleManage(id: string): void {
+/** 열린 양식 · 확인을 닫고 그 행의 아이콘으로 포커스를 돌려준다. */
+function closeManage(focus: 'rename' | 'delete' | null = null): void {
+  const id = managingId.value
   resetManage()
-  managingId.value = managingId.value === id ? null : id
+  managingId.value = null
+  if (id !== null && focus !== null)
+    void nextTick(() =>
+      rows.value
+        ?.querySelector<HTMLElement>(`[data-list-${focus}="${id}"]`)
+        ?.focus({ preventScroll: true }),
+    )
 }
 
 async function startRename(id: string): Promise<void> {
   const target = library.getPlaylist(id)
   if (target === undefined) return
+  if (renamingId.value === id) {
+    closeManage('rename')
+    return
+  }
   pendingDeleteId.value = null
+  managingId.value = id
   renamingId.value = id
   draftName.value = target.name
   formError.value = ''
@@ -164,14 +177,18 @@ async function submitRename(): Promise<void> {
     return
   }
   notice.value = result.persisted ? '' : UNSAVED_NOTICE
-  resetManage()
-  managingId.value = null
+  closeManage('rename')
 }
 
 function requestDelete(id: string): void {
   if (!canDelete.value) return
+  if (pendingDeleteId.value === id) {
+    closeManage('delete')
+    return
+  }
   renamingId.value = null
   formError.value = ''
+  managingId.value = id
   pendingDeleteId.value = id
 }
 
@@ -252,12 +269,9 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
         :maxlength="MAX_PLAYLIST_NAME_LENGTH"
         autocomplete="off"
         :aria-invalid="create.formError.value !== '' || undefined"
-        aria-describedby="archive-new-playlist-error archive-new-playlist-next"
+        aria-describedby="archive-new-playlist-error"
       />
       <p id="archive-new-playlist-error" class="error-msg">{{ create.formError.value }}</p>
-      <p id="archive-new-playlist-next" class="form-hint">
-        만들면 바로 이 목록에 YouTube 링크를 넣을 수 있어요.
-      </p>
       <div class="form-actions">
         <button
           type="submit"
@@ -275,9 +289,7 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
       {{ shownNotice }}
     </p>
 
-    <p v-if="library.playlists.length === 0" class="empty">
-      아직 플레이리스트가 없어요. ＋ 새 목록으로 시작하세요.
-    </p>
+    <p v-if="library.playlists.length === 0" class="empty">아직 플레이리스트가 없어요.</p>
     <!-- 이 칸 안에서만 스크롤한다 — 목록이 50개여도 상세 칸은 그 자리다. -->
     <ul v-else ref="rows" class="list-rows">
       <li
@@ -300,47 +312,49 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
             <span class="list-meta">
               {{ playlist.tracks.length === 0 ? '비어 있음' : `${playlist.tracks.length}곡`
               }}<span v-if="playlist.id === playingPlaylistId" class="list-playing">
-                · ♪ 재생 중인 목록</span
+                · ♪ 재생 중</span
               >
             </span>
           </button>
-          <button
-            type="button"
-            class="list-manage"
-            :aria-label="`${playlist.name} 관리 — 이름 수정 · 삭제`"
-            :aria-expanded="managingId === playlist.id"
-            @click="toggleManage(playlist.id)"
-          >
-            관리
-          </button>
-        </div>
-
-        <div v-if="managingId === playlist.id" class="manage-panel">
-          <div
-            v-if="renamingId !== playlist.id && pendingDeleteId !== playlist.id"
-            class="form-actions"
-          >
-            <button type="button" class="pill" @click="startRename(playlist.id)">이름 수정</button>
+          <!-- 행 아이콘 (ADR 0044). 마지막 목록은 지울 수 없다 — 휴지통이 꺼지고 이유는 title 이 말한다. -->
+          <span class="row-icons list-icons" role="group" :aria-label="`${playlist.name} 동작`">
+            <button
+              type="button"
+              class="icon-button list-rename"
+              :data-list-rename="playlist.id"
+              :aria-label="`${playlist.name} 이름 수정`"
+              title="이름 수정"
+              :aria-expanded="renamingId === playlist.id"
+              @click="startRename(playlist.id)"
+            >
+              <span class="ui-icon ui-icon--edit" aria-hidden="true"></span>
+            </button>
             <button
               v-if="shareDialog"
               type="button"
-              class="pill"
+              class="icon-button list-share"
               :aria-label="`${playlist.name} 목록 공유`"
+              title="공유"
               @click="shareDialog.open({ playlistId: playlist.id })"
             >
-              이 목록 공유
+              <span class="ui-icon ui-icon--share" aria-hidden="true"></span>
             </button>
             <button
               type="button"
-              class="pill pill--danger"
+              class="icon-button icon-button--danger list-delete"
+              :data-list-delete="playlist.id"
+              :aria-label="`${playlist.name} 삭제`"
+              :title="canDelete ? '삭제' : '마지막 목록은 지울 수 없어요'"
               :disabled="!canDelete"
-              :title="canDelete ? undefined : '마지막 목록은 지울 수 없어요'"
+              :aria-expanded="pendingDeleteId === playlist.id"
               @click="requestDelete(playlist.id)"
             >
-              목록 삭제
+              <span class="ui-icon ui-icon--trash" aria-hidden="true"></span>
             </button>
-          </div>
+          </span>
+        </div>
 
+        <div v-if="managingId === playlist.id" class="manage-panel">
           <form v-if="renamingId === playlist.id" class="name-form" @submit.prevent="submitRename">
             <label class="label" for="playlist-name">플레이리스트 이름 수정</label>
             <input
@@ -355,7 +369,7 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
             <p class="error-msg">{{ formError }}</p>
             <div class="form-actions">
               <button type="submit" class="pill pill--strong" :disabled="isSaving">저장</button>
-              <button type="button" class="pill" @click="resetManage">취소</button>
+              <button type="button" class="pill" @click="closeManage('rename')">취소</button>
             </div>
           </form>
 
@@ -379,7 +393,7 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
               >
                 삭제
               </button>
-              <button type="button" class="pill" @click="resetManage">취소</button>
+              <button type="button" class="pill" @click="closeManage('delete')">취소</button>
             </div>
           </div>
         </div>
@@ -451,10 +465,6 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
   .pill:hover:not(:disabled):not(.pill--strong) {
     background: var(--pill-surface-hover-color);
   }
-
-  .list-manage:hover {
-    color: var(--row-action-hover-text-color);
-  }
 }
 
 .create-form {
@@ -488,12 +498,6 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
   margin: 6px 0 0;
   color: var(--error-text-color);
   font-size: 12px;
-}
-
-.form-hint {
-  margin: 0 0 8px;
-  color: var(--drawer-muted-text-color);
-  font: 11px/1.5 var(--font-mono);
 }
 
 .form-actions {
@@ -539,6 +543,7 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
 .row-main {
   display: flex;
   min-width: 0;
+  align-items: center;
   gap: 4px;
 }
 
@@ -558,7 +563,7 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
   text-align: left;
 }
 
-/* 고른 목록 = 테두리와 배경. 재생 중인 목록 = 글 ("♪ 재생 중인 목록"). 둘은 다른 표시다. */
+/* 고른 목록 = 테두리와 배경. 재생 중인 목록 = 글 ("♪ 재생 중"). 둘은 다른 표시다. */
 .list-row.is-selected .list-select {
   border-color: var(--row-selected-border-color);
   background: var(--row-selected-surface-color);
@@ -584,23 +589,6 @@ defineExpose({ focusSelected, hasUnsavedInput, busy })
 
 .list-playing {
   color: var(--drawer-title-text-color);
-}
-
-.list-manage {
-  min-width: 48px;
-  min-height: 48px;
-  flex: none;
-  padding: 0 8px;
-  border: 1px solid var(--pill-border-color);
-  border-radius: var(--radius-control);
-  background: var(--track-surface-color);
-  color: var(--row-action-text-color);
-  font: 11px var(--font-mono);
-}
-
-.list-manage[aria-expanded='true'] {
-  border-color: var(--row-selected-border-color);
-  color: var(--row-text-color);
 }
 
 .manage-panel {

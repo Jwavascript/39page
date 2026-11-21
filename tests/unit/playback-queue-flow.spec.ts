@@ -23,7 +23,7 @@ import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 import { installPlayerRect, uninstallPlayerRect } from '../support/playerLayout'
-import { openTrackManage } from '../support/trackManage'
+import { openTrackManage, setReorderMode } from '../support/trackManage'
 import { archiveCloseButton } from '../support/archiveClose'
 
 const VIDEOS = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'] as const
@@ -243,11 +243,10 @@ describe('A. 드로어에서 재생 시작', () => {
     expect(byText(wrapper, '.pill', '▶ 목록 전체 재생')?.attributes('disabled')).toBeDefined()
     /*
      * M11-7B — NOW PLAYLIST 는 빈 목록에 "처음부터 재생" 을 내놓지 않는다. 막다른 길이 아니다 —
-     * 링크 추가와 보관함 편집으로 갈 수 있다.
+     * 링크 추가로 갈 수 있다 (보관함은 데크로 연다, ADR 0044).
      */
     expect(wrapper.find('.now-playlist .play-all').exists()).toBe(false)
     expect(wrapper.get('.now-playlist .add-link').text()).toContain('YouTube 링크 추가')
-    expect(wrapper.get('.now-playlist .open-archive').text()).toContain('보관함에서 편집')
     expect(FakeYtPlayer.instances).toHaveLength(0)
   })
 
@@ -381,10 +380,11 @@ describe('D. DOM 안정성 (ADR 0002)', () => {
     player().fireStateChange(PLAYING)
     const playingId = playback.currentTrack?.id
 
-    // 두 번째 트랙을 위로 올린다.
-    await openTrackManage(wrapper, 'Track 2')
+    // 두 번째 트랙을 위로 올린다 — 순서 모드(⇅)에서 (ADR 0044).
+    await setReorderMode(wrapper, true)
     await wrapper.get('[aria-label="Track 2 위로"]').trigger('click')
     await nextTick()
+    await setReorderMode(wrapper, false)
     // 세 번째 트랙을 지운다. 행의 버튼은 ✎ ↑ ↓ × 네 개다 (M6-5).
     await openTrackManage(wrapper, 'Track 3')
     await wrapper.get('[aria-label="Track 3 삭제"]').trigger('click')

@@ -278,9 +278,6 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
         >
           YouTube에서 열기 ↗
         </a>
-
-        <!-- 승인된 디자인의 `.mute-note` (영상 아래에서 카드로 옮겼다). -->
-        <p class="mute-note">YouTube 공식 영상·컨트롤은 그대로 표시됩니다.</p>
       </div>
     </div>
   </section>
@@ -456,12 +453,9 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   text-underline-offset: 3px;
 }
 
-/* 승인된 디자인의 `.mute-note` 값. */
-.mute-note {
-  margin: 0;
-  padding-top: 8px;
-  color: var(--mute-note-text-color);
-  font: 10px var(--font-mono);
+/* 곡이 없으면 부제가 비어 있다 (ADR 0044) — 자리를 차지하지 않는다. */
+.now-sub:empty {
+  display: none;
 }
 
 .status.is-warning {
@@ -519,8 +513,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
   column-gap: 12px;
 }
 
-[data-archive-layout='strip'] .now-playing-card .eyebrow,
-[data-archive-layout='strip'] .now-playing-card .mute-note {
+[data-archive-layout='strip'] .now-playing-card .eyebrow {
   display: none;
 }
 
@@ -551,9 +544,7 @@ const statusIsWarning = computed<boolean>(() => createAdapter === null || transp
 [data-archive-layout='stack'] .now-playing-card .share,
 [data-archive-layout='side'] .now-playing-card .share,
 [data-archive-layout='stack'] .now-playing-card .mode,
-[data-archive-layout='side'] .now-playing-card .mode,
-[data-archive-layout='stack'] .now-playing-card .mute-note,
-[data-archive-layout='side'] .now-playing-card .mute-note {
+[data-archive-layout='side'] .now-playing-card .mode {
   display: none;
 }
 

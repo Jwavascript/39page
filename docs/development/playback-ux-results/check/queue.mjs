@@ -406,7 +406,10 @@ async function main() {
     ]) {
       await size(w, hgt)
       await sleep(500)
-      await click('.now-playlist .open-archive')
+      // ADR 0044 — "보관함에서 편집" 이 없어졌다. 데크(보이는 테마의 열기 단추)로 연다.
+      await ev(
+        `[...document.querySelectorAll('.deck-open')].find((e) => e.offsetParent !== null)?.click(); true`,
+      )
       await waitFor(
         () =>
           ev(`!!document.querySelector('[data-archive-layout]:not([data-archive-layout="none"])')`),

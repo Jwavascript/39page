@@ -73,9 +73,7 @@ async function openDrawer(wrapper: Wrapper, index = 0) {
   await wrapper.findAll('.archive-lists .list-select')[index]?.trigger('click')
   await flushPromises()
   if (wrapper.get('#archive-panel').attributes('hidden') !== undefined) {
-    await wrapper
-      .get('.now-playlist .open-archive, .now-playlist .widget-foot .pill')
-      .trigger('click')
+    await wrapper.get('.deck-open').trigger('click')
   }
   await flushPromises()
   await nextTick()
@@ -99,14 +97,15 @@ async function createPlaylistViaUi(wrapper: Wrapper, name: string) {
 }
 
 /**
- * 고른 목록의 "관리" 를 편다 (M11-7B) — 이름 수정 · 목록 삭제는 목록 칸의 그 행 아래에 있다.
- * 이미 펴져 있으면 그대로 둔다.
+ * 고른 목록 행의 아이콘 (ADR 0044) — M11-7B 의 "관리" 메뉴 대신 이름 수정(연필) · 공유 · 삭제(휴지통)가
+ * 행 오른쪽에 늘 있다. 양식 · 확인은 그대로 그 행 아래에서 받는다.
  */
 async function openListManage(wrapper: Wrapper) {
-  const toggle = wrapper.get('.archive-lists .list-row.is-selected .list-manage')
-  if (toggle.attributes('aria-expanded') !== 'true') await toggle.trigger('click')
+  wrapper.get('.archive-lists .list-row.is-selected .list-icons')
   await nextTick()
 }
+const selectedListIcon = (wrapper: Wrapper, name: 'rename' | 'delete') =>
+  wrapper.get(`.archive-lists .list-row.is-selected .list-${name}`)
 
 /** 보관함 목록 칸의 행 — 누르면 그 목록을 고른다. */
 const tileOpenButtons = (wrapper: Wrapper) => wrapper.findAll('.archive-lists .list-select')
@@ -185,7 +184,7 @@ describe('A. 드로어 동작', () => {
     useLibraryStore().createPlaylist('A')
     await nextTick()
 
-    await wrapper.get('.now-playlist .open-archive').trigger('click')
+    await wrapper.get('.deck-open').trigger('click')
     await flushPromises()
     await nextTick()
 
@@ -230,7 +229,7 @@ describe('A. 드로어 동작', () => {
     await nextTick()
 
     // 트리거는 이제 타일 본문이다 (M7).
-    const trigger = wrapper.get('.now-playlist .open-archive').element as HTMLElement
+    const trigger = wrapper.get('.deck-open').element as HTMLElement
     trigger.focus()
 
     trigger.click()
@@ -282,13 +281,18 @@ describe('A. 드로어 동작', () => {
     expect(drawer(wrapper).attributes('aria-modal')).toBeUndefined()
   })
 
-  it('데크 안내 문구가 테마에 따라 바뀐다', async () => {
+  it('데크 아래 안내 글이 없다 — 열기 단추의 이름이 테마에 따라 바뀐다 (ADR 0044)', async () => {
     const { wrapper } = mountApp()
     // 기본 테마는 Kawaii Synth Cassette 다 (M11-7B).
-    expect(wrapper.get('.deck-hint').text()).toContain('카세트를 누르면')
+    expect(wrapper.find('.deck-hint').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('카세트를 누르면')
+    expect(wrapper.get('.deck-open--kawaii-synth-cassette').attributes('aria-label')).toContain(
+      '카세트',
+    )
 
     await switchTheme('mono-vinyl')
-    expect(wrapper.get('.deck-hint').text()).toContain('LP를 누르면')
+    expect(wrapper.text()).not.toContain('LP를 누르면')
+    expect(wrapper.get('.deck-open--mono-vinyl').attributes('aria-label')).toContain('LP')
   })
 })
 
@@ -337,10 +341,7 @@ describe('B. 플레이리스트 UI', () => {
 
     // 이름 수정 → 저장
     await openListManage(wrapper)
-    await wrapper
-      .findAll('.pill')
-      .filter((b) => b.text() === '이름 수정')[0]
-      ?.trigger('click')
+    await selectedListIcon(wrapper, 'rename').trigger('click')
     await flushPromises()
     await wrapper.get('#playlist-name').setValue('RENAMED')
     await wrapper.get('form.name-form').trigger('submit')
@@ -350,10 +351,7 @@ describe('B. 플레이리스트 UI', () => {
 
     // 다시 열고 취소
     await openListManage(wrapper)
-    await wrapper
-      .findAll('.pill')
-      .filter((b) => b.text() === '이름 수정')[0]
-      ?.trigger('click')
+    await selectedListIcon(wrapper, 'rename').trigger('click')
     await flushPromises()
     await wrapper.get('#playlist-name').setValue('IGNORED')
     await wrapper
@@ -376,10 +374,7 @@ describe('B. 플레이리스트 UI', () => {
     await openDrawer(wrapper, 1)
     await openListManage(wrapper)
 
-    await wrapper
-      .findAll('.pill')
-      .filter((b) => b.text() === '목록 삭제')[0]
-      ?.trigger('click')
+    await selectedListIcon(wrapper, 'delete').trigger('click')
     await nextTick()
 
     // 확인 단계에서는 아직 지워지지 않는다.
@@ -399,7 +394,7 @@ describe('B. 플레이리스트 UI', () => {
     await openDrawer(wrapper)
     await openListManage(wrapper)
 
-    const deleteButton = wrapper.findAll('.pill').filter((b) => b.text() === '목록 삭제')[0]
+    const deleteButton = selectedListIcon(wrapper, 'delete')
     expect(deleteButton?.attributes('disabled')).toBeDefined()
     expect(library.playlists).toHaveLength(1)
   })
@@ -468,8 +463,8 @@ describe('B. 플레이리스트 UI', () => {
     expect(wrapper.get('.now-playlist').attributes('data-view')).toBe('none')
     expect(wrapper.get('.now-playlist').text()).toContain('아직 플레이리스트가 없어요')
     expect(wrapper.get('.now-playlist').text()).toContain('보관함에서 목록 만들기')
-    // 드로어 자체의 빈 상태 문구는 그대로 둔다 (선택이 없을 때의 방어선).
-    expect(wrapper.get('.track-list').text()).toContain('플레이리스트를 선택하면')
+    // 드로어 자체의 빈 상태 문구는 그대로 둔다 (선택이 없을 때의 방어선) — 한 줄 (ADR 0044).
+    expect(wrapper.get('.track-list > .muted').text()).toBe('선택한 목록이 없어요.')
   })
 
   it('16. 트랙 목록을 순서·제목·영상 ID 와 함께 표시한다', async () => {
@@ -493,22 +488,16 @@ describe('B. 플레이리스트 UI', () => {
       'dQw4w9WgXcQ',
       'dQw4w9WgXcQ',
     ])
-    // M11-3: 행에는 ▶ 재생과 "관리" 만 드러나 있다. 관리를 펼치면 글자 이름이 있는 단추들 (M11-7C: 맨 위 · 맨 아래 추가).
-    expect(wrapper.findAll('.track .track-manage').map((n) => n.text())).toEqual(['관리', '관리'])
+    // ADR 0044: "관리" 메뉴 대신 행 오른쪽의 아이콘 — 이름 · 앨범아트 · 공유 · 삭제.
+    expect(wrapper.find('.track .track-manage').exists()).toBe(false)
     expect(wrapper.find('.track-controls').exists()).toBe(false)
     await openTrackManage(wrapper, 'Track t1')
     expect(
-      wrapper.findAll('.track-controls button').map((node) => node.attributes('aria-label')),
-    ).toEqual([
-      'Track t1 이름 변경',
-      'Track t1 앨범아트 설정',
-      'Track t1 공유',
-      'Track t1 맨 위로',
-      'Track t1 위로',
-      'Track t1 아래로',
-      'Track t1 맨 아래로',
-      'Track t1 삭제',
-    ])
+      wrapper
+        .findAll('.track')[0]
+        ?.findAll('.track-icons button')
+        .map((node) => node.attributes('aria-label')),
+    ).toEqual(['Track t1 이름 변경', 'Track t1 앨범아트 설정', 'Track t1 공유', 'Track t1 삭제'])
   })
 
   it('빈 플레이리스트를 안내한다', async () => {
@@ -517,7 +506,7 @@ describe('B. 플레이리스트 UI', () => {
     library.createPlaylist('EMPTY')
     await openDrawer(wrapper)
 
-    expect(wrapper.get('.track-list').text()).toContain('아직 등록된 영상이 없어요')
+    expect(wrapper.get('.track-list > .muted').text()).toBe('아직 곡이 없어요.')
   })
 })
 
@@ -798,10 +787,7 @@ describe('D. 플레이어 안정성', () => {
     await tileOpenButtons(wrapper)[0]?.trigger('click')
     await flushPromises()
     await openListManage(wrapper)
-    await wrapper
-      .findAll('.pill')
-      .filter((p) => p.text() === '목록 삭제')[0]
-      ?.trigger('click')
+    await selectedListIcon(wrapper, 'delete').trigger('click')
     await wrapper.get('[role="alertdialog"] .pill--strong').trigger('click')
     await nextTick()
 

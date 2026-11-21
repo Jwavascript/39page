@@ -129,14 +129,8 @@ function resumeDraft(): void {
       :song-title="currentTitle"
       @play="(id) => void browser.play(id)"
     />
-    <p v-else-if="currentVideoId === null" class="empty">
-      {{
-        readonlyMode
-          ? '재생 중인 곡이 없어요.'
-          : '곡을 재생하면 지금 이 순간을 저장하고, 이 곡의 순간을 여기서 볼 수 있어요.'
-      }}
-    </p>
-    <p v-else class="empty">이 곡에 저장한 순간이 아직 없어요.</p>
+    <p v-else-if="currentVideoId === null && readonlyMode" class="empty">재생 중인 곡이 없어요.</p>
+    <p v-else-if="currentVideoId !== null" class="empty">이 곡에 저장한 순간이 아직 없어요.</p>
 
     <!-- 재생 결과 (가려짐 · 플레이어 준비 전 등) -->
     <p

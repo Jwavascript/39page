@@ -37,8 +37,9 @@ const STATE_LABEL: Readonly<Record<PlayerState, string>> = {
  * 않았고, 이제 LP · 카세트가 음악 보관함을 연다는 것과 헤더의 입구(M11-7B 부터 "▤ 보관함")를 말하지 않았다 (U3).
  */
 const EMPTY_TITLE = '재생할 음악을 선택하세요'
-const EMPTY_SUBTITLE = '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.'
-const EMPTY_QUEUE_STATUS = '재생 목록을 만들고 YouTube 링크를 추가해 보세요.'
+/** 곡이 없을 때의 부제 · 상태 줄 — 설명 글을 두지 않는다 (ADR 0044). 제목만으로 충분하다. */
+const EMPTY_SUBTITLE = ''
+const EMPTY_QUEUE_STATUS = ''
 
 /** 반복 단추를 누를 때의 순서 — 끔 → 전체 → 한 곡 → 끔 (ADR 0038). */
 const NEXT_REPEAT: Readonly<Record<RepeatMode, RepeatMode>> = { off: 'all', all: 'one', one: 'off' }

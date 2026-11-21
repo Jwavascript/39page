@@ -456,7 +456,7 @@ type Wrapper = ReturnType<typeof mountApp>['wrapper']
  * 데크는 이제 플레이리스트 위젯을 펼친다. 드로어는 **타일 본문**으로 연다.
  */
 function editorTrigger(wrapper: Wrapper) {
-  return wrapper.get('.now-playlist .open-archive')
+  return wrapper.get('.deck-open')
 }
 
 async function seeded(trackCount = 2) {
@@ -554,13 +554,12 @@ describe('E. 외부 링크와 로딩 전 안내', () => {
     expect(mount.element.contains(placeholder.element)).toBe(false)
   })
 
-  it('트랙이 없을 때 승인된 안내 문구를 보여준다', async () => {
+  it('트랙이 없을 때 영상 자리 표시를 보여준다 — 설명 글 없이 "YOUTUBE / VIDEO" 만 (ADR 0044)', async () => {
     const context = await seeded()
 
     const placeholder = context.wrapper.get('.video-placeholder')
     expect(placeholder.classes()).not.toContain('is-hidden')
-    expect(placeholder.text()).toContain('YOUTUBE / VIDEO')
-    expect(placeholder.text()).toContain('16:9로 표시됩니다')
+    expect(placeholder.text()).toBe('YOUTUBE / VIDEO')
   })
 
   it('트랙을 고르면 안내를 숨긴다 — DOM 에서 지우지는 않는다', async () => {

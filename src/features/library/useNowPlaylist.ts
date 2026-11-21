@@ -91,8 +91,6 @@ export interface NowPlaylistModel {
    * 재생 중인 목록을 고르면 그 큐를 보인다. 큐가 없으면 "재생 대기" 로 보일 뿐이다.
    */
   pick(id: string): Promise<void>
-  /** 보관함 음악 탭에서 지금 보이는 목록을 편집한다. */
-  openInArchive(): Promise<void>
   /** 고른 목록의 링크 추가로 바로 간다 (빈 목록). */
   addLink(): void
   openArchive(): void
@@ -281,26 +279,6 @@ export function useNowPlaylist(): NowPlaylistModel {
     }
   }
 
-  async function openInArchive(): Promise<void> {
-    notice.value = ''
-    // 큐를 보고 있으면 그 출처 목록을 골라서 연다 — "이 목록 편집" 이 다른 목록을 열지 않게.
-    const sourceId = view.value === 'queue' ? queue.value?.source?.playlistId : undefined
-    if (
-      sourceId !== undefined &&
-      sourceId !== library.selectedPlaylistId &&
-      library.getPlaylist(sourceId) !== undefined
-    ) {
-      const result = await library.selectPlaylist(sourceId)
-      if (!result.ok) {
-        notice.value =
-          result.reason === 'conflict' ? LIBRARY_CONFLICT_MESSAGE : LIBRARY_BUSY_MESSAGE
-        return
-      }
-    }
-    // 목록이 이미 정해졌다 — 좁은 화면에서도 목록 단계를 건너뛰고 그 목록의 곡으로 간다.
-    archive?.open('music', { showDetail: true })
-  }
-
   function addLink(): void {
     archive?.open('music', { addLink: true })
   }
@@ -329,7 +307,6 @@ export function useNowPlaylist(): NowPlaylistModel {
     playStandbyFromStart,
     togglePicker,
     pick,
-    openInArchive,
     addLink,
     openArchive,
   }

@@ -107,7 +107,7 @@ describe('B. 키보드 경로', () => {
     await seedLibrary()
     await nextTick()
     // M7: 트랙 드로어는 플레이리스트 타일 본문으로 연다.
-    const trigger = wrapper.get('.now-playlist .open-archive')
+    const trigger = wrapper.get('.deck-open')
 
     await trigger.trigger('click')
     await flushPromises()
@@ -197,7 +197,11 @@ describe('C. 컨트롤 이름과 크기', () => {
     // M5 에서 24px → 29px, M11-3 에서 44px 로 올렸다 (실측: 실제 Chromium 390px).
     const list = readSource('src/features/library/TrackList.vue')
     expect(list).toMatch(/\.track-play \{[\s\S]*?width: 44px;[\s\S]*?min-height: 44px/)
-    expect(list).toMatch(/\.track-manage \{[\s\S]*?min-height: 44px/)
+    // ADR 0044: 행 아이콘(연필 · 공유 · 휴지통)은 40×40 — 행 높이 안에서 WCAG 2.5.8(24px)을 넉넉히 넘는다.
+    expect(list).toContain('class="icon-button track-rename"')
+    expect(readSource('src/styles/base.css')).toMatch(
+      /\.icon-button \{[\s\S]*?width: 40px;[\s\S]*?height: 40px;/,
+    )
     expect(list).toMatch(/\.pill \{[\s\S]*?min-height: 44px/)
 
     // M11-7B: NOW PLAYLIST 의 곡 줄 · 목록 줄 · 단추.

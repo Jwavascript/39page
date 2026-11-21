@@ -9,7 +9,7 @@
  *   그리지 않는다 — 1,000 · 5,000개에서 DOM 이 데이터 크기를 따라 자라지 않게 (M9-6).
  * - 머리에 그 영상이 든 **목록**을 적고 누르면 음악 탭의 그 목록 · 그 곡으로 간다 (§5-4). 없으면
  *   "목록에 없음" — Moment 는 라이브러리와 독립이라 그대로 남고 재생된다 (ADR 0019).
- * - 줄 하나하나는 `MomentRow` 다. 어느 줄이 관리 · 편집 · 삭제 확인을 펼쳤는지는 **한 번에 하나**이고
+ * - 줄 하나하나는 `MomentRow` 다. 어느 줄이 메모 수정 · 삭제 확인을 펼쳤는지는 **한 번에 하나**이고
  *   여기서 정한다. 펼침이 사라지면 포커스를 갈 곳으로 옮긴다.
  */
 import { nextTick, ref } from 'vue'
@@ -30,7 +30,7 @@ const props = defineProps<{
   idPrefix?: string
   /** 방금 저장한 순간 (M11-7C) — 그 줄을 강조하고, 칸 안에서 보이게 한다. */
   highlightId?: string | null
-  /** 관리 메뉴에 "링크로 공유" 를 보일지 (ADR 0040). 공유는 부모가 연다. */
+  /** 줄에 공유 아이콘을 보일지 (ADR 0040 · 0044). 공유는 부모가 연다. */
   canShare?: boolean
 }>()
 
@@ -62,19 +62,15 @@ function focusIn(selector: string): void {
   void nextTick(() => root.value?.querySelector<HTMLElement>(selector)?.focus())
 }
 
-function toggleManage(momentId: string): void {
-  active.value = modeOf(momentId) === 'manage' ? null : { id: momentId, mode: 'manage' }
-}
-
 function closeEdit(momentId: string): void {
   if (modeOf(momentId) === 'edit') active.value = null
-  // 폼이 사라진 자리에 포커스가 떨어지지 않게 그 줄의 "관리" 로 돌려준다.
-  focusIn(`[data-moment-manage="${momentId}"]`)
+  // 폼이 사라진 자리에 포커스가 떨어지지 않게 그 줄의 연필로 돌려준다.
+  focusIn(`[data-moment-edit="${momentId}"]`)
 }
 
-/** 취소하면 관리 메뉴로 돌아가 삭제 단추에 포커스 — 누르던 자리로 되돌린다. */
+/** 취소하면 그 줄의 휴지통으로 포커스 — 누르던 자리로 되돌린다. */
 function cancelRemove(momentId: string): void {
-  active.value = { id: momentId, mode: 'manage' }
+  if (modeOf(momentId) === 'confirm') active.value = null
   focusIn(`[data-moment-remove="${momentId}"]`)
 }
 
@@ -194,7 +190,6 @@ function metaText(section: ArchiveSection): string {
             :can-share="canShare === true"
             @play="(id) => emit('play', id)"
             @share="(id) => emit('share', id)"
-            @toggle-manage="toggleManage"
             @edit="(id) => (active = { id, mode: 'edit' })"
             @request-remove="(id) => (active = { id, mode: 'confirm' })"
             @cancel-remove="cancelRemove"
@@ -232,7 +227,6 @@ function metaText(section: ArchiveSection): string {
           :can-share="canShare === true"
           @play="(id) => emit('play', id)"
           @share="(id) => emit('share', id)"
-          @toggle-manage="toggleManage"
           @edit="(id) => (active = { id, mode: 'edit' })"
           @request-remove="(id) => (active = { id, mode: 'confirm' })"
           @cancel-remove="cancelRemove"

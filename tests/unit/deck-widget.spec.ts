@@ -115,6 +115,12 @@ function applyIntendedChanges(svg: string, prefix: string, rootClass: string): s
       /<text\s+x="183"[\s\S]*?KAWAII\s+SYNTH\s+MIX\s*<\/text>/,
       `<foreignObject class="cassette-label" x="183" y="173" width="430" height="32"><div xmlns="http://www.w3.org/1999/xhtml" :title="label" :aria-label="label">{{ label }}</div></foreignObject>`,
     )
+    // ADR 0044 — 머리의 "SYNTH / CASSETTE" 와 그 아래 줄을 뺐다 (사용자 요청). 나머지는 그대로다.
+    const head = out
+    out = out
+      .replace(/<text\s+x="70"\s+y="94"[^>]*>\s*SYNTH \/ CASSETTE\s*<\/text>/, '')
+      .replace(/<text\s+x="71"\s+y="118"[^>]*>[^<]*DIGITAL MIX TAPE[^<]*<\/text>/, '')
+    if (out.length >= head.length) throw new Error('레퍼런스에서 카세트 머리 글을 찾지 못했다')
   }
 
   return out

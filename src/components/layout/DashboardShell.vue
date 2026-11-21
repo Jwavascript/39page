@@ -614,7 +614,7 @@ const behindDialog = computed(() =>
         :hidden="archiveLayout !== 'strip'"
         @click="closeArchive"
       >
-        보관함 닫기 <span class="strip-close-mark" aria-hidden="true">×</span>
+        <span class="ui-icon ui-icon--close" aria-hidden="true"></span>
       </button>
       <WidgetHost :layout="layout" />
       <ArchivePanel
@@ -733,15 +733,15 @@ const behindDialog = computed(() =>
  * Moments 를 덮지 않는다. 워크스페이스 위 여백과 줄 간격을 반쯤 빌려 띠가 많이 내려가지 않게 한다.
  * 터치 목표 44px. 색은 다른 글자 단추(`.pill`)와 같은 토큰.
  */
+/* 아이콘만 (ADR 0044) — 이름은 aria-label · title. */
 .strip-close {
-  display: inline-flex;
-  min-width: 44px;
-  min-height: 44px;
-  align-items: center;
+  display: inline-grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
   justify-self: end;
-  gap: 8px;
   margin: calc(clamp(18px, 2.6vw, 36px) * -0.5) 0 calc(clamp(12px, 1.6vw, 20px) * -0.5);
-  padding: 6px 14px;
+  padding: 0;
   border: 1px solid var(--pill-border-color);
   border-radius: var(--radius-control);
   background: var(--pill-surface-color);
@@ -751,11 +751,6 @@ const behindDialog = computed(() =>
 
 .strip-close[hidden] {
   display: none;
-}
-
-.strip-close-mark {
-  font-size: 18px;
-  line-height: 1;
 }
 
 @media (hover: hover) {

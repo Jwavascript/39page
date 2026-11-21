@@ -131,11 +131,8 @@ async function shareTrack(s: Session, title: string): Promise<void> {
 
 async function shareList(s: Session, index: number): Promise<void> {
   await openArchive(s)
-  await s.wrapper.findAll('.archive-lists .list-manage')[index]?.trigger('click')
-  await s.wrapper
-    .findAll('.archive-lists .manage-panel button')
-    .find((button) => button.text() === '이 목록 공유')
-    ?.trigger('click')
+  // 목록 행의 공유 아이콘 (ADR 0044).
+  await s.wrapper.findAll('.archive-lists .list-share')[index]?.trigger('click')
   await settle()
 }
 
@@ -278,14 +275,12 @@ describe('A. 링크 만들기 — 공유 대화상자 (ADR 0043)', () => {
 })
 
 describe('B. 링크 만들기 — Moment 하나', () => {
-  it('Moments 관리의 "링크로 공유" → 그 순간과 메모의 링크', async () => {
+  it('Moment 줄의 공유 아이콘 → 그 순간과 메모의 링크', async () => {
     stubClipboard()
     const s = boot({ moments: [moment()] })
     await openArchive(s)
     await s.wrapper.get('#archive-tab-moments').trigger('click')
     await settle()
-    await s.wrapper.get('[data-moment-manage="m1"]').trigger('click')
-    await nextTick()
     await s.wrapper.get('[data-moment-share="m1"]').trigger('click')
     await settle()
 

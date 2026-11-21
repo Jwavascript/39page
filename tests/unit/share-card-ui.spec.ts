@@ -109,11 +109,8 @@ async function openShare(s: Session, which: 'track' | 'list'): Promise<void> {
     await openTrackManage(s.wrapper, 'Alpha (Official Video)')
     await s.wrapper.get('[aria-label="Alpha (Official Video) 공유"]').trigger('click')
   } else {
-    await s.wrapper.findAll('.archive-lists .list-manage')[0]?.trigger('click')
-    await s.wrapper
-      .findAll('.archive-lists .manage-panel button')
-      .find((button) => button.text() === '이 목록 공유')
-      ?.trigger('click')
+    // 목록 행의 공유 아이콘 (ADR 0044).
+    await s.wrapper.findAll('.archive-lists .list-share')[0]?.trigger('click')
   }
   await settle()
 }

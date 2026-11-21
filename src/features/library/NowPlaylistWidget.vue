@@ -97,7 +97,6 @@ onBeforeUnmount(() => {
         </p>
         <p v-else-if="model.view.value === 'standby'" class="widget-sub">
           {{ model.trackCount.value === 0 ? '비어 있음' : `${model.trackCount.value}곡` }}
-          <template v-if="model.trackCount.value > 0"> · 곡을 누르면 그 곡부터 재생</template>
           <template v-if="model.playingElsewhereName.value !== null">
             · 지금 재생: {{ model.playingElsewhereName.value }}
           </template>
@@ -121,9 +120,6 @@ onBeforeUnmount(() => {
 
     <!-- 목록 바꾸기 — 위젯 안에서 곡 줄 대신 펼친다. 재생 중이면 고른 목록을 바로 처음부터 재생한다. -->
     <div v-if="model.isPickerOpen.value" id="now-playlist-picker" class="picker">
-      <p class="picker-hint">
-        {{ model.pickPlays.value ? '고른 목록을 처음부터 바로 재생해요.' : '볼 목록을 고르세요.' }}
-      </p>
       <ul class="picker-rows">
         <li v-for="choice in model.choices.value" :key="choice.id">
           <button
@@ -152,15 +148,11 @@ onBeforeUnmount(() => {
         이 목록은 보관함에서 지워졌어요. 지금 큐는 끝까지 재생할 수 있어요.
       </p>
 
-      <p v-if="model.view.value === 'none'" class="empty">
-        아직 플레이리스트가 없어요.<br />보관함에서 목록을 만들고 YouTube 링크를 담아 보세요.
-      </p>
-      <p v-else-if="model.trackCount.value === 0" class="empty">
-        이 목록은 비어 있어요.<br />YouTube 링크를 추가하면 여기서 바로 고를 수 있어요.
-      </p>
+      <!-- 빈 목록은 부제("비어 있음")와 아래 ＋ 링크 추가가 말한다 — 같은 말을 두 번 하지 않는다 (ADR 0044). -->
+      <p v-if="model.view.value === 'none'" class="empty">아직 플레이리스트가 없어요.</p>
 
       <div
-        v-else
+        v-else-if="model.trackCount.value > 0"
         class="rows-shell"
         :class="{ 'has-more-above': moreAbove, 'has-more-below': moreBelow }"
       >
@@ -237,14 +229,6 @@ onBeforeUnmount(() => {
         @click="model.openArchive()"
       >
         보관함에서 목록 만들기
-      </button>
-      <button
-        v-if="model.view.value !== 'none'"
-        type="button"
-        class="pill open-archive"
-        @click="model.openInArchive()"
-      >
-        보관함에서 편집
       </button>
     </div>
   </section>
@@ -379,13 +363,6 @@ onBeforeUnmount(() => {
 }
 
 .empty,
-.picker-hint {
-  margin: 0;
-  color: var(--drawer-muted-text-color);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
 /* ---------- 곡 줄 ---------- */
 
 .rows-shell {
@@ -521,6 +498,11 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* 큐를 재생하는 동안에는 단추가 없다 — 빈 줄이 자리를 차지하지 않게. */
+.widget-foot:empty {
+  display: none;
 }
 
 /*

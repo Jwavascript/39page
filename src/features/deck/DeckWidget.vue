@@ -65,7 +65,6 @@ const monoCopy = THEMES['mono-vinyl'].deck
 const kawaiiCopy = THEMES['kawaii-synth-cassette'].deck
 
 /** 데크 아래 안내는 활성 테마의 문구다. */
-const copy = computed(() => theme.metadata.deck)
 const isOpen = computed<boolean>(
   () => (archive?.isOpen.value ?? false) && archive?.tab.value === 'music',
 )
@@ -94,9 +93,12 @@ const deckShare = useDeckShare()
  * LP · 카세트를 누르면 **음악 보관함**이 열린다 (M11-3 — 이전에는 플레이리스트 선반을 펼쳤다).
  * 데스크톱에서 눌러도 화면이 거의 바뀌지 않던 것(U2)과 세로 화면에서 선반이 재생 화면을 밀던 것(U19)을
  * 함께 푼다. 보관함은 플레이어를 덮지 않는다 (ADR 0027).
+ *
+ * ADR 0044 — NOW PLAYLIST 의 "보관함에서 편집" 을 없애고 이 입구 하나로 모았다. 그 단추처럼 좁은 보관함에서도
+ * 목록 단계를 건너뛰고 **고른 목록의 곡**으로 연다 (목록은 ‹ 로 돌아가 고른다).
  */
 function openLibrary(): void {
-  archive?.open('music')
+  archive?.open('music', { showDetail: true })
 }
 </script>
 
@@ -172,11 +174,11 @@ function openLibrary(): void {
       ></button>
     </div>
 
-    <!-- 데크 아래 안내(트리거가 실제로 동작하므로 표시한다)와 공유 아이콘 (ADR 0042). -->
-    <div v-if="archive !== null || deckShare.available" class="deck-foot">
-      <p v-if="archive !== null" class="deck-hint">
-        {{ copy.hintMark }} <strong>{{ copy.hintStrong }}</strong> {{ copy.hintRest }}
-      </p>
+    <!--
+      공유 아이콘 (ADR 0042). 데크 아래 안내 글("카세트를 누르면 …")은 없앴다 (ADR 0044) — 데크에 올리면 뜨는
+      OPEN 표시와 열기 단추의 이름이 같은 말을 한다.
+    -->
+    <div v-if="deckShare.available" class="deck-foot">
       <button
         v-if="deckShare.available"
         type="button"
@@ -413,20 +415,6 @@ function openLibrary(): void {
   gap: 10px;
 }
 
-/* 승인된 디자인의 `.deck-hint` 값을 따른다. */
-.deck-hint {
-  margin: 0;
-  color: var(--deck-hint-text-color);
-  font: 12px var(--font-mono);
-  letter-spacing: 0.01em;
-  text-align: center;
-}
-
-.deck-hint strong {
-  color: var(--deck-hint-strong-text-color);
-  font-weight: 500;
-}
-
 /* 공유 — 다른 둥근 단추와 같은 44px 원 (M11 U16 터치 목표). 색은 데크 안내 토큰을 따른다. */
 .deck-share {
   display: grid;
@@ -518,20 +506,15 @@ function openLibrary(): void {
     display: none;
   }
 
-  .deck-hint,
   .deck-notice {
     margin: 0;
     text-align: left;
   }
 
-  /* 띠에서는 안내 옆 오른쪽 끝 — 안내 글이 길어지면 줄을 바꾸고 아이콘은 제자리다. */
+  /* 띠에서는 오른쪽 끝. */
   .deck-foot {
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: 0;
-  }
-
-  .deck-hint {
-    line-height: 1.5;
   }
 }
 </style>

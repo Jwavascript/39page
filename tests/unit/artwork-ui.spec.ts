@@ -437,7 +437,6 @@ describe('M12-6A — 편집 세션과 미리보기', () => {
     await ctx.wrapper.get('[aria-label="공유 닫기"]').trigger('click')
     await flushPromises()
     expect(ctx.wrapper.find('.share-dialog').exists()).toBe(false)
-    await ctx.wrapper.get('[aria-label="OTHER 관리 — 이름 수정 · 삭제"]').trigger('click')
     await ctx.wrapper.get('[aria-label="OTHER 목록 공유"]').trigger('click')
     await flushPromises()
     expect(target()).toEqual({ kind: '플레이리스트', name: 'OTHER' })

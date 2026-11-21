@@ -317,9 +317,11 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
     await nav(wrapper, '보관함').trigger('click')
     await settle()
 
-    // 목록 칸: 고르기와 관리(이름 수정 · 삭제)만.
+    // 목록 칸: 고르기와 아이콘(이름 수정 · 공유 · 삭제)만 (ADR 0044).
     const row = wrapper.get('.archive-lists .list-row')
-    expect(row.findAll('button').map((button) => button.text())).toEqual(['ONE비어 있음', '관리'])
+    expect(
+      row.findAll('button').map((button) => button.attributes('aria-label') ?? button.text()),
+    ).toEqual(['ONE비어 있음', 'ONE 이름 수정', 'ONE 목록 공유', 'ONE 삭제'])
     expect(wrapper.find('.archive-lists .list-play').exists()).toBe(false)
     // 상세 칸: 전체 재생 · 링크 추가. 이름 수정 · 삭제는 없다.
     const actions = wrapper.findAll('.playlist-editor .head-actions button')
@@ -330,13 +332,15 @@ describe('C. 보관함 음악 탭 — 데드엔드가 없다', () => {
     expect(actions[0]?.attributes('disabled')).toBeDefined()
   })
 
-  it('편집 표면에 백업이 없다 — 데이터 대화상자로 옮겼다는 안내가 있다', async () => {
+  it('편집 표면에 백업이 없고, 바닥 안내 글도 없다 (ADR 0044)', async () => {
     const { wrapper } = mountApp()
     await nav(wrapper, '보관함').trigger('click')
     await settle()
 
     expect(archive(wrapper).find('.backup').exists()).toBe(false)
-    expect(archive(wrapper).get('.archive-foot').text()).toContain('⇩ 데이터')
+    // "Esc 또는 × 로 닫아요 …" · "다른 기기로 옮길 때는 …" — 헤더의 ⇩ 데이터 · 백업이 이름으로 말한다.
+    expect(archive(wrapper).find('.archive-foot').exists()).toBe(false)
+    expect(archive(wrapper).text()).not.toContain('Esc 또는')
   })
 })
 

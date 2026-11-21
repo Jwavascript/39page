@@ -61,7 +61,7 @@ function stored(): LibraryData {
 
 async function openDrawer(wrapper: Wrapper): Promise<void> {
   await nextTick()
-  await wrapper.findAll('.now-playlist .open-archive')[0]?.trigger('click')
+  await wrapper.findAll('.deck-open')[0]?.trigger('click')
   await nextTick()
 }
 

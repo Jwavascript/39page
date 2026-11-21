@@ -368,11 +368,9 @@ describe('D. 현재 트랙과 상태 표시', () => {
 
     expect(wrapper.get('.eyebrow').text()).toBe('NOW PLAYING · YOUTUBE')
     expect(wrapper.get('.now-title').text()).toBe('재생할 음악을 선택하세요')
-    // M11-3: 두 테마에 맞고 실제 입구(데크 · ♪ 음악)를 말하는 문구로 고쳤다 (U3).
-    expect(wrapper.get('.now-sub').text()).toBe(
-      '카세트 · LP 나 ▤ 보관함에서 곡을 고르거나 링크를 추가할 수 있어요.',
-    )
-    expect(wrapper.get('.status').text()).toBe('재생 목록을 만들고 YouTube 링크를 추가해 보세요.')
+    // ADR 0044: 제목 아래 설명 글(입구 안내 · 링크 추가 권유)을 두지 않는다 — 제목만으로 충분하다.
+    expect(wrapper.get('.now-sub').text()).toBe('')
+    expect(wrapper.get('.status').text()).toBe('')
   })
 
   it('제목과 큐 위치와 상태를 보여준다', async () => {
@@ -440,10 +438,11 @@ describe('D. 현재 트랙과 상태 표시', () => {
     expect(wrapper.get('.status').classes()).not.toContain('is-warning')
   })
 
-  it('YouTube 컨트롤 안내를 유지한다', async () => {
+  it('카드 아래 "YouTube 공식 영상·컨트롤" 설명 글은 없다 (ADR 0044)', async () => {
     const { wrapper } = await setup()
 
-    expect(wrapper.get('.mute-note').text()).toBe('YouTube 공식 영상·컨트롤은 그대로 표시됩니다.')
+    expect(wrapper.find('.mute-note').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('그대로 표시됩니다')
   })
 })
 

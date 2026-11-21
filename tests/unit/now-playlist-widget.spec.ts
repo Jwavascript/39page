@@ -173,7 +173,9 @@ describe('A. 큐가 없을 때 — 고른 목록을 "재생 대기" 로', () => 
   it('빈 목록은 비어 있다고 말하고 링크 추가로 잇는다 — 누르면 보관함의 링크 입력이 열린다', async () => {
     const s = boot(DEFAULT_LISTS, 'empty')
 
-    expect(widget(s).text()).toContain('이 목록은 비어 있어요')
+    // 부제 한 곳에서만 말한다 — 같은 말을 두 번 하지 않는다 (ADR 0044).
+    expect(widget(s).get('.widget-sub').text()).toContain('비어 있음')
+    expect(widget(s).find('.empty').exists()).toBe(false)
     expect(widget(s).find('.play-all').exists()).toBe(false)
 
     await widget(s).get('.add-link').trigger('click')
@@ -269,7 +271,8 @@ describe('C. 목록 바꾸기 — 재생 중이면 고른 목록을 바로 재�
     await toggle.trigger('click')
 
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(widget(s).get('.picker-hint').text()).toBe('고른 목록을 처음부터 바로 재생해요.')
+    // 고르는 칸 위의 설명 글은 없다 (ADR 0044).
+    expect(widget(s).find('.picker-hint').exists()).toBe(false)
     const rows = widget(s).findAll('.picker-row')
     expect(rows.map((row) => row.get('.picker-name').text())).toEqual(['ONE', 'TWO', 'EMPTY'])
     expect(rows[0]?.text()).toContain('재생 중인 목록')
@@ -311,7 +314,7 @@ describe('C. 목록 바꾸기 — 재생 중이면 고른 목록을 바로 재�
 
     expect(widget(s).attributes('data-view')).toBe('standby')
     expect(widget(s).get('.list-name').text()).toBe('EMPTY')
-    expect(widget(s).text()).toContain('이 목록은 비어 있어요')
+    expect(widget(s).get('.widget-sub').text()).toContain('비어 있음')
     expect(widget(s).get('.widget-sub').text()).toContain('지금 재생: ONE')
     expect(widget(s).find('.source-notice').exists()).toBe(false)
     expect(s.playback.queueSource?.playlistId).toBe('one')
@@ -362,7 +365,7 @@ describe('C. 목록 바꾸기 — 재생 중이면 고른 목록을 바로 재�
     const s = boot()
 
     await widget(s).get('.switch-list').trigger('click')
-    expect(widget(s).get('.picker-hint').text()).toBe('볼 목록을 고르세요.')
+    expect(widget(s).find('.picker-hint').exists()).toBe(false)
     await widget(s).findAll('.picker-row')[1]?.trigger('click')
     await settle()
 
@@ -478,19 +481,18 @@ describe('D. 큐는 출처 목록을 따른다 — 안내 없이, 지금 곡은 
 })
 
 describe('E. 보관함으로 — 편집은 보관함의 일', () => {
-  it('"보관함에서 편집" 은 큐의 출처 목록을 골라 음악 탭을 연다', async () => {
+  it('"보관함에서 편집" 단추는 없다 — 보관함은 카세트 · LP(데크)로 연다 (ADR 0044)', async () => {
     const s = boot()
     await startPlaying(s, 0)
-    await s.library.selectPlaylist('two')
     await settle()
 
-    await widget(s).get('.open-archive').trigger('click')
-    await settle()
+    expect(widget(s).find('.open-archive').exists()).toBe(false)
+    expect(widget(s).text()).not.toContain('보관함에서 편집')
 
+    await s.wrapper.get('.deck-open').trigger('click')
+    await settle()
     expect(s.wrapper.get('#archive-panel').attributes('hidden')).toBeUndefined()
     expect(s.wrapper.get('#archive-tab-music').attributes('aria-selected')).toBe('true')
-    expect(s.library.selectedPlaylistId).toBe('one')
-    expect(s.wrapper.get('#playlist-editor-title').text()).toBe('ONE')
     // 재생은 그대로다.
     expect(s.playback.currentTrack?.id).toBe('t1')
   })

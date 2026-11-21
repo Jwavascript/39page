@@ -15,6 +15,8 @@
  *    제거했다. 동작하지 않는 버튼을 만들지 않기 위해서다. 금속 하드웨어는
  *    데크 본체 디자인의 일부이므로 외형만 남긴다.
  * 4. M12-6: 기존 레이블 영역 안에 큐 출처 이름과 말줄임을 표시한다 (ADR 0035). 참고 HTML은 수정하지 않는다.
+ * 5. ADR 0044: 머리의 "SYNTH / CASSETTE" 와 그 아래 "MLF • DIGITAL MIX TAPE / 02" 글을 뺐다 (사용자 요청).
+ *    다른 좌표 · 색은 그대로다. 참고 HTML은 수정하지 않는다.
  *
  * 회전 애니메이션은 M4 다. 지금은 정지 상태이며, 재생 중인 것처럼 보이지 않는다.
  */
@@ -70,10 +72,6 @@ withDefaults(defineProps<{ label?: string }>(), { label: 'KAWAII SYNTH MIX' })
     <path d="M46 52 H854" stroke="#f0fff9" stroke-opacity=".62" stroke-width="2" />
     <path d="M45 502 H855" stroke="#145467" stroke-opacity=".34" stroke-width="2" />
     <g font-family="ui-monospace,monospace" fill="#154b60">
-      <text x="70" y="94" font-size="25" font-weight="bold" letter-spacing="3">
-        SYNTH / CASSETTE
-      </text>
-      <text x="71" y="118" font-size="12" letter-spacing="2">MLF • DIGITAL MIX TAPE / 02</text>
       <text x="727" y="93" font-size="15" font-weight="bold">✦ 90s</text>
     </g>
     <!-- plastic inset -->

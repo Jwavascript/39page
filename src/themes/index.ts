@@ -27,10 +27,6 @@ export interface DeckCopy {
   openLabel: string
   /** 버튼 위에 뜨는 툴팁. */
   openHint: string
-  /** 데크 아래 안내 문구. `hintStrong` 만 강조한다. */
-  hintMark: string
-  hintStrong: string
-  hintRest: string
 }
 
 export interface ThemeMetadata {
@@ -67,9 +63,6 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
       // M11-3: 이 트리거가 여는 것이 플레이리스트 선반에서 **음악 보관함**으로 바뀌었다.
       openLabel: 'LP를 눌러 음악 보관함 열기',
       openHint: 'OPEN LIBRARY ↗',
-      hintMark: '◉',
-      hintStrong: 'LP를 누르면',
-      hintRest: '음악 보관함이 열려요',
     },
   },
   'kawaii-synth-cassette': {
@@ -83,9 +76,6 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     deck: {
       openLabel: '카세트를 눌러 음악 보관함 열기',
       openHint: '▶ OPEN MIXTAPES',
-      hintMark: '✧',
-      hintStrong: '카세트를 누르면',
-      hintRest: '믹스테이프 보관함이 열려요',
     },
   },
 }

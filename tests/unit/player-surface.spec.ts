@@ -290,7 +290,7 @@ describe('B. DOM 인스턴스 동일성', () => {
     const host = wrapper.get('.player-mount').element
 
     // 컨트롤이 영상 위를 덮으면 YouTube 개발자 정책 III.I.6 에 걸린다.
-    for (const selector of ['.status', '.action-row', '.eyebrow', '.now-title', '.mute-note']) {
+    for (const selector of ['.status', '.action-row', '.eyebrow', '.now-title']) {
       const element = wrapper.get(selector).element
       expect(host.contains(element)).toBe(false)
       expect(fake.hostNode?.contains(element)).toBe(false)

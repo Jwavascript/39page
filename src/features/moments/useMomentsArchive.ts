@@ -18,6 +18,12 @@
  *   와도 되돌리지 않는다.
  * - "이 곡" 은 **묶음이 아니라 한 목록**이다 — 곡 제목 · 목록 이름을 되풀이하지 않는다(그 곡을 듣고 있다).
  *   전체 · 최근 · 한 곡 보기는 곡을 알아봐야 하므로 제목 · 목록을 그대로 둔다.
+ *
+ * ADR 0044 — Moments 탭이 음악 탭처럼 **두 칸**이 됐다. 왼쪽 칸은 보기(이 곡 · 전체 · 최근)와 곡 목록(`songs`),
+ * 오른쪽 칸은 고른 것의 순간이다.
+ * - 한 곡 보기도 이 곡 보기처럼 **한 목록**이다 — 곡 이름 · 목록은 오른쪽 칸의 머리(`songHead`)에 한 번 적는다.
+ * - 검색을 시작하면 이 곡 · 한 곡 보기에서 **전체**로 간다 — 맞는 순간이 다른 곡에 있어도 보이게. 왼쪽 곡 목록도
+ *   맞는 곡만 남는다. 거기서 곡을 고르면 검색어를 둔 채 그 곡의 맞는 순간만 본다.
  */
 import {
   computed,
@@ -34,6 +40,7 @@ import { ARCHIVE } from '@/features/archive/archiveController'
 import type { Moment } from '@/shared/types'
 import { useLibraryStore } from '@/stores/library'
 import { useMomentsStore } from '@/stores/moments'
+import { usePlaybackStore } from '@/stores/playback'
 
 import {
   buildSearchIndex,
@@ -54,6 +61,17 @@ import { useMomentsBrowser, type MomentsBrowserModel } from './useMomentsBrowser
 
 /** 입력이 멈춘 뒤 이만큼 기다렸다가 검색한다 (§5-2). */
 export const SEARCH_DEBOUNCE_MS = 150
+
+/** 왼쪽 칸의 곡 한 줄 (ADR 0044). */
+export interface ArchiveSongItem {
+  videoId: string
+  title: string
+  /** 그 곡의 Moment 수 (검색과 무관). */
+  total: number
+  /** 검색에 맞는 수. 검색하지 않으면 `total`. */
+  matched: number
+  isCurrent: boolean
+}
 
 /** 묶음 머리가 그릴 것. */
 export interface ArchiveGroupHead {
@@ -103,6 +121,10 @@ export interface MomentsArchiveModel {
   terms: ComputedRef<string[]>
   searching: ComputedRef<boolean>
   sections: ComputedRef<ArchiveSection[]>
+  /** 왼쪽 칸의 곡들 — 전체 보기와 같은 순서. 검색 중에는 맞는 곡만. */
+  songs: ComputedRef<ArchiveSongItem[]>
+  /** 이 곡 · 한 곡 보기에서 오른쪽 칸의 머리. 전체 · 최근 보기에서는 `null`. */
+  songHead: ComputedRef<ArchiveGroupHead | null>
   /** 지금 보기 · 검색에 맞는 Moment 수 / 곡 수 (그리지 않은 것 포함). */
   matchedMoments: ComputedRef<number>
   matchedSongs: ComputedRef<number>
@@ -114,8 +136,11 @@ export interface MomentsArchiveModel {
   truncated: ComputedRef<boolean>
 
   setView(view: Exclude<MomentsArchiveView, 'video'>): void
-  /** 한 곡의 Moments 만 본다 (음악 탭의 곡 행 배지 · 대시보드 "이 곡 모두 보기"). 검색어는 지운다. */
-  focusVideo(videoId: string): void
+  /**
+   * 한 곡의 Moments 만 본다 (음악 탭의 곡 행 배지 · 대시보드 "이 곡 모두 보기" · 왼쪽 칸의 곡). 검색어는 지운다 —
+   * 왼쪽 칸에서 고를 때는 `keepQuery` 로 남긴다.
+   */
+  focusVideo(videoId: string, options?: { keepQuery?: boolean }): void
   /** 입력을 기다리지 않고 지금 검색한다 (Enter · 지우기). */
   applyQueryNow(): void
   clearQuery(): void
@@ -139,6 +164,7 @@ export function useMomentsArchive(): MomentsArchiveModel {
   const browser = useMomentsBrowser()
   const moments = useMomentsStore()
   const library = useLibraryStore()
+  const playback = usePlaybackStore()
   const archive = inject(ARCHIVE, null)
 
   /** 사용자가 고른 보기. `null` 이면 자동. 세션(이 페이지) 동안 탭을 오가도 남는다. */
@@ -206,6 +232,14 @@ export function useMomentsArchive(): MomentsArchiveModel {
   const terms = computed<string[]>(() => searchTerms(appliedQuery.value))
   const searching = computed<boolean>(() => terms.value.length > 0)
 
+  /** 검색을 시작하면 한 곡에서 전체로 (ADR 0044) — 맞는 순간이 다른 곡에 있어도 보이게. */
+  watch(searching, (now, before) => {
+    if (now && !before && (view.value === 'current' || view.value === 'video')) {
+      focusVideoId.value = null
+      chosenView.value = 'all'
+    }
+  })
+
   /* ── 파생 데이터 (데이터가 바뀔 때만 다시 만든다) ─────────────────── */
   const index = computed(() => buildSearchIndex(browser.allGroups.value))
   const matchedIds = computed(() => searchMoments(index.value, terms.value))
@@ -238,10 +272,13 @@ export function useMomentsArchive(): MomentsArchiveModel {
     rowLimits.clear()
   })
 
-  /** 이 곡 보기의 (검색에 맞는) 순간 — 시점 순. */
+  /** 한 곡을 보는가 — 이 곡 · 한 곡 보기는 묶음 머리 없이 한 목록이다 (ADR 0044). */
+  const singleSong = computed<boolean>(() => view.value === 'current' || view.value === 'video')
+
+  /** 이 곡 · 한 곡 보기의 (검색에 맞는) 순간 — 시점 순. */
   const currentRows = computed(() => {
     const entry = visibleGroups.value[0]
-    return view.value === 'current' && entry !== undefined ? entry.moments : []
+    return singleSong.value && entry !== undefined ? entry.moments : []
   })
   watch(appliedQuery, () => searchOverrides.clear())
 
@@ -300,15 +337,16 @@ export function useMomentsArchive(): MomentsArchiveModel {
         : [{ key: 'recent', head: null, showSongTitle: true, rows, hiddenRows: 0 }]
     }
 
-    // 이 곡 — 묶음 머리 없이 한 목록, 줄에 곡 제목을 적지 않는다. 제목은 단추 이름(aria)에만 쓴다.
-    if (view.value === 'current') {
+    // 이 곡 · 한 곡 — 묶음 머리 없이 한 목록, 줄에 곡 제목을 적지 않는다. 제목은 오른쪽 칸의 머리와
+    // 단추 이름(aria)에 쓴다.
+    if (singleSong.value) {
       const entry = visibleGroups.value[0]
       if (entry === undefined) return []
       const limit = searching.value ? SEARCH_ROW_LIMIT : currentLimit.value
       const rows = entry.moments
         .slice(0, limit)
         .map((moment) => ({ moment, songTitle: entry.group.title }))
-      return [{ key: 'current', head: null, showSongTitle: false, rows, hiddenRows: 0 }]
+      return [{ key: view.value, head: null, showSongTitle: false, rows, hiddenRows: 0 }]
     }
 
     const groups = visibleGroups.value
@@ -366,7 +404,7 @@ export function useMomentsArchive(): MomentsArchiveModel {
   const remaining = computed<number>(() => {
     if (searching.value) return 0
     if (view.value === 'recent') return Math.max(0, recentRows.value.length - recentLimit.value)
-    if (view.value === 'current') return Math.max(0, currentRows.value.length - currentLimit.value)
+    if (singleSong.value) return Math.max(0, currentRows.value.length - currentLimit.value)
     return Math.max(0, visibleGroups.value.length - groupLimit.value)
   })
   const truncated = computed<boolean>(() => {
@@ -383,14 +421,59 @@ export function useMomentsArchive(): MomentsArchiveModel {
     return shownOrFolded < matchedMoments.value
   })
 
+  const songs = computed<ArchiveSongItem[]>(() => {
+    const matched = matchedIds.value
+    const current = browser.currentVideoId.value
+    const out: ArchiveSongItem[] = []
+    for (const group of browser.allGroups.value) {
+      const hits =
+        matched === null
+          ? group.moments.length
+          : group.moments.reduce((sum, moment) => sum + (matched.has(moment.id) ? 1 : 0), 0)
+      if (hits === 0) continue
+      out.push({
+        videoId: group.videoId,
+        title: group.title,
+        total: group.moments.length,
+        matched: hits,
+        isCurrent: group.videoId === current,
+      })
+    }
+    return out
+  })
+
+  const songHead = computed<ArchiveGroupHead | null>(() => {
+    const videoId =
+      view.value === 'current'
+        ? browser.currentVideoId.value
+        : view.value === 'video'
+          ? focusVideoId.value
+          : null
+    if (videoId === null) return null
+    const group = browser.allGroups.value.find((item) => item.videoId === videoId)
+    const entry = visibleGroups.value.find((item) => item.group.videoId === videoId)
+    const isCurrent = videoId === browser.currentVideoId.value
+    return {
+      videoId,
+      // 아직 순간이 없는 지금 곡은 묶음이 없다 — 재생 중인 곡의 이름을 쓴다.
+      title: group?.title ?? (isCurrent ? (playback.currentTrack?.title ?? videoId) : videoId),
+      titleSource: group?.titleSource ?? 'library',
+      total: group?.moments.length ?? 0,
+      matched: entry?.moments.length ?? 0,
+      isCurrent,
+      playlists: playlistIndex.value.get(videoId) ?? [],
+      expanded: true,
+    }
+  })
+
   function setView(next: Exclude<MomentsArchiveView, 'video'>): void {
     focusVideoId.value = null
     chosenView.value = next
   }
 
   /** 지금 곡이면 "이 곡" 보기(관리 화면)로, 다른 곡이면 그 곡만 보는 보기로. 검색어는 지운다. */
-  function focusVideo(videoId: string): void {
-    clearQuery()
+  function focusVideo(videoId: string, options: { keepQuery?: boolean } = {}): void {
+    if (options.keepQuery !== true) clearQuery()
     if (videoId === browser.currentVideoId.value) {
       focusVideoId.value = null
       chosenView.value = 'current'
@@ -409,7 +492,7 @@ export function useMomentsArchive(): MomentsArchiveModel {
     const before = remaining.value
     if (before === 0) return 0
     if (view.value === 'recent') recentLimit.value += RECENT_PAGE_SIZE
-    else if (view.value === 'current') currentLimit.value += GROUP_ROW_PAGE_SIZE
+    else if (singleSong.value) currentLimit.value += GROUP_ROW_PAGE_SIZE
     else groupLimit.value += GROUP_PAGE_SIZE
     return before - remaining.value
   }
@@ -446,6 +529,8 @@ export function useMomentsArchive(): MomentsArchiveModel {
     terms,
     searching,
     sections,
+    songs,
+    songHead,
     matchedMoments,
     matchedSongs,
     renderedRows,

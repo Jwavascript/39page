@@ -32,16 +32,11 @@ function openSearch(): void {
         autocomplete="off"
         :maxlength="YOUTUBE_SEARCH_MAX_LENGTH"
         placeholder="곡 이름 · 가수"
-        aria-describedby="yt-search-hint"
       />
       <button type="submit" class="pill search-go" title="새 탭에서 YouTube 검색 결과를 열어요">
         YouTube에서 검색 <span aria-hidden="true">↗</span><span class="sr-only">(새 탭)</span>
       </button>
     </div>
-    <p id="yt-search-hint" class="hint">
-      검색 결과는 새 탭에서 열려요. 영상 화면에서 39page 확장 프로그램으로 바로 담거나, 주소를
-      복사해 위 링크 칸에 붙여 넣으세요.
-    </p>
   </form>
 </template>
 
@@ -94,12 +89,6 @@ function openSearch(): void {
   .pill:hover {
     background: var(--pill-surface-hover-color);
   }
-}
-
-.hint {
-  margin: 7px 0 0;
-  color: var(--drawer-sub-text-color);
-  font: 11px/1.6 var(--font-mono);
 }
 
 .sr-only {

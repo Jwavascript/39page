@@ -88,7 +88,7 @@ function boot() {
 type Session = ReturnType<typeof boot>
 
 async function openDrawer(session: Session) {
-  await session.wrapper.get('.now-playlist .open-archive').trigger('click')
+  await session.wrapper.get('.deck-open').trigger('click')
   await nextTick()
 }
 
