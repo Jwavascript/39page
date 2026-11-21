@@ -1,0 +1,69 @@
+{
+  "observedAt": "2026-11-21T16:01:59.591Z",
+  "commit": "e80bd4aad716403b41560b8c58500f085f8f4f8a",
+  "runs": [
+    {
+      "name": "smoke",
+      "source": "docs/development/release-gate-results/check/smoke.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T15:55:58.320Z",
+      "exitCode": 0,
+      "checks": 7,
+      "passed": 7
+    },
+    {
+      "name": "ux",
+      "source": "docs/development/m12-6-results/check/ux.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T15:56:49.644Z",
+      "exitCode": 0,
+      "checks": 47,
+      "passed": 47
+    },
+    {
+      "name": "queue",
+      "source": "docs/development/playback-ux-results/check/queue.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T15:58:07.445Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "search",
+      "source": "docs/development/playback-ux-results/check/search.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T16:00:18.823Z",
+      "exitCode": 0,
+      "checks": 5,
+      "passed": 5
+    },
+    {
+      "name": "share-dialog",
+      "source": "docs/development/share-dialog-results/check/share-dialog.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T16:00:27.268Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "quiet-ui",
+      "source": "docs/development/quiet-ui-results/check/quiet-ui.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T16:00:47.578Z",
+      "exitCode": 0,
+      "checks": 11,
+      "passed": 11
+    },
+    {
+      "name": "custom-theme",
+      "source": "docs/development/custom-theme-results/check/custom-theme.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-21T16:01:02.843Z",
+      "exitCode": 0,
+      "checks": 11,
+      "passed": 11
+    }
+  ]
+}
