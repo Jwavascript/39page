@@ -1,0 +1,225 @@
+{
+  "observedAt": "2026-11-21T13:55:51.307Z",
+  "commit": "e934828122502a0c03e40bb0a198a20997db9683",
+  "dist": "node_modules/.tmp/dist-prod-1121",
+  "bridgeExtensionIds": null,
+  "results": [
+    {
+      "file": "assets/bridge-Dnnqzk2z.js",
+      "url": "https://39page.com/assets/bridge-Dnnqzk2z.js",
+      "finalUrl": "https://39page.com/assets/bridge-Dnnqzk2z.js",
+      "status": 200,
+      "bytes": 9780,
+      "localSHA": "f857a45ad849216becf6fd961d14742a36ef1cbd5e0ca4e5d162bbc824f50fe8",
+      "liveSHA": "f857a45ad849216becf6fd961d14742a36ef1cbd5e0ca4e5d162bbc824f50fe8",
+      "pass": true,
+      "headers": {
+        "content-type": "text/javascript",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "assets/main-CehV_EXY.css",
+      "url": "https://39page.com/assets/main-CehV_EXY.css",
+      "finalUrl": "https://39page.com/assets/main-CehV_EXY.css",
+      "status": 200,
+      "bytes": 99363,
+      "localSHA": "40485aa9c20ba86859008ac24e3582061cc5b34f4334f4c3f905fd394793e1b8",
+      "liveSHA": "40485aa9c20ba86859008ac24e3582061cc5b34f4334f4c3f905fd394793e1b8",
+      "pass": true,
+      "headers": {
+        "content-type": "text/css",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "assets/main-DfhXR8Q4.js",
+      "url": "https://39page.com/assets/main-DfhXR8Q4.js",
+      "finalUrl": "https://39page.com/assets/main-DfhXR8Q4.js",
+      "status": 200,
+      "bytes": 301908,
+      "localSHA": "972c1b23d7fa1029eefd590e362dbeb56f50d88285ec7f077779570ec806b949",
+      "liveSHA": "972c1b23d7fa1029eefd590e362dbeb56f50d88285ec7f077779570ec806b949",
+      "pass": true,
+      "headers": {
+        "content-type": "text/javascript",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "assets/moments-yfTFyTz4.js",
+      "url": "https://39page.com/assets/moments-yfTFyTz4.js",
+      "finalUrl": "https://39page.com/assets/moments-yfTFyTz4.js",
+      "status": 200,
+      "bytes": 89831,
+      "localSHA": "03a1c49c76da282c2331ae185989bb42df677520a1af5ca0c5ec140ce6fd06f6",
+      "liveSHA": "03a1c49c76da282c2331ae185989bb42df677520a1af5ca0c5ec140ce6fd06f6",
+      "pass": true,
+      "headers": {
+        "content-type": "text/javascript",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "assets/shareCardCanvas-BkMSsxp9.js",
+      "url": "https://39page.com/assets/shareCardCanvas-BkMSsxp9.js",
+      "finalUrl": "https://39page.com/assets/shareCardCanvas-BkMSsxp9.js",
+      "status": 200,
+      "bytes": 13048,
+      "localSHA": "badfe930de510f97ab3fad0002a6d7f84388b16de9d6fa76780f00533a784dd1",
+      "liveSHA": "badfe930de510f97ab3fad0002a6d7f84388b16de9d6fa76780f00533a784dd1",
+      "pass": true,
+      "headers": {
+        "content-type": "text/javascript",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "assets/ShareLinkDialog-C_pcsWrH.js",
+      "url": "https://39page.com/assets/ShareLinkDialog-C_pcsWrH.js",
+      "finalUrl": "https://39page.com/assets/ShareLinkDialog-C_pcsWrH.js",
+      "status": 200,
+      "bytes": 11755,
+      "localSHA": "d9c4ff8bb47125f803c83bf4e69e1f007be2af2923905e54a4ad23be07806e5c",
+      "liveSHA": "d9c4ff8bb47125f803c83bf4e69e1f007be2af2923905e54a4ad23be07806e5c",
+      "pass": true,
+      "headers": {
+        "content-type": "text/javascript",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "assets/ShareLinkDialog-LIdDyxwa.css",
+      "url": "https://39page.com/assets/ShareLinkDialog-LIdDyxwa.css",
+      "finalUrl": "https://39page.com/assets/ShareLinkDialog-LIdDyxwa.css",
+      "status": 200,
+      "bytes": 3836,
+      "localSHA": "a6d36e42a1cfc3d23c3ef1a84f562fa3a44899be7d2abcafa8593dcc0f0e5f8a",
+      "liveSHA": "a6d36e42a1cfc3d23c3ef1a84f562fa3a44899be7d2abcafa8593dcc0f0e5f8a",
+      "pass": true,
+      "headers": {
+        "content-type": "text/css",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "bridge.html",
+      "url": "https://39page.com/bridge.html",
+      "finalUrl": "https://39page.com/bridge",
+      "status": 200,
+      "bytes": 583,
+      "localSHA": "3349c57e5004942594958d20405c3b167006e56bc4c2c3773ec18658401ac659",
+      "liveSHA": "3349c57e5004942594958d20405c3b167006e56bc4c2c3773ec18658401ac659",
+      "pass": true,
+      "headers": {
+        "content-type": "text/html",
+        "content-security-policy": "frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "favicon.ico",
+      "url": "https://39page.com/favicon.ico",
+      "finalUrl": "https://39page.com/favicon.ico",
+      "status": 200,
+      "bytes": 4286,
+      "localSHA": "db74ab0b78338c1f778f8398c45f4103c99aea0e845a3118a7750b4eeafd3445",
+      "liveSHA": "db74ab0b78338c1f778f8398c45f4103c99aea0e845a3118a7750b4eeafd3445",
+      "pass": true,
+      "headers": {
+        "content-type": "image/vnd.microsoft.icon",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "index.html",
+      "url": "https://39page.com/index.html",
+      "finalUrl": "https://39page.com/",
+      "status": 200,
+      "bytes": 2335,
+      "localSHA": "f788eecd2e00789604c1800d7a4533266f993d96a68576606b6f1711c7da7d3f",
+      "liveSHA": "f788eecd2e00789604c1800d7a4533266f993d96a68576606b6f1711c7da7d3f",
+      "pass": true,
+      "headers": {
+        "content-type": "text/html",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "file": "privacy.html",
+      "url": "https://39page.com/privacy.html",
+      "finalUrl": "https://39page.com/privacy",
+      "status": 200,
+      "bytes": 9460,
+      "localSHA": "21f6907496728dee1ec37f072122696872fbe960f1e868290f1814851f92b8a8",
+      "liveSHA": "21f6907496728dee1ec37f072122696872fbe960f1e868290f1814851f92b8a8",
+      "pass": true,
+      "headers": {
+        "content-type": "text/html",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "route": "/",
+      "finalUrl": "https://39page.com/",
+      "status": 200,
+      "liveSHA": "f788eecd2e00789604c1800d7a4533266f993d96a68576606b6f1711c7da7d3f",
+      "localSHA": "f788eecd2e00789604c1800d7a4533266f993d96a68576606b6f1711c7da7d3f",
+      "pass": true,
+      "headers": {
+        "content-type": "text/html",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "route": "/bridge",
+      "finalUrl": "https://39page.com/bridge",
+      "status": 200,
+      "expected": {
+        "content-security-policy": "frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer"
+      },
+      "pass": true,
+      "headers": {
+        "content-type": "text/html",
+        "content-security-policy": "frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "route": "/bridge.html",
+      "finalUrl": "https://39page.com/bridge",
+      "status": 200,
+      "expected": {
+        "content-security-policy": "frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer"
+      },
+      "pass": true,
+      "headers": {
+        "content-type": "text/html",
+        "content-security-policy": "frame-ancestors chrome-extension://aaihanclknbboaehbjpmlcefkbgdeima",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+        "server": "cloudflare"
+      }
+    },
+    {
+      "url": "http://39page.com/",
+      "status": 301,
+      "location": "https://39page.com/",
+      "pass": true
+    },
+    {
+      "url": "https://www.39page.com/",
+      "status": 301,
+      "location": "https://39page.com/",
+      "pass": true
+    }
+  ]
+}

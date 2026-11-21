@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-11-21T14:10:00+00:00",
+  "releaseSHA": "e934828122502a0c03e40bb0a198a20997db9683",
+  "previousSHA": "0fc990f2b56a440cb87b6f367eeca16e6da6ef7f",
+  "branch": "feat/quiet-ui",
+  "pushedAt": "2026-11-21T13:45:12Z",
+  "forcePush": false,
+  "workerBuildIdFromCI": "363dc7e6-ba4e-4c4b-9908-89d2e5cfe8c3",
+  "workerVersionFromCI": "22d39930-4feb-4dbd-acb6-d9601f35f998",
+  "ciCompletedAt": "2026-11-21T13:47:06Z",
+  "previousSuccessfulWorkerVersionFromCI": "234ec425-4c70-45ab-bcc3-a958ed69989b",
+  "gitRollbackRef": "rollback/quiet-ui",
+  "rollbackExecuted": false,
+  "httpChecks": 16,
+  "httpPassed": 16,
+  "liveChecks": 100,
+  "livePassed": 100,
+  "liveFirstRun": "all suites passed on the first run",
+  "localChecks": {
+    "webTests": 2227,
+    "webTestFiles": 72,
+    "extensionTests": 430,
+    "typeCheck": true,
+    "lint": true,
+    "format": true,
+    "webBuild": true,
+    "realChromeQuietUi": "11/11"
+  },
+  "storageFormatChanged": false,
+  "userProfileTouched": false,
+  "extensionStoreUpload": false,
+  "dependenciesAdded": false
+}

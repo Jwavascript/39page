@@ -1,0 +1,185 @@
+{
+  "date": "2026-11-21T14:00:57.894Z",
+  "results": [
+    {
+      "name": "대시보드: 설명 글 · 보관함에서 편집 · 카세트 머리 글(SYNTH / CASSETTE) 없음",
+      "pass": true,
+      "details": {
+        "hint": false,
+        "editButton": false,
+        "captureHint": false,
+        "muteNote": false,
+        "placeholder": "YOUTUBE / VIDEO",
+        "sub": "",
+        "svgText": [
+          "✦ 90s",
+          "SIDE A",
+          "REWIND • PLAY • REPEAT",
+          "■ STOP",
+          "▶ PLAY",
+          "60 MIN",
+          "◁▷ MIX"
+        ],
+        "phrases": []
+      }
+    },
+    {
+      "name": "카세트 → 고른 목록의 곡 · × 아이콘 닫기 · 관리 단추 · 바닥 안내 없음",
+      "pass": true,
+      "details": {
+        "title": "여름 밤 플레이리스트",
+        "closeText": "",
+        "closeLabel": "보관함 닫기",
+        "iconMask": "url(\"data:image/svg+xml,%3Csvg xmlns=\\\"http://www.w3.org/2000/svg\\\" viewBox=\\\"0 0 24 24\\\" fill=\\\"none\\\" stroke=\\\"black\\\" stroke-width=\\\"1.8\\\" stroke-linecap=\\\"round\\\" stroke-linejoin=\\\"round\\\"%3E%3Cpath d=\\\"M6 6l12 12M18 6L6 18\\\"/%3E%3C/svg%3E\")",
+        "iconSize": [18, 18],
+        "rowIcons": [
+          ["아이유 - 밤편지 (Through the Night) MV 이름 변경", "", 40],
+          ["아이유 - 밤편지 (Through the Night) MV 앨범아트 설정", "", 40],
+          ["아이유 - 밤편지 (Through the Night) MV 공유", "", 40],
+          ["아이유 - 밤편지 (Through the Night) MV 삭제", "", 40]
+        ],
+        "listIcons": [
+          "여름 밤 플레이리스트 이름 수정",
+          "여름 밤 플레이리스트 목록 공유",
+          "여름 밤 플레이리스트 삭제"
+        ],
+        "manage": 0,
+        "foot": false,
+        "words": []
+      }
+    },
+    {
+      "name": "곡 행: 연필 · 앨범아트 · 공유 · 휴지통 아이콘(글자 없음, 40px) · 목록 행: 연필 · 공유 · 휴지통",
+      "pass": true,
+      "details": {
+        "title": "여름 밤 플레이리스트",
+        "closeText": "",
+        "closeLabel": "보관함 닫기",
+        "iconMask": "url(\"data:image/svg+xml,%3Csvg xmlns=\\\"http://www.w3.org/2000/svg\\\" viewBox=\\\"0 0 24 24\\\" fill=\\\"none\\\" stroke=\\\"black\\\" stroke-width=\\\"1.8\\\" stroke-linecap=\\\"round\\\" stroke-linejoin=\\\"round\\\"%3E%3Cpath d=\\\"M6 6l12 12M18 6L6 18\\\"/%3E%3C/svg%3E\")",
+        "iconSize": [18, 18],
+        "rowIcons": [
+          ["아이유 - 밤편지 (Through the Night) MV 이름 변경", "", 40],
+          ["아이유 - 밤편지 (Through the Night) MV 앨범아트 설정", "", 40],
+          ["아이유 - 밤편지 (Through the Night) MV 공유", "", 40],
+          ["아이유 - 밤편지 (Through the Night) MV 삭제", "", 40]
+        ],
+        "listIcons": [
+          "여름 밤 플레이리스트 이름 수정",
+          "여름 밤 플레이리스트 목록 공유",
+          "여름 밤 플레이리스트 삭제"
+        ],
+        "manage": 0,
+        "foot": false,
+        "words": []
+      }
+    },
+    {
+      "name": "곡 아이콘: 연필은 이름 폼 토글 · 휴지통은 그 자리 확인(취소하면 그대로) · 공유는 그 곡",
+      "pass": true,
+      "details": {
+        "renameOpen": true,
+        "renameClosed": true,
+        "confirm": "“잔나비 - 주저하는 연인들을 위해” 을(를) 이 목록에서 제거할까요?",
+        "tracksAfter": 3,
+        "shareTarget": ["곡", "잔나비 - 주저하는 연인들을 위해"]
+      }
+    },
+    {
+      "name": "순서 모드(⇅): 행마다 ↑ · ↓ 만, 행 아이콘은 숨는다",
+      "pass": true,
+      "details": {
+        "pressed": "true",
+        "up": 3,
+        "icons": 0
+      }
+    },
+    {
+      "name": "Moments 두 칸: 왼쪽 보기 · 곡 목록, 오른쪽 그 곡의 순간 — 목록이 칸 위쪽부터 여러 줄 보인다",
+      "pass": true,
+      "details": {
+        "side": true,
+        "navWidth": 416,
+        "detailHeight": 468,
+        "firstRowTop": 116,
+        "visibleRows": 6,
+        "title": "아이유 - 밤편지 (Through the Night) MV",
+        "meta": "12개",
+        "views": ["all", "recent"],
+        "songs": [
+          "Lauv - Paris in the Rain [Official Audio] 1",
+          "잔나비 - 주저하는 연인들을 위해 2",
+          "아이유 - 밤편지 (Through the Night) MV 12"
+        ],
+        "selected": "ax000000000",
+        "icons": ["메모 수정", "공유", "삭제"],
+        "manage": false,
+        "words": []
+      }
+    },
+    {
+      "name": "Moment 아이콘: 연필은 메모 칸(취소하면 연필로) · 휴지통은 확인 토글 · 공유는 그 순간",
+      "pass": true,
+      "details": {
+        "momentEdit": "archive-moment-note-a1",
+        "backToPencil": "a1",
+        "momentConfirm": true,
+        "momentConfirmClosed": true,
+        "momentShare": ["Moment", "0:25"]
+      }
+    },
+    {
+      "name": "검색: 전체 보기로 가고, 왼쪽에는 맞는 곡만 남는다",
+      "pass": true,
+      "details": {
+        "view": "all",
+        "songs": ["ax000000001"],
+        "summary": "순간 1개 · 곡 1개"
+      }
+    },
+    {
+      "name": "390px: 한 번에 한 칸 — ‹ 로 곡 목록, 곡을 고르면 그 순간 · 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "n1": {
+          "step": "detail",
+          "nav": false,
+          "detail": true,
+          "back": true,
+          "overflow": false
+        },
+        "n2": {
+          "step": "nav",
+          "nav": true,
+          "detail": false,
+          "back": true,
+          "overflow": false
+        },
+        "n3": {
+          "step": "detail",
+          "nav": false,
+          "detail": true,
+          "back": true,
+          "overflow": false
+        },
+        "n3title": "Lauv - Paris in the Rain [Official Audio]"
+      }
+    },
+    {
+      "name": "390px 곡 행: 아이콘은 아래 줄 · 제목 폭이 넉넉하다 · 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "nameWidth": 184,
+        "iconsBelow": true,
+        "overflow": false
+      }
+    },
+    {
+      "name": "Mono: 같은 아이콘이 테마 색으로",
+      "pass": true,
+      "details": {
+        "color": "rgb(170, 160, 146)",
+        "text": ""
+      }
+    }
+  ]
+}
