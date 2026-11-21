@@ -1,0 +1,131 @@
+{
+  "date": "2026-11-21T17:32:10.472Z",
+  "results": [
+    {
+      "name": "테마 셋(01 · 02 · 03 / CUSTOM) · 커스텀을 고르면 커스텀 틀 하나만 · 빈 데크에 \"이미지 넣기\" · 헤더 설정 단추",
+      "pass": true,
+      "details": {
+        "labels": ["01 / SYNTH CASSETTE", "02 / MONO VINYL", "03 / CUSTOM"],
+        "theme": "custom",
+        "art": "block",
+        "artState": "empty",
+        "add": "block",
+        "cassette": "none",
+        "visibleArts": 1,
+        "settings": true
+      }
+    },
+    {
+      "name": "설정 창: 고른 색이 저장 전에 화면 전체에 보인다 (저장소는 그대로)",
+      "pass": true,
+      "details": {
+        "accent": "#ff5ea8",
+        "bg": "color(srgb 0.0794118 0.0470588 0.141176)",
+        "stored": null
+      }
+    },
+    {
+      "name": "저장: 데크 자리에 그림(900 × 570 틀) · 색이 저장된다",
+      "pass": true,
+      "details": {
+        "natural": [900, 570],
+        "ratio": 1.579,
+        "colors": {
+          "background": "#1b1030",
+          "surface": "#23232e",
+          "text": "#ecebf4",
+          "accent": "#ff5ea8",
+          "line": "#4b4b5e"
+        },
+        "add": false
+      }
+    },
+    {
+      "name": "데크: 그림을 누르면 보관함이 열린다 · ■ ▶ 는 이름 있는 보이는 단추",
+      "pass": true,
+      "details": {
+        "opened": {
+          "expanded": "true",
+          "panel": true
+        },
+        "keys": [
+          {
+            "text": "■",
+            "label": "일시정지",
+            "w": 40,
+            "h": 32,
+            "shown": true
+          },
+          {
+            "text": "▶",
+            "label": "선택한 목록을 처음부터 재생",
+            "w": 40,
+            "h": 32,
+            "shown": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "새로고침: 커스텀 테마 · 색 · 데크 그림이 그대로",
+      "pass": true,
+      "details": {
+        "theme": "custom",
+        "inline": "#1b1030",
+        "accent": "#ff5ea8"
+      }
+    },
+    {
+      "name": "움짤: 재생하지 않을 때는 첫 프레임(PNG 포스터)을 보인다",
+      "pass": true,
+      "details": {
+        "type": "image/png",
+        "state": "poster"
+      }
+    },
+    {
+      "name": "설정 창: 글자 대비가 낮으면 알리고, 취소하면 저장된 색으로 돌아간다",
+      "pass": true,
+      "details": {
+        "warn": "글자와 배경 대비가 1.0:1 이라 잘 안 보일 수 있어요.\n글자와 카드 대비가 1.1:1 이라 잘 안 보일 수 있어요.",
+        "during": "#1c1236",
+        "after": "#ecebf4"
+      }
+    },
+    {
+      "name": "공유 카드: J카드 틀 · 바탕이 고른 배경색",
+      "pass": true,
+      "details": {
+        "template": "jcard",
+        "corner": "#1b1030"
+      }
+    },
+    {
+      "name": "테마 전환: 카세트로 돌아가면 승인된 색 · 플레이어 노드 그대로 · 고른 색은 남는다",
+      "pass": true,
+      "details": {
+        "samePlayer": true,
+        "accent": "#ff9bc5",
+        "customVar": "#ff5ea8",
+        "custom": "none",
+        "playerNode": true
+      }
+    },
+    {
+      "name": "390px: 작은 데크 띠 — 그림 전체가 보관함 열기 · ■ ▶ 끔 · 가로 넘침 없음",
+      "pass": true,
+      "details": {
+        "art": [122, 77],
+        "open": [122, 77],
+        "openCovers": true,
+        "keys": "none",
+        "overflow": false
+      }
+    },
+    {
+      "name": "그림 빼기: 데크가 빈 틀과 \"이미지 넣기\" 로 돌아간다",
+      "pass": true,
+      "details": {}
+    }
+  ]
+}

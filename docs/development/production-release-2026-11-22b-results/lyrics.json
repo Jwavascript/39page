@@ -1,0 +1,186 @@
+{
+  "date": "2026-11-21T17:33:19.830Z",
+  "results": [
+    {
+      "name": "1440×900: 가사 자리 · 곡 · 순간 수와 무관한 페이지 높이 · 푸터 없음",
+      "pass": true,
+      "details": {
+        "few": 1009,
+        "many": 1009,
+        "lyrics": {
+          "left": 531,
+          "top": 641,
+          "bottom": 928,
+          "height": 287
+        },
+        "player": {
+          "left": 531,
+          "top": 167,
+          "bottom": 607,
+          "height": 440
+        },
+        "deck": {
+          "left": 80,
+          "top": 167,
+          "bottom": 481,
+          "height": 313
+        },
+        "playlist": {
+          "left": 80,
+          "top": 514,
+          "bottom": 928,
+          "height": 414
+        },
+        "footer": false
+      }
+    },
+    {
+      "name": "1920×1080: 가사 자리 · 곡 · 순간 수와 무관한 페이지 높이 · 푸터 없음",
+      "pass": true,
+      "details": {
+        "few": 1202,
+        "many": 1202,
+        "lyrics": {
+          "left": 745,
+          "top": 770,
+          "bottom": 1121,
+          "height": 351
+        },
+        "player": {
+          "left": 745,
+          "top": 169,
+          "bottom": 731,
+          "height": 562
+        },
+        "deck": {
+          "left": 83,
+          "top": 169,
+          "bottom": 612,
+          "height": 443
+        },
+        "playlist": {
+          "left": 83,
+          "top": 651,
+          "bottom": 1121,
+          "height": 470
+        },
+        "footer": false
+      }
+    },
+    {
+      "name": "1000×800: 가사 자리 · 곡 · 순간 수와 무관한 페이지 높이 · 푸터 없음",
+      "pass": true,
+      "details": {
+        "few": 1978,
+        "many": 1978,
+        "lyrics": {
+          "left": 57,
+          "top": 487,
+          "bottom": 727,
+          "height": 240
+        },
+        "player": {
+          "left": 173,
+          "top": 750,
+          "bottom": 1302,
+          "height": 552
+        },
+        "deck": {
+          "left": 57,
+          "top": 146,
+          "bottom": 464,
+          "height": 318
+        },
+        "playlist": {
+          "left": 504,
+          "top": 146,
+          "bottom": 727,
+          "height": 581
+        },
+        "footer": false
+      }
+    },
+    {
+      "name": "390×844: 가사 자리 · 한 열(목록은 펼침 — 높이 고정 아님) · 푸터 없음",
+      "pass": true,
+      "details": {
+        "few": 1704,
+        "many": 1898,
+        "lyrics": {
+          "left": 26,
+          "top": 871,
+          "bottom": 1131,
+          "height": 260
+        },
+        "player": {
+          "left": 26,
+          "top": 320,
+          "bottom": 735,
+          "height": 415
+        },
+        "deck": {
+          "left": 26,
+          "top": 229,
+          "bottom": 306,
+          "height": 77
+        },
+        "playlist": {
+          "left": 26,
+          "top": 1145,
+          "bottom": 1560,
+          "height": 415
+        },
+        "footer": false
+      }
+    },
+    {
+      "name": "자동: 제목의 영어 낱말로 찾고 곡 길이로 고른 싱크 가사 · 재생을 따라 지금 줄이 바뀌고 칸 안에 보인다",
+      "pass": true,
+      "details": {
+        "playing": true,
+        "first": "0",
+        "index": "2",
+        "text": "합성 가사 3번째 줄",
+        "visible": true,
+        "sub": "DUNE (feat. Hatsune Miku) · Hachi",
+        "pageScroll": 109
+      }
+    },
+    {
+      "name": "LRCLIB 요청: 영어 낱말 검색어 하나 · 이 앱을 밝히는 머리 · 39page 주소(Referer) 없음",
+      "pass": true,
+      "details": {
+        "queries": ["hachi dune miku hatsune"],
+        "clients": ["39page (https://39page.com)"],
+        "referers": [null]
+      }
+    },
+    {
+      "name": "직접 찾기: 영어 제목으로 찾아 고르면 일반 가사 · \"직접 고름\" · 그 곡에 기억",
+      "pass": true,
+      "details": {
+        "sub": "Mesmerizer · 32ki · 직접 고름",
+        "plain": "합성 일반 가사 첫 줄\n둘째 줄",
+        "stored": {
+          "version": 1,
+          "data": {
+            "picks": {
+              "eRsGyueVLvQ": {
+                "id": 17414640,
+                "label": "Mesmerizer · 32ki"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "테마 전환 · 보관함을 열고 닫아도 가사가 그대로 (열린 동안 가사 칸은 숨음)",
+      "pass": true,
+      "details": {
+        "hidden": "none",
+        "same": true
+      }
+    }
+  ]
+}

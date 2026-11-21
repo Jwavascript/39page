@@ -116,8 +116,10 @@ try {
     writeFileSync(path.join(OUT, `${name}.png`), Buffer.from(data, 'base64'))
   }
   const click = async (selector) => {
+    // 스크롤한 뒤 두 프레임을 기다리고 다시 잰다 — 스크롤 직후의 합성 마우스 이벤트가 스크롤 전 자리로 가는 일이 있다.
     const point = await ev(
-      `(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) throw Error('no ' + ${JSON.stringify(selector)}); e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`,
+      `(async () => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) throw Error('no ' + ${JSON.stringify(selector)}); e.scrollIntoView({ block: 'center' }); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`,
+      { awaitPromise: true },
     )
     for (const type of ['mousePressed', 'mouseReleased'])
       await send('Input.dispatchMouseEvent', { type, ...point, button: 'left', clickCount: 1 })

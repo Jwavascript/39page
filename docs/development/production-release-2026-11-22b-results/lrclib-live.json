@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-21T17:23:37.770Z",
+  "results": [
+    {
+      "name": "운영 페이지에서 실제 LRCLIB 검색(CORS · Lrclib-Client) — 싱크 가사가 있는 DUNE 레코드",
+      "pass": true,
+      "details": {
+        "origin": "https://39page.com",
+        "status": 200,
+        "count": 14,
+        "dune": {
+          "id": 1876613,
+          "trackName": "DUNE",
+          "artistName": "Hachi",
+          "duration": 239
+        },
+        "widget": true,
+        "footer": false
+      }
+    }
+  ]
+}
