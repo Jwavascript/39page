@@ -1,0 +1,197 @@
+/*
+ * Custom — 테마 토큰 (ADR 0045)
+ *
+ * 승인된 레퍼런스에서 온 테마가 **아니다.** 사용자가 고른 다섯 색(`--custom-*`)에서 나머지 토큰을 만든다.
+ * 다섯 색은 `stores/customTheme.ts` 가 문서 루트의 인라인 스타일로 건다 (첫 그림 전에는 `index.html` 의
+ * 인라인 스크립트가). 기본값은 `defaults.css`.
+ *
+ * 토큰 집합은 mono-vinyl · kawaii 와 **정확히 동일**하다 (시험이 지킨다).
+ *
+ * 섞는 비율
+ *   글자 흐림 = 글자 + 배경 25%      글자 옅음 = 글자 + 배경 45%
+ *   올림 바탕 = 카드 + 글자 12%      선택 바탕 = 카드 + 강조 18%
+ */
+
+:root[data-theme='custom'] {
+  /* ---------- 기본 팔레트 ---------- */
+  --surface-base-color: var(--custom-background);
+  --surface-raised-color: var(--custom-surface);
+  --surface-overlay-color: color-mix(in srgb, var(--custom-surface), var(--custom-text) 8%);
+  --text-color: var(--custom-text);
+  --text-muted-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --text-dim-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 45%);
+  --line-color: var(--custom-line);
+  --metal-color: color-mix(in srgb, var(--custom-line), var(--custom-text) 40%);
+
+  /* ---------- 페이지 · 워크스페이스 ---------- */
+  --page-background-color: color-mix(in srgb, var(--custom-background), #000 25%);
+  --workspace-border-color: var(--custom-line);
+  --workspace-background: radial-gradient(
+    circle at 20% 20%,
+    color-mix(in srgb, var(--custom-background), var(--custom-accent) 10%) 0%,
+    var(--custom-background) 70%
+  );
+
+  /* ---------- 강조 / 주요 액션 ---------- */
+  --accent-color: var(--custom-accent);
+  --accent-text-color: var(--custom-on-accent);
+  --accent-strong-color: var(--custom-accent);
+  --accent-strong-text-color: var(--custom-on-accent);
+
+  /* ---------- 헤더 · 브랜드 · 푸터 · 구분선 ---------- */
+  --brand-text-color: var(--custom-text);
+  --header-border-color: var(--custom-line);
+  --info-border-color: var(--custom-line);
+  --rule-color: var(--custom-line);
+  --footer-border-color: var(--custom-line);
+  --footer-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+
+  /* ---------- 테마 전환 UI ---------- */
+  --theme-switch-border-color: var(--custom-line);
+  --theme-button-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --theme-button-active-surface-color: var(--custom-accent);
+  --theme-button-active-text-color: var(--custom-on-accent);
+
+  /* ---------- 버튼 · Pill ---------- */
+  --button-surface-color: var(--custom-surface);
+  --button-border-color: var(--custom-line);
+  --button-text-color: var(--custom-text);
+  --button-surface-hover-color: color-mix(in srgb, var(--custom-surface), var(--custom-text) 12%);
+  --pill-surface-color: var(--custom-surface);
+  --pill-border-color: var(--custom-line);
+  --pill-text-color: var(--custom-text);
+  --pill-surface-hover-color: color-mix(in srgb, var(--custom-surface), var(--custom-text) 12%);
+
+  /* ---------- 데크 ---------- */
+  --deck-shadow: drop-shadow(0 14px 18px #0006);
+  --deck-hint-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --deck-hint-strong-text-color: var(--custom-text);
+  --deck-open-text-color: var(--custom-text);
+  --deck-open-hint-surface-color: color-mix(in srgb, var(--custom-background) 92%, transparent);
+  --deck-open-hint-border-color: var(--custom-accent);
+  --deck-open-hover-surface-color: transparent;
+  --deck-open-focus-ring-color: var(--custom-accent);
+  --deck-open-focus-ring-width: 3px;
+  --deck-open-focus-ring-offset: 2px;
+
+  /* ---------- 시계 ---------- */
+  --clock-dot-color: var(--custom-text);
+  --clock-dot-off-color: var(--custom-line);
+  --clock-dot-off-opacity: 0.25;
+  --clock-glow: none;
+  --clock-label-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --clock-date-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+
+  /* ---------- 날씨 ---------- */
+  --weather-icon-text-color: var(--custom-text);
+  --weather-temp-text-color: var(--custom-text);
+  --weather-desc-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --weather-highlow-text-color: color-mix(
+    in srgb,
+    var(--custom-text),
+    var(--custom-background) 25%
+  );
+  --weather-note-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 45%);
+
+  /* ---------- 지금 재생 중 · 플레이어 ---------- */
+  --eyebrow-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --now-title-text-color: var(--custom-text);
+  --now-sub-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --video-surface-color: color-mix(in srgb, var(--custom-background), #000 35%);
+  --video-border-color: var(--custom-line);
+  --video-shadow: none;
+  --video-placeholder-text-color: color-mix(
+    in srgb,
+    var(--custom-text),
+    var(--custom-background) 25%
+  );
+  --video-placeholder-strong-text-color: var(--custom-text);
+  --status-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  /* 경고 · 오류는 사용자 색과 섞되 주황 · 빨강 기운을 남긴다 — 강조색과 구별되게. */
+  --status-warning-text-color: color-mix(in srgb, var(--custom-text), #f0a050 50%);
+  --mute-note-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 45%);
+  --external-link-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+
+  /* ---------- 트랜스포트 버튼 ---------- */
+  --transport-text-color: var(--custom-text);
+  --transport-surface-hover-color: color-mix(
+    in srgb,
+    var(--custom-surface),
+    var(--custom-text) 12%
+  );
+  --transport-main-border-color: var(--custom-accent);
+  --transport-main-text-color: var(--custom-accent);
+
+  /* ---------- 보관함 ---------- */
+  --drawer-surface-color: var(--custom-surface);
+  --drawer-border-color: var(--custom-line);
+  --drawer-head-border-color: var(--custom-line);
+  --drawer-foot-border-color: var(--custom-line);
+  --drawer-title-text-color: var(--custom-text);
+  --drawer-sub-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --drawer-section-title-text-color: color-mix(
+    in srgb,
+    var(--custom-text),
+    var(--custom-background) 25%
+  );
+  --drawer-foot-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 45%);
+  --drawer-body-text-color: var(--custom-text);
+  --drawer-action-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --drawer-muted-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 45%);
+
+  /* ---------- 플레이리스트 행 · 트랙 행 ---------- */
+  --row-surface-color: color-mix(in srgb, var(--custom-surface), var(--custom-text) 4%);
+  --row-border-color: var(--custom-line);
+  --row-text-color: var(--custom-text);
+  --row-selected-surface-color: color-mix(in srgb, var(--custom-surface), var(--custom-accent) 18%);
+  --row-selected-border-color: var(--custom-accent);
+  --row-meta-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --track-surface-color: color-mix(in srgb, var(--custom-surface), var(--custom-text) 4%);
+  --track-current-border-color: var(--custom-accent);
+  --track-name-text-color: var(--custom-text);
+  --playlist-play-surface-color: var(--custom-surface);
+  --playlist-play-border-color: var(--custom-line);
+  --playlist-play-text-color: var(--custom-accent);
+  --playlist-play-surface-hover-color: color-mix(
+    in srgb,
+    var(--custom-surface),
+    var(--custom-text) 12%
+  );
+  --track-play-text-color: var(--custom-accent);
+  --row-action-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --row-action-hover-text-color: var(--custom-text);
+
+  /* ---------- 모달 · 오버레이 · 토스트 ---------- */
+  --overlay-background-color: color-mix(in srgb, var(--custom-background) 88%, transparent);
+  --modal-surface-color: var(--custom-surface);
+  --modal-border-color: var(--custom-line);
+  --modal-text-color: var(--custom-text);
+  --modal-shadow: 0 22px 70px #000a;
+  --label-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --field-surface-color: color-mix(in srgb, var(--custom-background), #000 15%);
+  --field-border-color: var(--custom-line);
+  --field-text-color: var(--custom-text);
+  --error-text-color: color-mix(in srgb, var(--custom-text), #ff7a6a 55%);
+  --close-button-text-color: var(--custom-text);
+  --toast-surface-color: var(--custom-accent);
+  --toast-text-color: var(--custom-on-accent);
+  --toast-shadow: 0 10px 24px #0008;
+  --link-text-color: color-mix(in srgb, var(--custom-text), var(--custom-accent) 50%);
+
+  /* ---------- Now Playing 카드 · 앨범아트 ---------- */
+  --artwork-card-background: linear-gradient(
+    110deg,
+    var(--custom-surface),
+    color-mix(in srgb, var(--custom-surface), var(--custom-background) 50%)
+  );
+  --artwork-card-border-color: var(--custom-line);
+  --artwork-card-shadow: none;
+  --artwork-frame-surface-color: color-mix(in srgb, var(--custom-background), #000 30%);
+  --artwork-frame-border-color: var(--custom-line);
+  --artwork-frame-shadow: none;
+  --artwork-dot-color: var(--custom-text);
+  --artwork-label-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 25%);
+  --artwork-message-text-color: var(--custom-accent);
+  --artwork-sub-text-color: color-mix(in srgb, var(--custom-text), var(--custom-background) 45%);
+  --artwork-accent-color: var(--custom-accent);
+}

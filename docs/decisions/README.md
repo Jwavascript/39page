@@ -75,3 +75,4 @@
 - [0042](0042-share-entry-points-and-card-artwork.md): 공유 입구 — 지금 재생 카드의 공유 아이콘(YouTube 링크 자리, 링크는 재생 오류 때만) · 데크의 목록 공유 아이콘, 카드에 내 앨범아트 (채택).
 - [0043](0043-share-dialog-and-backup-only-data-dialog.md): 공유는 따로 된 공유 대화상자(대상 한 줄 · 카드 · 링크, 고르는 칸 없음), 데이터 · 백업은 옮기기 전용(단추 둘), 파일(ZIP) 공유 · 카드의 "39page 에서 듣기" 를 없앤다 (채택).
 - [0044](0044-quiet-ui-row-icons-and-two-pane-moments.md): 늘 보이는 설명 글 · 카세트 머리 글 · "보관함에서 편집" 을 없애고, 곡 · 목록 · Moment 행의 "관리" 메뉴 대신 오른쪽 아이콘(연필 · 공유 · 휴지통), 닫기 · 뒤로는 아이콘만, Moments 탭은 음악 탭처럼 두 칸 (채택).
+- [0045](0045-custom-theme.md): 셋째 테마 Custom — 데크 자리에 사용자 그림 · 움짤(재생 중에만 움직임), 다섯 색에서 만드는 토큰, 따로 된 IndexedDB `39page-theme`, 백업 · 공유 카드에도 고른 색 (채택).

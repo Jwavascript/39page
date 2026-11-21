@@ -16,6 +16,7 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { useLibraryStore } from '@/stores/library'
 import { useMomentsStore } from '@/stores/moments'
 import { useThemeStore } from '@/stores/theme'
+import { useCustomThemeStore } from '@/stores/customTheme'
 
 import {
   countBackupItems,
@@ -111,6 +112,7 @@ export function useBackupExport(): BackupExportModel {
   const library = useLibraryStore()
   const moments = useMomentsStore()
   const theme = useThemeStore()
+  const customTheme = useCustomThemeStore()
 
   const needsConfirm = ref(false)
   const notice = ref('')
@@ -168,6 +170,7 @@ export function useBackupExport(): BackupExportModel {
       // store 의 영속 필드만 담는다. 쓰던 메모·고정해 둔 캡처는 store 에 없다.
       moments: moments.moments,
       theme: theme.current,
+      customTheme: { colors: customTheme.saved },
       integrity: integrity.value,
       exportedAt: now,
     })

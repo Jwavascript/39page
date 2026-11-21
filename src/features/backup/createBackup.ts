@@ -17,6 +17,7 @@
  * 아니라 받지 않는다.
  */
 import type { LibraryData, Moment, MomentsData, Playlist, ThemeKey, Track } from '@/shared/types'
+import type { CustomThemeSettings } from '@/shared/types/customTheme'
 import type { LibraryProtectedReason, LibraryStatus } from '@/stores/library'
 import type { MomentsProtectedReason, MomentsStatus } from '@/stores/moments'
 
@@ -67,6 +68,8 @@ export interface BackupSource {
     readonly updatedAt: string
   }[]
   readonly theme: ThemeKey
+  /** 커스텀 테마의 색 (ADR 0045). 주면 `preferences.customTheme` 에 넣는다. */
+  readonly customTheme?: CustomThemeSettings
   /** 온전하지 않으면 넣는다. `null` 이면 온전한 백업이다. */
   readonly integrity: BackupIntegrity | null
   /** 내보낸 시각. **호출부가 준다** — 이 함수는 시계를 읽지 않는다. */
@@ -182,6 +185,14 @@ export function createBackup(source: BackupSource): BackupFile {
       },
       preferences: {
         theme: { version: BACKUP_SECTION_VERSIONS.theme, data: source.theme },
+        ...(source.customTheme === undefined
+          ? {}
+          : {
+              customTheme: {
+                version: BACKUP_SECTION_VERSIONS.customTheme,
+                data: { colors: { ...source.customTheme.colors } },
+              },
+            }),
       },
     },
   }

@@ -65,8 +65,9 @@ describe('1. DashboardShell 렌더링', () => {
     const header = wrapper.findComponent(AppHeader)
 
     // M11-7B: 음악 · Moments 입구를 "보관함" 하나로 합쳤다 (ADR 0030). 링크 추가는 보관함 안에 있다.
+    // 보관함 · 데이터 · 테마 셋(ADR 0045 Custom 포함) · 접기. 커스텀 설정 단추는 커스텀 테마일 때만 있다.
     const buttons = header.findAll('button')
-    expect(buttons).toHaveLength(5)
+    expect(buttons).toHaveLength(6)
     const nav = header.findAll('.app-nav button')
     expect(nav.map((button) => button.text())).toEqual(['▤ 보관함', '⇩ 데이터 · 백업'])
     expect(header.text()).not.toContain('링크 추가')
@@ -74,6 +75,7 @@ describe('1. DashboardShell 렌더링', () => {
     expect(header.findAll('.theme-button').map((button) => button.text())).toEqual([
       '01 / SYNTH CASSETTE',
       '02 / MONO VINYL',
+      '03 / CUSTOM',
     ])
 
     // 동작하지 않는 버튼이 없다 — 각 입구가 실제로 무언가를 연다.
@@ -95,11 +97,13 @@ describe('1. DashboardShell 렌더링', () => {
      * 목록별 ▶ 와 트랙별 ▶ 는 항목이 있을 때만 생기고, 여기는 빈 상태다.
      *
      * 데크 키가 둘인 것은 두 테마의 아트가 **동시에 마운트**되어 있기
-     * 때문이다 (ADR 0001). 비활성 테마의 키는 `display: none` 이다.
+     * 때문이다 (ADR 0001). 비활성 테마의 키는 `display: none` 이다. 커스텀 테마(ADR 0045)의 ▶ 는 그림 위에 **보이는**
+     * 단추라 글자가 있다.
      */
     expect(labels.filter((label) => label.includes('재생'))).toEqual([
       ' 선택한 목록을 처음부터 재생',
       ' 선택한 목록을 처음부터 재생',
+      '▶ 선택한 목록을 처음부터 재생',
       '▶ 재생',
       '▶ 목록 전체 재생 ',
     ])

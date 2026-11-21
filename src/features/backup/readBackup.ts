@@ -14,6 +14,7 @@
  * 값으로 바꾸지 않는다. 버리거나 건너뛰고, **개수와 사유를 보고한다.**
  */
 import { isThemeKey, type LibraryData, type MomentsData, type ThemeKey } from '@/shared/types'
+import { readCustomThemeSettings, type CustomThemeSettings } from '@/shared/types/customTheme'
 import { normalizeLibraryData } from '@/stores/library'
 import { normalizeMomentsData, type MomentDropReason } from '@/stores/moments'
 
@@ -116,6 +117,8 @@ export interface BackupReadSuccess {
   readonly library: LibraryData | null
   /** 가져올 수 있는 테마. 없거나 건너뛰었으면 `null`. */
   readonly theme: ThemeKey | null
+  /** 커스텀 테마의 색 (ADR 0045). 없거나 건너뛰었으면 `null`. 테마와 함께 적용한다. */
+  readonly customTheme: CustomThemeSettings | null
   /**
    * 가져올 수 있는 Moments (M9-5). `momentsSection` 이 `present` 일 때만
    * 값이 있고, **빈 배열일 수 있다.** 그 밖에는 `null` 이다.
@@ -194,7 +197,7 @@ function readSectionIntegrity(section: unknown): BackupSectionIntegrity | null {
 const KNOWN_SECTIONS = new Set(['library', 'moments', 'preferences'])
 
 /** 우리가 아는 설정 이름. */
-const KNOWN_PREFERENCES = new Set(['theme'])
+const KNOWN_PREFERENCES = new Set(['theme', 'customTheme'])
 
 /**
  * 백업 파일 문자열을 해석한다.
@@ -333,6 +336,7 @@ export function readBackup(text: string, size?: number): BackupReadResult {
   /* ---------- preferences.theme ---------- */
 
   let theme: ThemeKey | null = null
+  let customTheme: CustomThemeSettings | null = null
 
   if (isRecord(data.preferences)) {
     for (const name of Object.keys(data.preferences)) {
@@ -359,6 +363,31 @@ export function readBackup(text: string, size?: number): BackupReadResult {
         warnings.push({ kind: 'section-skipped', section: 'preferences.theme', reason: 'invalid' })
       }
     }
+
+    /* ---------- preferences.customTheme (ADR 0045) ---------- */
+    if ('customTheme' in data.preferences) {
+      const section = asSection(data.preferences.customTheme)
+      const settings = section === null ? null : readCustomThemeSettings(section.data)
+      if (section !== null && section.version !== BACKUP_SECTION_VERSIONS.customTheme) {
+        warnings.push({
+          kind: 'section-skipped',
+          section: 'preferences.customTheme',
+          reason:
+            section.version > BACKUP_SECTION_VERSIONS.customTheme
+              ? 'future-version'
+              : 'old-version',
+          version: section.version,
+        })
+      } else if (settings === null) {
+        warnings.push({
+          kind: 'section-skipped',
+          section: 'preferences.customTheme',
+          reason: 'invalid',
+        })
+      } else {
+        customTheme = settings
+      }
+    }
   } else if ('preferences' in data) {
     warnings.push({ kind: 'section-skipped', section: 'preferences', reason: 'invalid' })
   }
@@ -378,6 +407,7 @@ export function readBackup(text: string, size?: number): BackupReadResult {
     integrity,
     library: libraryData,
     theme,
+    customTheme,
     moments,
     momentsSection,
     warnings,

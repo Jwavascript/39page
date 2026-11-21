@@ -9,6 +9,7 @@
  * 사용자가 올린 앨범아트는 넣는다 (ADR 0042).
  */
 import type { ArtworkDisplay } from '@/shared/types/artwork'
+import { customCardPalette, KAWAII_CARD_PALETTE, type KawaiiCardPalette } from './shareCardPalette'
 
 import {
   artworkPlacement,
@@ -25,20 +26,11 @@ import {
   type ShareCardRow,
 } from './shareCard'
 
-const KAWAII = {
-  bg: '#10202c',
-  mint: '#e2fff6',
-  pink: '#ff9bc5',
-  ink: '#2a1730',
-  paper: '#fff4f9',
-  receipt: '#dbfff4',
-  pinkDark: '#b8326f',
-  rowLine: '#f6cfe2',
-  dash: '#e98ab6',
-  meta: '#8a3a66',
-  artBox: '#142c3a',
-  stamp: '#d83f87',
-} as const
+/**
+ * Kawaii 카드 틀의 색. 보통은 승인된 Kawaii 색이고, 커스텀 테마(ADR 0045)면 사용자 색에서 만든 색이다. 그리기 직전
+ * (`renderShareCard` 의 동기 구간)에 정한다 — 그 구간에는 다른 카드가 끼어들 수 없다.
+ */
+let KAWAII: KawaiiCardPalette = KAWAII_CARD_PALETTE
 
 const MONO = {
   bg: '#171614',
@@ -823,7 +815,7 @@ function drawReceipt(
   measureCtx: Ctx,
   art: CardArt | null,
 ): number {
-  const kawaii = model.theme === 'kawaii'
+  const kawaii = model.theme !== 'mono'
   const outer = kawaii ? KAWAII.bg : MONO.bg
   const paper = kawaii ? KAWAII.receipt : MONO.paper
   const ink = kawaii ? KAWAII.bg : MONO.bg
@@ -994,6 +986,10 @@ export async function renderShareCard(
   const art = image === null || model.art === null ? null : { image, display: model.art.display }
 
   let height = canvas.height
+  KAWAII =
+    model.theme === 'custom' && model.colors !== null
+      ? customCardPalette(model.colors)
+      : KAWAII_CARD_PALETTE
   try {
     // 영수증 · 싱글은 줄을 먼저 재고 높이를 정한다 — 캔버스 높이를 바꾸면 그리기 상태가 지워지므로 따로 잰다.
     const measureCtx =
@@ -1008,7 +1004,7 @@ export async function renderShareCard(
     else {
       if (measureCtx === null) return null
       height =
-        model.theme === 'kawaii'
+        model.theme !== 'mono'
           ? drawKawaiiSingle(ctx, measureCtx, fonts, model, art)
           : drawMonoSingle(ctx, measureCtx, fonts, model, art)
     }

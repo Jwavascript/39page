@@ -16,6 +16,8 @@ import type { LibraryData, MomentsData, ThemeKey } from '@/shared/types'
 import { LIBRARY_STORAGE_VERSION, type LibraryProtectedReason } from '@/stores/library'
 import { MOMENTS_STORAGE_VERSION } from '@/stores/moments'
 import { THEME_STORAGE_VERSION } from '@/stores/theme'
+import { CUSTOM_THEME_STORAGE_VERSION } from '@/stores/customTheme'
+import type { CustomThemeSettings } from '@/shared/types/customTheme'
 
 /** 파일 식별자. 이 값이 아니면 파싱된 JSON 이라도 우리 파일이 아니다. */
 export const BACKUP_FORMAT = '39page-backup'
@@ -33,6 +35,8 @@ export const BACKUP_SECTION_VERSIONS = {
   theme: THEME_STORAGE_VERSION,
   /** M9-5. 선택 섹션이므로 파일 버전(`schemaVersion`)은 올리지 않는다. */
   moments: MOMENTS_STORAGE_VERSION,
+  /** ADR 0045. 선택 설정이므로 파일 버전은 올리지 않는다. */
+  customTheme: CUSTOM_THEME_STORAGE_VERSION,
 } as const
 
 /** 섹션 봉투. `defineStorage` 의 `StorageEnvelope` 와 같은 모양이다. */
@@ -85,6 +89,11 @@ export interface BackupIntegrity {
 
 export interface BackupPreferences {
   theme?: BackupSection<ThemeKey>
+  /**
+   * 커스텀 테마의 다섯 색 (ADR 0045). **선택 설정**이다 — 이 앱의 내보내기는 늘 넣는다(테마가 무엇이든). 데크 그림은
+   * 크기 때문에 JSON 에 넣지 않는다 — 전체 백업(ZIP)의 `theme.json` 에 있다.
+   */
+  customTheme?: BackupSection<CustomThemeSettings>
 }
 
 export interface BackupData {

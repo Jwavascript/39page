@@ -151,7 +151,8 @@ describe('B. 키보드 경로', () => {
     const { wrapper } = mountApp()
     const css = readSource('src/features/deck/DeckWidget.vue')
 
-    expect(wrapper.findAll('.deck-open')).toHaveLength(2)
+    // 카세트 · LP · 커스텀 그림 (ADR 0045) — 셋 다 마운트돼 있고 활성 테마의 것만 보인다.
+    expect(wrapper.findAll('.deck-open')).toHaveLength(3)
     // `display: none` 이므로 포커스 대상이 아니다.
     expect(css).toMatch(/\.deck-open \{[\s\S]*?display: none/)
   })

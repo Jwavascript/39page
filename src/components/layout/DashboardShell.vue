@@ -77,9 +77,14 @@ import { isShareHash, parseShareLink, type ShareLinkParse } from '@/features/bac
  * 화면 묶음을 키우지 않는다.
  */
 const ShareLinkDialog = defineAsyncComponent(() => import('@/features/backup/ShareLinkDialog.vue'))
+/** 커스텀 테마 설정 창 (ADR 0045) — 커스텀 테마를 고른 사람만 연다. 첫 화면 묶음을 키우지 않는다. */
+const CustomThemeDialog = defineAsyncComponent(
+  () => import('@/features/custom-theme/CustomThemeDialog.vue'),
+)
 import { PLAYBACK_COORDINATOR } from '@/features/playback/playbackCoordinator'
 import type { DashboardLayout } from '@/shared/types'
 import { SHARE_DIALOG, type ShareRequest, type ShareTarget } from '@/shared/types/share'
+import { CUSTOM_THEME_DIALOG } from '@/shared/types/customTheme'
 
 defineProps<{
   brand: string
@@ -448,6 +453,31 @@ provide(SHARE_DIALOG, {
 })
 
 /* ------------------------------------------------------------------ *
+ * 커스텀 테마 설정 (ADR 0045)
+ * ------------------------------------------------------------------ */
+
+const isCustomThemeOpen = ref(false)
+let customThemeTrigger: HTMLElement | null = null
+
+function openCustomTheme(): void {
+  const active = document.activeElement
+  customThemeTrigger = active instanceof HTMLElement ? active : null
+  isCustomThemeOpen.value = true
+}
+
+async function closeCustomTheme(): Promise<void> {
+  if (!isCustomThemeOpen.value) return
+  isCustomThemeOpen.value = false
+  await nextTick()
+  if (customThemeTrigger !== null && document.contains(customThemeTrigger)) {
+    customThemeTrigger.focus()
+  }
+  customThemeTrigger = null
+}
+
+provide(CUSTOM_THEME_DIALOG, { open: openCustomTheme })
+
+/* ------------------------------------------------------------------ *
  * 링크로 받은 공유 (ADR 0040)
  * ------------------------------------------------------------------ */
 
@@ -500,6 +530,10 @@ function onKeydown(event: KeyboardEvent): void {
   }
   if (shareRequest.value !== null) {
     void closeShare()
+    return
+  }
+  if (isCustomThemeOpen.value) {
+    void closeCustomTheme()
     return
   }
   if (isDataOpen.value) {
@@ -557,7 +591,10 @@ const workspaceStyle = computed(() => {
 
 /** 대화상자가 열려 있는 동안 뒤쪽을 조작할 수 없게 한다 (보조기기 포함). */
 const behindDialog = computed(() =>
-  isDataOpen.value || shareRequest.value !== null || incomingShare.value !== null
+  isDataOpen.value ||
+  shareRequest.value !== null ||
+  incomingShare.value !== null ||
+  isCustomThemeOpen.value
     ? true
     : undefined,
 )
@@ -648,6 +685,9 @@ const behindDialog = computed(() =>
       :request="shareRequest"
       @close="closeShare"
     />
+
+    <!-- 커스텀 테마 설정 (ADR 0045) — 헤더의 팔레트 단추 · 빈 데크의 "이미지 넣기" 가 연다. 연 동안만 있다. -->
+    <CustomThemeDialog v-if="isCustomThemeOpen" @close="closeCustomTheme" />
 
     <!-- 링크로 받은 공유 (ADR 0040). 데이터 대화상자보다 위 — 그 위에서 링크를 열 수도 있다. -->
     <ShareLinkDialog

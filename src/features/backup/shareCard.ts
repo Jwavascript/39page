@@ -21,10 +21,12 @@
 import type { InjectionKey } from 'vue'
 
 import type { ArtworkDisplay } from '@/shared/types/artwork'
+import type { CustomThemeColors } from '@/shared/types/customTheme'
 
 import type { ShareLinkContent } from './shareLink'
 
-export type ShareCardTheme = 'kawaii' | 'mono'
+/** `custom` (ADR 0045) — Kawaii 카드 틀에 사용자 색(`colors`). */
+export type ShareCardTheme = 'kawaii' | 'mono' | 'custom'
 export type ShareCardTemplate = 'jcard' | 'lp' | 'single' | 'receipt'
 
 export const SHARE_CARD_WIDTH = 1080
@@ -79,6 +81,8 @@ export interface ShareCardModel {
   readonly catalog: string
   /** 사용자 앨범아트. `null` 이면 39page 기본 그림. */
   readonly art: ShareCardArt | null
+  /** 커스텀 테마의 다섯 색 (`theme === 'custom'` 일 때만). */
+  readonly colors: CustomThemeColors | null
 }
 
 /* ------------------------------------------------------------------ *
@@ -212,6 +216,7 @@ export function buildShareCard(
   theme: ShareCardTheme,
   now: Date,
   art: ShareCardArt | null = null,
+  colors: CustomThemeColors | null = null,
 ): ShareCardModel {
   const date = `${String(now.getFullYear())}.${two(now.getMonth() + 1)}.${two(now.getDate())}`
   const time = `${two(now.getHours())}:${two(now.getMinutes())}`
@@ -236,6 +241,7 @@ export function buildShareCard(
     time,
     catalog,
     art,
+    colors: theme === 'custom' ? colors : null,
   }
 
   if (content.kind !== 'playlist') {
@@ -272,8 +278,8 @@ export function buildShareCard(
     const b = side(half, content.tracks.length, 'B')
     return {
       ...base,
-      template: theme === 'kawaii' ? 'jcard' : 'lp',
-      height: theme === 'kawaii' ? 1350 : 1080,
+      template: theme === 'mono' ? 'lp' : 'jcard',
+      height: theme === 'mono' ? 1080 : 1350,
       heading,
       sides: b.length === 0 ? [a] : [a, b],
       rows: [],

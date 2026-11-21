@@ -7,9 +7,13 @@ import './styles/tokens.css'
 import './styles/base.css'
 import './themes/mono-vinyl/tokens.css'
 import './themes/kawaii-synth-cassette/tokens.css'
-// 테마별 데크 CSS. 두 테마를 함께 로드해 CSS 로만 표시를 전환한다.
+// 커스텀 테마 (ADR 0045) — 다섯 색의 기본값과, 그 색에서 만든 토큰.
+import './themes/custom/defaults.css'
+import './themes/custom/tokens.css'
+// 테마별 데크 CSS. 모든 테마를 함께 로드해 CSS 로만 표시를 전환한다.
 import './themes/mono-vinyl/deck.css'
 import './themes/kawaii-synth-cassette/deck.css'
+import './themes/custom/deck.css'
 
 import App from './app/App.vue'
 import CollectApp from './app/CollectApp.vue'
@@ -19,6 +23,7 @@ import { lazyShareCardRenderer } from './features/backup/shareCardLazy'
 import { PLAYER_ADAPTER_FACTORY } from './features/playback/PlayerAdapter'
 import { YouTubeIFramePlayerAdapter } from './features/playback/YouTubeIFramePlayerAdapter'
 import { useArtworkStore } from './stores/artwork'
+import { useCustomThemeStore } from './stores/customTheme'
 import { useLibraryStore } from './stores/library'
 import { useMomentsStore } from './stores/moments'
 import { useThemeStore } from './stores/theme'
@@ -32,6 +37,8 @@ const pinia = createPinia()
 // 첫 페인트에 다른 테마가 보이는 현상(FOUC)을 줄이기 위한 것이며,
 // 검증 로직은 store와 저장 계층에만 둔다 (index.html에 중복하지 않는다).
 useThemeStore(pinia).restore()
+// 커스텀 테마의 색 (ADR 0045) — 테마와 같이 마운트 전에 읽고 문서 루트에 건다. 읽기만 한다.
+useCustomThemeStore(pinia).restore()
 
 // 라이브러리도 마운트 전에 복원한다. 복원은 저장소에 쓰지 않는다.
 // 기본 플레이리스트 생성은 restore() 와 분리된 별도 액션이며, 저장값이
@@ -74,6 +81,9 @@ if (resolveEntry(globalThis.location.hash) === 'collect') {
   // 곡별 앨범아트 (M12-3, ADR 0033) — IndexedDB 를 열고 연결 표를 읽는다. 기다리지 않고 마운트한다: 열기 전 ·
   // 열 수 없으면 모든 곡이 자동(썸네일 → 기본)으로 보인다. 수집 화면은 앨범아트를 쓰지 않는다.
   void useArtworkStore(pinia).init()
+  // 커스텀 테마의 데크 그림 (ADR 0045) — 따로 된 IndexedDB `39page-theme`. 기다리지 않는다: 읽기 전 · 열 수 없으면
+  // 데크 자리에 "이미지 넣기" 가 보인다.
+  void useCustomThemeStore(pinia).initDeck()
 
   /*
    * 실제 플레이어 어댑터. 팩토리로 주입한다 (ADR 0006).

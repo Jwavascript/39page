@@ -29,6 +29,8 @@ import type { LibraryData, MomentsData, ThemeKey } from '@/shared/types'
 import { libraryStorage, useLibraryStore } from '@/stores/library'
 import { momentsStorage, useMomentsStore, type MomentDropReason } from '@/stores/moments'
 import { themeStorage, useThemeStore } from '@/stores/theme'
+import { useCustomThemeStore } from '@/stores/customTheme'
+import type { CustomThemeSettings } from '@/shared/types/customTheme'
 
 import { createBackup, resolveBackupIntegrity } from './createBackup'
 import {
@@ -238,6 +240,7 @@ export function useBackupImport(): BackupImportModel {
   const library = useLibraryStore()
   const moments = useMomentsStore()
   const theme = useThemeStore()
+  const customTheme = useCustomThemeStore()
   const playback = inject(PLAYBACK_COORDINATOR, null)
 
   const stage = ref<ImportStage>('idle')
@@ -359,6 +362,22 @@ export function useBackupImport(): BackupImportModel {
         : applyTheme.value
           ? { name: '테마', action: 'replace', note: '파일의 테마를 적용합니다' }
           : { name: '테마', action: 'keep', note: '적용하지 않도록 껐습니다' },
+      // ADR 0045 — 커스텀 테마의 색은 테마와 함께 적용한다 (같은 스위치).
+      ...(file.customTheme === null
+        ? []
+        : [
+            applyTheme.value
+              ? {
+                  name: '커스텀 테마 색',
+                  action: 'replace' as const,
+                  note: '파일의 색을 적용합니다',
+                }
+              : {
+                  name: '커스텀 테마 색',
+                  action: 'keep' as const,
+                  note: '적용하지 않도록 껐습니다',
+                },
+          ]),
     ]
 
     const replacing: string[] = []
@@ -573,6 +592,7 @@ export function useBackupImport(): BackupImportModel {
           library: file.library,
           moments: file.moments,
           theme: applyTheme.value ? file.theme : null,
+          customTheme: applyTheme.value ? file.customTheme : null,
         },
         expected,
       ),
@@ -611,6 +631,13 @@ export function useBackupImport(): BackupImportModel {
     }
     if (file.theme !== null && !applyTheme.value) {
       outcome.results.push({ name: '테마', outcome: 'skipped', detail: '적용하지 않도록 껐음' })
+    }
+    if (file.customTheme !== null && !applyTheme.value) {
+      outcome.results.push({
+        name: '커스텀 테마 색',
+        outcome: 'skipped',
+        detail: '적용하지 않도록 껐음',
+      })
     }
 
     report(outcome, expected)
@@ -668,6 +695,8 @@ export function useBackupImport(): BackupImportModel {
       library: LibraryData | null
       moments: MomentsData | null
       theme: ThemeKey | null
+      /** ADR 0045. 저장하지 못해도 이번 세션에는 적용되고, 결과에 적는다(다시 저장 시도에는 넣지 않는다). */
+      customTheme?: CustomThemeSettings | null
     },
     expected: Expected,
   ): Promise<WriteOutcome> {
@@ -786,6 +815,15 @@ export function useBackupImport(): BackupImportModel {
           detail: '적용은 됐지만 저장 실패',
         })
       }
+    }
+
+    if (next.customTheme !== undefined && next.customTheme !== null) {
+      const saved = customTheme.setColors(next.customTheme.colors)
+      outcome.results.push(
+        saved
+          ? { name: '커스텀 테마 색', outcome: 'saved', detail: '다섯 색' }
+          : { name: '커스텀 테마 색', outcome: 'unsaved', detail: '적용은 됐지만 저장 실패' },
+      )
     }
 
     return outcome

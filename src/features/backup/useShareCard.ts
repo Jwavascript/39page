@@ -25,6 +25,8 @@ import {
 import type { TrackKey } from '@/shared/types/artwork'
 import { useArtworkStore } from '@/stores/artwork'
 import { useThemeStore } from '@/stores/theme'
+import { useCustomThemeStore } from '@/stores/customTheme'
+import type { ShareCardTheme } from './shareCard'
 
 import { downloadBytes } from './downloadBackup'
 import {
@@ -105,6 +107,14 @@ export function useShareCard(
 ): ShareCardView {
   const renderer = inject(SHARE_CARD_RENDERER, null)
   const theme = useThemeStore()
+  const customTheme = useCustomThemeStore()
+  /** 카드 틀 — 지금 테마를 따른다. 커스텀은 Kawaii 틀에 고른 색 (ADR 0045). */
+  const cardTheme = (): ShareCardTheme =>
+    theme.current === 'kawaii-synth-cassette'
+      ? 'kawaii'
+      : theme.current === 'custom'
+        ? 'custom'
+        : 'mono'
   const artwork = useArtworkStore()
 
   /** 넣을 수 있는 사용자 그림 — 앞에서부터 처음 만나는 것. 자산을 찾지 못하는 연결(사라진 그림)은 건너뛴다. */
@@ -122,9 +132,10 @@ export function useShareCard(
       ? null
       : buildShareCard(
           content.value,
-          theme.current === 'kawaii-synth-cassette' ? 'kawaii' : 'mono',
+          cardTheme(),
           new Date(),
           availableArt.value,
+          customTheme.saved,
         ),
   )
 

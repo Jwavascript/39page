@@ -78,6 +78,20 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
       openHint: '▶ OPEN MIXTAPES',
     },
   },
+  custom: {
+    key: 'custom',
+    name: 'Custom',
+    // ADR 0045 — Theme 3. 승인된 레퍼런스가 아닌 사용자 테마라 문구도 우리가 정한다.
+    label: '03 / CUSTOM',
+    description: '데크 그림과 색을 직접 고르는 테마.',
+    // 기본 앨범아트는 카세트 면을 같이 쓴다 (`DefaultArtwork` — LP 면은 Mono Vinyl 에서만).
+    artwork: { defaultLabel: 'MIXTAPE READY' },
+    footerLabel: 'CUSTOM · MY IMAGE × MY COLORS',
+    deck: {
+      openLabel: '데크 그림을 눌러 음악 보관함 열기',
+      openHint: 'OPEN LIBRARY ↗',
+    },
+  },
 }
 
 /** 표시 순서대로 나열한 테마 메타데이터. 전환 UI 순회에 쓴다. */

@@ -36,6 +36,7 @@ import { useFullBackupExport, useFullBackupImport } from '@/features/backup/useF
 import { looksLikeZip } from '@/features/backup/zipPackage'
 import { formatBytes } from '@/shared/utils/bytes'
 import { useArtworkStore } from '@/stores/artwork'
+import { useCustomThemeStore } from '@/stores/customTheme'
 
 const backup = useBackupExport()
 const restore = useBackupImport()
@@ -43,6 +44,7 @@ const restore = useBackupImport()
 const full = useFullBackupExport()
 const fullRestore = useFullBackupImport(restore)
 const artwork = useArtworkStore()
+const customTheme = useCustomThemeStore()
 
 /**
  * 파일 입력. 숨겨 두고 버튼으로 연다.
@@ -232,6 +234,17 @@ function cancelImport(): void {
       </button>
     </p>
 
+    <!-- 데크 그림 (ADR 0045 — 커스텀 테마). -->
+    <p
+      v-if="fullRestore.deckResult.value !== null"
+      class="backup-result artwork-result"
+      :class="{ 'is-failed': fullRestore.deckResult.value.outcome !== 'saved' }"
+      role="status"
+    >
+      <strong>데크 그림</strong> — {{ RESULT_LABEL[fullRestore.deckResult.value.outcome] }} ·
+      {{ fullRestore.deckResult.value.detail }}
+    </p>
+
     <!--
       화면에는 복원됐지만 저장되지 않은 상태 (M8-4).
 
@@ -351,6 +364,11 @@ function cancelImport(): void {
                 · 이미 있음 {{ fullRestore.artworkPreview.value.existing }}</template
               >)
             </td>
+          </tr>
+          <tr v-if="fullRestore.artworkPreview.value?.deckImage">
+            <th scope="row">데크 그림</th>
+            <td>{{ customTheme.deck === null ? '없음' : '있음' }}</td>
+            <td>있음 · 테마와 함께 적용</td>
           </tr>
         </tbody>
       </table>

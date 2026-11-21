@@ -18,7 +18,9 @@
   overflow: visible;
 }
 
-:root[data-theme='kawaii-synth-cassette'] .deck-art--mono-vinyl {
+/* 다른 테마에서 숨김 — 카세트, 그리고 커스텀(ADR 0045, 사용자 그림). */
+:root[data-theme='kawaii-synth-cassette'] .deck-art--mono-vinyl,
+:root[data-theme='custom'] .deck-art--mono-vinyl {
   display: none;
 }
 

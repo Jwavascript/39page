@@ -7,10 +7,16 @@
  *
  * 레이블은 Theme Registry(`src/themes/index.ts`)에서 가져온다. 문구를
  * 컴포넌트에 하드코딩하지 않는다.
+ *
+ * ADR 0045 — 커스텀 테마일 때 그 옆에 **팔레트 단추**(설정 창 — 데크 그림 · 색)를 둔다. 창은 셸이 연다.
  */
+import { inject } from 'vue'
+
+import { CUSTOM_THEME_DIALOG } from '@/shared/types/customTheme'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
+const customDialog = inject(CUSTOM_THEME_DIALOG, null)
 </script>
 
 <template>
@@ -26,6 +32,16 @@ const theme = useThemeStore()
       @click="theme.setTheme(option.key)"
     >
       {{ option.label }}
+    </button>
+    <button
+      v-if="theme.current === 'custom' && customDialog !== null"
+      type="button"
+      class="icon-button custom-settings"
+      aria-label="커스텀 테마 설정"
+      title="커스텀 테마 설정 (그림 · 색)"
+      @click="customDialog.open()"
+    >
+      <span class="ui-icon ui-icon--palette" aria-hidden="true"></span>
     </button>
   </div>
 </template>
@@ -65,6 +81,12 @@ const theme = useThemeStore()
 .theme-button.is-active {
   background: var(--theme-button-active-surface-color);
   color: var(--theme-button-active-text-color);
+}
+
+.custom-settings {
+  width: 44px;
+  height: 44px;
+  color: var(--theme-button-text-color);
 }
 
 @media (max-width: 730px) {

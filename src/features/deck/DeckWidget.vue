@@ -42,6 +42,10 @@
  * ADR 0042 — 데크 아래 안내 줄 끝에 **공유 아이콘**을 둔다. 데크가 보이는 목록(카세트 라벨 · 재생 중인 목록)을 공유
  * 대화상자로 연다. 아트(SVG) 위에 겹치지 않는다 — 두 테마의 그림을 가리지 않고, 작은 띠에서도 같은 자리다.
  *
+ * ADR 0045 — 셋째 테마 **Custom**. 카세트 · LP 자리에 사용자 그림(움짤 포함)을 그리고, 하는 일은 같다: 그림을 누르면
+ * 보관함, 그림 위의 ■ · ▶ 가 정지 · 재생. 그림에는 그려진 키가 없으므로 이 둘은 **보이는** 단추다. 그림이 없으면
+ * "이미지 넣기" 가 설정 창을 연다.
+ *
  * 단일 루트를 유지한다. `WidgetHost` 가 `grid-area` 를 루트에 적용한다.
  */
 import { computed, inject } from 'vue'
@@ -52,17 +56,33 @@ import { useDeckLabel } from '@/features/deck/useDeckLabel'
 import { useDeckShare } from '@/features/deck/useDeckShare'
 import KawaiiCassetteDeckArt from '@/themes/kawaii-synth-cassette/DeckArt.vue'
 import MonoVinylDeckArt from '@/themes/mono-vinyl/DeckArt.vue'
+import CustomDeckArt from '@/themes/custom/DeckArt.vue'
 import { THEMES } from '@/themes'
+import { CUSTOM_THEME_DIALOG } from '@/shared/types/customTheme'
+import { useCustomThemeStore } from '@/stores/customTheme'
 import { usePlaybackStore } from '@/stores/playback'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
+const customTheme = useCustomThemeStore()
+const customDialog = inject(CUSTOM_THEME_DIALOG, null)
 const playback = usePlaybackStore()
 const archive = inject(ARCHIVE, null)
 
 /** 각 트리거는 **자기 테마의** 문구를 쓴다. 숨겨진 쪽도 올바른 이름을 갖는다. */
 const monoCopy = THEMES['mono-vinyl'].deck
 const kawaiiCopy = THEMES['kawaii-synth-cassette'].deck
+const customCopy = THEMES.custom.deck
+
+/**
+ * 커스텀 데크에 그림이 없다 — 저장소를 읽은 뒤에만(읽는 중에 "이미지 넣기" 가 번쩍이지 않게). 저장소를 열 수 없어도
+ * 단추를 보인다 — 설정 창이 그 이유를 말한다.
+ */
+const customEmpty = computed<boolean>(
+  () =>
+    customTheme.deck === null &&
+    (customTheme.deckStatus === 'ready' || customTheme.deckStatus === 'unavailable'),
+)
 
 /** 데크 아래 안내는 활성 테마의 문구다. */
 const isOpen = computed<boolean>(
@@ -114,6 +134,14 @@ function openLibrary(): void {
         :label="cassetteLabel"
         :aria-hidden="theme.current !== 'kawaii-synth-cassette' || undefined"
       />
+      <CustomDeckArt
+        :src="customTheme.deckSrc"
+        :poster-src="customTheme.deckPosterSrc"
+        :animated="customTheme.deck?.animated ?? false"
+        :display="customTheme.deck?.display"
+        :playing="playback.isPlaying"
+        :aria-hidden="theme.current !== 'custom' || undefined"
+      />
 
       <!--
         열기 버튼. 네이티브 button 이므로 Tab / Enter / Space 가 기본 동작한다.
@@ -140,6 +168,17 @@ function openLibrary(): void {
         @click="openLibrary"
       >
         <span class="deck-open-hint">{{ kawaiiCopy.openHint }}</span>
+      </button>
+      <button
+        v-if="archive !== null"
+        type="button"
+        class="deck-open deck-open--custom"
+        :aria-label="customCopy.openLabel"
+        :aria-expanded="isOpen"
+        :aria-controls="archive.panelId"
+        @click="openLibrary"
+      >
+        <span class="deck-open-hint">{{ customCopy.openHint }}</span>
       </button>
 
       <!--
@@ -172,6 +211,38 @@ function openLibrary(): void {
         :title="transport.playLabel.value"
         @click="transport.play()"
       ></button>
+
+      <!-- 커스텀 데크의 ■ · ▶ (ADR 0045) — 그림에 그려진 키가 없어 보이는 단추로 둔다. 왼쪽 아래. -->
+      <span class="deck-custom-keys">
+        <button
+          type="button"
+          class="deck-key deck-key--custom-stop"
+          :aria-label="transport.pauseLabel.value"
+          :title="transport.pauseLabel.value"
+          @click="transport.pause()"
+        >
+          ■
+        </button>
+        <button
+          type="button"
+          class="deck-key deck-key--custom-play"
+          :aria-label="transport.playLabel.value"
+          :title="transport.playLabel.value"
+          @click="transport.play()"
+        >
+          ▶
+        </button>
+      </span>
+
+      <!-- 빈 커스텀 데크 — 설정 창을 연다. 열기 단추보다 뒤라 그 위에 선다. -->
+      <button
+        v-if="customEmpty && customDialog !== null"
+        type="button"
+        class="deck-add-image"
+        @click="customDialog.open()"
+      >
+        이미지 넣기
+      </button>
     </div>
 
     <!--
@@ -406,6 +477,82 @@ function openLibrary(): void {
   height: 10.53%;
 }
 
+/* 커스텀 데크 (ADR 0045) — 그림 전체가 "음악 보관함 열기". 틀의 둥근 모서리를 따른다. */
+:root[data-theme='custom'] .deck-open--custom {
+  display: flex;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-modal);
+}
+
+:root[data-theme='custom'] .deck-open--custom:focus-visible {
+  outline: var(--deck-open-focus-ring-width) solid var(--deck-open-focus-ring-color);
+  outline-offset: var(--deck-open-focus-ring-offset);
+}
+
+/*
+ * 커스텀 데크의 ■ · ▶ — 그림 위 왼쪽 아래의 보이는 단추. 어떤 그림 위에서도 보이게 반투명 바탕을 깐다.
+ * 44px 누름 영역은 `.deck-key::after` 가 그대로 준다.
+ */
+.deck-custom-keys {
+  position: absolute;
+  bottom: 4%;
+  left: 3%;
+  display: none;
+  gap: 6px;
+}
+
+:root[data-theme='custom'] .deck-custom-keys {
+  display: flex;
+}
+
+:root[data-theme='custom'] .deck-key--custom-stop,
+:root[data-theme='custom'] .deck-key--custom-play {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--pill-border-color);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface-base-color) 78%, transparent);
+  color: var(--text-color);
+  font-size: 13px;
+}
+
+:root[data-theme='custom'] .deck-key--custom-play {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* 빈 커스텀 데크의 "이미지 넣기" — 점선 틀 가운데. */
+.deck-add-image {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: none;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--accent-color);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised-color);
+  color: var(--accent-color);
+  font: 13px var(--font-mono);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+:root[data-theme='custom'] .deck-add-image {
+  display: block;
+}
+
+.deck-add-image:focus-visible {
+  outline: var(--deck-open-focus-ring-width) solid var(--deck-open-focus-ring-color);
+  outline-offset: 2px;
+}
+
 /* 안내 · 공유 한 줄 — 안내는 가운데, 공유 아이콘은 그 옆. */
 .deck-foot {
   display: flex;
@@ -483,7 +630,8 @@ function openLibrary(): void {
 
   /* 띠의 아트 전체가 "음악 보관함 열기" 다. 두 테마 모두 아트 전체를 덮는다. */
   :root[data-theme='mono-vinyl'] .deck-open--mono-vinyl,
-  :root[data-theme='kawaii-synth-cassette'] .deck-open--kawaii-synth-cassette {
+  :root[data-theme='kawaii-synth-cassette'] .deck-open--kawaii-synth-cassette,
+  :root[data-theme='custom'] .deck-open--custom {
     top: 0;
     left: 0;
     width: 100%;
@@ -502,8 +650,16 @@ function openLibrary(): void {
    */
   :root[data-theme='mono-vinyl'] .deck-key--mono-vinyl,
   :root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-stop,
-  :root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-play {
+  :root[data-theme='kawaii-synth-cassette'] .deck-key--kawaii-play,
+  :root[data-theme='custom'] .deck-custom-keys {
     display: none;
+  }
+
+  /* 작은 띠의 "이미지 넣기" — 줄어든 틀에 맞게. */
+  .deck-add-image {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 11px;
   }
 
   .deck-notice {

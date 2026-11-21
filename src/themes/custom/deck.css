@@ -1,0 +1,42 @@
+/*
+ * Custom 데크 (ADR 0045) — 표시 전환과 그림 틀.
+ *
+ * 두 승인 데크와 같은 방식이다: 기본 숨김, custom 테마에서만 표시. 틀은 승인 데크의 viewBox(900 × 570)와 같은
+ * 비율이라 데크 · 작은 띠 배치의 위치 계산이 그대로다.
+ */
+
+.deck-art--custom {
+  position: relative;
+  display: none;
+  width: 100%;
+  aspect-ratio: 900 / 570;
+  overflow: hidden;
+  border: 2px solid var(--line-color);
+  border-radius: var(--radius-modal);
+  background: var(--artwork-frame-surface-color);
+}
+
+:root[data-theme='custom'] .deck-art--custom {
+  display: block;
+}
+
+.deck-custom-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+/* 빈 자리 — 점선 틀. "이미지 넣기" 단추가 가운데에 선다 (데크 위젯). */
+.deck-custom-empty {
+  position: absolute;
+  inset: 8%;
+  border: 2px dashed var(--line-color);
+  border-radius: var(--radius-control);
+}
+
+/* 재생 중 — 틀이 강조색으로. 움직이는 그림이 아니어도 지금 재생 중인 것을 알 수 있게. */
+.is-playing .deck-art--custom {
+  border-color: var(--accent-color);
+}

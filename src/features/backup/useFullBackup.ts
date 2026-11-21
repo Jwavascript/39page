@@ -22,6 +22,7 @@ import {
 } from '@/features/artwork/imageValidation'
 import { formatBytes } from '@/shared/utils/bytes'
 import { useArtworkStore } from '@/stores/artwork'
+import { DECK_FAILURE_MESSAGE, useCustomThemeStore } from '@/stores/customTheme'
 import { useLibraryStore } from '@/stores/library'
 import { useMomentsStore } from '@/stores/moments'
 import { useThemeStore } from '@/stores/theme'
@@ -55,6 +56,7 @@ export function useFullBackupExport(): FullBackupExportModel {
   const library = useLibraryStore()
   const moments = useMomentsStore()
   const theme = useThemeStore()
+  const customTheme = useCustomThemeStore()
   const artwork = useArtworkStore()
   const busy = ref(false)
   const notice = ref('')
@@ -71,6 +73,7 @@ export function useFullBackupExport(): FullBackupExportModel {
         library: { playlists: library.playlists, selectedPlaylistId: library.selectedPlaylistId },
         moments: moments.moments,
         theme: theme.current,
+        customTheme: { colors: customTheme.saved },
         integrity: resolveBackupIntegrity({
           status: library.status,
           protectedReason: library.protectedReason,
@@ -87,15 +90,24 @@ export function useFullBackupExport(): FullBackupExportModel {
           snapshot = null
         }
       }
-      const built = await createFullBackupZip({ backup, artwork: snapshot, now, sha256: sha256Hex })
+      const built = await createFullBackupZip({
+        backup,
+        artwork: snapshot,
+        deck: customTheme.deck,
+        now,
+        sha256: sha256Hex,
+      })
       const result = downloadBytes(built.bytes, fullBackupFileName(now))
       if (!result.ok) {
         failed.value = true
         notice.value = '전체 백업 파일을 내려받지 못했습니다.'
         return
       }
-      const art = `앨범아트 연결 ${String(built.links)}개 · 이미지 ${String(built.assets)}개 (${formatBytes(built.assetBytes)})`
-      if (built.artworkUnavailable) {
+      const art = `앨범아트 연결 ${String(built.links)}개 · 이미지 ${String(built.assets)}개 (${formatBytes(built.assetBytes)})${built.deckIncluded ? ' · 데크 그림' : ''}`
+      if (built.deckCorrupt) {
+        failed.value = true
+        notice.value = `“${result.fileName}” 을 내려받았지만 데크 그림이 손상돼 넣지 못했습니다. ${art}.`
+      } else if (built.artworkUnavailable) {
         failed.value = true
         notice.value = `“${result.fileName}” 을 내려받았지만 앨범아트 저장소를 읽을 수 없어 **그림이 빠졌습니다.** 전체 백업이 완료되지 않았습니다.`
       } else if (built.incomplete.length > 0) {
@@ -138,6 +150,8 @@ export interface ArtworkImportPreview {
   readonly problems: readonly string[]
   readonly unavailable: boolean
   readonly incompleteAtExport: boolean
+  /** 파일에 받을 수 있는 데크 그림이 있다 (ADR 0045). 테마와 함께 적용한다. */
+  readonly deckImage: boolean
 }
 
 export interface FullBackupImportModel {
@@ -148,6 +162,8 @@ export interface FullBackupImportModel {
   artworkPreview: ComputedRef<ArtworkImportPreview | null>
   /** 앨범아트 단계의 결과 — 기존 섹션 결과 뒤에 붙인다. */
   artworkResult: Readonly<Ref<SectionResult | null>>
+  /** 데크 그림 단계의 결과 (ADR 0045). */
+  deckResult: Readonly<Ref<SectionResult | null>>
   canRetryArtwork: Readonly<Ref<boolean>>
   notice: Readonly<Ref<string>>
   failed: Readonly<Ref<boolean>>
@@ -159,8 +175,10 @@ export interface FullBackupImportModel {
 
 export function useFullBackupImport(restore: BackupImportModel): FullBackupImportModel {
   const artwork = useArtworkStore()
+  const customTheme = useCustomThemeStore()
   const library = useLibraryStore()
   const tools = inject(ARTWORK_IMAGE_TOOLS, null) ?? browserImageTools()
+  const deckResult = ref<SectionResult | null>(null)
 
   const read = shallowRef<Extract<FullBackupRead, { ok: true }> | null>(null)
   const reading = ref(false)
@@ -182,6 +200,11 @@ export function useFullBackupImport(restore: BackupImportModel): FullBackupImpor
         (problem) => `그림 ${problem.assetId.slice(0, 8)}… — ${PROBLEM_LABEL[problem.reason]}`,
       ),
       ...file.dropped.map((link) => `곡 ${link.trackId.slice(0, 8)}…의 그림 연결 — 받지 않음`),
+      ...(file.deckProblem === null
+        ? []
+        : [
+            `데크 그림 — ${file.deckProblem === 'invalid' ? '읽을 수 없음' : PROBLEM_LABEL[file.deckProblem]}`,
+          ]),
     ]
     return {
       links: file.links.length,
@@ -192,6 +215,7 @@ export function useFullBackupImport(restore: BackupImportModel): FullBackupImpor
       problems,
       unavailable: artwork.repositoryForTransfer() === null,
       incompleteAtExport: file.incompleteAtExport !== null,
+      deckImage: file.deck !== null,
     }
   })
 
@@ -207,6 +231,7 @@ export function useFullBackupImport(restore: BackupImportModel): FullBackupImpor
     notice.value = ''
     failed.value = false
     artworkResult.value = null
+    deckResult.value = null
     if (file.size > MAX_PACKAGE_BYTES) {
       failed.value = true
       notice.value = '파일이 너무 큽니다 (최대 512 MB).'
@@ -308,6 +333,22 @@ export function useFullBackupImport(restore: BackupImportModel): FullBackupImpor
       return
     }
 
+    // 데크 그림 (ADR 0045) — 테마를 적용하기로 했을 때만, 플레이리스트가 저장된 뒤에.
+    if (file.deck !== null) {
+      if (!restore.applyTheme.value) {
+        deckResult.value = {
+          name: '데크 그림',
+          outcome: 'skipped',
+          detail: '테마를 적용하지 않도록 껐음',
+        }
+      } else {
+        const written = await customTheme.writeDeck(file.deck, customTheme.deckRevision)
+        deckResult.value = written.ok
+          ? { name: '데크 그림', outcome: 'saved', detail: '커스텀 테마 데크 그림 복원' }
+          : { name: '데크 그림', outcome: 'unsaved', detail: DECK_FAILURE_MESSAGE[written.reason] }
+      }
+    }
+
     if (repository === null) {
       artworkResult.value = {
         name: '앨범아트',
@@ -340,6 +381,7 @@ export function useFullBackupImport(restore: BackupImportModel): FullBackupImpor
     active,
     artworkPreview,
     artworkResult,
+    deckResult,
     canRetryArtwork,
     notice,
     failed,

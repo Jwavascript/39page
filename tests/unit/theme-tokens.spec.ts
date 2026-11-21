@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { THEMES, THEME_LIST, getThemeMetadata } from '@/themes'
 import { DEFAULT_THEME_KEY, THEME_KEYS, type ThemeKey } from '@/shared/types'
+import { DEFAULT_CUSTOM_COLORS, customThemeVariables } from '@/shared/types/customTheme'
 
 /*
  * 토큰 값과 승인된 레퍼런스의 **정적 비교**.
@@ -36,7 +37,15 @@ const BASE_CSS = readFile('src/styles/base.css')
 const THEME_CSS: Record<ThemeKey, string> = {
   'mono-vinyl': readFile('src/themes/mono-vinyl/tokens.css'),
   'kawaii-synth-cassette': readFile('src/themes/kawaii-synth-cassette/tokens.css'),
+  custom: readFile('src/themes/custom/tokens.css'),
 }
+const CUSTOM_DEFAULTS_CSS = readFile('src/themes/custom/defaults.css')
+
+/**
+ * 승인된 레퍼런스에서 온 테마. 커스텀(ADR 0045)은 사용자 색에서 만든 테마라 레퍼런스 비교 대상이 아니다 — 아래
+ * "커스텀 테마 토큰" 에서 따로 본다.
+ */
+const APPROVED_THEME_KEYS = ['mono-vinyl', 'kawaii-synth-cassette'] as const satisfies ThemeKey[]
 
 function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -125,12 +134,14 @@ describe('테마 CSS 파일 구조', () => {
 })
 
 describe('토큰 집합 일관성', () => {
-  it('두 테마가 정확히 같은 토큰 이름을 정의한다', () => {
+  it('모든 테마가 정확히 같은 토큰 이름을 정의한다', () => {
     const mono = [...tokensOf(THEME_CSS['mono-vinyl']).keys()].sort()
     const kawaii = [...tokensOf(THEME_CSS['kawaii-synth-cassette']).keys()].sort()
+    const custom = [...tokensOf(THEME_CSS.custom).keys()].sort()
 
     // 한쪽에만 있는 토큰은 테마 전환 시 조용히 빈 값이 된다.
     expect(kawaii).toEqual(mono)
+    expect(custom).toEqual(mono)
   })
 
   it('테마마다 토큰을 중복 선언하지 않는다', () => {
@@ -158,7 +169,7 @@ describe('토큰 집합 일관성', () => {
 })
 
 describe('토큰 값이 승인된 레퍼런스에서 왔는지', () => {
-  it.each(THEME_KEYS)('%s 의 모든 색 리터럴이 레퍼런스에 존재한다', (key) => {
+  it.each(APPROVED_THEME_KEYS)('%s 의 모든 색 리터럴이 레퍼런스에 존재한다', (key) => {
     const unknown: string[] = []
     for (const [name, value] of tokensOf(THEME_CSS[key])) {
       for (const hex of hexesIn(value)) {
@@ -334,12 +345,51 @@ describe('테마 레지스트리', () => {
     // 사용자 결정으로 Theme 1 이 Synth Cassette 가 됐다. 레퍼런스(v09)는 고치지 않았으므로 번호는 다르다.
     expect(THEMES['kawaii-synth-cassette'].label).toBe('01 / SYNTH CASSETTE')
     expect(THEMES['mono-vinyl'].label).toBe('02 / MONO VINYL')
-    for (const meta of THEME_LIST) {
-      expect(REFERENCE_V09).toContain(meta.label.replace(/^\d+ \/ /, ''))
+    for (const key of APPROVED_THEME_KEYS) {
+      expect(REFERENCE_V09).toContain(THEMES[key].label.replace(/^\d+ \/ /, ''))
     }
+    // ADR 0045 — 셋째는 사용자 테마라 레퍼런스에 없는 이름이다.
+    expect(THEMES.custom.label).toBe('03 / CUSTOM')
   })
 
   it('THEME_LIST가 표시 순서를 따른다', () => {
     expect(THEME_LIST.map((meta) => meta.key)).toEqual([...THEME_KEYS])
+  })
+})
+
+describe('커스텀 테마 토큰 (ADR 0045)', () => {
+  const custom = tokensOf(THEME_CSS.custom)
+  /** 사용자 색과 섞는 고정 색 — 그림자 · 어둡게 · 경고/오류 기운. 그 밖의 색 리터럴은 두지 않는다. */
+  const FIXED = new Set(['#000000', '#00000066', '#000000aa', '#00000088', '#f0a050', '#ff7a6a'])
+
+  it('data-theme="custom" 에서만 적용된다', () => {
+    expect(THEME_CSS.custom).toContain(":root[data-theme='custom']")
+    expect(stripComments(THEME_CSS.custom)).not.toMatch(/:root\s*\{/)
+  })
+
+  it('색은 사용자 다섯 색(--custom-*)에서 만들고, 고정 색은 정한 것만 쓴다', () => {
+    const stray: string[] = []
+    for (const [name, value] of custom) {
+      for (const hex of hexesIn(value)) if (!FIXED.has(hex)) stray.push(`${name}: ${hex}`)
+      for (const [, variable] of value.matchAll(/var\((--[a-z-]+)/g)) {
+        if (!(variable ?? '').startsWith('--custom-')) stray.push(`${name}: ${variable ?? ''}`)
+      }
+    }
+    expect(stray).toEqual([])
+    expect(custom.get('--accent-color')).toBe('var(--custom-accent)')
+    expect(custom.get('--text-color')).toBe('var(--custom-text)')
+    expect(custom.get('--surface-base-color')).toBe('var(--custom-background)')
+  })
+
+  it('기본값 파일이 DEFAULT_CUSTOM_COLORS 와 같다 (강조색 위 글자색 포함)', () => {
+    const defaults = tokensOf(CUSTOM_DEFAULTS_CSS)
+    for (const [name, value] of Object.entries(customThemeVariables(DEFAULT_CUSTOM_COLORS))) {
+      expect({ name, value: defaults.get(name) }).toEqual({ name, value })
+    }
+    expect(defaults.size).toBe(6)
+  })
+
+  it('다른 테마의 토큰은 --custom-* 를 읽지 않는다', () => {
+    for (const key of APPROVED_THEME_KEYS) expect(THEME_CSS[key]).not.toContain('--custom-')
   })
 })

@@ -42,8 +42,8 @@ describe('ThemeSwitcher — 구조와 접근성', () => {
     const wrapper = mount(ThemeSwitcher)
     const labels = wrapper.findAll('button').map((button) => button.text())
 
-    // M11-7B: Theme 1 = Synth Cassette, Theme 2 = Mono Vinyl.
-    expect(labels).toEqual(['01 / SYNTH CASSETTE', '02 / MONO VINYL'])
+    // M11-7B: Theme 1 = Synth Cassette, Theme 2 = Mono Vinyl. ADR 0045: Theme 3 = Custom.
+    expect(labels).toEqual(['01 / SYNTH CASSETTE', '02 / MONO VINYL', '03 / CUSTOM'])
     expect(labels).toEqual(THEME_LIST.map((option) => option.label))
   })
 

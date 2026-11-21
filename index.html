@@ -24,11 +24,23 @@
        * 넣으면 CSS 의 바탕 토큰(mono-vinyl)이 한 프레임 보였다가 기본 테마로 바뀐다.
        * 키 목록은 src/shared/types/theme.ts 의 THEME_KEYS 와 같아야 한다 (시험이 지킨다).
        * 마운트 시 Theme Store 가 검증된 값으로 이 속성을 덮어쓴다 — 단일 진실 공급원은 Theme Store 다.
+       *
+       * 커스텀 테마(ADR 0045)면 사용자가 고른 다섯 색도 미리 건다 — 없거나 형식이 다르면 기본 색
+       * (themes/custom/defaults.css). 강조색 위 글자색 계산 · 검증은 Custom Theme Store 가 곧 다시 한다.
        */
       try {
         var saved = JSON.parse(localStorage.getItem('39page.theme')).data
-        if (saved === 'kawaii-synth-cassette' || saved === 'mono-vinyl') {
+        if (saved === 'kawaii-synth-cassette' || saved === 'mono-vinyl' || saved === 'custom') {
           document.documentElement.dataset.theme = saved
+        }
+        if (saved === 'custom') {
+          var colors = JSON.parse(localStorage.getItem('39page.customTheme')).data.colors
+          var names = ['background', 'surface', 'text', 'accent', 'line']
+          for (var i = 0; i < names.length; i += 1) {
+            if (/^#[0-9a-f]{6}$/.test(colors[names[i]])) {
+              document.documentElement.style.setProperty('--custom-' + names[i], colors[names[i]])
+            }
+          }
         }
       } catch (error) {
         /* 저장값이 없거나 손상됨 — 기본 테마를 그대로 쓴다 */

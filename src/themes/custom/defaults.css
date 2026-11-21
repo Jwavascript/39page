@@ -1,0 +1,16 @@
+/*
+ * Custom — 다섯 색의 기본값 (ADR 0045)
+ *
+ * 저장된 색이 없을 때 쓴다. 저장된 색은 `stores/customTheme.ts` 가 문서 루트의 **인라인 스타일**로 걸어 이 값을
+ * 덮는다. 값은 `src/shared/types/customTheme.ts` 의 `DEFAULT_CUSTOM_COLORS` 와 같아야 한다 (시험이 지킨다).
+ * 다른 테마의 토큰은 이 변수를 읽지 않는다.
+ */
+
+:root {
+  --custom-background: #16161d;
+  --custom-surface: #23232e;
+  --custom-text: #ecebf4;
+  --custom-accent: #ffb347;
+  --custom-line: #4b4b5e;
+  --custom-on-accent: #111111;
+}

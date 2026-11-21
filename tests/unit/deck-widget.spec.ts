@@ -380,8 +380,9 @@ describe('A. 데크 렌더링', () => {
     const wrapper = mount(DeckWidget)
     const buttons = wrapper.findAll('button')
 
-    // mono 토글 1개 + 카세트 ■ · ▶ 2개. 열기 버튼은 드로어가 없으니 빠진다.
-    expect(buttons).toHaveLength(3)
+    // mono 토글 1개 + 카세트 ■ · ▶ 2개 + 커스텀 ■ · ▶ 2개 (ADR 0045). 열기 버튼은 드로어가 없으니 빠진다.
+    // 커스텀의 "이미지 넣기" 는 설정 창 입구가 없으니(셸 밖) 빠진다.
+    expect(buttons).toHaveLength(5)
     for (const button of buttons) {
       expect(button.classes()).toContain('deck-key')
       expect(button.element.tagName).toBe('BUTTON')

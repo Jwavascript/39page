@@ -317,6 +317,10 @@ interface ArtworkBlobRecord {
 내보낸다. 각각 v1/v2를 읽고 더 새 버전을 거절한다. 내부 backup.json은 기존 JSON 형식이다. 공유 트랙 artwork와 전체 백업
 연결에 display를 포함하며, 새 ID로 가져와도 그대로 옮긴다. staging·rollback·불완전 백업·누락 자산 정책은 §7–8 그대로다.
 
+ADR 0045 (커스텀 테마): 데크 그림이 있으면 전체 ZIP 에 `theme.json`(`{ version: 1, deck: { asset, display } }`)과 그 그림
+`assets/<sha256>.<ext>` 를 더하고 manifest `formatVersion: 3`, `contents` 에 `theme` 을 적는다. 그림이 없으면 `formatVersion: 2`
+그대로다. 읽는 쪽은 3 까지 받고, 데크 그림을 다시 검증해 문제가 있으면 그림만 받지 않는다(백업 전체는 받는다).
+
 설정 화면에서도 GIF는 모션 감소·멈춤·화면 밖에서 포스터로 전환하고 URL은 세션 종료 시 해제한다.
 기존 §9의 이미지 자르기 중 **표시 구도 조절**은 구현됐으며, 원본 픽셀 자르기·회전은 여전히 범위 밖이다.
 근거: [ADR 0035](../decisions/0035-m12-6-edit-sessions-and-artwork-display.md).

@@ -533,10 +533,13 @@ describe('D. 모바일 작은 데크 띠', () => {
 
     expect(narrow).toMatch(/\.deck-widget \{[^}]*grid-template-columns: clamp\(118px, 36%, 164px\)/)
     // 아트 전체가 "보관함 열기" 다.
+    // 세 테마(ADR 0045 커스텀 포함)의 열기 단추가 한 규칙으로 아트 전체를 덮는다.
     expect(narrow).toMatch(
-      /\.deck-open--kawaii-synth-cassette \{[^}]*width: 100%;[^}]*height: 100%/,
+      /\.deck-open--kawaii-synth-cassette,\s*:root\[data-theme='custom'\] \.deck-open--custom \{[^}]*width: 100%;[^}]*height: 100%/,
     )
-    expect(narrow).toMatch(/\.deck-key--kawaii-play \{\s*display: none/)
+    expect(narrow).toMatch(
+      /\.deck-key--kawaii-play,\s*:root\[data-theme='custom'\] \.deck-custom-keys \{\s*display: none/,
+    )
     // 승인된 아트를 자르지 않는다 — 데크 아트 컴포넌트는 그대로이고 clip/viewBox 를 바꾸지 않는다.
     expect(narrow).not.toMatch(/clip-path|object-fit|viewBox/)
   })

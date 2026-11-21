@@ -318,7 +318,8 @@ describe('C. 읽기 검증 — 아무것도 쓰지 않는다', () => {
       /종류/,
     )
     await expectRejected(
-      zipSync({ ...files, 'manifest.json': enc({ ...manifest, formatVersion: 3 }) }),
+      // ADR 0045 — 3 은 데크 그림이 든 전체 백업이다. 그보다 새 것만 거절한다.
+      zipSync({ ...files, 'manifest.json': enc({ ...manifest, formatVersion: 4 }) }),
       /더 새 39page/,
     )
   })

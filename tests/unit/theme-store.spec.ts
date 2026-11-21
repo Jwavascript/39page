@@ -77,6 +77,7 @@ describe('1. 기본 테마', () => {
     expect(theme.available.map((option) => option.key)).toEqual([
       'kawaii-synth-cassette',
       'mono-vinyl',
+      'custom',
     ])
   })
 })
@@ -191,11 +192,13 @@ describe('4-1. 기본 테마 변경과 기존 사용자 (M11-7B)', () => {
     expect(reloaded.current).toBe('mono-vinyl')
   })
 
-  it('표시 순서는 Theme 1 = Kawaii Synth Cassette, Theme 2 = Mono Vinyl 이다', () => {
-    expect(THEME_KEYS).toEqual(['kawaii-synth-cassette', 'mono-vinyl'])
+  it('표시 순서는 Theme 1 = Kawaii Synth Cassette, Theme 2 = Mono Vinyl, Theme 3 = Custom 이다', () => {
+    // ADR 0045 — Custom 이 셋째로 붙었다. 앞 둘의 순서 · 키는 그대로다.
+    expect(THEME_KEYS).toEqual(['kawaii-synth-cassette', 'mono-vinyl', 'custom'])
     expect(useThemeStore().available.map((option) => option.label)).toEqual([
       '01 / SYNTH CASSETTE',
       '02 / MONO VINYL',
+      '03 / CUSTOM',
     ])
   })
 })
@@ -388,7 +391,8 @@ describe('초기 테마 적용 스크립트 (index.html)', () => {
     // 한 프레임 보인다. 그래서 인라인 스크립트가 두 키만 받는다. 목록이 어긋나면 여기서 드러난다.
     const script = /<script>([\s\S]*?)<\/script>/.exec(INDEX_HTML)?.[1] ?? ''
     const code = script.replace(/\/\*[\s\S]*?\*\//g, '')
-    const keys = [...code.matchAll(/saved === '([a-z-]+)'/g)].map((match) => match[1])
+    // ADR 0045 — `custom` 은 색을 미리 거는 두 번째 조건에도 나온다. 받는 키의 **집합**을 비교한다.
+    const keys = new Set([...code.matchAll(/saved === '([a-z-]+)'/g)].map((match) => match[1]))
     expect([...keys].sort()).toEqual([...THEME_KEYS].sort())
     expect(code).not.toMatch(/typeof saved === 'string'/)
   })

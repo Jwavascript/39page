@@ -21,6 +21,11 @@ export const STORAGE_KEYS = {
    * 다르면 그 교체가 Moment 에 닿지 않는다 (ADR 0019 결정 3).
    */
   moments: '39page.moments',
+  /**
+   * 커스텀 테마의 색 (ADR 0045). 테마 키와 **다른 키**다 — 테마를 바꿔도 고른 색이 남고, 색을 바꿔도
+   * 테마 선택을 다시 쓰지 않는다. 데크 그림은 크기 때문에 IndexedDB `39page-theme` 에 있다.
+   */
+  customTheme: '39page.customTheme',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

@@ -48,7 +48,8 @@ describe('헤더 접기', () => {
     expect(wrapper.get('.header-toggle').attributes('aria-expanded')).toBe('false')
     await wrapper.get('.header-toggle').trigger('click')
     await flushPromises()
-    expect(wrapper.get('.theme-button:last-child').attributes('aria-pressed')).toBe('true')
+    // ADR 0045 — 셋째가 Custom 이라 Mono Vinyl 은 둘째다.
+    expect(wrapper.get('.theme-button:nth-child(2)').attributes('aria-pressed')).toBe('true')
     wrapper.unmount()
   })
   it('기본 펼침·접힘 aria 상태와 포커스, 메뉴 DOM을 유지하고 새 앱은 다시 펼침이다', async () => {
@@ -107,7 +108,7 @@ describe('헤더 접기', () => {
     expect(playback.playerState).toBe('playing')
     expect(JSON.stringify(fake.calls)).toBe(calls)
     expect(JSON.stringify({ ...localStorage })).toBe(before)
-    await wrapper.get('.theme-button:last-child').trigger('click')
+    await wrapper.get('.theme-button:nth-child(2)').trigger('click')
     expect(useThemeStore().current).toBe('mono-vinyl')
     await wrapper.get('.app-nav button:first-child').trigger('click')
     await flushPromises()

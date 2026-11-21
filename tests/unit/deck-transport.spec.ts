@@ -256,8 +256,8 @@ describe('D. 경계 — 데크는 테마와 플레이어 구현을 모른다', (
   it('두 테마의 키가 모두 마운트돼 있고 CSS 로만 가려진다', () => {
     const context = mountApp()
 
-    // 테마 전환으로 재마운트하지 않는다 (ADR 0001).
-    expect(context.wrapper.findAll('.deck-key')).toHaveLength(3)
+    // 테마 전환으로 재마운트하지 않는다 (ADR 0001). mono 1 · 카세트 2 · 커스텀 ■ ▶ 2 (ADR 0045).
+    expect(context.wrapper.findAll('.deck-key')).toHaveLength(5)
   })
 
   it('테마를 바꿔도 재생 상태가 유지된다', async () => {
