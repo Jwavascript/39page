@@ -17,7 +17,7 @@
  * M5: 정보 열 구분선을 **의사 요소**로 그린다. 선을 위한 DOM 래퍼를 만들면
  * 위젯 루트가 그리드의 직계 자식이 아니게 되어 ADR 0002 를 깬다.
  */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import type { DashboardLayout, WidgetInstance } from '@/shared/types'
 import { findWidgetDefinition, type WidgetDefinition } from '@/widgets/registry'
@@ -41,10 +41,40 @@ const placed = computed<PlacedWidget[]>(() =>
     return definition === undefined ? [] : [{ instance, definition }]
   }),
 )
+
+/*
+ * 가사 칸의 위치 (ADR 0046). 가사는 넓은 화면에서 **영상 · 재생 카드 바로 아래**, 두 열에서는 **데크 바로 아래**의
+ * 남는 자리를 쓴다. 그 자리의 위 끝은 플레이어 · 데크의 높이로 정해지는데, 그 높이는 열 폭(16:9 영상 · 데크 그림)에
+ * 따라 바뀐다. 행을 하나 더 두는 CSS 만으로는 데크 아래나 카드 아래에 틈이 생긴다(여러 행을 걸치는 칸의 높이 분배).
+ * 그래서 두 위젯의 높이를 재서 변수로 건다 — 배치(그리드 영역 · DOM 부모)는 그대로다 (ADR 0002).
+ */
+const host = ref<HTMLElement | null>(null)
+let observer: ResizeObserver | null = null
+
+function measure(): void {
+  const root = host.value
+  if (root === null) return
+  for (const name of ['player', 'deck'] as const) {
+    const el = root.querySelector<HTMLElement>(`:scope > [data-widget='${name}']`)
+    if (el !== null) root.style.setProperty(`--${name}-block-size`, `${String(el.offsetHeight)}px`)
+  }
+}
+
+onMounted(() => {
+  measure()
+  if (typeof ResizeObserver !== 'function' || host.value === null) return
+  observer = new ResizeObserver(measure)
+  for (const name of ['player', 'deck']) {
+    const el = host.value.querySelector(`:scope > [data-widget='${name}']`)
+    if (el !== null) observer.observe(el)
+  }
+})
+
+onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
-  <div class="widget-host">
+  <div ref="host" class="widget-host">
     <!--
       :key 는 instanceId 만 쓴다. 테마나 배열 인덱스를 섞으면 재마운트가
       일어나고 플레이어가 재생 상태를 잃는다.
@@ -87,6 +117,11 @@ const placed = computed<PlacedWidget[]>(() =>
 .widget-host {
   /* 간격을 변수로 둔다. 구분선이 이 값의 절반만큼 왼쪽으로 나가야 한다. */
   --host-gap: clamp(20px, 2.3vw, 39px);
+  /*
+   * NOW PLAYLIST · Moments 칸의 **고정** 높이 (ADR 0046). 곡 · 순간이 적어도 칸은 이 높이라 대시보드 전체 높이가
+   * 목록 길이에 따라 바뀌지 않는다. 넘치면 칸 안에서 스크롤한다.
+   */
+  --dashboard-list-height: clamp(300px, 46vh, 470px);
 
   display: grid;
   /*
@@ -163,6 +198,31 @@ const placed = computed<PlacedWidget[]>(() =>
 }
 
 /*
+ * 고정 높이 목록 (ADR 0046) — 위젯 안의 줄 칸이 남는 높이를 채우고(그 위젯의 `flex`), 상한(`max-height`)은 푼다.
+ * 한 열(700px 이하)에서는 아래에서 푼다 — 그 배치는 안쪽 스크롤 없이 "펼치기" 로 늘인다 (M11-3).
+ */
+.widget-host > [data-widget='playlist'],
+.widget-host > [data-widget='moments'] {
+  height: var(--dashboard-list-height);
+  --now-playlist-rows-height: none;
+  --moments-rows-max: none;
+}
+
+/*
+ * 가사 (ADR 0046) — 넓은 화면: 둘째 열 전체를 걸치되 **플레이어 높이만큼 내려서** 시작한다. 크기 봉쇄(`contain: size`)
+ * 라 가사 길이가 행 높이를 정하지 않는다 — 칸은 다른 열이 정한 바닥까지이고 가사는 그 안에서 스크롤한다.
+ * 배치 영역(`grid-area: lyrics`, 레이아웃 선언)을 여기서 덮는다 — 그 이름의 영역은 한 열 배치에만 있다.
+ */
+.widget-host > [data-widget='lyrics'] {
+  grid-column: 2 !important;
+  grid-row: 1 / -1 !important;
+  align-self: stretch;
+  min-height: 160px;
+  margin-top: calc(var(--player-block-size, 0px) + var(--host-gap));
+  contain: size;
+}
+
+/*
  * 정보 열 구분선 (M5). 승인된 디자인의 `.info { border-left }` 다.
  *
  * **DOM 래퍼를 만들지 않는다.** 위젯 루트가 그리드의 직계 자식이라는 성질을
@@ -228,6 +288,24 @@ const placed = computed<PlacedWidget[]>(() =>
     align-self: start;
   }
 
+  /* 가사 — 두 열에서는 **데크 바로 아래**(첫 행 왼쪽)의 남는 자리. 첫 행 높이는 옆의 NOW PLAYLIST 가 정한다. */
+  .widget-host > [data-widget='lyrics'] {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    margin-top: calc(var(--deck-block-size, 0px) + var(--host-gap));
+  }
+
+  /*
+   * 두 열의 NOW PLAYLIST 는 데크 + 가사 칸(약 240px)만큼 — 데크 아래 가사 자리가 너무 낮아지지 않게. 데크 높이는
+   * 열 폭으로만 바뀌므로 목록 길이와 무관하게 고정이다.
+   */
+  .widget-host > [data-widget='playlist'] {
+    height: max(
+      var(--dashboard-list-height),
+      calc(var(--deck-block-size, 0px) + var(--host-gap) + 240px)
+    );
+  }
+
   /*
    * ⚠ **플레이어가 두 열을 가로지르는 것은 공식 요구사항 때문이다.**
    *
@@ -273,11 +351,25 @@ const placed = computed<PlacedWidget[]>(() =>
       'deck'
       'player'
       'moments'
+      'lyrics'
       'playlist'
       'clock'
       'weather';
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
+  }
+
+  /* 한 열 — 목록은 안쪽 스크롤 없이 늘고(M11-3), 가사는 자기 행에 고정 높이로 선다. */
+  .widget-host > [data-widget='playlist'],
+  .widget-host > [data-widget='moments'] {
+    height: auto;
+  }
+
+  .widget-host > [data-widget='lyrics'] {
+    grid-area: lyrics !important;
+    height: 260px;
+    margin-top: 0;
+    contain: none;
   }
 
   /* 한 열에는 세로 구분선이 없다. */
@@ -313,6 +405,7 @@ const placed = computed<PlacedWidget[]>(() =>
       'player moments'
       'player playlist'
       'deck playlist'
+      'lyrics playlist'
       'clock weather';
     /* 왼쪽 열 360px 이상 — 16:9 영상이 202px 을 지킬 수 있는 폭 (위 머리말과 같은 근거). */
     grid-template-columns: minmax(360px, 1fr) minmax(0, 1fr);
@@ -329,6 +422,13 @@ const placed = computed<PlacedWidget[]>(() =>
   .widget-host > [data-widget='deck'] {
     width: 100%;
     max-width: 420px;
+  }
+
+  .widget-host > [data-widget='lyrics'] {
+    grid-area: lyrics !important;
+    height: 220px;
+    margin-top: 0;
+    contain: none;
   }
 
   .widget-host::before {

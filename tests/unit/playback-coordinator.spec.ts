@@ -569,6 +569,26 @@ describe('G. Music Moments — capturePosition() 과 playMoment()', () => {
     return context
   }
 
+  describe('captureClock() (ADR 0046 — 가사)', () => {
+    it('초를 내리지 않고, 곡 길이를 함께 준다 — 길이를 모르면 null', async () => {
+      const { coordinator, fake } = await playingAt(83.7)
+      expect(coordinator.captureClock()).toEqual({
+        videoId: VIDEO[0],
+        seconds: 83.7,
+        duration: null,
+      })
+      fake.emitDuration(239.4)
+      expect(coordinator.captureClock()?.duration).toBe(239.4)
+    })
+
+    it('capturePosition 과 같은 판정 — 트랙이 없으면 null', async () => {
+      const { coordinator, fake } = await setup()
+      fake.emitReady()
+      fake.emitPosition(10)
+      expect(coordinator.captureClock()).toBeNull()
+    })
+  })
+
   describe('capturePosition()', () => {
     it('정상 재생 중 현재 영상·시점·제목을 찍는다', async () => {
       const { coordinator } = await playingAt(83.7)

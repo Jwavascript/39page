@@ -65,6 +65,7 @@ import type {
 } from './PlayerAdapter'
 import type {
   MomentCapture,
+  PlaybackClock,
   MomentPlayResult,
   MomentTarget,
   NowPlaying,
@@ -684,6 +685,20 @@ export function createPlaybackCoordinator(
     return { videoId: track.videoId, atSeconds: Math.floor(raw), title: track.title }
   }
 
+  /** 가사 맞추기용 시계 (ADR 0046) — `capturePosition` 과 같은 판정, 초는 내리지 않는다. */
+  function captureClock(): PlaybackClock | null {
+    const track = playback.currentTrack
+    if (track === null || adapter === null || !playback.isPositionReliable) return null
+    const raw = adapter.position()
+    if (raw === null || !Number.isFinite(raw) || raw < 0) return null
+    const length = adapter.duration?.() ?? null
+    return {
+      videoId: track.videoId,
+      seconds: raw,
+      duration: length !== null && Number.isFinite(length) && length > 0 ? length : null,
+    }
+  }
+
   /**
    * 지금 적재된 영상 안에서 `seek` 으로 옮길 수 있는가.
    *
@@ -1040,6 +1055,7 @@ export function createPlaybackCoordinator(
 
     // Music Moments (M9-3). 재생만 안다 — 저장은 Moments store 의 일이다.
     capturePosition,
+    captureClock,
     playMoment,
   }
 }

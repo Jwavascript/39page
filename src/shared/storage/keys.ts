@@ -26,6 +26,10 @@ export const STORAGE_KEYS = {
    * 테마 선택을 다시 쓰지 않는다. 데크 그림은 크기 때문에 IndexedDB `39page-theme` 에 있다.
    */
   customTheme: '39page.customTheme',
+  /**
+   * 직접 고른 가사 (ADR 0046) — 영상마다 LRCLIB 레코드 id. 가사 글자는 넣지 않는다. 백업에 아직 넣지 않는다.
+   */
+  lyrics: '39page.lyrics',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]

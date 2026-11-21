@@ -470,6 +470,8 @@ describe('B. 테마 전환 안정성', () => {
       'player-main',
       'playlist-main',
       'moments-main',
+      // ADR 0046
+      'lyrics-main',
     ])
   })
 

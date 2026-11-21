@@ -149,6 +149,7 @@ function resumeDraft(): void {
 .moments-widget {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   gap: 10px;
 }

@@ -41,13 +41,7 @@ export interface ThemeMetadata {
   artwork: ArtworkCopy
   /** 데크 문구. 데크를 눌러 Record Library 를 여는 흐름에 쓴다. */
   deck: DeckCopy
-  /**
-   * 푸터 왼쪽의 테마 설명 (M5).
-   *
-   * 승인된 디자인의 `footerThemeLabel` 값이다. 오른쪽 문구는 테마와
-   * 무관하므로 컴포넌트가 들고 있다.
-   */
-  footerLabel: string
+  // 푸터의 테마 설명(`footerLabel`)은 푸터와 함께 없앴다 (ADR 0046).
 }
 
 export const THEMES: Record<ThemeKey, ThemeMetadata> = {
@@ -58,7 +52,6 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     label: '02 / MONO VINYL',
     description: '따뜻한 회갈색 금속 턴테이블. 검은 LP와 아이보리 도트.',
     artwork: { defaultLabel: 'SIGNAL READY' },
-    footerLabel: 'MONO VINYL · ANALOG × DIGITAL',
     deck: {
       // M11-3: 이 트리거가 여는 것이 플레이리스트 선반에서 **음악 보관함**으로 바뀌었다.
       openLabel: 'LP를 눌러 음악 보관함 열기',
@@ -72,7 +65,6 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     label: '01 / SYNTH CASSETTE',
     description: '민트 카세트 데크에 분홍 포인트. 90s 신스 레트로 디지털.',
     artwork: { defaultLabel: 'MIXTAPE READY' },
-    footerLabel: 'SYNTH CASSETTE · PIXEL × KAWAII',
     deck: {
       openLabel: '카세트를 눌러 음악 보관함 열기',
       openHint: '▶ OPEN MIXTAPES',
@@ -86,7 +78,6 @@ export const THEMES: Record<ThemeKey, ThemeMetadata> = {
     description: '데크 그림과 색을 직접 고르는 테마.',
     // 기본 앨범아트는 카세트 면을 같이 쓴다 (`DefaultArtwork` — LP 면은 Mono Vinyl 에서만).
     artwork: { defaultLabel: 'MIXTAPE READY' },
-    footerLabel: 'CUSTOM · MY IMAGE × MY COLORS',
     deck: {
       openLabel: '데크 그림을 눌러 음악 보관함 열기',
       openHint: 'OPEN LIBRARY ↗',

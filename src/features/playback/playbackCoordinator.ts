@@ -92,6 +92,15 @@ export interface MomentTarget {
  *
  * UI 는 어댑터도 YouTube API 도 모른 채 이 둘만 부른다.
  */
+/** `captureClock()` 의 값 (ADR 0046). */
+export interface PlaybackClock {
+  readonly videoId: string
+  /** 소수 초. */
+  readonly seconds: number
+  /** 영상 길이(초). 플레이어가 아직 모르면 `null`. */
+  readonly duration: number | null
+}
+
 export interface PlaybackMoments {
   /**
    * 지금 재생 중인 영상의 시점을 찍는다.
@@ -104,6 +113,12 @@ export interface PlaybackMoments {
    * `null` 이면 저장 버튼은 **비활성**이어야 한다.
    */
   capturePosition(): MomentCapture | null
+
+  /**
+   * 가사 맞추기용 재생 시계 (ADR 0046) — `capturePosition()` 과 **같은 판정**이되 초를 내리지 않고, 곡 길이(모르면
+   * `null`)를 함께 준다. 표시용이다 — 저장에 쓰지 않는다.
+   */
+  captureClock(): PlaybackClock | null
 
   /**
    * Moment 가 가리키는 지점부터 재생한다.

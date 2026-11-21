@@ -103,6 +103,7 @@ export class FakePlayerAdapter implements PlayerAdapter {
    * 전까지는 모른다 (실제 어댑터의 영상 식별 판정과 같은 결과).
    */
   private reportedPosition: number | null = null
+  private reportedDuration: number | null = null
 
   mount(container: HTMLElement, events?: PlayerAdapterEvents): void {
     this.calls.mount += 1
@@ -162,6 +163,12 @@ export class FakePlayerAdapter implements PlayerAdapter {
     return isValidPlayerSeconds(this.reportedPosition) ? this.reportedPosition : null
   }
 
+  duration(): number | null {
+    if (this.hostNode === null || !this.ready) return null
+    const length = this.reportedDuration
+    return isValidPlayerSeconds(length) && length > 0 ? length : null
+  }
+
   seek(seconds: number): void {
     if (this.hostNode === null) return
 
@@ -195,6 +202,11 @@ export class FakePlayerAdapter implements PlayerAdapter {
    */
   emitPosition(seconds: number | null): void {
     this.reportedPosition = seconds
+  }
+
+  /** 외부 플레이어가 지금 영상의 길이를 보고했다 (ADR 0046). */
+  emitDuration(seconds: number | null): void {
+    this.reportedDuration = seconds
   }
 
   /** 상태를 바꾸고 알린다. 바뀌지 않으면 알리지 않는다 (실제 어댑터와 같다). */

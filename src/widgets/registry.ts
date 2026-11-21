@@ -17,6 +17,7 @@ import { WIDGET_TYPES, isWidgetType, type GridArea, type WidgetType } from '@/sh
 import DeckWidget from '@/features/deck/DeckWidget.vue'
 import NowPlaylistWidget from '@/features/library/NowPlaylistWidget.vue'
 import MomentsWidget from '@/features/moments/MomentsWidget.vue'
+import LyricsWidget from '@/features/lyrics/LyricsWidget.vue'
 import PlayerSurface from '@/features/playback/PlayerSurface.vue'
 import ClockWidget from '@/widgets/clock/ClockWidget.vue'
 import WeatherWidget from '@/widgets/weather/WeatherWidget.vue'
@@ -119,6 +120,17 @@ const DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
      */
     component: MomentsWidget,
     defaultArea: 'moments',
+    ...NOT_EDITABLE,
+  },
+  lyrics: {
+    type: 'lyrics',
+    title: '가사',
+    /*
+     * ADR 0046 — LRCLIB 의 가사. 재생 위치는 Playback Coordinator 에게 묻기만 한다(재생을 바꾸지 않는다).
+     * 칸의 높이는 배치가 정하고 위젯은 그 안에서만 스크롤한다.
+     */
+    component: LyricsWidget,
+    defaultArea: 'lyrics',
     ...NOT_EDITABLE,
   },
   player: {

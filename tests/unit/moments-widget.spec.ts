@@ -821,7 +821,10 @@ describe('D. 대시보드 — 이 곡의 Moments (M11-7C: 모두 · 시점 순 �
     expect(widget(s).get('.widget-sub').text()).toBe('전체 6개')
     // 넓은 화면은 칸 안 스크롤 — 높이를 묶고, 페이지로 새지 않는다.
     const style = readSource('src/features/moments/CurrentMomentsList.vue')
-    expect(style).toMatch(/max-height:\s*var\(--current-moments-height\)/)
+    // ADR 0046 — 대시보드가 칸 높이를 고정하면(`--moments-rows-max: none`) 그 칸을 채우고, 아니면 이 상한이다.
+    expect(style).toMatch(
+      /max-height:\s*var\(--moments-rows-max, var\(--current-moments-height\)\)/,
+    )
     expect(style).toMatch(/overscroll-behavior:\s*contain/)
   })
 

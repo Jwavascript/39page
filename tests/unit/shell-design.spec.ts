@@ -6,7 +6,7 @@
  * 구분선은 **DOM 래퍼 없이** 그려야 한다. 래퍼를 끼우면 위젯 루트가 그리드의
  * 직계 자식이 아니게 되고, 플레이어 iframe 의 부모가 바뀐다 (ADR 0002).
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { nextTick } from 'vue'
@@ -16,7 +16,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import App from '@/app/App.vue'
-import AppFooter from '@/components/layout/AppFooter.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
 import { FakePlayerAdapter } from '@/features/playback/FakePlayerAdapter'
 import { PLAYER_ADAPTER_FACTORY } from '@/features/playback/PlayerAdapter'
@@ -52,66 +51,22 @@ function mountApp() {
   return { wrapper, fake }
 }
 
-describe('A. 푸터', () => {
-  it('승인된 두 문구를 보여준다', () => {
-    const wrapper = mount(AppFooter)
-
-    // 기본 테마(M11-7B: Kawaii Synth Cassette)의 문구.
-    expect(wrapper.get('.footer-theme').text()).toBe('SYNTH CASSETTE · PIXEL × KAWAII')
-    expect(wrapper.get('.footer-tagline').text()).toBe('RECORD LIBRARY / PLAYLIST FIRST')
-  })
-
-  it('테마를 바꾸면 왼쪽 문구만 바뀐다', async () => {
-    const wrapper = mount(AppFooter)
-    const theme = useThemeStore()
-
-    theme.setTheme('mono-vinyl')
+describe('A. 푸터 — 없앴다 (ADR 0046)', () => {
+  it('화면 아래 테마 문구 · RECORD LIBRARY / PLAYLIST FIRST 가 없다', async () => {
+    const { wrapper } = mountApp()
+    expect(wrapper.find('footer').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('PLAYLIST FIRST')
+    expect(wrapper.text()).not.toContain('PIXEL × KAWAII')
+    useThemeStore().setTheme('mono-vinyl')
     await nextTick()
-
-    expect(wrapper.get('.footer-theme').text()).toBe('MONO VINYL · ANALOG × DIGITAL')
-    // 오른쪽은 테마와 무관한 제품 문구다.
-    expect(wrapper.get('.footer-tagline').text()).toBe('RECORD LIBRARY / PLAYLIST FIRST')
+    expect(wrapper.text()).not.toContain('ANALOG × DIGITAL')
   })
 
-  it('두 테마의 문구가 메타데이터에 있다', () => {
-    expect(THEMES['mono-vinyl'].footerLabel).toBe('MONO VINYL · ANALOG × DIGITAL')
-    expect(THEMES['kawaii-synth-cassette'].footerLabel).toBe('SYNTH CASSETTE · PIXEL × KAWAII')
-  })
-
-  it('셸이 아니라 푸터가 테마를 안다', () => {
-    // 두 테마가 같은 셸 인스턴스를 공유한다는 보장이 셸의 무지에서 나온다.
+  it('컴포넌트 · 테마 메타데이터의 푸터 문구도 남기지 않는다', () => {
+    expect(existsSync(resolve(process.cwd(), 'src/components/layout/AppFooter.vue'))).toBe(false)
+    for (const meta of Object.values(THEMES)) expect('footerLabel' in meta).toBe(false)
+    // 셸은 여전히 테마를 모른다.
     expect(readSource('src/components/layout/DashboardShell.vue')).not.toContain('useThemeStore')
-    expect(readSource('src/components/layout/AppFooter.vue')).toContain('useThemeStore')
-  })
-
-  it('앱에 한 번만 들어간다', () => {
-    const { wrapper } = mountApp()
-
-    expect(wrapper.findAll('.app-footer')).toHaveLength(1)
-    expect(wrapper.findAllComponents(AppFooter)).toHaveLength(1)
-  })
-
-  it('워크스페이스 밖의 형제다', () => {
-    const { wrapper } = mountApp()
-
-    const footer = wrapper.get('.app-footer').element
-    expect(wrapper.get('.workspace').element.contains(footer)).toBe(false)
-    expect(footer.parentElement?.className).toContain('dashboard-shell')
-  })
-
-  it('색을 하드코딩하지 않는다', () => {
-    const source = readSource('src/components/layout/AppFooter.vue')
-
-    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
-    expect(source).toContain('var(--footer-border-color)')
-    expect(source).toContain('var(--footer-text-color)')
-  })
-
-  it('좁은 화면에서 줄바꿈을 허용한다', () => {
-    // 승인된 디자인의 650px 규칙이다.
-    const source = readSource('src/components/layout/AppFooter.vue')
-
-    expect(source).toMatch(/@media \(max-width: 650px\)[\s\S]*flex-wrap: wrap/)
   })
 })
 
@@ -145,8 +100,8 @@ describe('B. 정보 열 구분선', () => {
     const { wrapper } = mountApp()
     const host = wrapper.getComponent(WidgetHost).get('.widget-host').element
 
-    // 위젯 6개뿐이다 (M9-4 에서 Moments 가 더해졌고, M12-2 에서 마스코트가 빠졌다). 의사 요소는 요소 노드가 아니다.
-    expect(host.children).toHaveLength(6)
+    // 위젯 7개뿐이다 (M9-4 Moments, M12-2 마스코트 빠짐, ADR 0046 가사). 의사 요소는 요소 노드가 아니다.
+    expect(host.children).toHaveLength(7)
   })
 
   it('간격의 절반만큼 왼쪽으로 나간다', () => {
@@ -244,7 +199,9 @@ describe('B. 정보 열 구분선', () => {
      */
     expect(wide).toContain("'playlist player moments'")
     expect(source).toMatch(/\[data-widget='moments'\]\s*\{[^}]*align-self: stretch;/)
-    expect(source).not.toMatch(/contain: size;/)
+    // 크기 봉쇄는 가사 칸만 쓴다 (ADR 0046 — 가사 길이가 행 높이를 정하지 않게). Moments 는 쓰지 않는다.
+    expect(source.match(/contain: size;/g)).toHaveLength(1)
+    expect(source).toMatch(/\[data-widget='lyrics'\]\s*\{[^}]*contain: size;/)
   })
 
   it('플레이어 열의 최소 폭이 16:9 를 지킬 수 있는 값이다', () => {

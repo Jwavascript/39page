@@ -50,6 +50,7 @@ class FakeYtPlayer implements YouTubePlayer {
   /** iframe 이 마지막으로 보고한 영상과 시간. 명령으로는 바뀌지 않는다. */
   reportedVideoId: string | null = null
   reportedTime: number | undefined = undefined
+  reportedDuration: number | undefined = undefined
   /** 질의에 던지는 플레이어를 재현한다 (파괴 중 등). */
   throwOnQuery = false
 
@@ -77,6 +78,11 @@ class FakeYtPlayer implements YouTubePlayer {
   getCurrentTime(): number | undefined {
     if (this.throwOnQuery) throw new Error('player gone')
     return this.reportedTime
+  }
+
+  getDuration(): number | undefined {
+    if (this.throwOnQuery) throw new Error('player gone')
+    return this.reportedDuration
   }
 
   getVideoUrl(): string | undefined {
@@ -1010,6 +1016,27 @@ describe('H. position() · seek() · load({ startSeconds })', () => {
     player.fireReady()
     return { adapter, player }
   }
+
+  describe('duration() (ADR 0046)', () => {
+    it('준비 전 · 길이 0(메타데이터 전) · 다른 영상 · 질의 오류는 null, 아니면 길이 그대로', async () => {
+      const early = new AdapterClass()
+      early.mount(makeContainer())
+      expect(early.duration()).toBeNull()
+
+      const { adapter, player } = await readyAdapter()
+      player.deliver('aaaaaaaaaaa', 3)
+      player.reportedDuration = 0
+      expect(adapter.duration()).toBeNull()
+      player.reportedDuration = 236.4
+      expect(adapter.duration()).toBe(236.4)
+      // 전환 직후 — 플레이어가 아직 이전 영상을 보고한다.
+      player.deliver('bbbbbbbbbbb', 3)
+      expect(adapter.duration()).toBeNull()
+      player.deliver('aaaaaaaaaaa', 3)
+      player.throwOnQuery = true
+      expect(adapter.duration()).toBeNull()
+    })
+  })
 
   describe('position()', () => {
     it('마운트만 한 어댑터는 null 이다 — 0 이 아니다', () => {

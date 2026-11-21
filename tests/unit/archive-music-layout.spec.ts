@@ -544,13 +544,13 @@ describe('D. 모바일 작은 데크 띠', () => {
     expect(narrow).not.toMatch(/clip-path|object-fit|viewBox/)
   })
 
-  it('한 열 순서는 데크 띠 → 영상 → 이 곡 Moments → NOW PLAYLIST', () => {
+  it('한 열 순서는 데크 띠 → 영상 → 이 곡 Moments → 가사(ADR 0046) → NOW PLAYLIST', () => {
     const host = read('src/components/layout/WidgetHost.vue')
     const narrow = host.slice(
       host.indexOf('@media (max-width: 700px)'),
       host.indexOf('@media (max-height: 560px)'),
     )
-    expect(narrow).toMatch(/'deck'\s*'player'\s*'moments'\s*'playlist'/)
+    expect(narrow).toMatch(/'deck'\s*'player'\s*'moments'\s*'lyrics'\s*'playlist'/)
     expect(narrow).not.toContain('max-width: 420px')
   })
 

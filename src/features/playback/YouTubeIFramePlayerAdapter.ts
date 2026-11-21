@@ -278,6 +278,24 @@ export class YouTubeIFramePlayerAdapter implements PlayerAdapter {
     return isValidPlayerSeconds(time) ? time : null
   }
 
+  duration(): number | null {
+    const player = this.player
+    if (this.hostNode === null || player === null || !this.playerReady) return null
+    const expected = this.loadedVideoId
+    if (expected === null) return null
+    let url: unknown
+    let length: unknown
+    try {
+      url = player.getVideoUrl()
+      length = player.getDuration()
+    } catch {
+      return null
+    }
+    // 이전 영상의 길이를 새 영상의 것으로 내보내지 않는다 (`position()` 과 같은 판정).
+    if (reportedVideoId(url) !== expected) return null
+    return isValidPlayerSeconds(length) && length > 0 ? length : null
+  }
+
   seek(seconds: number): void {
     if (this.hostNode === null) return
     // 잘못된 값은 조용히 적용하지 않는다. 다른 시점으로 가는 것보다 낫다.

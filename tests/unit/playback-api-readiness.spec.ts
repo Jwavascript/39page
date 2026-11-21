@@ -40,6 +40,10 @@ class FakeYtPlayer implements YouTubePlayer {
     return undefined
   }
 
+  getDuration(): number | undefined {
+    return undefined
+  }
+
   getVideoUrl(): string | undefined {
     return undefined
   }

@@ -76,3 +76,4 @@
 - [0043](0043-share-dialog-and-backup-only-data-dialog.md): 공유는 따로 된 공유 대화상자(대상 한 줄 · 카드 · 링크, 고르는 칸 없음), 데이터 · 백업은 옮기기 전용(단추 둘), 파일(ZIP) 공유 · 카드의 "39page 에서 듣기" 를 없앤다 (채택).
 - [0044](0044-quiet-ui-row-icons-and-two-pane-moments.md): 늘 보이는 설명 글 · 카세트 머리 글 · "보관함에서 편집" 을 없애고, 곡 · 목록 · Moment 행의 "관리" 메뉴 대신 오른쪽 아이콘(연필 · 공유 · 휴지통), 닫기 · 뒤로는 아이콘만, Moments 탭은 음악 탭처럼 두 칸 (채택).
 - [0045](0045-custom-theme.md): 셋째 테마 Custom — 데크 자리에 사용자 그림 · 움짤(재생 중에만 움직임), 다섯 색에서 만드는 토큰, 따로 된 IndexedDB `39page-theme`, 백업 · 공유 카드에도 고른 색 (채택).
+- [0046](0046-lyrics-widget-fixed-lists-no-footer.md): 가사 위젯(LRCLIB — 자동은 영어 낱말 · 곡 길이로, 못 찾으면 직접 찾아 고름), NOW PLAYLIST · Moments 칸 높이 고정, 푸터 삭제 (채택).

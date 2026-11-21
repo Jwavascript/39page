@@ -10,7 +10,7 @@ import {
 } from '@/widgets/registry'
 
 describe('3. 등록된 위젯 조회', () => {
-  it('위젯 6종이 등록되어 있다', () => {
+  it('위젯 7종이 등록되어 있다', () => {
     // M12-2 에서 `mascot` 을 뺐다 — 그 자리는 플레이어 위젯 안 Now Playing 카드다 (ADR 0032).
     // M6-4 에서 `playlist` 를 더했다. 첫 상호작용 위젯이다.
     // M9-4 에서 `moments` 를 더했다. 정보 열의 빈자리에 선다.
@@ -21,6 +21,8 @@ describe('3. 등록된 위젯 조회', () => {
       'player',
       'playlist',
       'moments',
+      // ADR 0046 — 가사.
+      'lyrics',
     ])
   })
 
@@ -102,10 +104,10 @@ describe('5. 레이아웃 인스턴스', () => {
     }
   })
 
-  it('6개 위젯이 각각 다른 영역에 배치된다', () => {
+  it('7개 위젯이 각각 다른 영역에 배치된다', () => {
     const areas = MVP_DASHBOARD_LAYOUT.items.map((item) => item.area)
-    expect(areas).toHaveLength(6)
-    expect(new Set(areas).size).toBe(6)
+    expect(areas).toHaveLength(7)
+    expect(new Set(areas).size).toBe(7)
   })
 
   it('승인된 프로토타입 배치를 따른다', () => {
@@ -121,6 +123,8 @@ describe('5. 레이아웃 인스턴스', () => {
       player: 'player',
       playlist: 'playlist',
       moments: 'moments',
+      // ADR 0046 — 넓은 화면은 영상 · 재생 카드 아래, 두 열은 데크 아래(WidgetHost 가 자리를 정한다).
+      lyrics: 'lyrics',
     })
   })
 

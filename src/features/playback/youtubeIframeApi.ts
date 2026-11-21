@@ -54,6 +54,12 @@ export interface YouTubePlayer {
   getCurrentTime(): number | undefined
 
   /**
+   * 지금 적재된 영상의 길이(초) (ADR 0046 — 가사 맞추기). 메타데이터가 오기 전에는 `0` 을 준다 — 어댑터가 `null` 로
+   * 바꿔 전한다. `getCurrentTime()` 과 같은 캐시에서 나온다.
+   */
+  getDuration(): number | undefined
+
+  /**
    * 지금 적재된 영상의 youtube.com 주소 (M9-3).
    *
    * `getCurrentTime()` 과 **같은 캐시**에서 나온다. 그래서 둘을 같은 순간에

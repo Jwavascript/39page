@@ -396,7 +396,7 @@ describe('7. 재생 중 테마 변경', () => {
     // M12-2: 마스코트 문구 대신 Now Playing 카드 — 두 테마의 기본 그림이 함께 있고 CSS 가 고른다 (ADR 0032).
     const art = session.wrapper.get('.now-playing-card .default-artwork').element
     expect(session.wrapper.get('.now-playing-card .now-title').text()).toBe('ONE')
-    expect(session.wrapper.get('.footer-theme').text()).toContain('SYNTH CASSETTE')
+    expect(document.documentElement.dataset.theme).toBe('kawaii-synth-cassette')
 
     await session.wrapper.findAll('.theme-button')[1]?.trigger('click')
     await nextTick()
@@ -404,7 +404,8 @@ describe('7. 재생 중 테마 변경', () => {
     // 테마를 바꿔도 카드 · 그림이 다시 만들어지지 않고 곡 정보가 그대로다.
     expect(session.wrapper.get('.now-playing-card .default-artwork').element).toBe(art)
     expect(session.wrapper.get('.now-playing-card .now-title').text()).toBe('ONE')
-    expect(session.wrapper.get('.footer-theme').text()).toContain('MONO VINYL')
+    // ADR 0046 — 푸터의 테마 문구가 없어져 문서 루트의 테마로 본다.
+    expect(document.documentElement.dataset.theme).toBe('mono-vinyl')
     expect(session.wrapper.get('.deck-widget').classes()).toContain('is-playing')
   })
 })

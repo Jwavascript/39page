@@ -96,7 +96,8 @@ describe('A. 문서 구조', () => {
     const { wrapper } = mountApp()
 
     expect(wrapper.find('header').exists()).toBe(true)
-    expect(wrapper.find('footer').exists()).toBe(true)
+    // ADR 0046 — 푸터(테마 문구)를 없앴다. 랜드마크로 남는 것은 헤더 · 보관함이다.
+    expect(wrapper.find('footer').exists()).toBe(false)
     expect(wrapper.find('aside').exists()).toBe(true)
   })
 })

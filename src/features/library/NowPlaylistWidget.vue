@@ -369,14 +369,26 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   min-width: 0;
+  /* 칸 높이가 정해져 있으면(ADR 0046) 남는 높이를 채운다. 정해져 있지 않으면 내용 높이 그대로다. */
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
+}
+
+.picker {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 .track-rows,
 .picker-rows {
   /* 줄의 `offsetTop` 이 이 목록 기준이 되게 한다 (`revealCurrent`). */
   position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
   max-height: var(--now-playlist-rows-height);
   margin: 0;
   padding: 0 4px 0 0;

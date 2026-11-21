@@ -209,6 +209,9 @@ function label(moment: Readonly<Moment>): string {
   position: relative;
   display: flex;
   min-width: 0;
+  /* 칸 높이가 정해져 있으면(ADR 0046) 남는 높이를 채운다. */
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 4px;
 }
@@ -216,11 +219,16 @@ function label(moment: Readonly<Moment>): string {
 /* 영상 띠 안 — 영상 높이 옆에 맞는 작은 칸. */
 .current-moments.is-compact {
   --current-moments-height: 132px;
+  /* 대시보드가 건 고정 칸(ADR 0046)을 영상 띠에서는 따르지 않는다. */
+  --moments-rows-max: 132px;
 }
 
 .moment-rows {
   position: relative;
-  max-height: var(--current-moments-height);
+  min-height: 0;
+  flex: 1 1 auto;
+  /* 대시보드의 고정 칸(ADR 0046)에서는 상한을 풀고 남는 높이를 채운다 (`--moments-rows-max: none`). */
+  max-height: var(--moments-rows-max, var(--current-moments-height));
   margin: 0;
   padding: 0 4px 0 0;
   list-style: none;

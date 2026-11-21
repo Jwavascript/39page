@@ -30,5 +30,7 @@ export const MVP_DASHBOARD_LAYOUT: DashboardLayout = {
     { instanceId: 'playlist-main', widgetType: 'playlist', area: 'playlist' },
     // M9-4 에서 추가. M7-4 가 비워 둔 정보 열의 빈자리에 선다.
     { instanceId: 'moments-main', widgetType: 'moments', area: 'moments' },
+    // ADR 0046 — 가사. 넓은 화면은 영상 · 재생 카드 아래, 두 열은 데크 아래.
+    { instanceId: 'lyrics-main', widgetType: 'lyrics', area: 'lyrics' },
   ],
 }

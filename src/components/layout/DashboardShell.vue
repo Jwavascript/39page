@@ -56,7 +56,6 @@ import {
   ref,
 } from 'vue'
 
-import AppFooter from '@/components/layout/AppFooter.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppNav from '@/components/layout/AppNav.vue'
 import WidgetHost from '@/components/layout/WidgetHost.vue'
@@ -671,10 +670,9 @@ const behindDialog = computed(() =>
     </div>
 
     <!--
-      승인된 디자인의 `.footer`. 테마 문구를 쓰므로 별도 컴포넌트다 — 이 셸은 테마를 모르는 상태로
-      남아야 한다 (ADR 0001).
+      승인된 디자인의 `.footer`(테마 문구 · RECORD LIBRARY / PLAYLIST FIRST)는 없앴다 — 사용자 요청으로 화면 아래
+      여백을 줄인다 (ADR 0046).
     -->
-    <AppFooter :inert="behindDialog" />
 
     <DataDialog :open="isDataOpen" :dialog-id="DATA_DIALOG_ID" @close="closeData" />
 
@@ -766,6 +764,9 @@ const behindDialog = computed(() =>
 
 .workspace.is-archive-open > :deep(.widget-host > [data-widget='moments']) {
   align-self: start;
+  /* 대시보드의 고정 칸(ADR 0046)을 띠에서는 풀고 원래 상한을 쓴다. */
+  height: auto;
+  --moments-rows-max: initial;
 }
 
 /*
