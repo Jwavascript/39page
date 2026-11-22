@@ -1,0 +1,78 @@
+{
+  "observedAt": "2026-11-22T07:55:13.136Z",
+  "commit": "6ebbb62153cbab4c2a6c2b49a2ef605ba5e29e2d",
+  "runs": [
+    {
+      "name": "smoke",
+      "source": "docs/development/release-gate-results/check/smoke.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:48:18.286Z",
+      "exitCode": 0,
+      "checks": 7,
+      "passed": 7
+    },
+    {
+      "name": "ux",
+      "source": "docs/development/m12-6-results/check/ux.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:49:07.464Z",
+      "exitCode": 0,
+      "checks": 47,
+      "passed": 47
+    },
+    {
+      "name": "queue",
+      "source": "docs/development/playback-ux-results/check/queue.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:50:26.114Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "search",
+      "source": "docs/development/playback-ux-results/check/search.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:52:26.500Z",
+      "exitCode": 0,
+      "checks": 5,
+      "passed": 5
+    },
+    {
+      "name": "share-dialog",
+      "source": "docs/development/share-dialog-results/check/share-dialog.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:52:34.986Z",
+      "exitCode": 0,
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "quiet-ui",
+      "source": "docs/development/quiet-ui-results/check/quiet-ui.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:52:53.758Z",
+      "exitCode": 0,
+      "checks": 11,
+      "passed": 11
+    },
+    {
+      "name": "custom-theme",
+      "source": "docs/development/custom-theme-results/check/custom-theme.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:53:08.344Z",
+      "exitCode": 0,
+      "checks": 11,
+      "passed": 11
+    },
+    {
+      "name": "lyrics",
+      "source": "docs/development/lyrics-results/check/lyrics.mjs",
+      "origin": "https://39page.com",
+      "started": "2026-11-22T07:54:05.055Z",
+      "exitCode": 0,
+      "checks": 8,
+      "passed": 8
+    }
+  ]
+}

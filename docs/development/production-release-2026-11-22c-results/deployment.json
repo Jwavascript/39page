@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-11-22T08:10:00+00:00",
+  "releaseSHA": "6ebbb62153cbab4c2a6c2b49a2ef605ba5e29e2d",
+  "previousSHA": "b66f1a55d9b4ebe84eb51a7941ef87b5f00d5880",
+  "branch": "feat/mint-favicon",
+  "pushedAt": "2026-11-22T07:45:31Z",
+  "forcePush": false,
+  "workerBuildIdFromCI": "99114c82-9ee2-4270-8a2e-b7ec17e09c18",
+  "workerVersionFromCI": "1b820b2c-de1f-4649-befe-f071740dda11",
+  "ciCompletedAt": "2026-11-22T07:47:35Z",
+  "previousSuccessfulWorkerVersionFromCI": "c46fe088-fc16-46e4-9c39-b0f9f06d4426",
+  "gitRollbackRef": "rollback/mint-favicon",
+  "rollbackExecuted": false,
+  "httpChecks": 19,
+  "httpPassed": 19,
+  "liveChecks": 119,
+  "livePassed": 119,
+  "liveFirstRun": "all suites passed on the first run",
+  "storageFormatChanged": false,
+  "userProfileTouched": false,
+  "extensionStoreUpload": false,
+  "dependenciesAdded": false
+}
